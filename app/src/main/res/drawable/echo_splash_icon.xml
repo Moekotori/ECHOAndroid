@@ -1,8 +1,8 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android"
     android:paddingMode="stack">
-    <!-- Keep ECHO's mascot as the focal point, inside the system splash safe area. -->
+    <!-- Scale every layer with the system icon bounds; a fixed dp layer is clipped by its mask. -->
     <item android:drawable="@drawable/echo_splash_ground" />
-    <item android:width="288dp" android:height="288dp" android:gravity="center">
+    <item>
         <inset
             android:insetLeft="22.2222%"
             android:insetRight="22.2222%"
