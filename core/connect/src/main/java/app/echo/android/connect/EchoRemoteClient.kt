@@ -35,6 +35,7 @@ class EchoRemoteClient internal constructor(
     private val statusPollIntervalMs: Long = StatusPollIntervalMs,
     private val appContext: Context? = null,
     private val eventRetryDelayMs: Long = 1_000L,
+    private val backgroundStatusPollIntervalMs: Long = 30_000L,
 ) {
     constructor(scope: CoroutineScope) : this(scope, OkHttpEchoLinkTransport())
     constructor(scope: CoroutineScope, context: Context) : this(scope, OkHttpEchoLinkTransport(), appContext = context)
@@ -78,8 +79,23 @@ class EchoRemoteClient internal constructor(
 
     private var refreshOnForeground = false
     private var foreground = true
+    private var backgroundConnectionRequired = false
     private var pollFailures = 0
     private var authRejected = false
+
+    /** An explicitly enabled phone share owns low-frequency background connection checks. */
+    fun setBackgroundConnectionRequired(required: Boolean) {
+        if (backgroundConnectionRequired == required) return
+        backgroundConnectionRequired = required
+        if (foreground) return
+        if (!required) {
+            statusPollJob?.cancel()
+            foregroundRefreshJob?.cancel()
+            statusRefreshGeneration += 1
+        } else if (endpoint != null && !authRejected && connectJob?.isActive != true) {
+            startRealtimeStatus()
+        }
+    }
 
     fun setForeground(visible: Boolean) {
         if (foreground == visible) return
@@ -95,6 +111,7 @@ class EchoRemoteClient internal constructor(
                 cancelCollectionLoads()
                 _library.update { it.copy(isLoading = false, isLoadingMore = false) }
             }
+            if (backgroundConnectionRequired && connectJob?.isActive != true) startRealtimeStatus()
         } else if (endpoint != null && !authRejected) {
             if (connectJob?.isActive != true) startRealtimeStatus(refreshImmediately = true)
             if (refreshOnForeground && _status.value.connectionState == EchoRemoteConnectionState.Connected) {
@@ -1160,7 +1177,12 @@ class EchoRemoteClient internal constructor(
 
     private fun startRealtimeStatus(refreshImmediately: Boolean = false) {
         val target = endpoint ?: return
-        if (!foreground || authRejected) return
+        if ((!foreground && !backgroundConnectionRequired) || authRejected) return
+        if (!foreground) {
+            stopEventStream()
+            startStatusPolling(backgroundStatusPollIntervalMs)
+            return
+        }
         if (refreshImmediately) {
             foregroundRefreshJob?.cancel()
             foregroundRefreshJob = scope.launch { refreshStatusOnce(target) }
@@ -1202,10 +1224,10 @@ class EchoRemoteClient internal constructor(
     private fun startStatusPolling(intervalMs: Long = statusPollIntervalMs) {
         if (statusPollJob?.isActive == true && pollingIntervalMs == intervalMs) return
         statusPollJob?.cancel()
-        if (!foreground || authRejected) return
+        if ((!foreground && !backgroundConnectionRequired) || authRejected) return
         pollingIntervalMs = intervalMs
         statusPollJob = scope.launch {
-            while (isActive && foreground && !authRejected) {
+            while (isActive && (foreground || backgroundConnectionRequired) && !authRejected) {
                 delay((intervalMs * (1L shl pollFailures.coerceAtMost(4))).coerceAtMost(60_000L))
                 if (foregroundRefreshJob?.isActive != true) endpoint?.let { refreshStatusOnce(it) }
             }

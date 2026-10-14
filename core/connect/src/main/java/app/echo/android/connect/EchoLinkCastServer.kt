@@ -59,6 +59,7 @@ class EchoLinkCastServer(
     private val nowMs: () -> Long = { System.currentTimeMillis() },
     private val metadata: ((String, Map<String, String>) -> EchoLinkHttpReply?)? = null,
     private val resolvePublication: ((String) -> Pair<EchoLinkCastPublication, Boolean>?)? = null,
+    private val openArtwork: ((EchoLinkCastPublication, Long) -> EchoLinkCastBody?)? = null,
 ) {
     private val publications = ConcurrentHashMap<String, EchoLinkCastPublication>()
     private val running = AtomicBoolean(false)
@@ -341,7 +342,7 @@ class EchoLinkCastServer(
             return
         }
         val start = range?.first ?: 0L
-        val body = openBody.open(uri, start) ?: run {
+        val body = (if (openArtwork != null) openArtwork.invoke(publication, start) else openBody.open(uri, start)) ?: run {
             reply(output, 404, "Not Found", 0)
             return
         }
@@ -352,7 +353,8 @@ class EchoLinkCastServer(
                 return
             }
             val end = rangeEnd(range, totalLength)
-            val mime = EchoLinkCastPolicy.imageMimeType(uri)
+            val mime = opened.mimeType.takeIf { it in setOf("image/jpeg", "image/png", "image/webp", "image/gif") }
+                ?: EchoLinkCastPolicy.imageMimeType(uri)
             val contentLength = when {
                 end != null -> (end - start + 1L).coerceAtLeast(0L)
                 totalLength != null -> (totalLength - start).coerceAtLeast(0L)

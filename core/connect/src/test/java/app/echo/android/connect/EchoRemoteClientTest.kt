@@ -1135,9 +1135,9 @@ private fun remoteTrack(id: String): EchoRemoteTrack =
         canPlayOnPhone = true,
     )
 
-private class FakeEchoLinkTransport(
+internal class FakeEchoLinkTransport(
     private val failPairing: Boolean = false,
-    private val statusError: Throwable? = null,
+    var statusError: Throwable? = null,
     private val playlistListBlocker: CompletableDeferred<Unit>? = null,
     private val commandBlocker: CompletableDeferred<Unit>? = null,
     private val failCommand: Boolean = false,

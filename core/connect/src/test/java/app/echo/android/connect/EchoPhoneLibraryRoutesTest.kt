@@ -7,10 +7,39 @@ import okhttp3.Request
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import app.echo.android.model.connect.EchoPhoneCatalogEntry
+import app.echo.android.model.connect.EchoPhoneCatalogPage
 
 class EchoPhoneLibraryRoutesTest {
     private val token = "0123456789abcdef0123456789abcdef"
     private val row = EchoLinkCastPublication("unused-local-publication", "song/一", "content://private/1", title = "Song", artist = "Artist")
+
+    @Test fun catalogsPhoneCategoriesWithBoundedPagesAndNoPrivateMediaUris() {
+        val routes = EchoPhoneLibraryRoutes(token, "http://192.168.1.5:1000",
+            { _, _, _ -> EchoPhoneLibraryPage(emptyList(), 0) }, { null }, catalog = { query ->
+                assertEquals("songs", query.kind); assertEquals("album", query.parentKind); assertEquals("album-id", query.parentId)
+                EchoPhoneCatalogPage(listOf(EchoPhoneCatalogEntry("track", row.trackId, row.title, canPlay = true)), 1, query.page)
+            })
+        val path = "/echo-link/phone/v1/library/catalog?kind=songs&parentKind=album&parentId=album-id&page=2"
+        assertEquals(401, routes.metadata(path, emptyMap())!!.status)
+        val response = routes.metadata(path, mapOf("authorization" to "Bearer $token"))!!
+        val catalog = JSONObject(response.body).getJSONObject("catalog")
+        assertEquals(2, catalog.getInt("page")); assertEquals(50, catalog.getInt("pageSize"))
+        assertFalse(response.body.contains("content://")); assertFalse(response.body.contains(token))
+        assertEquals(400, routes.metadata(path.replace("page=2", "page=100001"), mapOf("authorization" to "Bearer $token"))!!.status)
+    }
+
+    @Test fun returnsConfirmedArtistAlbumScopeToPreventUnfilteredLegacyResults() {
+        val routes = EchoPhoneLibraryRoutes(token, "http://192.168.1.5:1000",
+            { _, _, _ -> EchoPhoneLibraryPage(emptyList(), 0) }, { null }, catalog = { query ->
+                assertEquals("albums", query.kind)
+                EchoPhoneCatalogPage(emptyList(), 0, query.page, query.parentKind, query.parentId)
+            })
+        val response = routes.metadata("/echo-link/phone/v1/library/catalog?kind=albums&parentKind=artist&parentId=artist-id",
+            mapOf("authorization" to "Bearer $token"))!!
+        val parent = JSONObject(response.body).getJSONObject("catalog").getJSONObject("parent")
+        assertEquals("artist", parent.getString("kind")); assertEquals("artist-id", parent.getString("id"))
+    }
 
     @Test fun requiresCapabilityAndClampsPagingWithoutLeakingLocalUris() {
         val calls = AtomicInteger()

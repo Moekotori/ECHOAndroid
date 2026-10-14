@@ -5,6 +5,7 @@ import android.os.Build
 import app.echo.android.connect.*
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoSharedLocalLibrary
+import app.echo.android.data.EchoSharedLocalCatalog
 import app.echo.android.lyrics.SharedPhoneLyricsResolver
 import app.echo.android.model.connect.EchoPhoneLibraryRegistration
 import app.echo.android.model.connect.EchoRemoteConnectionState
@@ -30,8 +31,9 @@ class EchoPhoneLibrarySession(
     private var generation = 0
 
     fun start() {
-        if (job?.isActive == true) return
         val connection = client.status.value
+        connectionChanged(connection.endpoint, connection.connectionState)
+        if (job?.isActive == true) return
         val endpoint = connection.endpoint
         if (endpoint == null || connection.connectionState != EchoRemoteConnectionState.Connected) {
             state.value = "connection_required"
@@ -49,14 +51,17 @@ class EchoPhoneLibrarySession(
                 stage = "server"
                 val token = EchoLinkCastPolicy.newToken()
                 val catalog = EchoSharedLocalLibrary(EchoLibraryDatabase.create(application))
+                val categories = EchoSharedLocalCatalog(EchoLibraryDatabase.create(application))
                 val lyrics = SharedPhoneLyricsResolver(application, catalog)
                 val readyRoutes = java.util.concurrent.atomic.AtomicReference<EchoPhoneLibraryRoutes?>(null)
+                val artwork = EchoPhoneArtworkOpener(application)
                 val created = EchoLinkCastServer(
                     openBody = EchoLinkCastMediaOpener(application.contentResolver),
                     allowedPeerHost = { endpoint.host },
                     bindHost = host,
                     metadata = { path, headers -> readyRoutes.get()?.metadata(path, headers) },
                     resolvePublication = { path -> readyRoutes.get()?.publication(path) },
+                    openArtwork = artwork::open,
                 )
                 ownedServer = created
                 server = created
@@ -69,6 +74,7 @@ class EchoPhoneLibrarySession(
                             EchoPhoneLibraryPage(rows.map(::publication), total)
                         } },
                         track = { id -> runBlocking { catalog.track(id)?.let(::publication) } },
+                        catalog = { query -> runBlocking { categories.page(query) } },
                         lyrics = { id -> runBlocking { lyrics.read(id) } },
                     ))
                     url
@@ -77,14 +83,13 @@ class EchoPhoneLibrarySession(
                 registration = published
                 stage = "service"
                 EchoPhoneLibraryService.start(application, published.sessionId)
+                client.setBackgroundConnectionRequired(true)
                 stage = "registration"
-                while (isActive) {
-                    client.registerPhoneLibrary(endpoint, published)
+                maintainEchoPhoneLibraryLease(register = { client.registerPhoneLibrary(endpoint, published) }, onRenewed = {
                     ensureActive()
-                    if (current != generation) return@launch
+                    if (current != generation) throw CancellationException("Sharing session replaced")
                     state.value = "sharing"
-                    delay(60_000)
-                }
+                })
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -102,6 +107,7 @@ class EchoPhoneLibrarySession(
             } finally {
                 ownedServer?.stop()
                 if (current == generation) {
+                    client.setBackgroundConnectionRequired(false)
                     server = null
                     EchoPhoneLibraryService.stop(application)
                 }
@@ -109,9 +115,9 @@ class EchoPhoneLibrarySession(
         }
     }
 
-    fun connectionChanged(endpoint: EchoRemoteEndpoint?, connected: Boolean) {
+    fun connectionChanged(endpoint: EchoRemoteEndpoint?, connectionState: EchoRemoteConnectionState) {
         val currentTarget = target ?: return
-        if (!connected || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, currentTarget)) {
+        if (!shouldKeepEchoPhoneLibrarySharing(endpoint, currentTarget, connectionState)) {
             val wasActive = state.value == "starting" || state.value == "sharing"
             val previousStatus = state.value
             stop()
@@ -125,6 +131,7 @@ class EchoPhoneLibrarySession(
 
     fun stop() {
         generation++
+        client.setBackgroundConnectionRequired(false)
         job?.cancel()
         job = null
         server?.stop()

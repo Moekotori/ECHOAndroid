@@ -521,9 +521,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         app.echo.android.playback.EchoPlaybackProcessRuntime.setUiVisible(appVisible)
         onDispose { app.echo.android.playback.EchoPlaybackProcessRuntime.setUiVisible(false) }
     }
-    DisposableEffect(remoteClient, appVisible) {
-        remoteClient.setForeground(appVisible)
-        onDispose { remoteClient.setForeground(false) }
+    DisposableEffect(echoLinkSession, appVisible) {
+        echoLinkSession.setUiVisible(appVisible)
+        onDispose { echoLinkSession.setUiVisible(false) }
     }
     LaunchedEffect(effectivePerformanceMode) {
         viewModel.setEffectivePerformanceMode(effectivePerformanceMode)
@@ -1596,8 +1596,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             ConnectScreen(
                                 phoneLibraryShareStatus = phoneLibraryShareStatus,
                                 onPhoneLibraryShareChange = { enabled ->
-                                    if (enabled) localNetwork.run { echoLinkSession.phoneLibrary.start() }
-                                    else echoLinkSession.phoneLibrary.stop()
+                                    if (enabled) localNetwork.run { echoLinkSession.setPhoneLibrarySharingEnabled(true) }
+                                    else echoLinkSession.setPhoneLibrarySharingEnabled(false)
                                 },
                                 networkPermissionContent = { EchoLocalNetworkPermissionNotice(localNetwork) },
                                 remoteMode = remoteMode,

@@ -66,6 +66,23 @@ class EchoLinkSession(private val application: Application) {
     private var persistedKey: Pair<String?, String>? = null
     private var attemptedKey: Pair<String?, String>? = null
     private val localNetworkAccess = MutableStateFlow(application.hasEchoLocalNetworkAccess())
+    private val uiVisible = MutableStateFlow(false)
+
+    fun setUiVisible(visible: Boolean) {
+        client.setForeground(visible)
+        uiVisible.value = visible
+    }
+
+    fun setPhoneLibrarySharingEnabled(enabled: Boolean) {
+        scope.launch {
+            try {
+                settings.setEchoLinkSharePhoneLibraryEnabled(enabled)
+            } finally {
+                if (!enabled) phoneLibrary.stop()
+            }
+            if (enabled && uiVisible.value) phoneLibrary.start()
+        }
+    }
 
     fun refreshLocalNetworkAccess() {
         val granted = application.hasEchoLocalNetworkAccess()
@@ -108,6 +125,15 @@ class EchoLinkSession(private val application: Application) {
 
     init {
         scope.launch {
+            observeEchoPhoneLibraryAutoShare(
+                enabled = settings.appSettings.map { it.echoLinkSharePhoneLibraryEnabled },
+                connection = client.status,
+                visible = uiVisible,
+                start = phoneLibrary::start,
+                stop = phoneLibrary::stop,
+            )
+        }
+        scope.launch {
             observeEchoLinkLocalFallback(
                 connectionStates = client.status.map { it.connectionState },
                 librarySources = settings.appSettings.map { it.librarySelectedSource },
@@ -135,7 +161,7 @@ class EchoLinkSession(private val application: Application) {
         scope.launch {
             var lastConnectionError: String? = null
             client.status.collect { status ->
-                phoneLibrary.connectionChanged(status.endpoint, status.connectionState == EchoRemoteConnectionState.Connected)
+                phoneLibrary.connectionChanged(status.endpoint, status.connectionState)
                 val endpoint = status.endpoint
                 if (status.connectionState == EchoRemoteConnectionState.Connected && endpoint != null && !endpoint.needsV2PairExchange) {
                     val address = "${endpoint.scheme}://${if (':' in endpoint.host) "[${endpoint.host}]" else endpoint.host}:${endpoint.port}"

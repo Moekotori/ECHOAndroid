@@ -140,6 +140,7 @@ data class EchoAppSettings(
     val echoLinkV2Events: Boolean = false,
     val echoLinkAutoReconnectEnabled: Boolean = true,
     val echoLinkPreferLinkedLibrary: Boolean = true,
+    val echoLinkSharePhoneLibraryEnabled: Boolean = true,
     val echoLinkSavedPcs: List<app.echo.android.model.connect.EchoSavedPcEndpoint> = emptyList(),
     val replayGainMode: String = EchoReplayGainMode.Auto.id,
     val replayGainEnabled: Boolean = false,
@@ -403,6 +404,7 @@ class EchoSettingsStore(
                 echoLinkV2Events = preferences[Keys.EchoLinkV2Events] ?: false,
                 echoLinkAutoReconnectEnabled = preferences[Keys.EchoLinkAutoReconnectEnabled] ?: true,
                 echoLinkPreferLinkedLibrary = preferences[Keys.EchoLinkPreferLinkedLibrary] ?: true,
+                echoLinkSharePhoneLibraryEnabled = preferences[Keys.EchoLinkSharePhoneLibraryEnabled] ?: true,
                 echoLinkSavedPcs = echoLinkSavedPcsFromPreferences(
                     raw = preferences[Keys.EchoLinkSavedPcs],
                     currentAddress = preferences[Keys.EchoLinkPcAddress],
@@ -1244,6 +1246,10 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.EchoLinkPreferLinkedLibrary] = enabled }
     }
 
+    suspend fun setEchoLinkSharePhoneLibraryEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.EchoLinkSharePhoneLibraryEnabled] = enabled }
+    }
+
     suspend fun setLibrarySelectedSource(source: String) {
         context.echoSettings.edit {
             it[Keys.LibrarySelectedSource] = normalizeLibrarySelectedSource(source)
@@ -1789,6 +1795,7 @@ class EchoSettingsStore(
         val ReplayGainPreampDb = floatPreferencesKey("replay_gain_preamp_db")
         val EchoLinkAutoReconnectEnabled = booleanPreferencesKey("echo_link_auto_reconnect_enabled")
         val EchoLinkPreferLinkedLibrary = booleanPreferencesKey("echo_link_prefer_linked_library")
+        val EchoLinkSharePhoneLibraryEnabled = booleanPreferencesKey("echo_link_share_phone_library_enabled")
         val LibrarySelectedSource = stringPreferencesKey("library_selected_source")
         val WatchedFolderRescanEnabled = booleanPreferencesKey("watched_folder_rescan_enabled")
         val OfflineWifiOnly = booleanPreferencesKey("offline_wifi_only")

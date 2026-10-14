@@ -5,6 +5,8 @@ import java.net.URLDecoder
 import java.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
+import app.echo.android.model.connect.EchoPhoneCatalogQuery
+import app.echo.android.model.connect.EchoPhoneCatalogPage
 
 data class EchoPhoneLibraryPage(val tracks: List<EchoLinkCastPublication>, val totalCount: Int)
 
@@ -14,11 +16,12 @@ class EchoPhoneLibraryRoutes(
     private val baseUrl: String,
     private val page: (String, Int, Int) -> EchoPhoneLibraryPage,
     private val track: (String) -> EchoLinkCastPublication?,
+    private val catalog: ((EchoPhoneCatalogQuery) -> EchoPhoneCatalogPage)? = null,
     private val lyrics: ((String) -> EchoPhoneLyrics?)? = null,
 ) {
     fun metadata(path: String, headers: Map<String, String>): EchoLinkHttpReply? {
         val route = path.substringBefore('?')
-        if (route !in listOf("/echo-link/phone/v1/library/tracks", "/echo-link/phone/v1/library/track", "/echo-link/phone/v1/library/lyrics")) return null
+        if (route !in listOf("/echo-link/phone/v1/library/tracks", "/echo-link/phone/v1/library/track", "/echo-link/phone/v1/library/catalog", "/echo-link/phone/v1/library/lyrics")) return null
         if (headers["authorization"] != "Bearer $token" || headers.containsKey("origin")) {
             return EchoLinkHttpReply(401, "{\"error\":\"unauthorized\"}")
         }
@@ -31,6 +34,21 @@ class EchoPhoneLibraryRoutes(
                 val id = params["id"].orEmpty()
                 require(id.isNotBlank() && id.length <= 1024)
                 return phoneLyricsReply(read(id))
+            }
+            if (route.endsWith("/catalog")) {
+                val read = catalog ?: return EchoLinkHttpReply(404, "{\"error\":\"catalog_unavailable\"}")
+                val result = read(EchoPhoneCatalogQuery(params["kind"].orEmpty(), params["page"]?.toIntOrNull() ?: 1,
+                    params["q"].orEmpty(), params["parentKind"], params["parentId"]))
+                val entries = JSONArray()
+                require(result.entries.size <= 50)
+                result.entries.forEach { row -> entries.put(JSONObject().put("kind", row.kind).put("id", row.id)
+                    .put("title", row.title).put("subtitle", row.subtitle).put("count", row.count)
+                    .put("coverId", row.coverId ?: JSONObject.NULL).putOpt("artist", row.artist).putOpt("album", row.album)
+                    .putOpt("durationMs", row.durationMs).putOpt("canPlay", row.canPlay).putOpt("sampleRate", row.sampleRate)) }
+                return EchoLinkHttpReply(body = JSONObject().put("catalog", JSONObject().put("entries", entries)
+                    .put("total", result.total).put("page", result.page).put("pageSize", 50)
+                    .apply { if (result.parentKind != null && result.parentId != null) put("parent", JSONObject()
+                        .put("kind", result.parentKind).put("id", result.parentId)) }).toString())
             }
             if (route.endsWith("/track")) {
                 val item = track(params["id"].orEmpty()) ?: return EchoLinkHttpReply(404, "{\"error\":\"track_not_found\"}")
