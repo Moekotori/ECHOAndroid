@@ -107,8 +107,8 @@ class EchoSystemCastClient(context: Context) {
         client?.registerCallback(mediaCallback)
         client?.addProgressListener(progress, 1000)
         val device = session.castDevice ?: return
-        val host = device.inetAddress?.hostAddress ?: return
-        onReady?.invoke(EchoLanRenderer("system-cast:${device.deviceId}", device.friendlyName ?: "Cast", host,
+        val host = device.inetAddress.hostAddress ?: return
+        onReady?.invoke(EchoLanRenderer("system-cast:${device.deviceId}", device.friendlyName, host,
             EchoChromecastCastPolicy.DefaultPort, EchoLanRendererKind.Chromecast), resumed)
         emit()
     }

@@ -1,6 +1,8 @@
 package app.echo.android.data
 
 import android.app.RecoverableSecurityException
+import android.content.ContentResolver
+import androidx.annotation.RequiresApi
 import android.content.IntentSender
 import android.net.Uri
 import android.os.Build
@@ -16,6 +18,10 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.coroutineContext
+
+@RequiresApi(30)
+private fun mediaStoreDeleteRequest(resolver: ContentResolver, uris: List<Uri>) =
+    MediaStore.createDeleteRequest(resolver, uris)
 
 data class LibraryTrackDeletionResult(val removedIds: Set<String>, val cancelled: Boolean = false)
 
@@ -58,20 +64,22 @@ suspend fun EchoLibraryRepository.deleteSelectedTracks(
     val removedIds = LinkedHashSet<String>()
     var cancelled = false
     try {
-        val mediaUris = if (Build.VERSION.SDK_INT >= 30) groups.keys.map(Uri::parse)
-            .filter { it.scheme == "content" && it.authority == MediaStore.AUTHORITY } else emptyList()
-        if (mediaUris.isNotEmpty()) {
-            val approved = authorize(MediaStore.createDeleteRequest(resolver, mediaUris).intentSender)
-            if (!approved) return@withContext LibraryTrackDeletionResult(emptySet(), cancelled = true)
-            // Android 11+ performs deletion itself. Verify and reconcile even if the page exits now.
-            withContext(NonCancellable) {
-                mediaUris.forEach { uri ->
-                    try {
-                        val absent = resolver.query(uri, arrayOf(MediaStore.MediaColumns._ID), null, null, null)
-                            ?.use { !it.moveToFirst() } == true
-                        if (absent) successfulUris.add(uri.toString())
-                    } catch (error: CancellationException) { throw error }
-                    catch (_: Exception) { /* Unknown outcomes retain the index row. */ }
+        if (Build.VERSION.SDK_INT >= 30) {
+            val mediaUris = groups.keys.map(Uri::parse)
+                .filter { it.scheme == "content" && it.authority == MediaStore.AUTHORITY }
+            if (mediaUris.isNotEmpty()) {
+                val approved = authorize(mediaStoreDeleteRequest(resolver, mediaUris).intentSender)
+                if (!approved) return@withContext LibraryTrackDeletionResult(emptySet(), cancelled = true)
+                // Android 11+ performs deletion itself. Verify and reconcile even if the page exits now.
+                withContext(NonCancellable) {
+                    mediaUris.forEach { uri ->
+                        try {
+                            val absent = resolver.query(uri, arrayOf(MediaStore.MediaColumns._ID), null, null, null)
+                                ?.use { !it.moveToFirst() } == true
+                            if (absent) successfulUris.add(uri.toString())
+                        } catch (error: CancellationException) { throw error }
+                        catch (_: Exception) { /* Unknown outcomes retain the index row. */ }
+                    }
                 }
             }
         }

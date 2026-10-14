@@ -23,12 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.playback.EchoPlaybackStatus
 
@@ -100,7 +102,8 @@ internal fun SignalDacPanel(status: EchoPlaybackStatus, onDiagnostics: () -> Uni
         appendLine(evidenceNote)
         append(ratesNote)
     }
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val clipboardScope = rememberCoroutineScope()
     var expanded by rememberSaveable { mutableStateOf(false) }
     var copiedReport by remember { mutableStateOf<String?>(null) }
     SignalSection(title) {
@@ -117,7 +120,12 @@ internal fun SignalDacPanel(status: EchoPlaybackStatus, onDiagnostics: () -> Uni
                 Spacer(Modifier.width(6.dp))
                 EchoIcon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
             }
-            TextButton(onClick = { clipboard.setText(AnnotatedString(report)); copiedReport = report },
+            TextButton(onClick = {
+                clipboardScope.launch {
+                    clipboard.setClipEntry(ClipEntry(android.content.ClipData.newPlainText("ECHO", report)))
+                }
+                copiedReport = report
+            },
                 modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 0.dp, vertical = 10.dp)) {
                 EchoIcon(if (copiedReport == report) Icons.Rounded.Check else Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))

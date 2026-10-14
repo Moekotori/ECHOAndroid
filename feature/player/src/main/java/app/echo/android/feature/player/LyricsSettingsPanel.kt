@@ -128,7 +128,7 @@ internal fun LyricsSettingsPanel(
                 highlightIntensity = lyricsWordHighlightIntensity,
                 motionMode = lyricsMotionMode,
             )
-            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides titleColor) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalContentColor provides titleColor) {
                 key(category) {
                     Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())
                         .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

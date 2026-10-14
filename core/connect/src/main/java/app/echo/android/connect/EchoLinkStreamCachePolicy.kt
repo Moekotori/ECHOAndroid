@@ -15,7 +15,6 @@ object EchoLinkStreamCachePolicy {
         nowEpochMs: Long,
         skewMs: Long = ExpirySkewMs,
     ): Boolean {
-        if (!shouldCache(expiresAtEpochMs)) return false
-        return requireNotNull(expiresAtEpochMs) - skewMs > nowEpochMs
+        return shouldCache(expiresAtEpochMs) && requireNotNull(expiresAtEpochMs) - skewMs > nowEpochMs
     }
 }

@@ -1083,7 +1083,7 @@ class EchoSettingsStore(
             preferences[Keys.CustomBackground],
         )
 
-    private fun androidx.datastore.preferences.core.MutablePreferences.putCustomColors(colors: EchoCustomColors) {
+    private fun MutablePreferences.putCustomColors(colors: EchoCustomColors) {
         val safe = colors.normalized()
         this[Keys.CustomAccent] = safe.accent
         this[Keys.CustomSecondary] = safe.secondary

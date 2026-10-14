@@ -19,6 +19,9 @@ android {
 
 dependencies {
     implementation(libs.smbj)
+    // consumer-rules.pro keeps SMBJ's @Handler callbacks, but mbassador only reaches the build as a
+    // transitive runtime dependency; compileOnly makes those class names resolvable for R8.
+    compileOnly(libs.mbassador)
 
     testImplementation(libs.junit)
 }

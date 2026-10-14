@@ -96,6 +96,24 @@ class NowPlayingDismissMotionTest {
         assertEquals(Offset.Zero, connection.onPreScroll(Offset(20f, 3f), NestedScrollSource.UserInput))
     }
 
+    @Test fun sheetCornersOpenEarlyThenStayRound() {
+        assertEquals(0f, nowPlayingSheetCornerFraction(0f, 72f), 0f)
+        assertEquals(0f, nowPlayingSheetCornerFraction(-4f, 72f), 0f)
+        assertEquals(0.75f, nowPlayingSheetCornerFraction(36f, 72f), 0.001f)
+        assertEquals(1f, nowPlayingSheetCornerFraction(72f, 72f), 0f)
+        assertEquals(1f, nowPlayingSheetCornerFraction(400f, 72f), 0f)
+    }
+
+    @Test fun measuredHeightCarriesTheSheetOffScreen() {
+        assertEquals(800f, nowPlayingDismissExitTarget(120f, 800f), 0f)
+        assertEquals(120f, nowPlayingDismissExitTarget(120f, 0f), 0f)
+    }
+
+    @Test fun arrowDismissCommitsWithoutAPull() {
+        assertTrue(nowPlayingShouldDismiss(0f, 0f, 100f, 1000f, forceDismiss = true))
+        assertFalse(nowPlayingShouldDismiss(0f, 0f, 100f, 1000f))
+    }
+
     @Test fun fullyReversedPullReleasesOwnershipBeforeNextSwipe() = runBlocking {
         val state = NowPlayingDismissDragState()
         val connection = connection(state)

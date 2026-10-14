@@ -160,13 +160,13 @@ internal class EchoSystemCastTransfer(private val app: Application, private val 
         val validQueue = local != null && EchoSystemCastReturnPolicy.sameQueue(nativeCount, local.mediaItemCount, anchor,
             local.currentMediaItem?.queueContext()?.entryId ?: local.currentMediaItem?.mediaId)
         val nativeTarget = if (validQueue && index != null) EchoSystemCastReturnPolicy.targetIndex(nativeEntries.getOrNull(index),
-            nativeIndices.filter { it < local!!.mediaItemCount }.map { nativeIndex ->
-                nativeIndex to local!!.getMediaItemAt(nativeIndex).let { it.queueContext()?.entryId ?: it.mediaId }
+            nativeIndices.filter { it < local.mediaItemCount }.map { nativeIndex ->
+                nativeIndex to local.getMediaItemAt(nativeIndex).let { it.queueContext()?.entryId ?: it.mediaId }
             }) else null
         returning = true; active = false
         ++generation; job?.cancel(); job = null
         if (validQueue && nativeTarget != null && state != null) {
-            local!!.seekTo(nativeTarget, EchoSystemCastReturnPolicy.position(state.positionMs, state.durationMs))
+            local.seekTo(nativeTarget, EchoSystemCastReturnPolicy.position(state.positionMs, state.durationMs))
             if (resume) { local.prepare(); local.play() } else local.pause()
         }
         link.stopLocalCast()

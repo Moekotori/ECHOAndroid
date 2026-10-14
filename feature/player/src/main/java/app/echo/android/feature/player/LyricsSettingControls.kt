@@ -30,7 +30,6 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** Keep drag feedback local; persist only the committed value, never every pointer event. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LyricsSettingSlider(
     label: String,
@@ -116,7 +115,7 @@ internal fun LyricsSettingToggle(
             EchoSwitch(checked, onCheckedChange = null)
         }
         if (!hint.isNullOrBlank()) Text(hint, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodySmall,
-            color = if (LocalEchoDarkTheme.current) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.65f) else echoTheme().muted)
+            color = if (LocalEchoDarkTheme.current) Color.White.copy(alpha = 0.65f) else echoTheme().muted)
     }
 }
 

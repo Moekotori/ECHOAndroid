@@ -46,7 +46,7 @@ class EchoThemeTokensTest {
         val lightScheme = echoColorScheme(light)
         assertEquals(EchoColors.Sky, darkScheme.primary)
         assertEquals(EchoColors.Night, darkScheme.background)
-        assertEquals(androidx.compose.ui.graphics.Color(0xFF925568), lightScheme.primary)
+        assertEquals(Color(0xFF925568), lightScheme.primary)
     }
 
     @Test
@@ -118,9 +118,9 @@ class EchoThemeTokensTest {
     @Test
     fun echoDarkSchemeDoesNotUseMaterialBaselinePurple() {
         val scheme = echoColorScheme(echoThemeTokens(EchoColorTheme.Echo, dark = true))
-        assertEquals(androidx.compose.ui.graphics.Color(0xFF3A2C32), scheme.primaryContainer)
-        assertEquals(androidx.compose.ui.graphics.Color(0xFFE4C4CC), scheme.onPrimaryContainer)
-        assertEquals(androidx.compose.ui.graphics.Color(0xFF202126), scheme.surfaceContainer)
+        assertEquals(Color(0xFF3A2C32), scheme.primaryContainer)
+        assertEquals(Color(0xFFE4C4CC), scheme.onPrimaryContainer)
+        assertEquals(Color(0xFF202126), scheme.surfaceContainer)
         assertTrue(scheme.primaryContainer != MaterialDarkPrimaryContainer)
         assertTrue(scheme.secondaryContainer != MaterialDarkSecondaryContainer)
         assertTrue(scheme.surfaceContainer != MaterialDarkSurfaceContainer)
@@ -151,8 +151,8 @@ class EchoThemeTokensTest {
 
     companion object {
         // androidx.compose.material3 darkColorScheme() unspecified roles.
-        private val MaterialDarkPrimaryContainer = androidx.compose.ui.graphics.Color(0xFF4F378B)
-        private val MaterialDarkSecondaryContainer = androidx.compose.ui.graphics.Color(0xFF4A4458)
-        private val MaterialDarkSurfaceContainer = androidx.compose.ui.graphics.Color(0xFF211F26)
+        private val MaterialDarkPrimaryContainer = Color(0xFF4F378B)
+        private val MaterialDarkSecondaryContainer = Color(0xFF4A4458)
+        private val MaterialDarkSurfaceContainer = Color(0xFF211F26)
     }
 }

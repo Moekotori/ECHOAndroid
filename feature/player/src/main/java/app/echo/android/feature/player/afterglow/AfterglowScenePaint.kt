@@ -109,7 +109,7 @@ internal class AfterglowScenePaint(
         }
         path.close(); fill(colour, alpha)
     }
-    companion object { val White = 0xFFFFFFFF.toInt(); val Black = 0xFF000000.toInt() }
+    companion object { const val White = 0xFFFFFFFF.toInt(); const val Black = 0xFF000000.toInt() }
 }
 
 internal fun mixAfterglow(a: Int, b: Int, amount: Float): Int {

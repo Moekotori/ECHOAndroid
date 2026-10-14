@@ -48,7 +48,7 @@ class NextUpQueueControllerTest {
     }
 
     @Test fun shuffleToggleAndRestorationKeepRequestsAheadOfOriginalSuccessor() = withPlayer { player, queue ->
-        player.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(intArrayOf(0, 2, 1), 0L))
+        player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(intArrayOf(0, 2, 1), 0L)
         player.shuffleModeEnabled = true
         queue.add(item("B"), false); queue.add(item("C"), false)
         player.shuffleModeEnabled = false; player.shuffleModeEnabled = true
@@ -86,7 +86,7 @@ class NextUpQueueControllerTest {
     }
 
     @Test fun reorderingOriginalQueueInShuffleChangesActualNextTrack() = withPlayer { player, queue ->
-        player.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(intArrayOf(0, 2, 1), 0L))
+        player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(intArrayOf(0, 2, 1), 0L)
         player.shuffleModeEnabled = true
         val second = requireNotNull(player.getMediaItemAt(1).queueContext()).entryId
         val third = requireNotNull(player.getMediaItemAt(2).queueContext()).entryId

@@ -97,7 +97,7 @@
     <string name="feature_home_scan_to_generate_recommendations_16383a">"Просканируйте, чтобы получить рекомендации"</string>
     <string name="feature_home_scanning_library_d0b14c">"Сканирование библиотеки"</string>
     <string name="feature_home_search_local_music_albums_and_artists_443a4f">"Поиск локальной музыки, альбомов и исполнителей"</string>
-    <string name="feature_home_search_local_music_b9c195">"Поиск локальной музыки..."</string>
+    <string name="feature_home_search_local_music_b9c195">"Поиск локальной музыки&#8230;"</string>
     <string name="feature_home_search_songs_albums_and_artists_c46634">"Поиск композиций, альбомов и исполнителей"</string>
     <string name="feature_home_seeking_ea77e5">"Перемотка"</string>
     <string name="feature_home_shuffle_957ce0">"Перемешать"</string>

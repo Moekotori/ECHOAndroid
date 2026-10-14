@@ -3,7 +3,7 @@ package app.echo.android.feature.library
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +35,7 @@ internal fun PlaylistDetailToolbar(
             Spacer(Modifier.weight(1f))
             if (onSort != null) Box {
                 TextButton(onClick = { menu = true }, enabled = !busy) {
-                    EchoIcon(Icons.Rounded.Sort, null, Modifier.size(17.dp), tint = colors.content)
+                    EchoIcon(Icons.AutoMirrored.Rounded.Sort, null, Modifier.size(17.dp), tint = colors.content)
                     Spacer(Modifier.width(5.dp))
                     Text(playlistSortLabel(order.sort, playlist.canEdit), color = colors.content,
                         style = MaterialTheme.typography.labelMedium)

@@ -57,6 +57,6 @@ class EchoChromecastCastPolicyTest {
         )
         val flac = mp3.copy(audio = app.echo.android.model.connect.EchoRemoteAudioFormat(codec = "flac", mimeType = "audio/flac"))
         org.junit.Assert.assertNull(EchoChromecastCastPolicy.rejectReason(mp3))
-        org.junit.Assert.assertEquals(EchoDlnaRejectReason.UnsupportedFormat, EchoChromecastCastPolicy.rejectReason(flac))
+        assertEquals(EchoDlnaRejectReason.UnsupportedFormat, EchoChromecastCastPolicy.rejectReason(flac))
     }
 }

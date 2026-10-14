@@ -84,7 +84,7 @@ internal class EchoStatusLyricsOverlay(private val context: Context, scope: Coro
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT).apply {
-                gravity = Gravity.TOP or Gravity.LEFT
+                gravity = Gravity.TOP or Gravity.START
                 // Together with the locked desktop window (0.6), combined opacity stays <= 0.8.
                 alpha = 0.5f
             }

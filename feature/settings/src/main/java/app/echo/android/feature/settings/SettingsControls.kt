@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
@@ -27,7 +26,6 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material3.ExperimentalMaterial3Api
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextField
@@ -354,7 +352,6 @@ internal fun SettingsActionRow(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun SettingsChoiceGroupRow(
     title: String,
@@ -424,7 +421,6 @@ internal fun SettingsOptionChip(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 internal fun SettingsSliderRow(
     title: String,
     valueLabel: @Composable (Float) -> String,

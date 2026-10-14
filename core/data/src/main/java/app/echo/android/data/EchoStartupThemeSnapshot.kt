@@ -78,6 +78,7 @@ suspend fun Context.readEchoStartupThemeSnapshotForLaunch(
     } ?: cachedSnapshot
 }
 
+@Suppress("ApplySharedPref")
 internal fun Context.writeEchoStartupThemeSnapshot(
     snapshot: EchoStartupThemeSnapshot,
     synchronous: Boolean = false,
@@ -99,6 +100,7 @@ internal fun Context.writeEchoStartupThemeSnapshot(
         .putInt(KeyThemeDefaultVersion, CurrentThemeDefaultVersion)
 
     if (synchronous) {
+        // Startup theme is read before the first frame. apply() can lose the write if the process stops.
         editor.commit()
     } else {
         editor.apply()

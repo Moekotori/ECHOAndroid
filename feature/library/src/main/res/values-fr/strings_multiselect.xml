@@ -4,6 +4,7 @@
     <string name="batch_clear_selection">Effacer la sélection</string>
     <plurals name="batch_selected_count">
         <item quantity="one">%1$d sélectionné</item>
+        <item quantity="many">%1$d sélectionnés</item>
         <item quantity="other">%1$d sélectionnés</item>
     </plurals>
 </resources>

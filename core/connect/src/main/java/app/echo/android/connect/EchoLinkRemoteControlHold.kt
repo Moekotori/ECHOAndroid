@@ -13,8 +13,7 @@ object EchoLinkRemoteControlHold {
     ): Boolean {
         val committed = committedPositionMs ?: return false
         val committedAt = committedAtElapsedMs ?: return false
-        if (nowElapsedMs - committedAt >= HoldTimeoutMs) return false
-        return kotlin.math.abs(remotePositionMs - committed) > PositionToleranceMs
+        return nowElapsedMs - committedAt < HoldTimeoutMs && kotlin.math.abs(remotePositionMs - committed) > PositionToleranceMs
     }
 
     fun displayedPositionMs(
@@ -47,8 +46,7 @@ object EchoLinkRemoteControlHold {
     ): Boolean {
         val committed = committedVolume ?: return false
         val committedAt = committedAtElapsedMs ?: return false
-        if (nowElapsedMs - committedAt >= HoldTimeoutMs) return false
-        return kotlin.math.abs(remoteVolume - committed) > VolumeTolerance
+        return nowElapsedMs - committedAt < HoldTimeoutMs && kotlin.math.abs(remoteVolume - committed) > VolumeTolerance
     }
 
     fun displayedVolume(

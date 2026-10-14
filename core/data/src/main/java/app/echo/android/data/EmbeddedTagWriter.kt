@@ -195,9 +195,7 @@ class EmbeddedTagWriter(
         val isMediaStore = source == LibrarySource.MediaStore.id ||
             uri.authority?.contains("media") == true
         if (isMediaStore && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val sender = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-                error is RecoverableSecurityException
-            ) {
+            val sender = if (error is RecoverableSecurityException) {
                 error.userAction.actionIntent.intentSender
             } else {
                 null
@@ -214,16 +212,12 @@ class EmbeddedTagWriter(
         }.isSuccess
 
     private fun hasPersistedWriteAccess(uri: Uri): Boolean {
-        if (appContext.checkUriPermission(
-                uri,
-                Process.myPid(),
-                Process.myUid(),
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            return true
-        }
-        return resolver.persistedUriPermissions.any { permission ->
+        return appContext.checkUriPermission(
+            uri,
+            Process.myPid(),
+            Process.myUid(),
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+        ) == PackageManager.PERMISSION_GRANTED || resolver.persistedUriPermissions.any { permission ->
             permission.isWritePermission && coversUri(permission.uri, uri)
         }
     }

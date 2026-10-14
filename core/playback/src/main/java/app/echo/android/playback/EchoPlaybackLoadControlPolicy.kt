@@ -68,8 +68,7 @@ internal object EchoPlaybackLoadControlPolicy {
     }
 
     fun shouldContinueLoading(bufferedDurationUs: Long, maxBufferMs: Int): Boolean {
-        if (maxBufferMs <= 0) return false
-        return bufferedDurationUs < maxBufferMs * 1_000L
+        return maxBufferMs > 0 && bufferedDurationUs < maxBufferMs * 1_000L
     }
 
     fun shouldStartPlayback(

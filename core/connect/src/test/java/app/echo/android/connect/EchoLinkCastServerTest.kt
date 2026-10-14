@@ -198,7 +198,7 @@ class EchoLinkCastServerTest {
         art.writeBytes(byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte()))
         val server = EchoLinkCastServer(openBody = { uri, start ->
             val file = if (uri == art.toURI().toString()) art else audio
-            val stream = java.io.FileInputStream(file)
+            val stream = FileInputStream(file)
             if (start > 0L) stream.channel.position(start)
             EchoLinkCastBody(stream, file.length(), "application/octet-stream")
         }, bindHost = "127.0.0.1")

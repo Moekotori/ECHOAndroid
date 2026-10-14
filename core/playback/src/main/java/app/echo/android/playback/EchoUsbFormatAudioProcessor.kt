@@ -26,7 +26,7 @@ internal class EchoUsbFormatAudioProcessor(
     private var bigEndian = false
     private var inputFrameBytes = 4
     private var chunkFrames = 1024
-    private var inputScratch = AudioProcessor.EMPTY_BUFFER
+    private var inputScratch = EMPTY_BUFFER
 
     override fun onConfigure(format: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         pendingConversion = false
@@ -106,7 +106,7 @@ internal class EchoUsbFormatAudioProcessor(
         tailDrained = written == 0
     }
     private fun close() { if (handle != 0L) backend.close(handle); handle = 0L }
-    override fun onReset() { close(); inputScratch = AudioProcessor.EMPTY_BUFFER; pendingConversion = false; draining = false; tailDrained = true }
+    override fun onReset() { close(); inputScratch = EMPTY_BUFFER; pendingConversion = false; draining = false; tailDrained = true }
     companion object { private const val OUTPUT_BYTES = 8192 * 2 * 4 }
 }
 

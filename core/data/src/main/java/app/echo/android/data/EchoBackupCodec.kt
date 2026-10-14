@@ -209,14 +209,12 @@ object EchoBackupCodec {
                 smartEnabled = item.optBoolean("smartEnabled", false),
             ).normalized()
         }
-        val filtersRaw = json.opt("equalizerFilters")
-        val filters = when (filtersRaw) {
+        val filters = when (val filtersRaw = json.opt("equalizerFilters")) {
             is JSONArray -> parseEqualizerFilters(filtersRaw.toString())
             is String -> parseEqualizerFilters(filtersRaw)
             else -> null
         }
-        val userPresetsRaw = json.opt("equalizerUserPresets")
-        val userPresets = when (userPresetsRaw) {
+        val userPresets = when (val userPresetsRaw = json.opt("equalizerUserPresets")) {
             is JSONArray -> EchoEqualizerUserPresetCodec.decode(userPresetsRaw.toString())
             is String -> EchoEqualizerUserPresetCodec.decode(userPresetsRaw)
             else -> null

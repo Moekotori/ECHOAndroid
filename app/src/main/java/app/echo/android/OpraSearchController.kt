@@ -33,7 +33,7 @@ internal class OpraSearchController(
         mutableState.update { current ->
             current.copy(
                 query = query,
-                loading = if (keepBrandResults) current.loading else false,
+                loading = keepBrandResults && current.loading,
                 results = if (keepBrandResults) current.results else emptyList(),
                 selectedEqId = if (keepBrandResults) current.selectedEqId else null,
                 previewCurve = if (keepBrandResults) current.previewCurve else emptyList(),

@@ -14,11 +14,9 @@
     <string name="artist_tracks">수록곡</string>
     <string name="artist_clear_search">검색 지우기</string>
     <plurals name="artist_album_count">
-        <item quantity="one">앨범 %1$d장</item>
         <item quantity="other">앨범 %1$d장</item>
     </plurals>
     <plurals name="artist_track_count">
-        <item quantity="one">%1$d곡</item>
         <item quantity="other">%1$d곡</item>
     </plurals>
 </resources>

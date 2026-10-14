@@ -412,7 +412,7 @@ internal object AudioFileTagRewriter {
             val size = ((body[offset + 3].toInt() and 0xFF) shl 16) or
                 ((body[offset + 4].toInt() and 0xFF) shl 8) or
                 (body[offset + 5].toInt() and 0xFF)
-            if (size < 0 || offset + 6 + size > body.size) return null
+            if (offset + 6 + size > body.size) return null
             val mapped = V22_FRAME_MAP[shortId]
             if (mapped != null && size > 0) {
                 frames += Id3Frame(mapped, byteArrayOf(0, 0), body.copyOfRange(offset + 6, offset + 6 + size))
@@ -514,7 +514,7 @@ internal object AudioFileTagRewriter {
         return Id3Frame("USLT", byteArrayOf(0, 0), payload)
     }
 
-    private fun apicFrame(@Suppress("UNUSED_PARAMETER") version: Int, image: ByteArray, mime: String): Id3Frame {
+    private fun apicFrame(version: Int, image: ByteArray, mime: String): Id3Frame {
         val mimeBytes = mime.ifBlank { "image/jpeg" }.toByteArray(StandardCharsets.ISO_8859_1)
         val payload = byteArrayOf(0) + mimeBytes + 0 + 3 + 0 + image
         return Id3Frame("APIC", byteArrayOf(0, 0), payload)
@@ -538,8 +538,7 @@ internal object AudioFileTagRewriter {
     }
 
     private fun isReplayGainTrackTxxx(frame: Id3Frame): Boolean {
-        if (frame.id != "TXXX") return false
-        return txxxDescription(frame.payload).equals("REPLAYGAIN_TRACK_GAIN", ignoreCase = true)
+        return frame.id == "TXXX" && txxxDescription(frame.payload).equals("REPLAYGAIN_TRACK_GAIN", ignoreCase = true)
     }
 
     private fun txxxDescription(payload: ByteArray): String {
@@ -720,7 +719,6 @@ internal object AudioFileTagRewriter {
             val length = ((header[1].toInt() and 0xFF) shl 16) or
                 ((header[2].toInt() and 0xFF) shl 8) or
                 (header[3].toInt() and 0xFF)
-            if (length !in 0..MAX_BLOCK_BYTES) return null
             total += length
             if (total > MAX_METADATA_BYTES) return null
             val payload = input.readExact(length) ?: return null
@@ -1032,7 +1030,6 @@ internal object AudioFileTagRewriter {
     private const val MAX_WAV_CHUNKS = 256
     private const val MAX_INFO_BYTES = 64 * 1024
     private const val MAX_TAG_BYTES = 2 * 1024 * 1024
-    private const val MAX_BLOCK_BYTES = 16 * 1024 * 1024
     private const val MAX_METADATA_BYTES = 32 * 1024 * 1024
     private const val MAX_FRAMES = 512
     private const val MAX_FLAC_BLOCKS = 64

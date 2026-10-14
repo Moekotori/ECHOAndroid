@@ -16,8 +16,8 @@ class LocalFileDuplicateIndex<T> private constructor(
 
     fun find(
         relativePath: String?,
-        @Suppress("UNUSED_PARAMETER") sizeBytes: Long,
-        @Suppress("UNUSED_PARAMETER") dateModifiedSeconds: Long,
+        sizeBytes: Long,
+        dateModifiedSeconds: Long,
         displayName: String?,
     ): T? {
         val identity = LibraryScanPolicy.localFileIdentity(relativePath, displayName) ?: return null

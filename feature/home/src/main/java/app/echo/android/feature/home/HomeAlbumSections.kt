@@ -77,7 +77,6 @@ internal fun HomeArtistRankingSection(
     onOpenArtist: (ArtistSummary) -> Unit,
     onOpenLibrary: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -193,7 +192,6 @@ internal fun HomeFavoriteAlbumsSection(
     onOpenAlbum: (AlbumSummary) -> Unit,
     onOpenLibrary: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxWidth()

@@ -1,5 +1,3 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
-
 package app.echo.android.widget
 
 import android.content.Context
@@ -11,7 +9,6 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.layout.*
-import androidx.glance.unit.ColorProvider
 import app.echo.android.R
 import app.echo.android.playback.EchoPlaybackSurfaceSnapshot
 

@@ -35,14 +35,13 @@ data class EchoErrorRecord(
     val firstOccurredAtEpochMs: Long = occurredAtEpochMs,
 ) {
     fun matchesQuery(needle: String): Boolean {
-        if (needle.isBlank()) return true
-        return summary.contains(needle, ignoreCase = true) ||
-            detail.orEmpty().contains(needle, ignoreCase = true) ||
-            stackTrace.orEmpty().contains(needle, ignoreCase = true) ||
-            source.name.contains(needle, ignoreCase = true) ||
-            threadName.orEmpty().contains(needle, ignoreCase = true) ||
-            appVersion.orEmpty().contains(needle, ignoreCase = true) ||
-            throwableName.orEmpty().contains(needle, ignoreCase = true)
+        return needle.isBlank() || summary.contains(needle, ignoreCase = true) ||
+                detail.orEmpty().contains(needle, ignoreCase = true) ||
+                stackTrace.orEmpty().contains(needle, ignoreCase = true) ||
+                source.name.contains(needle, ignoreCase = true) ||
+                threadName.orEmpty().contains(needle, ignoreCase = true) ||
+                appVersion.orEmpty().contains(needle, ignoreCase = true) ||
+                throwableName.orEmpty().contains(needle, ignoreCase = true)
     }
 
     fun toDiagnosticText(): String = buildString {

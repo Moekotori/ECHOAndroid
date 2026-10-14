@@ -10,6 +10,7 @@ import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
@@ -109,7 +110,7 @@ internal class EchoPlaybackLibrarySessionCallback(
         scope.future {
             val item = catalog().item(mediaId)
             if (item == null) {
-                LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+                LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
             } else {
                 LibraryResult.ofItem(item.toMediaItem(), null)
             }
@@ -255,7 +256,7 @@ internal class EchoPlaybackLibrarySessionCallback(
                     runCatching { MediaItem.fromBundle(it) }.getOrNull()
                 }.orEmpty()
                 if (queue == null || items.isEmpty() || items.any { it.localConfiguration?.uri == null }) {
-                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                    Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
                 } else {
                     queue.playAlbum(items, args.getInt("startIndex"), args.getBoolean("shuffle"))
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -263,17 +264,17 @@ internal class EchoPlaybackLibrarySessionCallback(
             }
             EchoPlaybackSessionCommands.SET_AB_LOOP -> {
                 val accepted = abLoop()?.set(args.getString("trackId"), args.getLong("startMs"), args.getLong("endMs")) == true
-                Futures.immediateFuture(SessionResult(if (accepted) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_BAD_VALUE))
+                Futures.immediateFuture(SessionResult(if (accepted) SessionResult.RESULT_SUCCESS else SessionError.ERROR_BAD_VALUE))
             }
             EchoPlaybackSessionCommands.EDIT_QUEUE -> {
                 val queue = nextUpQueue()
                 if (args.getString("action") == EchoPlaybackSessionCommands.EDIT_REMOVE_DELETED_FILES) {
                     if (controller.uid != android.os.Process.myUid()) {
-                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+                        return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
                     }
                     val uris = args.getStringArrayList("uris").orEmpty()
                     if (queue == null || !DeletedQueueFilesPolicy.validSources(uris)) {
-                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                        return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
                     }
                     queue.removeDeletedFiles(uris.toSet())
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -287,7 +288,7 @@ internal class EchoPlaybackLibrarySessionCallback(
                 val queue = nextUpQueue()
                 val item = bundle?.let { runCatching { MediaItem.fromBundle(it) }.getOrNull() }
                 if (queue == null || item == null || item.localConfiguration?.uri == null) {
-                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+                    Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
                 } else {
                     queue.add(item, args.getBoolean("first"))
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -302,11 +303,11 @@ internal class EchoPlaybackLibrarySessionCallback(
                     session.player.currentMediaItem?.mediaId
                 }
                 if (mediaId.isNullOrBlank() || !EchoPlaybackLibraryIds.isTrackMediaId(mediaId)) {
-                    SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE)
+                    SessionResult(SessionError.ERROR_INVALID_STATE)
                 } else {
                     val liked = catalog().toggleFavorite(mediaId)
                     if (liked == null) {
-                        SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
+                        SessionResult(SessionError.ERROR_NOT_SUPPORTED)
                     } else {
                         currentFavorite = liked
                         applyButtons(session.player)
@@ -338,7 +339,7 @@ internal class EchoPlaybackLibrarySessionCallback(
                 }.getOrDefault(false)
                 Futures.immediateFuture(
                     SessionResult(
-                        if (launched) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_UNKNOWN,
+                        if (launched) SessionResult.RESULT_SUCCESS else SessionError.ERROR_UNKNOWN,
                     ),
                 )
             }
@@ -360,7 +361,7 @@ internal class EchoPlaybackLibrarySessionCallback(
                 }.getOrDefault(false)
                 Futures.immediateFuture(
                     SessionResult(
-                        if (launched) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_UNKNOWN,
+                        if (launched) SessionResult.RESULT_SUCCESS else SessionError.ERROR_UNKNOWN,
                     ),
                 )
             }

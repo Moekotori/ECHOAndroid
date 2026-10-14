@@ -12,7 +12,6 @@ import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.layout.*
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
 import app.echo.android.R
 import app.echo.android.library.EchoLibraryShortcuts
 import app.echo.android.model.settings.EchoWidgetOptions
@@ -20,7 +19,7 @@ import app.echo.android.model.settings.EchoWidgetOptions
 internal val LocalWidgetOptions = staticCompositionLocalOf { EchoWidgetOptions() }
 
 @Composable
-internal fun widgetBackground(context: Context) = ColorProvider(
+internal fun widgetBackground(context: Context) = widgetSolidColor(
     Color(context.getColor(R.color.playback_widget_background)).copy(alpha = LocalWidgetOptions.current.backgroundOpacity))
 
 @Composable

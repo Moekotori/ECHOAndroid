@@ -15,10 +15,12 @@
     <string name="artist_clear_search">Borrar búsqueda</string>
     <plurals name="artist_album_count">
         <item quantity="one">%1$d álbum</item>
+        <item quantity="many">%1$d álbumes</item>
         <item quantity="other">%1$d álbumes</item>
     </plurals>
     <plurals name="artist_track_count">
         <item quantity="one">%1$d canción</item>
+        <item quantity="many">%1$d canciones</item>
         <item quantity="other">%1$d canciones</item>
     </plurals>
 </resources>

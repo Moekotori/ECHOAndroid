@@ -78,7 +78,7 @@ class EchoListeningJitter(
 
     private fun unsignedFrom(origin: Int): Comparator<Int> =
         Comparator { left, right ->
-            java.lang.Integer.compare(unsignedDistance(origin, left), unsignedDistance(origin, right))
+            Integer.compare(unsignedDistance(origin, left), unsignedDistance(origin, right))
         }
 
     companion object {

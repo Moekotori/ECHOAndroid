@@ -97,7 +97,7 @@
     <string name="feature_home_scan_to_generate_recommendations_16383a">"Analysez pour générer des recommandations"</string>
     <string name="feature_home_scanning_library_d0b14c">"Analyse de la bibliothèque"</string>
     <string name="feature_home_search_local_music_albums_and_artists_443a4f">"Rechercher musique locale, albums et artistes"</string>
-    <string name="feature_home_search_local_music_b9c195">"Rechercher la musique locale..."</string>
+    <string name="feature_home_search_local_music_b9c195">"Rechercher la musique locale&#8230;"</string>
     <string name="feature_home_search_songs_albums_and_artists_c46634">"Rechercher morceaux, albums et artistes"</string>
     <string name="feature_home_seeking_ea77e5">"Recherche"</string>
     <string name="feature_home_shuffle_957ce0">"Aléatoire"</string>

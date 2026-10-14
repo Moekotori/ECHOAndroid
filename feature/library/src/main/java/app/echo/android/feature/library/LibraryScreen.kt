@@ -799,7 +799,7 @@ fun LibraryScreen(
     val linkedPageOpen = selectedSource == LibrarySourceMode.PcEcho
     val linkedDetailOpen = linkedPageOpen &&
         (linkedAlbumDetail != null || linkedArtistDetail != null || linkedPlaylistDetail != null)
-    val reportLinkedPage = androidx.compose.runtime.rememberUpdatedState(onLinkedLibraryPageOpenChanged)
+    val reportLinkedPage = rememberUpdatedState(onLinkedLibraryPageOpenChanged)
     // The PC browser (including the playlist list) owns its gestures before a detail opens.
     androidx.compose.runtime.DisposableEffect(linkedPageOpen) {
         reportLinkedPage.value(linkedPageOpen)
@@ -1624,13 +1624,11 @@ private fun LinkedPlaylistTracksPage(
                 stringResource(L10nR.string.feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec),
             )
             else -> {
-                if (tracks.isNotEmpty()) {
-                    TextButton(
-                        onClick = { onPlayLinkedQueueOnPc(tracks, 0) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(L10nR.string.feature_library_play_on_pc_7c21a4))
-                    }
+                TextButton(
+                    onClick = { onPlayLinkedQueueOnPc(tracks, 0) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(L10nR.string.feature_library_play_on_pc_7c21a4))
                 }
                 LinkedTrackList(
                     tracks = tracks,

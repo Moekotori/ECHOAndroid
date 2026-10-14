@@ -35,16 +35,16 @@ class EchoBitPerfectRoutingTest {
                 EchoPlaybackProcessRuntime.setUsbBitPerfectEnabled(true)
                 player = ExoPlayer.Builder(context).setRenderersFactory(
                     EchoRenderersFactory(context, EchoEqualizerAudioProcessor())).build()
-                player!!.addListener(object : Player.Listener {
+                player.addListener(object : Player.Listener {
                     override fun onPlayerError(error: PlaybackException) { stopped.countDown() }
                 })
-                player!!.addAnalyticsListener(object : AnalyticsListener {
+                player.addAnalyticsListener(object : AnalyticsListener {
                     override fun onAudioTrackInitialized(eventTime: AnalyticsListener.EventTime, audioTrackConfig: AudioSink.AudioTrackConfig) {
                         audioTrackCreated.countDown()
                     }
                 })
-                player!!.setMediaItem(MediaItem.fromUri("asset:///bitperfect.wav"))
-                player!!.prepare() // Never start audible playback in this test.
+                player.setMediaItem(MediaItem.fromUri("asset:///bitperfect.wav"))
+                player.prepare() // Never start audible playback in this test.
             }
             assertTrue("Strict mode must report the missing DAC", stopped.await(10, TimeUnit.SECONDS))
             assertEquals(EchoBitPerfectState.UsbUnavailable, EchoPlaybackProcessRuntime.bitPerfectStates.value.state)
@@ -52,7 +52,7 @@ class EchoBitPerfectRoutingTest {
             instrumentation.runOnMainSync {
                 EchoPlaybackProcessRuntime.setUsbBitPerfectEnabled(false)
                 player!!.stop()
-                player!!.prepare()
+                player.prepare()
             }
             assertTrue("Disabling strict mode restores normal output", audioTrackCreated.await(5, TimeUnit.SECONDS))
         } finally {

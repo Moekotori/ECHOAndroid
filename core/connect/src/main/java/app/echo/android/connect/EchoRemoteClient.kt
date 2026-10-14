@@ -63,10 +63,10 @@ class EchoRemoteClient internal constructor(
         else -> "error"
     }
 
-    suspend fun registerPhoneLibrary(target: app.echo.android.model.connect.EchoRemoteEndpoint,
+    suspend fun registerPhoneLibrary(target: EchoRemoteEndpoint,
         registration: app.echo.android.model.connect.EchoPhoneLibraryRegistration) = transport.registerPhoneLibrary(target, registration)
 
-    suspend fun unregisterPhoneLibrary(target: app.echo.android.model.connect.EchoRemoteEndpoint, sessionId: String) =
+    suspend fun unregisterPhoneLibrary(target: EchoRemoteEndpoint, sessionId: String) =
         transport.unregisterPhoneLibrary(target, sessionId)
 
     fun refreshQueue() { queueBrowser.startWatching(); queueBrowser.refresh() }
@@ -122,9 +122,9 @@ class EchoRemoteClient internal constructor(
     }
 
     private var endpoint: EchoRemoteEndpoint? = null
-    suspend fun searchTracksSnapshot(query: String): List<app.echo.android.model.connect.EchoRemoteTrack> {
+    suspend fun searchTracksSnapshot(query: String): List<EchoRemoteTrack> {
         val target = endpoint ?: return emptyList()
-        check(status.value.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected)
+        check(status.value.connectionState == EchoRemoteConnectionState.Connected)
         val result = transport.fetchTracks(target, query.trim(), 1, 30).tracks
         check(endpoint?.id == target.id)
         return result
@@ -134,7 +134,7 @@ class EchoRemoteClient internal constructor(
         if (target.token.isBlank()) throw app.echo.android.model.connect.EchoSyncPairingRequiredException()
         fun assertCurrent() {
             check(endpoint?.id == target.id && endpoint?.token == target.token &&
-                status.value.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected)
+                status.value.connectionState == EchoRemoteConnectionState.Connected)
         }
         return object : EchoLibrarySyncSession {
             override suspend fun snapshot(key: String): app.echo.android.model.connect.EchoSyncState { assertCurrent(); return transport.syncSnapshot(target,key) }

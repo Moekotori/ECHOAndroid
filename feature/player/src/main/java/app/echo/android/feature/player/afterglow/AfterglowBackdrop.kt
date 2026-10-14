@@ -10,7 +10,7 @@ import kotlin.math.sin
 /** Prepare on Default. Frames only submit bounded cached images and a fixed moving inventory. */
 internal class AfterglowBackdrop(
     val width: Float, val height: Float, val palette: AfterglowPalette,
-    night: Boolean, composition: Int, private val particles: Int,
+    night: Boolean, composition: Int, particles: Int,
     val scene: AfterglowScene = if (night) arrayOf(AfterglowScene.Voyage, AfterglowScene.Aurora, AfterglowScene.StarChart)[composition % 3]
         else arrayOf(AfterglowScene.MistRidge, AfterglowScene.Wisteria, AfterglowScene.LakeMist)[composition % 3],
     maxSide: Int = 540, checkCancelled: () -> Unit = {},

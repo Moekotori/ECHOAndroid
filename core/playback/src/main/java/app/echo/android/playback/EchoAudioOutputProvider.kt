@@ -30,7 +30,7 @@ internal class EchoAudioOutputProvider(
     override fun getFormatSupport(formatConfig: AudioOutputProvider.FormatConfig): AudioOutputProvider.FormatSupport {
         if (exclusiveConfigOrNull(formatConfig) != null) {
             return AudioOutputProvider.FormatSupport.Builder()
-                .setFormatSupportLevel(AudioOutputProvider.FORMAT_SUPPORTED_DIRECTLY)
+                .setFormatSupportLevel(FORMAT_SUPPORTED_DIRECTLY)
                 .build()
         }
         return super.getFormatSupport(formatConfig)

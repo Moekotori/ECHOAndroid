@@ -12,8 +12,7 @@ import java.nio.charset.StandardCharsets
 
 internal object WavTagRewriter {
     fun isWavFile(file: File, mimeType: String?): Boolean {
-        if (LibraryWavTagPolicy.isWavContainer(mimeType, file.name)) return true
-        return file.inputStream().use { input ->
+        return LibraryWavTagPolicy.isWavContainer(mimeType, file.name) || file.inputStream().use { input ->
             val peek = ByteArray(12)
             val read = readFully(input, peek)
             looksLikeRiff(peek, read) || startsWithId3ThenRiff(file)

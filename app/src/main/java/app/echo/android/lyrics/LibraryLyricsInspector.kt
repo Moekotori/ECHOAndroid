@@ -160,7 +160,7 @@ internal class LibraryLyricsInspector(
             return if (failed) Outcome.Unverified else Outcome.Missing
         }
 
-        private fun parseUri(uri: Uri): EchoLyrics? = resolver.openInputStream(uri)?.use { input ->
+        private fun parseUri(uri: Uri): EchoLyrics = resolver.openInputStream(uri)?.use { input ->
             val bytes = BoundedInput(input, jobContext).readBytes()
             EchoLyricsTextDecoder.decode(bytes)?.let { EchoLyricsParser.parse(it) }
         } ?: throw IOException("Lyrics are not readable")

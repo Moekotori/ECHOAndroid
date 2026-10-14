@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -131,6 +132,7 @@
         <service
             android:name="app.echo.android.playback.EchoPlaybackService"
             android:exported="true"
+            tools:ignore="ExportedService"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaLibraryService" />
@@ -140,7 +142,9 @@
             </intent-filter>
         </service>
 
-        <receiver android:name="androidx.media3.session.MediaButtonReceiver" android:exported="true">
+        <!-- System media buttons must reach this receiver. It has no custom permission. -->
+        <receiver android:name="androidx.media3.session.MediaButtonReceiver" android:exported="true"
+            tools:ignore="ExportedReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
@@ -239,7 +243,8 @@
 
         <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
             android:value="app.echo.android.connect.EchoCastOptionsProvider" />
-        <receiver android:name="androidx.mediarouter.media.MediaTransferReceiver" android:exported="true" />
+        <receiver android:name="androidx.mediarouter.media.MediaTransferReceiver" android:exported="true"
+            tools:ignore="ExportedReceiver" />
 
         <meta-data
             android:name="com.google.android.gms.car.application"

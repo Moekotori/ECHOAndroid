@@ -191,7 +191,7 @@ private fun EchoAndroidViewModel.pluginSnapshot(): PlaybackSnapshot {
     )
 }
 
-private fun readPluginZip(context: Context, uri: Uri): ByteArray? = runCatching {
+private fun readPluginZip(context: Context, uri: Uri): ByteArray = runCatching {
     context.contentResolver.openInputStream(uri)?.use { input ->
         val output = ByteArrayOutputStream()
         val buffer = ByteArray(8 * 1024)
