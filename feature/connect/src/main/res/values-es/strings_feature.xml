@@ -191,4 +191,5 @@
     <string name="echo_link_cast_send">Transmitir</string>
     <string name="echo_link_cast_pair_first">Emparejar primero</string>
     <string name="echo_link_cast_playing_here">Reproduciendo aquí · %1$s</string>
+    <string name="echo_link_battery_hint">El ahorro de batería y las restricciones en segundo plano de Android pueden interrumpir las conexiones de Echo Link, la transmisión o el uso compartido de la biblioteca del teléfono cuando la pantalla está apagada o ECHO está en segundo plano. Si ocurre, permite que ECHO se ejecute en segundo plano en los ajustes del sistema y configura su uso de batería como «Sin restricciones» (el nombre varía según el dispositivo). Esto puede aumentar el consumo de batería.</string>
 </resources>

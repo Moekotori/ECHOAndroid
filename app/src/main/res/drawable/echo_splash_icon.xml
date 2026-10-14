@@ -1,17 +1,44 @@
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
-    android:paddingMode="stack">
-    <!-- Scale every layer with the system icon bounds; a fixed dp layer is clipped by its mask. -->
-    <item android:drawable="@drawable/echo_splash_ground" />
-    <item>
-        <inset
-            android:insetLeft="22.2222%"
-            android:insetRight="22.2222%"
-            android:insetTop="22.2222%"
-            android:insetBottom="22.2222%">
-            <bitmap
-                android:src="@drawable/echo_startup_still"
-                android:gravity="fill"
-                android:filter="true" />
-        </inset>
-    </item>
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <!-- All artwork stays inside the system splash icon's 192dp safe circle. -->
+    <group android:name="echo_ripple" android:pivotX="144" android:pivotY="144">
+        <path
+            android:fillColor="@color/echo_splash_halo"
+            android:pathData="M144,68a76,76 0,1 0,0 152a76,76 0,1 0,0 -152" />
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="@color/echo_splash_ink"
+            android:strokeAlpha="0.10"
+            android:strokeWidth="1"
+            android:pathData="M144,56a88,88 0,1 0,0 176a88,88 0,1 0,0 -176" />
+    </group>
+    <group android:name="echo_wave_edge" android:pivotX="144" android:pivotY="144">
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="@color/echo_splash_ink"
+            android:strokeAlpha="0.50"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:pathData="M96,138v12M192,138v12" />
+    </group>
+    <group android:name="echo_wave_side" android:pivotX="144" android:pivotY="144">
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="@color/echo_splash_ink"
+            android:strokeAlpha="0.75"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:pathData="M120,124v40M168,124v40" />
+    </group>
+    <group android:name="echo_wave_center" android:pivotX="144" android:pivotY="144">
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="@color/echo_splash_ink"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:pathData="M144,110v68" />
+    </group>
+</vector>

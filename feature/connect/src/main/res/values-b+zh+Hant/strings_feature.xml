@@ -193,4 +193,5 @@
     <string name="echo_link_cast_send">投送</string>
     <string name="echo_link_cast_pair_first">先配對</string>
     <string name="echo_link_cast_playing_here">正在這台裝置播放 · %1$s</string>
+    <string name="echo_link_battery_hint">Android 省電策略和背景限制可能導致 ECHO 在鎖定螢幕或退到背景後，Echo Link 連線、投放或手機音樂庫分享中斷。若遇到此問題，請在系統設定中允許 ECHO 在背景執行，並將其電池使用設為「不受限制」（不同手機名稱可能不同）。這可能增加耗電。</string>
 </resources>

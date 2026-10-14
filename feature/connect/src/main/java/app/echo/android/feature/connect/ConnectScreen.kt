@@ -225,6 +225,9 @@ fun ConnectScreen(
                             .padding(top = 24.dp, bottom = 188.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
+                        if (tab == 1 || tab == 2) {
+                            ConnectNote(stringResource(L10nR.string.echo_link_battery_hint))
+                        }
                         when (tab) {
                             0 -> RemoteSourcesPanel(
                                 subsonicServerUrl = subsonicServerUrl,

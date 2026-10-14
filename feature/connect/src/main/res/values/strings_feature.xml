@@ -193,4 +193,5 @@
     <string name="echo_link_cast_send">Cast</string>
     <string name="echo_link_cast_pair_first">Pair first</string>
     <string name="echo_link_cast_playing_here">Playing here · %1$s</string>
+    <string name="echo_link_battery_hint">Android battery saving and background restrictions may interrupt Echo Link connections, casting, or phone library sharing when the screen is off or ECHO is in the background. If this happens, allow ECHO to run in the background in system settings and set its battery usage to Unrestricted (names vary by device). This may increase battery usage.</string>
 </resources>

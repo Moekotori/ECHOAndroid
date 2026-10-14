@@ -10,10 +10,12 @@ import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.PowerManager
 import android.view.animation.PathInterpolator
+import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.core.splashscreen.SplashScreen
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -91,8 +93,12 @@ internal fun SplashScreen.installEchoExitTransition(
         startupBackground?.let { surface.background = EchoSplashBackgroundDrawable(it) }
         startupBackground = null
         val lightweight = mode.isLightweight
-        val duration = if (lightweight) 120L else 220L
+        val duration = if (lightweight) 120L else 360L
         val easing = PathInterpolator(0.4f, 0f, 0.2f, 1f)
+        val signal = if (!lightweight && icon is ImageView) {
+            (activity.getDrawable(R.drawable.echo_splash_reveal) as? AnimatedVectorDrawable)
+                ?.also { icon.setImageDrawable(it) }
+        } else null
         var removed = false
         lateinit var observer: DefaultLifecycleObserver
         fun finish() {
@@ -101,6 +107,8 @@ internal fun SplashScreen.installEchoExitTransition(
             lifecycle.removeObserver(observer)
             surface.animate().setListener(null).cancel()
             icon.animate().cancel()
+            signal?.stop()
+            surface.background = null
             provider.remove()
         }
         observer = object : DefaultLifecycleObserver {
@@ -109,21 +117,21 @@ internal fun SplashScreen.installEchoExitTransition(
         }
         lifecycle.addObserver(observer)
 
-        // A small upward departure keeps the mascot recognizable through the hand-off.
-        // Use view properties only; lightweight mode keeps the character stationary.
-        val mascotExit = icon.animate()
+        // One outward signal pulse, then a soft hand-off. No loops or minimum splash hold.
+        signal?.start()
+        val iconExit = icon.animate()
             .alpha(0f)
-            .setStartDelay(0L)
-            .setDuration(if (lightweight) 120L else 180L)
+            .setStartDelay(if (lightweight) 0L else 80L)
+            .setDuration(if (lightweight) 120L else 280L)
             .setInterpolator(easing)
         if (!lightweight) {
-            mascotExit.translationY(-4f * activity.resources.displayMetrics.density)
+            iconExit.scaleX(1.06f).scaleY(1.06f)
         }
-        mascotExit.start()
+        iconExit.start()
         surface.animate()
             .alpha(0f)
-            .setStartDelay(0L)
-            .setDuration(duration)
+            .setStartDelay(if (lightweight) 0L else 100L)
+            .setDuration(if (lightweight) duration else duration - 100L)
             .setInterpolator(easing)
             .setListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) = finish()

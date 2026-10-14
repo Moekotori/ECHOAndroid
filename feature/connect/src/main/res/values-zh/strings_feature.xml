@@ -193,4 +193,5 @@
     <string name="echo_link_cast_send">投送</string>
     <string name="echo_link_cast_pair_first">先配对</string>
     <string name="echo_link_cast_playing_here">正在此设备播放 · %1$s</string>
+    <string name="echo_link_battery_hint">Android 省电策略和后台限制可能导致 ECHO 在锁屏或退到后台后，Echo Link 连接、投放或手机曲库共享中断。若遇到此问题，请在系统设置中允许 ECHO 后台运行，并将其电池使用设为「不受限制」（不同手机名称可能不同）。这可能增加耗电。</string>
 </resources>

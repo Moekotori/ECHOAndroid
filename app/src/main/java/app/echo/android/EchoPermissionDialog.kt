@@ -2,12 +2,7 @@ package app.echo.android
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -47,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -79,7 +73,6 @@ private val ButtonShape = RoundedCornerShape(18.dp)
 
 private const val RowStaggerMs = 70
 private const val RowEnterMs = 320
-private const val HeroBreathMs = 2600
 
 @Composable
 fun EchoPermissionDialog(
@@ -130,7 +123,7 @@ fun EchoPermissionDialog(
                     .padding(horizontal = 24.dp, vertical = 28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                PermissionHero(theme = theme, lightweight = lightweight)
+                PermissionHero()
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -243,52 +236,12 @@ private fun Modifier.permissionScrim(
 }
 
 @Composable
-private fun PermissionHero(
-    theme: EchoThemeTokens,
-    lightweight: Boolean,
-) {
-    val glowScale = if (lightweight) {
-        null
-    } else {
-        rememberInfiniteTransition(label = "permission-hero-glow").animateFloat(
-            initialValue = 0.86f,
-            targetValue = 1.08f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(HeroBreathMs, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-            label = "permission-hero-glow-scale",
-        )
-    }
-    val glowColor = theme.accent.copy(alpha = if (theme.dark) 0.22f else 0.16f)
-    val staticGlow = theme.accent.copy(alpha = if (theme.dark) 0.16f else 0.12f)
-
-    Box(
-        modifier = Modifier
-            .size(148.dp)
-            .drawBehind {
-                // Soft halo under the mascot; breathes gently unless lightweight mode disables it.
-                val scale = glowScale?.value ?: 1f
-                val color = if (glowScale == null) staticGlow else glowColor
-                val radius = size.minDimension * 0.66f * scale
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(color, Color.Transparent),
-                        center = Offset(center.x, center.y + size.height * 0.08f),
-                        radius = radius,
-                    ),
-                    radius = radius,
-                    center = Offset(center.x, center.y + size.height * 0.08f),
-                )
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            painter = painterResource(R.drawable.echo_startup_still),
-            contentDescription = null,
-            modifier = Modifier.size(124.dp),
-        )
-    }
+private fun PermissionHero() {
+    Image(
+        painter = painterResource(R.drawable.echo_splash_icon),
+        contentDescription = null,
+        modifier = Modifier.size(148.dp),
+    )
 }
 
 /** One-shot fade + rise per row, staggered by index. Disposed with the dialog, so nothing lingers. */
