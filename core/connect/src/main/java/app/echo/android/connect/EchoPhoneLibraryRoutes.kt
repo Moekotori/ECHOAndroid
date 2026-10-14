@@ -14,16 +14,23 @@ class EchoPhoneLibraryRoutes(
     private val baseUrl: String,
     private val page: (String, Int, Int) -> EchoPhoneLibraryPage,
     private val track: (String) -> EchoLinkCastPublication?,
+    private val lyrics: ((String) -> EchoPhoneLyrics?)? = null,
 ) {
     fun metadata(path: String, headers: Map<String, String>): EchoLinkHttpReply? {
         val route = path.substringBefore('?')
-        if (route !in listOf("/echo-link/phone/v1/library/tracks", "/echo-link/phone/v1/library/track")) return null
+        if (route !in listOf("/echo-link/phone/v1/library/tracks", "/echo-link/phone/v1/library/track", "/echo-link/phone/v1/library/lyrics")) return null
         if (headers["authorization"] != "Bearer $token" || headers.containsKey("origin")) {
             return EchoLinkHttpReply(401, "{\"error\":\"unauthorized\"}")
         }
         return try {
             val params = URI(path).rawQuery.orEmpty().split('&').associate { entry ->
                 decode(entry.substringBefore('=')) to decode(entry.substringAfter('=', ""))
+            }
+            if (route.endsWith("/lyrics")) {
+                val read = lyrics ?: return EchoLinkHttpReply(404, "{\"error\":\"lyrics_unavailable\"}")
+                val id = params["id"].orEmpty()
+                require(id.isNotBlank() && id.length <= 1024)
+                return phoneLyricsReply(read(id))
             }
             if (route.endsWith("/track")) {
                 val item = track(params["id"].orEmpty()) ?: return EchoLinkHttpReply(404, "{\"error\":\"track_not_found\"}")
@@ -36,6 +43,8 @@ class EchoPhoneLibraryRoutes(
             result.tracks.forEach { item -> rows.put(json(item)) }
             EchoLinkHttpReply(body = JSONObject().put("version", 1).put("tracks", rows)
                 .put("totalCount", result.totalCount).toString())
+        } catch (_: IllegalArgumentException) {
+            EchoLinkHttpReply(400, "{\"error\":\"invalid_library_query\"}")
         } catch (_: Exception) {
             EchoLinkHttpReply(500, "{\"error\":\"library_unavailable\"}")
         }

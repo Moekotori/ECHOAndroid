@@ -5,6 +5,7 @@ import android.os.Build
 import app.echo.android.connect.*
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoSharedLocalLibrary
+import app.echo.android.lyrics.SharedPhoneLyricsResolver
 import app.echo.android.model.connect.EchoPhoneLibraryRegistration
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
@@ -48,6 +49,7 @@ class EchoPhoneLibrarySession(
                 stage = "server"
                 val token = EchoLinkCastPolicy.newToken()
                 val catalog = EchoSharedLocalLibrary(EchoLibraryDatabase.create(application))
+                val lyrics = SharedPhoneLyricsResolver(application, catalog)
                 val readyRoutes = java.util.concurrent.atomic.AtomicReference<EchoPhoneLibraryRoutes?>(null)
                 val created = EchoLinkCastServer(
                     openBody = EchoLinkCastMediaOpener(application.contentResolver),
@@ -67,6 +69,7 @@ class EchoPhoneLibrarySession(
                             EchoPhoneLibraryPage(rows.map(::publication), total)
                         } },
                         track = { id -> runBlocking { catalog.track(id)?.let(::publication) } },
+                        lyrics = { id -> runBlocking { lyrics.read(id) } },
                     ))
                     url
                 }

@@ -12,6 +12,8 @@ The phone refreshes registration once per minute while enabled. PC retains at mo
 
 ## Read-only phone endpoints
 
+- `GET /echo-link/phone/v1/library/lyrics?id=...`: same sharing Bearer/peer restriction. Resolves one shareable local song's selected/imported, local embedded/sidecar or matched cached lyrics without online requests or source-file writes. Returns `{lyrics:null}` or public line/word timings, translation and romanization; source labels, URIs and provider metadata remain private. Limited to 4000 lines, 16000 words, 100000 characters and 512 KiB. Android parsers already apply source offsets; user adjustments are baked into outgoing timestamps with `offsetMs:0`, preventing double application on desktop. Older phones returning 404 remain readable but supply no shared lyrics. Both applications need this extension for phone lyrics display.
+
 - `GET /echo-link/phone/v1/library/tracks?page=1&pageSize=50&q=...`: requires `Authorization: Bearer <sharing token>`. Returns `{version: 1, tracks, totalCount}`. Page size clamps to 1–100, query length to 256, page to 1–100000. PC uses 50 per page. Ordering is title (case-insensitive), then stable ID. Filtering and pagination run in Room, with a transaction for count/page consistency.
 - `GET /echo-link/phone/v1/library/track?id=...`: same authentication; returns `{track}` or 404. Lookup is restricted to the same local-file scope as the paged query. PC resolves a fresh item before starting playback.
 - Each track has `id`, `title`, `artist`, `album`, `durationMs`, `streamUrl`, optional `artworkUrl` and `audio`. It contains no content URI, local path or remote provider credentials.
