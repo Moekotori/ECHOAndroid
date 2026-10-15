@@ -29,6 +29,8 @@ object EchoLinkDiscoveryPolicy {
             version = version,
             requiresPairing = txt["direct"] != "1",
             serviceName = serviceName,
+            libraryOnly = txt["role"] == "bridge" && txt["library"] == "1" &&
+                txt["remoteControl"] == "0" && txt["apiPath"] == "/echo-link/peer/v1",
         )
     }
 
@@ -80,6 +82,7 @@ object EchoLinkDiscoveryPolicy {
         savedToken: String?,
     ): String {
         val token = savedToken?.trim().orEmpty()
+        if (device.libraryOnly) return ""
         if (token.isEmpty()) return ""
         return if (addressMatchesDevice(savedAddress, device)) token else ""
     }

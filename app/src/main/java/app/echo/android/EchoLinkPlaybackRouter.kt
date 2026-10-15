@@ -14,7 +14,8 @@ class EchoLinkPlaybackRouter(private val client: EchoRemoteClient) {
     val remoteMode = selectedRemoteMode.asStateFlow()
 
     fun selectRemoteMode(remote: Boolean) {
-        if (remote && client.status.value.connectionState != EchoRemoteConnectionState.Connected) return
+        if (remote && (client.status.value.connectionState != EchoRemoteConnectionState.Connected ||
+                client.status.value.endpoint?.libraryOnly == true)) return
         if (selectedRemoteMode.value == remote) return
         client.cancelPhonePlaybackRequest()
         selectedRemoteMode.value = remote

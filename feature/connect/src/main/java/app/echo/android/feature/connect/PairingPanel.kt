@@ -85,6 +85,7 @@ internal fun PcLinkPanel(
     active: Boolean = true,
     onOpenListening: (() -> Unit)? = null,
     remoteMode: Boolean = true,
+    libraryOnly: Boolean = false,
     onRemoteModeChange: (Boolean) -> Unit = {},
     onOpenPcLibrary: () -> Unit = {},
     openQueueNonce: Int = 0,
@@ -172,8 +173,8 @@ internal fun PcLinkPanel(
             ListenTogetherEntry(onOpen = onOpenListening)
         }
         remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
-        if (connected || hasSaved) EchoLinkModeSwitch(remoteMode, onRemoteModeChange)
-        if (connected && librarySyncActions != null) OutlinedButton(onClick = { showLibrarySync = true }, modifier = Modifier.fillMaxWidth()) {
+        if (!libraryOnly && (connected || hasSaved)) EchoLinkModeSwitch(remoteMode, onRemoteModeChange)
+        if (!libraryOnly && connected && librarySyncActions != null) OutlinedButton(onClick = { showLibrarySync = true }, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(L10nR.string.sync_title))
         }
         when {
@@ -183,7 +184,7 @@ internal fun PcLinkPanel(
                 TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_cancel_connection_fd085f)) }
             }
             connected -> {
-                if (remoteMode) {
+                if (remoteMode && !libraryOnly) {
                 RemoteNowPlaying(
                     title = trackTitle,
                     artist = trackArtist,
@@ -215,11 +216,11 @@ internal fun PcLinkPanel(
                 }
                 } else {
                     Button(onClick = onOpenPcLibrary, modifier = Modifier.fillMaxWidth(), shape = ConnectControlShape) {
-                        Text(stringResource(L10nR.string.echo_link_open_pc_library))
+                        Text(stringResource(if (libraryOnly) L10nR.string.echo_bridge_open_library else L10nR.string.echo_link_open_pc_library))
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    if (onOpenListening != null) {
+                    if (onOpenListening != null && !libraryOnly) {
                         TextButton(onClick = onOpenListening) {
                             Text(stringResource(L10nR.string.feature_connect_listen_together_title))
                         }
@@ -280,7 +281,7 @@ internal fun PcLinkPanel(
                     discoveredLanDevices.forEach { device ->
                         Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).echoClickable(role = Role.Button) {
                             val saved = savedPcs.firstOrNull { EchoLinkDiscoveryPolicy.addressMatchesDevice(it.address, device) }
-                            val selectedToken = saved?.token?.takeIf { it.isNotBlank() }
+                            val selectedToken = if (device.libraryOnly) "" else saved?.token?.takeIf { it.isNotBlank() }
                                 ?: EchoLinkDiscoveryPolicy.tokenAfterSelecting(device, savedPcAddress, savedPcToken)
                             selectPc(EchoLinkDiscoveryPolicy.addressLabel(device), selectedToken, device.requiresPairing)
                             onSelectLanDevice(device)
@@ -288,7 +289,8 @@ internal fun PcLinkPanel(
                             EchoIcon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Column(Modifier.weight(1f)) {
                                 Text(device.name, style = MaterialTheme.typography.bodyMedium)
-                                ConnectNote(EchoLinkDiscoveryPolicy.addressLabel(device))
+                                ConnectNote(if (device.libraryOnly) stringResource(L10nR.string.echo_bridge_library_note)
+                                    else EchoLinkDiscoveryPolicy.addressLabel(device))
                             }
                             Text(stringResource(if (device.requiresPairing) L10nR.string.feature_connect_select_21bce2 else L10nR.string.feature_connect_connect_c7c091), style = MaterialTheme.typography.labelMedium)
                         }

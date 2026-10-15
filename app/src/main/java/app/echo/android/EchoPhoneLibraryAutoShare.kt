@@ -19,7 +19,7 @@ internal suspend fun observeEchoPhoneLibraryAutoShare(
     combine(enabled, connection, visible) { allowed, status, foreground ->
         val endpoint = status.endpoint
         val key = if (allowed && foreground && status.connectionState == EchoRemoteConnectionState.Connected &&
-            endpoint != null && !endpoint.needsV2PairExchange) EchoLinkRequestPolicy.endpointIdentity(endpoint) else null
+            endpoint != null && !endpoint.needsV2PairExchange && !endpoint.libraryOnly) EchoLinkRequestPolicy.endpointIdentity(endpoint) else null
         allowed to key
     }.distinctUntilChanged().collect { (allowed, key) ->
         if (!allowed) stop()

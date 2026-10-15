@@ -8,4 +8,5 @@ data class EchoLinkLanDevice(
     val version: Int = 1,
     val requiresPairing: Boolean = true,
     val serviceName: String = "",
+    val libraryOnly: Boolean = false,
 )

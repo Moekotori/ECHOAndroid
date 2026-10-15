@@ -5,6 +5,7 @@ import app.echo.android.model.lyrics.*
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
+import kotlin.math.roundToLong
 
 /** File import for ECHO exports, timestamped line arrays, and supported provider response envelopes. */
 internal object EchoJsonLyricsParser {
@@ -15,7 +16,7 @@ internal object EchoJsonLyricsParser {
         }
         val payload = root.optJSONObject("lyrics") ?: root
         val rows = payload.optJSONArray("lines")
-        if (rows != null) return parseLines(rows, source)
+        if (rows != null) return parseLines(rows, source).copy(offsetMs = payload.milliseconds("offsetMs") ?: 0L)
 
         fun embedded(key: String): EchoLyrics? {
             val raw = root.optJSONObject(key)?.string("lyric") ?: root.string(key)
@@ -52,29 +53,47 @@ internal object EchoJsonLyricsParser {
 
     private fun parseLines(rows: JSONArray, source: String?): EchoLyrics {
         require(rows.length() <= 10_000) { "Too many JSON lyric lines" }
-        val lines = (0 until rows.length()).mapNotNull { index ->
-            val row = rows.optJSONObject(index) ?: return@mapNotNull null
-            val wordRows = row.optJSONArray("words")
-            require(wordRows == null || wordRows.length() <= 1024) { "Too many words in a JSON lyric line" }
-            val words = if (wordRows == null) emptyList() else (0 until wordRows.length()).mapNotNull word@ { i ->
-                val word = wordRows.optJSONObject(i) ?: return@word null
-                val start = word.milliseconds("startMs", "start", "startTimeMs")?.takeIf { it >= 0 } ?: return@word null
-                val value = word.string("text") ?: word.string("word") ?: return@word null
-                EchoLyricWord(start, word.milliseconds("endMs", "end", "endTimeMs")?.takeIf { it >= start }, value)
+        val lines = buildList<EchoLyricLine> {
+            for (index in 0 until rows.length()) {
+                val row = rows.optJSONObject(index) ?: continue
+                parseLine(row)?.let { require(size < 10_000) { "Too many JSON lyric lines" }; add(it) }
+                val background = row.optJSONArray("backgroundVocals") ?: continue
+                require(background.length() <= 8) { "Too many background vocals in a JSON lyric line" }
+                for (i in 0 until background.length()) {
+                    background.optJSONObject(i)?.let(::parseLine)?.copy(isBackground = true)?.let {
+                        require(size < 10_000) { "Too many JSON lyric lines" }; add(it)
+                    }
+                }
             }
-            val value = row.string("text") ?: row.string("words") ?: words.joinToString("") { it.text }
-            if (value.isBlank()) return@mapNotNull null
-            val start = row.milliseconds("startMs", "start", "startTimeMs") ?: words.firstOrNull()?.startMs ?: -1L
-            val end = row.milliseconds("endMs", "end", "endTimeMs")?.takeIf { it > start }
-            EchoLyricLine(start, end, value, row.string("translation"), row.string("romanization"), words,
-                row.string("speaker"), row.optBoolean("background", row.optBoolean("isBackground")))
         }.withLineEnds()
         return EchoLyrics(lines, sourceLabel = source, format = EchoLyricsFormat.Json)
     }
 
+    private fun parseLine(row: JSONObject): EchoLyricLine? {
+        val wordRows = row.optJSONArray("words")
+        require(wordRows == null || wordRows.length() <= 1024) { "Too many words in a JSON lyric line" }
+        val words = if (wordRows == null) emptyList() else (0 until wordRows.length()).mapNotNull { i ->
+            val word = wordRows.optJSONObject(i) ?: return@mapNotNull null
+            val start = word.milliseconds("startMs", "start", "startTimeMs")?.takeIf { it >= 0 } ?: return@mapNotNull null
+            val text = word.string("text") ?: word.string("word") ?: return@mapNotNull null
+            EchoLyricWord(start, word.milliseconds("endMs", "end", "endTimeMs")?.takeIf { it >= start }, text)
+        }
+        val text = row.string("text") ?: row.string("words") ?: words.joinToString("") { it.text }
+        if (text.isBlank()) return null
+        val start = row.milliseconds("timeMs", "startMs", "start", "startTimeMs") ?: words.firstOrNull()?.startMs ?: -1L
+        val end = row.milliseconds("endMs", "end", "endTimeMs")?.takeIf { it > start }
+        return EchoLyricLine(start, end, text, row.string("translation"), row.string("romanization"), words,
+            row.string("speaker") ?: row.string("agentName") ?: row.string("agentId"),
+            row.optBoolean("background", row.optBoolean("isBackground")))
+    }
+
     private fun JSONObject.string(key: String): String? = (opt(key) as? String)?.takeIf(String::isNotBlank)
     private fun JSONObject.milliseconds(vararg keys: String): Long? = keys.firstNotNullOfOrNull { key ->
-        // Numbers and integer strings are accepted; fractional/invalid units are never silently zeroed.
-        opt(key)?.toString()?.toLongOrNull()
+        // ECHO peer timings may contain fractional milliseconds; integer strings remain supported.
+        when (val value = opt(key)) {
+            is Number -> value.toDouble().takeIf { it.isFinite() }?.roundToLong()
+            is String -> value.toLongOrNull()
+            else -> null
+        }
     }
 }

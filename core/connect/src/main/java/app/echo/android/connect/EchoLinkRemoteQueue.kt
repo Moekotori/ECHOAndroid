@@ -131,7 +131,8 @@ internal class EchoLinkRemoteQueue(
             try {
                 val response = transport.sendCommand(target, EchoRemoteCommand.QueueMove(queueId, toIndex, revision))
                 if (request != generation || !EchoLinkRequestPolicy.isSameEndpoint(endpoint(), target)) return@launch
-                val nextRevision = response?.playback?.queue?.revision
+                val playback = response?.playback
+                val nextRevision = playback?.queue?.revision
                 val from = current.items.indexOfFirst { it.queueId == queueId }
                 val relativeTarget = toIndex - current.offset
                 if (nextRevision == null || from < 0 || relativeTarget !in current.items.indices) {
@@ -141,7 +142,7 @@ internal class EchoLinkRemoteQueue(
                     reordered.add(relativeTarget, reordered.removeAt(from))
                     mutableState.value = current.copy(items = reordered.mapIndexed { index, item -> item.copy(queueIndex = index + current.offset) },
                         revision = nextRevision, isMoving = false, error = null,
-                        currentQueueId = if (response.playback.queueIdentityAvailable) response.playback.queue.currentQueueId else current.currentQueueId)
+                        currentQueueId = if (playback?.queueIdentityAvailable == true) playback.queue.currentQueueId else current.currentQueueId)
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) {

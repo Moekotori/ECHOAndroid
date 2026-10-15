@@ -10,6 +10,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
 import java.io.IOException
 import java.util.concurrent.Callable
 
@@ -29,13 +30,19 @@ internal class EchoNotificationBitmapLoader(
     override fun decodeBitmap(data: ByteArray): ListenableFuture<Bitmap> =
         delegate.decodeBitmap(data)
 
-    override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
-        delegate.loadBitmap(uri)
+    override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> {
+        val key = uri.toString()
+        bitmapCache.get(key)?.let { return Futures.immediateFuture(it) }
+        val image = EchoNotificationArtwork.loader?.invoke(uri) ?: return delegate.loadBitmap(uri)
+        return Futures.transform(image, { bitmap -> requireNotNull(bitmap).also { bitmapCache.put(key, it) } },
+            MoreExecutors.directExecutor())
+    }
 
     override fun loadBitmapFromMetadata(metadata: MediaMetadata): ListenableFuture<Bitmap>? {
-        if (metadata.artworkData != null || metadata.artworkUri != null) {
+        if (metadata.artworkData != null) {
             return delegate.loadBitmapFromMetadata(metadata)
         }
+        metadata.artworkUri?.let { return loadBitmap(it) }
         val sourceUri = metadata.extras
             ?.getString(EchoEmbeddedArtworkSourceUriExtra)
             ?.takeIf { it.isNotBlank() }

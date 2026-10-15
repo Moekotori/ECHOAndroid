@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="linked_folder_previous_page">Previous</string>
+    <string name="linked_folder_next_page">Next</string>
+    <string name="linked_folder_page">%1$d / %2$d</string>
+</resources>

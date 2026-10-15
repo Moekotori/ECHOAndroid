@@ -39,6 +39,7 @@ class EchoPhoneLibrarySession(
             state.value = "connection_required"
             return
         }
+        if (endpoint.libraryOnly) { state.value = "unsupported"; return }
         val current = ++generation
         state.value = "starting"
         target = endpoint

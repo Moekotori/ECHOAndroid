@@ -538,7 +538,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     }
 
     fun connectEchoLinkAddress(address: String, token: String) {
-        val endpoint = EchoPairingParser.parseManual(address, token)
+        val libraryOnly = viewModel.echoLinkLanDevices.value.any {
+            it.libraryOnly && EchoLinkDiscoveryPolicy.addressMatchesDevice(address, it)
+        }
+        val endpoint = EchoPairingParser.parseManual(address, if (libraryOnly) "" else token)
+            ?.copy(libraryOnly = libraryOnly)
         if (endpoint != null) {
             connectEchoLinkEndpoint(endpoint)
         } else {
@@ -643,7 +647,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     }
 
     fun performPhoneCast() {
-        if (castingToPc) return
+        if (castingToPc || remoteClient.status.value.endpoint?.libraryOnly == true) return
         if (sendingCastAddress == null) {
             sendingCastAddress = remoteClient.status.value.endpoint?.let { endpoint ->
                 EchoLinkCastPolicy.advertisedBaseUrl(endpoint.host, endpoint.port)
@@ -1601,6 +1605,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 },
                                 networkPermissionContent = { EchoLocalNetworkPermissionNotice(localNetwork) },
                                 remoteMode = remoteMode,
+                                libraryOnly = remoteStatus.endpoint?.libraryOnly == true,
                                 onRemoteModeChange = ::selectEchoLinkMode,
                                 onOpenPcLibrary = ::openPcLibrary,
                                 onOpenFullQueue = { remoteQueueSheetVisible = true },
@@ -1678,13 +1683,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 castSessionActive = castSessionActive,
                                 castSessionName = castSessionName,
                                 sendingAddress = sendingCastAddress,
-                                connectedLanAddress = remoteStatus.endpoint?.let { endpoint ->
+                                connectedLanAddress = remoteStatus.endpoint?.takeUnless { it.libraryOnly }?.let { endpoint ->
                                     EchoLinkCastPolicy.advertisedBaseUrl(endpoint.host, endpoint.port)
                                         .removePrefix("http://")
                                         .removePrefix("https://")
                                 },
                                 onCastToAddress = { address, token -> localNetwork.run { requestPhoneCast(address, token) } },
                                 onCastToConnected = if (
+                                    remoteStatus.endpoint?.libraryOnly != true &&
                                     remoteStatus.connectionState == EchoRemoteConnectionState.Connected &&
                                     phoneCastPlan !is EchoLinkCastPlan.Blocked
                                 ) {
@@ -1813,7 +1819,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     }
                 }
                 EchoBottomDockHost(
-                    abovePlayer = if (remoteMode || remoteStatus.connectionState == EchoRemoteConnectionState.Connected) {
+                    abovePlayer = if (remoteStatus.endpoint?.libraryOnly != true &&
+                        (remoteMode || remoteStatus.connectionState == EchoRemoteConnectionState.Connected)) {
                         {
                             app.echo.android.design.EchoLinkModeSwitch(
                                 remoteMode = remoteMode,

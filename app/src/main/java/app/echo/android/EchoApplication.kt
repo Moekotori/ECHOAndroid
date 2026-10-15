@@ -76,6 +76,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        configureEchoBridgeNotificationArtwork()
         initializeEchoAppLocale(readEchoStartupThemeSnapshot().appLanguage)
         installUncaughtExceptionHandler()
         EchoErrorLog.setProcessInfo(
@@ -169,7 +170,9 @@ class EchoApplication : Application(), ImageLoaderFactory {
         echoLinkSession.systemCast.start()
     }
 
-    override fun newImageLoader(): ImageLoader = EchoArtworkImageLoader.newImageLoader(this)
+    override fun newImageLoader(): ImageLoader = EchoArtworkImageLoader.newImageLoader(this) {
+        add(EchoBridgeArtworkFetcher.Factory())
+    }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)

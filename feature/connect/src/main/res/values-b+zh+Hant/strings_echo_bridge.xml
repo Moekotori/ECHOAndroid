@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_bridge_open_library">瀏覽 Bridge 曲庫</string>
+    <string name="echo_bridge_library_note">ECHO Bridge · 在手機播放</string>
+</resources>

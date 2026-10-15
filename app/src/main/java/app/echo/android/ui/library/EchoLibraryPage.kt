@@ -294,6 +294,7 @@ internal fun EchoLibraryPage(
             onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },
             onOpenLinkedAlbum = { album -> remoteClient.refreshAlbumTracks(album) },
             onRefreshLinkedFolders = { path -> remoteClient.refreshFolders(path) },
+            onChangeLinkedFolderPage = remoteClient::changeFolderPage,
             onPlayLinkedTrack = { track ->
                 playLinkedEchoTracks(
                     tracks = listOf(track),

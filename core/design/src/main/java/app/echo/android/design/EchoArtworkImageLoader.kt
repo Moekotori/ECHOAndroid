@@ -4,6 +4,7 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import coil.ImageLoader
+import coil.ComponentRegistry
 import coil.memory.MemoryCache
 
 object EchoArtworkImageLoader {
@@ -12,7 +13,7 @@ object EchoArtworkImageLoader {
     @Volatile
     private var cache: EchoArtworkMemoryCache? = null
 
-    fun newImageLoader(context: Context): ImageLoader {
+    fun newImageLoader(context: Context, configureComponents: ComponentRegistry.Builder.() -> Unit = {}): ImageLoader {
         val app = context.applicationContext
         val inner = MemoryCache.Builder(app)
             .maxSizePercent(EchoArtworkMemoryPolicy.HighPerformancePercent)
@@ -22,6 +23,7 @@ object EchoArtworkImageLoader {
         cache = bounded
         return ImageLoader.Builder(app)
             .memoryCache(bounded)
+            .components(configureComponents)
             .build()
     }
 

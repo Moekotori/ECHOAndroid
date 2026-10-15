@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.os.SystemClock
 import app.echo.android.design.EchoArtworkUrlRewriteRegistry
+import app.echo.android.connect.EchoBridgeArtwork
 import app.echo.android.playback.EchoPlaybackArtwork
 import app.echo.android.playback.EchoPlaybackSurfaceSnapshot
 import kotlinx.coroutines.CancellationException
@@ -42,6 +43,11 @@ internal object EchoWidgetArtwork {
             ?.takeIf { it.startsWith("http://") || it.startsWith("https://") } ?: return null
         var connection: HttpURLConnection? = null
         return try {
+            if (EchoBridgeArtwork.handles(remote)) {
+                val image = EchoBridgeArtwork.read(remote, EchoPlaybackArtwork.WidgetMaxEdgePx) ?: return null
+                return EchoPlaybackArtwork.decodeCapped(java.io.ByteArrayInputStream(image.bytes),
+                    EchoPlaybackArtwork.WidgetMaxEdgePx, 256 * 1024)
+            }
             connection = URL(remote).openConnection() as HttpURLConnection
             connection.connectTimeout = 2_500
             connection.readTimeout = 2_500

@@ -135,6 +135,7 @@ fun ConnectScreen(
     onLoadMorePcLibrary: () -> Unit = {},
     remoteControlsActive: Boolean = true,
     remoteMode: Boolean = true,
+    libraryOnly: Boolean = false,
     onRemoteModeChange: (Boolean) -> Unit = {},
     onOpenPcLibrary: () -> Unit = {},
     openPcTabNonce: Int = 0,
@@ -258,7 +259,7 @@ fun ConnectScreen(
                                 onCancel = onCancelRemoteSync,
                             )
                             1 -> {
-                            PhoneLibraryShareControl(
+                            if (!libraryOnly) PhoneLibraryShareControl(
                                 status = phoneLibraryShareStatus,
                                 connectionState = remoteState,
                                 active = remoteControlsActive && pagerState.settledPage == 1,
@@ -313,6 +314,7 @@ fun ConnectScreen(
                                 active = remoteControlsActive && pagerState.settledPage == 1,
                                 onOpenListening = onOpenListening,
                                 remoteMode = remoteMode,
+                                libraryOnly = libraryOnly,
                                 onRemoteModeChange = onRemoteModeChange,
                                 onOpenPcLibrary = onOpenPcLibrary,
                                 openQueueNonce = openPcQueueNonce,
@@ -334,13 +336,17 @@ fun ConnectScreen(
                                 sendingAddress = sendingAddress,
                                 remoteError = remoteError,
                                 discoveryState = discoveryState,
-                                discoveredLanDevices = discoveredLanDevices,
-                                savedPcs = savedPcs,
+                                discoveredLanDevices = discoveredLanDevices.filterNot { it.libraryOnly },
+                                savedPcs = savedPcs.filterNot { saved ->
+                                    discoveredLanDevices.any { device -> device.libraryOnly &&
+                                        app.echo.android.connect.EchoLinkDiscoveryPolicy.addressMatchesDevice(saved.address, device) } ||
+                                        (libraryOnly && app.echo.android.connect.EchoLinkDiscoveryPolicy.sameLanEndpoint(saved.address, savedPcAddress))
+                                },
                                 savedPcAddress = savedPcAddress,
                                 savedPcToken = savedPcToken,
                                 connectedAddress = connectedLanAddress,
                                 onCastToAddress = onCastToAddress,
-                                onCastToConnected = onCastToConnected,
+                                onCastToConnected = if (libraryOnly) null else onCastToConnected,
                                 onStopCast = onStopCast,
                                 onSelectLanDevice = onSelectLanDevice,
                                 connectedPcName = pcTitle,

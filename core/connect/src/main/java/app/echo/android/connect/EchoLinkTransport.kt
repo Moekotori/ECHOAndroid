@@ -36,7 +36,8 @@ import org.json.JSONObject
 
 internal data class EchoLinkStatusResponse(
     val deviceName: String?,
-    val playback: EchoRemotePlaybackSnapshot,
+    val playback: EchoRemotePlaybackSnapshot?,
+    val libraryOnly: Boolean = false,
 )
 
 internal data class EchoLinkTrackPage(
@@ -58,6 +59,10 @@ internal data class EchoLinkFolderPage(
     val path: String,
     val folders: List<EchoRemoteFolder>,
     val tracks: List<EchoRemoteTrack>,
+    val page: Int = 1,
+    val pageSize: Int = 0,
+    val folderTotalCount: Int = folders.size,
+    val trackTotalCount: Int = tracks.size,
 )
 
 internal data class EchoLinkStreamResponse(
@@ -97,6 +102,8 @@ internal interface EchoLinkTransport {
     suspend fun fetchAlbums(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkAlbumPage
     suspend fun fetchAlbumTracks(endpoint: EchoRemoteEndpoint, albumId: String, page: Int, pageSize: Int): EchoLinkTrackPage
     suspend fun fetchFolders(endpoint: EchoRemoteEndpoint, path: String): EchoLinkFolderPage
+    suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int, query: String): EchoLinkFolderPage =
+        fetchFolders(endpoint, path)
     suspend fun resolveStream(endpoint: EchoRemoteEndpoint, trackId: String): EchoLinkStreamResponse
     suspend fun fetchLyrics(endpoint: EchoRemoteEndpoint, trackId: String): EchoRemoteLyrics?
 }
@@ -109,6 +116,11 @@ internal class OkHttpEchoLinkTransport(
         .build(),
     private val responseDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : EchoLinkTransport {
+    private val bridge = EchoBridgeTransport(::executeJson)
+    internal suspend fun fetchBridgeArtwork(url: HttpUrl): JSONObject = executeJson(
+        Request.Builder().url(url).header("X-ECHO-Link-Direct", "1")
+            .header("X-ECHO-Link-Version", "1").get().build(),
+    )
     override suspend fun registerPhoneLibrary(endpoint: EchoRemoteEndpoint, registration: app.echo.android.model.connect.EchoPhoneLibraryRegistration) {
         val body = JSONObject().put("version", 1).put("sessionId", registration.sessionId)
             .put("baseUrl", registration.baseUrl).put("token", registration.token).put("name", registration.name)
@@ -248,13 +260,19 @@ internal class OkHttpEchoLinkTransport(
     }
 
     override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse = withContext(responseDispatcher) {
-        val json = executeJson(
+        if (endpoint.libraryOnly) return@withContext bridge.device(endpoint)
+        val json = try { executeJson(
             Request.Builder()
                 .url(endpoint.url("status"))
                 .authorized(endpoint)
                 .get()
                 .build(),
-        )
+        ) } catch (error: EchoLinkHttpException) {
+            // A missing companion endpoint may be a Bridge. Never downgrade rejected credentials.
+            if (error.statusCode == 404 && endpoint.token.isBlank() && !endpoint.needsV2PairExchange)
+                return@withContext bridge.device(endpoint)
+            throw error
+        }
         return@withContext json.toStatusResponse(endpoint)
     }
 
@@ -262,6 +280,7 @@ internal class OkHttpEchoLinkTransport(
         endpoint: EchoRemoteEndpoint,
         command: EchoRemoteCommand,
     ): EchoLinkStatusResponse? = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) throw EchoLinkHttpException("library_read_only", 405)
         if (command is EchoRemoteCommand.SetPlaybackOrder && endpoint.supportsV2Events) {
             // Paired V2 PCs already support this action, even before V1 added the command.
             val acknowledgement = executeJson(
@@ -294,6 +313,7 @@ internal class OkHttpEchoLinkTransport(
     }
 
     override suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int) = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) throw EchoLinkHttpException("library_read_only", 405)
         val json = executeJson(Request.Builder().url(endpoint.url("playback", "queue") {
             addQueryParameter("page", page.toString()); addQueryParameter("pageSize", "100")
         }).authorized(endpoint).get().build())
@@ -313,6 +333,7 @@ internal class OkHttpEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkTrackPage = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) return@withContext bridge.tracks(endpoint, query, page)
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkLibraryTracksUrl(endpoint, query, page, pageSize))
@@ -336,6 +357,7 @@ internal class OkHttpEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkPlaylistPage = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) return@withContext bridge.playlists(endpoint, query, page)
         val json = executeJson(
             Request.Builder()
                 .url(
@@ -367,6 +389,7 @@ internal class OkHttpEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkTrackPage = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) return@withContext bridge.tracks(endpoint, "", page, "playlist", playlistId)
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkPlaylistTracksUrl(endpoint, playlistId, pageSize, page))
@@ -383,6 +406,7 @@ internal class OkHttpEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkAlbumPage = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) return@withContext bridge.albums(endpoint, query, page)
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkLibraryAlbumsUrl(endpoint, query, page, pageSize))
@@ -408,6 +432,7 @@ internal class OkHttpEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkTrackPage = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) return@withContext bridge.tracks(endpoint, "", page, "album", albumId)
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkAlbumTracksUrl(endpoint, albumId, page, pageSize))
@@ -422,6 +447,7 @@ internal class OkHttpEchoLinkTransport(
         endpoint: EchoRemoteEndpoint,
         path: String,
     ): EchoLinkFolderPage = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) return@withContext bridge.folders(endpoint, path)
         val json = executeJson(
             Request.Builder()
                 .url(echoLinkFoldersUrl(endpoint, path))
@@ -432,10 +458,16 @@ internal class OkHttpEchoLinkTransport(
         return@withContext json.toFolderPage(endpoint, path)
     }
 
+    override suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int, query: String): EchoLinkFolderPage =
+        withContext(responseDispatcher) {
+            if (endpoint.libraryOnly) bridge.folders(endpoint, path, page, query) else fetchFolders(endpoint, path)
+        }
+
     override suspend fun resolveStream(
         endpoint: EchoRemoteEndpoint,
         trackId: String,
     ): EchoLinkStreamResponse = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) return@withContext bridge.stream(endpoint, trackId)
         val json = executeJson(
             Request.Builder()
                 .url(endpoint.url("library", "tracks", trackId, "stream"))
@@ -450,6 +482,7 @@ internal class OkHttpEchoLinkTransport(
         endpoint: EchoRemoteEndpoint,
         trackId: String,
     ): EchoRemoteLyrics? = withContext(responseDispatcher) {
+        if (endpoint.libraryOnly) return@withContext bridge.lyrics(endpoint, trackId)
         val requests = listOf(
             Request.Builder()
                 .url(endpoint.url("library", "tracks", trackId, "lyrics"))
@@ -487,7 +520,13 @@ internal class OkHttpEchoLinkTransport(
             override fun onResponse(call: Call, response: Response) {
                 val result = runCatching {
                     response.use {
-                        val body = it.body?.string().orEmpty()
+                        val body = if (request.url.encodedPath.startsWith("/echo-link/peer/v1/")) {
+                            val source = it.body?.source()
+                            source?.request(512 * 1024L + 1)
+                            if (source != null && source.buffer.size > 512 * 1024L)
+                                throw EchoLinkHttpException("peer_response_too_large", 413)
+                            source?.readUtf8().orEmpty()
+                        } else it.body?.string().orEmpty()
                         if (!it.isSuccessful) {
                             throw EchoLinkHttpException(echoLinkErrorUserMessage(it.code, body), it.code)
                         }

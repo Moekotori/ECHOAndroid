@@ -161,6 +161,7 @@ class EchoLinkSession(private val application: Application) {
         scope.launch {
             var lastConnectionError: String? = null
             client.status.collect { status ->
+                if (status.endpoint?.libraryOnly == true) playbackRouter.selectRemoteMode(false)
                 phoneLibrary.connectionChanged(status.endpoint, status.connectionState)
                 val endpoint = status.endpoint
                 if (status.connectionState == EchoRemoteConnectionState.Connected && endpoint != null && !endpoint.needsV2PairExchange) {
@@ -283,7 +284,8 @@ class EchoLinkSession(private val application: Application) {
         onSuccess: () -> Unit,
     ) {
         val previous = _dlnaRenderer.value
-        if (client.status.value.connectionState == EchoRemoteConnectionState.Connected) {
+        if (client.status.value.connectionState == EchoRemoteConnectionState.Connected &&
+            client.status.value.endpoint?.libraryOnly != true) {
             client.send(EchoRemoteCommand.Stop)
         }
         scope.launch {
@@ -341,7 +343,8 @@ class EchoLinkSession(private val application: Application) {
         onFailure: (Throwable) -> Unit,
         onSuccess: () -> Unit,
     ) {
-        if (client.status.value.connectionState == EchoRemoteConnectionState.Connected) {
+        if (client.status.value.connectionState == EchoRemoteConnectionState.Connected &&
+            client.status.value.endpoint?.libraryOnly != true) {
             client.send(EchoRemoteCommand.Stop)
         }
         val previous = _dlnaRenderer.value

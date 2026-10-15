@@ -50,6 +50,7 @@ class EchoRemoteClient internal constructor(
 
     private val _library = MutableStateFlow(EchoRemoteLibraryState())
     val library: StateFlow<EchoRemoteLibraryState> = _library.asStateFlow()
+    private val bridgeFolders = EchoBridgeFolderBrowser(scope, transport, { endpoint }, _library) { it.userMessage() }
     private val queueBrowser = EchoLinkRemoteQueue(scope, transport, { endpoint },
         { _status.value.playback.queue }, { it.userMessage() })
     val remoteQueue = queueBrowser.state
@@ -218,6 +219,7 @@ class EchoRemoteClient internal constructor(
             return
         }
         authRejected = false
+        bridgeFolders.reset()
         refreshOnForeground = false
         pollFailures = 0
         if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, nextEndpoint)) {
@@ -321,6 +323,7 @@ class EchoRemoteClient internal constructor(
     }
 
     fun disconnect() {
+        bridgeFolders.reset()
         queueBrowser.cancel(clear = true)
         lastCommandError = null
         refreshOnForeground = false
@@ -438,6 +441,7 @@ class EchoRemoteClient internal constructor(
         }
         libraryRefreshJob?.cancel()
         // 只发布第一页。后面的页等列表滚到末尾再取，避免整库进内存。
+        if (target.libraryOnly) bridgeFolders.search(query)
         libraryRefreshJob = scope.launch {
             fun isCurrentRefresh(): Boolean =
                 endpoint?.id == target.id && generation == libraryRefreshGeneration
@@ -790,6 +794,7 @@ class EchoRemoteClient internal constructor(
     }
 
     fun refreshFolders(path: String = _library.value.folderPath) {
+        if (endpoint?.libraryOnly == true) { bridgeFolders.refresh(path); return }
         val target = endpoint ?: run {
             _library.update {
                 it.copy(
@@ -845,6 +850,8 @@ class EchoRemoteClient internal constructor(
                 }
         }
     }
+
+    fun changeFolderPage(page: Int) = bridgeFolders.changePage(page)
 
     fun playQueueOnPc(tracks: List<EchoRemoteTrack>, startIndex: Int = 0) {
         val ids = EchoLinkLibraryQueryPolicy.playableLinkedPcTrackIds(tracks)
@@ -1188,11 +1195,11 @@ class EchoRemoteClient internal constructor(
             foregroundRefreshJob = scope.launch { refreshStatusOnce(target) }
         }
         if (target.supportsV2Events) {
-            startStatusPolling(statusPollIntervalMs)
+            startStatusPolling(if (target.libraryOnly) backgroundStatusPollIntervalMs else statusPollIntervalMs)
             startEventStream(target)
         } else {
             stopEventStream()
-            startStatusPolling(statusPollIntervalMs)
+            startStatusPolling(if (target.libraryOnly) backgroundStatusPollIntervalMs else statusPollIntervalMs)
         }
     }
 
@@ -1276,20 +1283,22 @@ class EchoRemoteClient internal constructor(
     private fun applyStatus(target: EchoRemoteEndpoint, response: EchoLinkStatusResponse) {
         if (authRejected || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) return
         pollFailures = 0
+        val capableEndpoint = target.copy(libraryOnly = response.libraryOnly,
+            supportsV2Events = target.supportsV2Events && !response.libraryOnly)
         val namedEndpoint = response.deviceName
             ?.takeIf { it.isNotBlank() }
-            ?.let { target.copy(name = it) }
-            ?: target
+            ?.let { capableEndpoint.copy(name = it) }
+            ?: capableEndpoint
         endpoint = namedEndpoint
         _status.update { current ->
             current.copy(
                 connectionState = EchoRemoteConnectionState.Connected,
                 endpoint = namedEndpoint,
-                playback = response.playback,
+                playback = response.playback ?: app.echo.android.model.connect.EchoRemotePlaybackSnapshot(),
                 error = lastCommandError,
             )
         }
-        if (response.playback.queueIdentityAvailable) {
+        if (response.playback?.queueIdentityAvailable == true) {
             queueBrowser.observe(response.playback.queue.revision, response.playback.queue.currentQueueId)
         }
     }

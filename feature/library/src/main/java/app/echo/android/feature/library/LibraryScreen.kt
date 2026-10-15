@@ -289,6 +289,7 @@ fun LibraryScreen(
     onLoadMoreLinkedTracks: () -> Unit = {},
     onLoadMoreLinkedAlbums: () -> Unit = {},
     onLoadMoreLinkedPlaylists: () -> Unit = {},
+    onChangeLinkedFolderPage: (Int) -> Unit = {},
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit = { _, _ -> },
@@ -770,6 +771,7 @@ fun LibraryScreen(
                             onLoadMoreTracks = onLoadMoreLinkedTracks,
                             onLoadMoreAlbums = onLoadMoreLinkedAlbums,
                             onLoadMorePlaylists = onLoadMoreLinkedPlaylists,
+                            onChangeFolderPage = onChangeLinkedFolderPage,
                             onPlayLinkedTrack = onPlayLinkedTrack,
                             onPlayLinkedQueue = onPlayLinkedQueue,
                             onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
@@ -1168,6 +1170,7 @@ private fun LinkedEchoLibraryPage(
     onLoadMoreTracks: () -> Unit,
     onLoadMoreAlbums: () -> Unit,
     onLoadMorePlaylists: () -> Unit,
+    onChangeFolderPage: (Int) -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
     onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
@@ -1338,7 +1341,8 @@ private fun LinkedEchoLibraryPage(
                 state.folders.isEmpty() && state.folderTracks.isEmpty() -> {
                 LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_reading_pc_echo_library_fccbe4))
             }
-            mode == LinkedLibraryMode.Folders && state.folders.isEmpty() && state.folderTracks.isEmpty() -> {
+            mode == LinkedLibraryMode.Folders && state.folders.isEmpty() && state.folderTracks.isEmpty() &&
+                state.folderPath.isBlank() && state.folderPageCount == 1 -> {
                 LibraryCollectionEmpty(
                     if (query.isBlank()) {
                         stringResource(L10nR.string.feature_library_pc_echo_has_no_folders_to_show_9e12b8)
@@ -1382,12 +1386,10 @@ private fun LinkedEchoLibraryPage(
                 modifier = Modifier.fillMaxSize(),
             )
             mode == LinkedLibraryMode.Folders -> LinkedFolderBrowser(
-                path = state.folderPath,
-                folders = state.folders,
-                tracks = state.folderTracks,
+                state = state,
                 sortMode = folderSortMode,
                 onOpenFolder = onRefreshFolders,
-                onPlayLinkedTrack = onPlayLinkedTrack,
+                onChangePage = onChangeFolderPage,
                 onPlayLinkedQueue = onPlayLinkedQueue,
                 onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
                 modifier = Modifier.fillMaxSize(),
@@ -1498,7 +1500,7 @@ private fun LinkedPlaylistList(
 }
 
 @Composable
-private fun LinkedPlaylistRow(
+internal fun LinkedPlaylistRow(
     playlist: EchoRemotePlaylist,
     onOpen: () -> Unit,
 ) {
@@ -1777,75 +1779,7 @@ private fun LinkedArtistTracksPage(
     )
 }
 
-@Composable
-private fun LinkedFolderBrowser(
-    path: String,
-    folders: List<EchoRemoteFolder>,
-    tracks: List<EchoRemoteTrack>,
-    sortMode: FolderSortMode,
-    onOpenFolder: (String) -> Unit,
-    onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
-    onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
-    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val parentPath = EchoLinkLibraryQueryPolicy.parentFolderPath(path)
-    val sortedFolders = remember(folders, sortMode) { folders.sortedForLinkedLibrary(sortMode) }
-    Column(modifier.fillMaxSize()) {
-        if (path.isNotBlank()) {
-            TextButton(onClick = { onOpenFolder(parentPath) }) {
-                EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(L10nR.string.feature_library_open_parent_folder_2a11c0))
-            }
-        }
-        if (tracks.isNotEmpty()) {
-            TextButton(
-                onClick = { onPlayLinkedQueueOnPc(tracks, 0) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(L10nR.string.feature_library_play_on_pc_7c21a4))
-            }
-        }
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(sortedFolders, key = { folder -> folder.path }) { folder ->
-                LinkedPlaylistRow(
-                    playlist = EchoRemotePlaylist(
-                        id = folder.path,
-                        name = folder.name,
-                        artworkUrl = folder.artworkUrl,
-                        trackCount = folder.trackCount,
-                        sourceLabel = folder.path,
-                    ),
-                    onOpen = { onOpenFolder(folder.path) },
-                )
-            }
-            items(
-                tracks,
-                key = { track -> track.id ?: "${track.title}-${track.artist}" },
-            ) { track ->
-                TrackRow(
-                    track = track.toEchoTrack(),
-                    onClick = {
-                        val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
-                        onPlayLinkedQueue(tracks, index)
-                    },
-                    onPlayOnPc = {
-                        val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
-                        onPlayLinkedQueueOnPc(tracks, index)
-                    },
-                    showAudioInfoTags = false,
-                )
-            }
-        }
-    }
-}
-
-private fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
+internal fun EchoRemoteTrack.toEchoTrack(): EchoTrack =
     EchoTrack(
         id = "echo-link:${id ?: "${title.hashCode()}-${artist.hashCode()}-${album.hashCode()}"}",
         uri = "",
@@ -1996,20 +1930,6 @@ private fun <T> LibrarySortMenu(
                 )
             }
         }
-    }
-}
-
-private fun List<EchoRemoteFolder>.sortedForLinkedLibrary(mode: FolderSortMode): List<EchoRemoteFolder> {
-    val byName = compareBy(String.CASE_INSENSITIVE_ORDER, EchoRemoteFolder::name)
-        .thenBy(String.CASE_INSENSITIVE_ORDER, EchoRemoteFolder::path)
-    return when (mode) {
-        FolderSortMode.Path -> sortedWith(byName)
-        FolderSortMode.TrackCount -> sortedWith(compareByDescending(EchoRemoteFolder::trackCount).then(byName))
-        FolderSortMode.AlbumCount -> sortedWith(compareByDescending(EchoRemoteFolder::childFolderCount).then(byName))
-        FolderSortMode.Duration,
-        FolderSortMode.Size,
-        FolderSortMode.RecentlyModified,
-        -> sortedWith(byName)
     }
 }
 

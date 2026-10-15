@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_bridge_open_library">Browse Bridge library</string>
+    <string name="echo_bridge_library_note">ECHO Bridge · Play on this phone</string>
+</resources>
