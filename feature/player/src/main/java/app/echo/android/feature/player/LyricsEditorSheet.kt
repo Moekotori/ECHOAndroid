@@ -21,7 +21,9 @@ private data class LyricsEditRow(val original: EchoLyricLine, val time: String, 
 @Composable
 fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit, onSave: suspend (EchoLyrics) -> Unit, onDismiss: () -> Unit) {
-    val rows = remember(lyrics) { lyrics.lines.take(2000).map { LyricsEditRow(it, EchoLyricsEditing.timestamp(it.startMs), it.text, it.translation.orEmpty()) }.toMutableStateList() }
+    // Keep one editing session independent of background reloads and save-triggered Loading states.
+    val original = remember { lyrics }
+    val rows = remember { original.lines.take(2000).map { LyricsEditRow(it, EchoLyricsEditing.timestamp(it.startMs), it.text, it.translation.orEmpty()) }.toMutableStateList() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val scroll = rememberLazyListState()
@@ -30,15 +32,15 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
     var error by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf(false) }
     var exportText by remember { mutableStateOf<String?>(null) }
-    fun snapshot(): EchoLyrics {
-        require(lyrics.lines.size <= 2000)
-        val lines = rows.map { row ->
+    fun snapshot(draftRows: List<LyricsEditRow>): EchoLyrics {
+        require(original.lines.size <= 2000)
+        val lines = draftRows.map { row ->
             val time = EchoLyricsEditing.parseTimestamp(row.time) ?: error("Invalid time")
             val delta = if (row.original.startMs >= 0 && time >= 0) time - row.original.startMs else 0
             row.original.copy(startMs = time, text = row.text, translation = row.translation.takeIf(String::isNotBlank),
                 words = if (row.text == row.original.text && time >= 0) row.original.words.map { it.copy(startMs = (it.startMs + delta).coerceAtLeast(0), endMs = it.endMs?.let { end -> (end + delta).coerceAtLeast(0) }) } else emptyList())
         }
-        return EchoLyricsEditing.finish(lyrics, lines)
+        return EchoLyricsEditing.finish(original, lines)
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         val text = exportText; exportText = null
@@ -89,14 +91,13 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
                 if (error) Text(stringResource(R.string.lyrics_edit_error), color = MaterialTheme.colorScheme.error)
                 if (saved) Text(stringResource(R.string.lyrics_edit_saved), color = MaterialTheme.colorScheme.primary)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { error = false; scope.launch {
-                        saving = true
-                        try { val draft = withContext(Dispatchers.Default) { snapshot() }; onSave(draft); saved = true }
+                    Button(onClick = { error = false; val draftRows = rows.toList(); saving = true; scope.launch {
+                        try { val draft = withContext(Dispatchers.Default) { snapshot(draftRows) }; onSave(draft); saved = true }
                         catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
                         finally { saving = false }
                     } }, enabled = rows.isNotEmpty() && !saving) { Text(stringResource(R.string.lyrics_edit_save)) }
-                    OutlinedButton(onClick = { error = false; scope.launch {
-                        try { exportText = withContext(Dispatchers.Default) { EchoLyricsEditing.toLrc(snapshot()) }; export.launch("echo-lyrics.lrc") }
+                    OutlinedButton(onClick = { error = false; val draftRows = rows.toList(); scope.launch {
+                        try { exportText = withContext(Dispatchers.Default) { EchoLyricsEditing.toLrc(snapshot(draftRows)) }; export.launch("echo-lyrics.lrc") }
                         catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
                     } }, enabled = !saving) { Text(stringResource(R.string.lyrics_edit_export)) }
                 }

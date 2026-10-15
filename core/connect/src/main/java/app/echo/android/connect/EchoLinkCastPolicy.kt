@@ -19,6 +19,8 @@ data class EchoLinkCastSourceTrack(
     val bitDepth: Int? = null,
     val channelCount: Int? = null,
     val codec: String? = null,
+    val clipStartMs: Long = 0L,
+    val clipEndMs: Long = 0L,
 )
 
 sealed interface EchoLinkCastPlan {
@@ -40,6 +42,7 @@ sealed interface EchoLinkCastPlan {
 enum class EchoLinkCastBlockReason {
     EmptyQueue,
     UnsupportedSource,
+    ClippedTrack,
 }
 
 object EchoLinkCastPolicy {
@@ -62,17 +65,24 @@ object EchoLinkCastPolicy {
         return EchoLinkCastKind.Unsupported
     }
 
-    fun plan(tracks: List<EchoLinkCastSourceTrack>, startIndex: Int): EchoLinkCastPlan {
+    fun plan(
+        tracks: List<EchoLinkCastSourceTrack>,
+        startIndex: Int,
+        maxTracks: Int = MaxQueueSize,
+    ): EchoLinkCastPlan {
         if (tracks.isEmpty()) return EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.EmptyQueue)
         val start = startIndex.coerceIn(0, tracks.lastIndex)
         val startKind = kind(tracks[start].id, tracks[start].uri, tracks[start].sourceId)
         if (startKind == EchoLinkCastKind.Unsupported) {
             return EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.UnsupportedSource)
         }
-        val run = tracks.drop(start).takeWhile { track ->
+        val run = tracks.asSequence().drop(start).takeWhile { track ->
             kind(track.id, track.uri, track.sourceId) == startKind
-        }.take(MaxQueueSize)
+        }.take(maxTracks).toList()
         if (run.isEmpty()) return EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.EmptyQueue)
+        if (run.any { it.clipStartMs > 0L || it.clipEndMs > 0L }) {
+            return EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.ClippedTrack)
+        }
         return when (startKind) {
             EchoLinkCastKind.PcLibrary -> EchoLinkCastPlan.HandoffPcLibrary(
                 tracks = run.map { track ->

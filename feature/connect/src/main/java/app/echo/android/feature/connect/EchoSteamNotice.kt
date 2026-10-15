@@ -1,7 +1,5 @@
 package app.echo.android.feature.connect
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -22,16 +20,11 @@ internal fun EchoSteamNotice() {
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        Column(
+        Text(
+            text = stringResource(R.string.echo_link_steam_edition_requirement),
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.echo_link_steam_edition_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-            )
-            ConnectNote(stringResource(R.string.echo_link_steam_edition_requirement))
-        }
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }

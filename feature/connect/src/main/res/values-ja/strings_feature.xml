@@ -116,7 +116,7 @@
     <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"ローカルファイルは「ライブラリ」で管理します。サーバー接続は不要です。"</string>
     <string name="feature_connect_music_on_this_phone_8611a5">"スマホ内の音楽"</string>
     <string name="feature_connect_not_configured_29b98a">"未設定"</string>
-    <string name="feature_connect_pc_link_4ca6bd">"PC 連携"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"Echo Link"</string>
     <string name="feature_connect_remove_acf88e">"削除"</string>
     <string name="feature_connect_remove_configuration_26bffc">"設定を削除"</string>
     <string name="feature_connect_remove_title_323067">"%1$s の設定を削除しますか？"</string>
@@ -191,5 +191,5 @@
     <string name="echo_link_cast_send">キャスト</string>
     <string name="echo_link_cast_pair_first">先にペアリング</string>
     <string name="echo_link_cast_playing_here">ここで再生中 · %1$s</string>
-    <string name="echo_link_battery_hint">Android の省電力機能やバックグラウンド制限により、画面消灯時や ECHO がバックグラウンドにあるときに、Echo Link の接続、キャスト、スマートフォンのライブラリ共有が中断される場合があります。その場合は、システム設定で ECHO のバックグラウンド実行を許可し、バッテリー使用を「制限なし」に設定してください（名称は端末によって異なります）。バッテリー消費が増える可能性があります。</string>
+    <string name="echo_link_battery_hint">画面消灯時やバックグラウンドで切断される場合は、ECHO のバックグラウンド実行を許可し、バッテリー使用を「制限なし」に設定してください。</string>
 </resources>

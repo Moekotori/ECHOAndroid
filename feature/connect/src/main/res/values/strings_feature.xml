@@ -116,7 +116,7 @@
     <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"Local files are managed in Library. No server connection is needed."</string>
     <string name="feature_connect_music_on_this_phone_8611a5">"Music on this phone"</string>
     <string name="feature_connect_not_configured_29b98a">"Not configured"</string>
-    <string name="feature_connect_pc_link_4ca6bd">"PC link"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"Echo Link"</string>
     <string name="feature_connect_remove_acf88e">"Remove"</string>
     <string name="feature_connect_remove_configuration_26bffc">"Remove configuration"</string>
     <string name="feature_connect_remove_title_323067">"Remove %1$s?"</string>
@@ -193,5 +193,7 @@
     <string name="echo_link_cast_send">Cast</string>
     <string name="echo_link_cast_pair_first">Pair first</string>
     <string name="echo_link_cast_playing_here">Playing here · %1$s</string>
-    <string name="echo_link_battery_hint">Android battery saving and background restrictions may interrupt Echo Link connections, casting, or phone library sharing when the screen is off or ECHO is in the background. If this happens, allow ECHO to run in the background in system settings and set its battery usage to Unrestricted (names vary by device). This may increase battery usage.</string>
+    <string name="echo_link_battery_hint">If Echo Link disconnects in the background, allow ECHO to run in the background and set battery usage to Unrestricted.</string>
+    <string name="echo_link_cast_clipped_track">This queue contains CUE or clipped tracks, which cannot be cast yet. Choose a queue of whole tracks.</string>
+    <string name="echo_link_cast_prepare_failed">Could not prepare the cast. Please try again.</string>
 </resources>

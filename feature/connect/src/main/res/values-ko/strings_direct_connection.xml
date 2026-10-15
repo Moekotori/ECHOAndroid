@@ -2,6 +2,5 @@
 <resources>
     <string name="echo_link_direct_address_hint">PC의 ECHOSteam에서 Echo Link를 켠 다음 같은 LAN의 주변 PC를 선택하거나 IP 주소를 입력하세요. 직접 연결을 지원하지 않는 PC는 전체 페어링 링크로 연결할 수 있습니다.</string>
     <string name="echo_link_pairing_entry">PC 주소 또는 페어링 링크</string>
-    <string name="echo_link_steam_edition_title">ECHO Steam 에디션</string>
-    <string name="echo_link_steam_edition_requirement">PC 연동에는 ECHO Steam 에디션이 필요합니다. 커뮤니티 에디션에서는 사용할 수 없습니다.</string>
+    <string name="echo_link_steam_edition_requirement">ECHO Pro가 필요합니다</string>
 </resources>

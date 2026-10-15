@@ -116,7 +116,7 @@
     <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"Les fichiers locaux sont gérés dans Bibliothèque. Aucune connexion serveur n'est nécessaire."</string>
     <string name="feature_connect_music_on_this_phone_8611a5">"Musique sur ce téléphone"</string>
     <string name="feature_connect_not_configured_29b98a">"Non configuré"</string>
-    <string name="feature_connect_pc_link_4ca6bd">"Liaison PC"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"Echo Link"</string>
     <string name="feature_connect_remove_acf88e">"Supprimer"</string>
     <string name="feature_connect_remove_configuration_26bffc">"Supprimer la configuration"</string>
     <string name="feature_connect_remove_title_323067">"Supprimer %1$s ?"</string>
@@ -191,5 +191,5 @@
     <string name="echo_link_cast_send">Diffuser</string>
     <string name="echo_link_cast_pair_first">Appairer d\'abord</string>
     <string name="echo_link_cast_playing_here">Lecture ici · %1$s</string>
-    <string name="echo_link_battery_hint">Les économies de batterie et les restrictions en arrière-plan Android peuvent interrompre les connexions Echo Link, la diffusion ou le partage de la bibliothèque du téléphone lorsque l’écran est éteint ou que ECHO est en arrière-plan. Si cela se produit, autorisez ECHO à fonctionner en arrière-plan dans les paramètres système et réglez son utilisation de la batterie sur « Sans restriction » (le nom varie selon l’appareil). Cela peut augmenter la consommation de batterie.</string>
+    <string name="echo_link_battery_hint">Si Echo Link se déconnecte en arrière-plan, autorisez ECHO à fonctionner en arrière-plan et réglez la batterie sur « Sans restriction ».</string>
 </resources>

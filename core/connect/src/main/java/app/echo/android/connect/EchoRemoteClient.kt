@@ -19,6 +19,7 @@ import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.playback.EchoLinkPlaybackUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class EchoRemoteClient internal constructor(
     private val scope: CoroutineScope,
@@ -869,7 +871,7 @@ class EchoRemoteClient internal constructor(
         positionMs: Long,
         onFailure: (Throwable?) -> Unit = {},
         onSuccess: () -> Unit = {},
-    ) {
+    ): Job? {
         val startTrack = tracks.getOrNull(startIndex) ?: tracks.firstOrNull()
         val trackId = startTrack?.id?.takeIf { it.isNotBlank() } ?: run {
             _library.update {
@@ -878,7 +880,7 @@ class EchoRemoteClient internal constructor(
                 )
             }
             onFailure(null)
-            return
+            return null
         }
         val target = endpoint ?: run {
             _status.update {
@@ -888,12 +890,13 @@ class EchoRemoteClient internal constructor(
                 )
             }
             onFailure(null)
-            return
+            return null
         }
-        val ids = EchoLinkLibraryQueryPolicy.playableLinkedPcTrackIds(tracks)
-        val startId = EchoLinkLibraryQueryPolicy.queueReplaceStartId(ids, trackId) ?: trackId
         val connection = connectGeneration
-        scope.launch {
+        return scope.launch {
+            val ids = withContext(Dispatchers.Default) { EchoLinkLibraryQueryPolicy.playableLinkedPcTrackIds(tracks) }
+            val startId = EchoLinkLibraryQueryPolicy.queueReplaceStartId(ids, trackId) ?: trackId
+            if (connection != connectGeneration) return@launch
             if (ids.size > 1) {
                 val replaced = dispatchCommand(
                     target = target,
@@ -917,14 +920,14 @@ class EchoRemoteClient internal constructor(
         positionMs: Long,
         onFailure: (Throwable?) -> Unit = {},
         onSuccess: () -> Unit = {},
-    ) {
+    ): Job? {
         val startItem = items.getOrNull(startIndex) ?: items.firstOrNull()
         if (startItem == null || startItem.streamUrl.isBlank()) {
             val message = text(R.string.connect_no_local_cast_file)
             _library.update { it.copy(error = message) }
             _status.update { it.copy(error = message) }
             onFailure(null)
-            return
+            return null
         }
         val target = endpoint ?: run {
             _status.update {
@@ -934,11 +937,11 @@ class EchoRemoteClient internal constructor(
                 )
             }
             onFailure(null)
-            return
+            return null
         }
         val connection = connectGeneration
         val safePosition = positionMs.coerceAtLeast(0L)
-        scope.launch {
+        return scope.launch {
             val castFailure: (Throwable) -> Unit = { error ->
                 applyCastFailure(error)
                 onFailure(error)

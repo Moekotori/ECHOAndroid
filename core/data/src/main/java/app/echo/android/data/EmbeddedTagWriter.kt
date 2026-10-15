@@ -293,14 +293,14 @@ class EmbeddedTagWriter(
         val verified = runCatching {
             FileInputStream(file).use { AudioFileTagRewriter.readFields(it) }
         }.getOrNull()
-        return verified?.title == fields.title && verified.artist == fields.artist
+        return verified.matchesWrittenTags(fields)
     }
 
     private fun liveFieldsMatch(uri: Uri, fields: AudioTagFields): Boolean {
         val live = runCatching {
             resolver.openInputStream(uri)?.use { AudioFileTagRewriter.readFields(it) }
         }.getOrNull()
-        return live?.title == fields.title && live.artist == fields.artist
+        return live.matchesWrittenTags(fields)
     }
 
     private fun writableLocalFile(uri: Uri): File? {

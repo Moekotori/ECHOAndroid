@@ -53,6 +53,7 @@ class EchoLinkSession(private val application: Application) {
     val client = EchoRemoteClient(scope, application).apply { setForeground(false) }
     val phoneLibrary = EchoPhoneLibrarySession(application, client, scope)
     val playbackRouter = EchoLinkPlaybackRouter(client)
+    internal val phoneCastTransfer = EchoPhoneCastTransfer(this, scope)
     internal val systemCast by lazy { EchoSystemCastTransfer(application, this).also { externalCast = it } }
     private var externalCast: EchoExternalCastController? = null
     private val castPeerHost = AtomicReference<String?>(null)
@@ -222,31 +223,7 @@ class EchoLinkSession(private val application: Application) {
         castPeerHost.set(peerHost ?: client.status.value.endpoint?.host)
         val host = advertisedHost ?: EchoLinkLanAddresses.ipv4(application) ?: return null
         val port = runCatching { castServer.start() }.getOrNull() ?: return null
-        val publications = tracks.map { track ->
-            val artworkToken = track.artworkUri
-                ?.takeIf { EchoLinkCastPolicy.isLocalFileUri(it) }
-                ?.let { EchoLinkCastPolicy.newToken() }
-            EchoLinkCastPublication(
-                token = EchoLinkCastPolicy.newToken(),
-                trackId = track.id,
-                uri = track.uri,
-                mimeType = track.mimeType,
-                title = track.title,
-                artist = track.artist,
-                album = track.album,
-                artworkUrl = track.artworkUri,
-                artworkToken = artworkToken,
-                durationMs = track.durationMs,
-                format = EchoLinkCastFormat.fromTrack(
-                    uri = track.uri,
-                    mimeType = track.mimeType,
-                    sampleRateHz = track.sampleRateHz,
-                    bitDepth = track.bitDepth,
-                    channelCount = track.channelCount,
-                    codec = track.codec,
-                ),
-            )
-        }
+        val publications = localCastPublications(tracks)
         val items = castServer.publish(publications, host, port)
         if (items.isEmpty()) return null
         if (runCatching { EchoLinkCastService.start(application) }.isFailure) {
@@ -254,6 +231,34 @@ class EchoLinkSession(private val application: Application) {
             return null
         }
         return items
+    }
+
+    // Called on IO; the caller owns rollback even if cancellation arrives during preparation.
+    internal fun preparePhoneCast(
+        tracks: List<EchoLinkCastSourceTrack>,
+        checkActive: () -> Unit,
+    ): app.echo.android.connect.EchoLinkCastPreparedQueue? {
+        val publications = localCastPublications(tracks, checkActive)
+        checkActive()
+        val host = EchoLinkLanAddresses.ipv4(application) ?: return null
+        val port = castServer.start()
+        val prepared = castServer.prepare(publications, host, port)
+        try {
+            checkActive()
+            EchoLinkCastService.start(application)
+            return prepared
+        } catch (error: Throwable) {
+            rollbackPhoneCast(prepared)
+            throw error
+        }
+    }
+
+    internal fun rollbackPhoneCast(prepared: app.echo.android.connect.EchoLinkCastPreparedQueue) {
+        castServer.rollback(prepared)
+        if (!castServer.hasPublications) {
+            castServer.stop()
+            EchoLinkCastService.stop(application)
+        }
     }
 
     internal suspend fun clearForSystemCast() {
@@ -485,6 +490,11 @@ class EchoLinkSession(private val application: Application) {
     }
 
     fun stopLocalCast() {
+        phoneCastTransfer.cancel()
+        releaseLocalCast()
+    }
+
+    internal fun releaseLocalCast() {
         externalCast?.takeIf { it.active }?.stop()
         runCatching { chromecastClient.close() }
         followJob?.cancel()

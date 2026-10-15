@@ -71,6 +71,7 @@ import app.echo.android.feature.home.SearchResultType
 import app.echo.android.connect.EchoDlnaException
 import app.echo.android.connect.EchoPairingParser
 import app.echo.android.connect.EchoLinkCastFormat
+import app.echo.android.connect.EchoLinkCastBlockReason
 import app.echo.android.connect.EchoLinkCastPlan
 import app.echo.android.connect.EchoLinkCastPolicy
 import app.echo.android.connect.EchoLinkCastSourceTrack
@@ -145,6 +146,9 @@ import app.echo.android.R
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
@@ -430,11 +434,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             sendingCastAddress = null
         }
     }
-    val phoneCastPlan = remember(playbackQueue) {
-        EchoLinkCastPolicy.plan(
-            tracks = playbackQueue.items.map { it.toCastSource() },
-            startIndex = playbackQueue.currentIndex,
-        )
+    val phoneCastPlan by produceState<EchoLinkCastPlan>(
+        EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.EmptyQueue), playbackQueue,
+    ) {
+        value = withContext(Dispatchers.Default) {
+            EchoLinkCastPolicy.plan(
+                tracks = playbackQueue.items.map { it.toCastSource() },
+                startIndex = playbackQueue.currentIndex,
+                maxTracks = Int.MAX_VALUE,
+            )
+        }
     }
     val phoneCastFormatLabel = remember(playbackStatus.track, playbackStatus.diagnostics) {
         val track = playbackStatus.track ?: return@remember null
@@ -654,52 +663,38 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         val queue = viewModel.playbackQueue.value
         val phoneId = viewModel.playbackStatus.value.track?.id
         val positionMs = viewModel.playbackPosition.value.positionMs
-        when (
-            val plan = EchoLinkCastPolicy.plan(
-                tracks = queue.items.mapIndexed { index, item ->
-                    item.toCastSource(
-                        diagnostics = viewModel.playbackStatus.value.diagnostics.takeIf {
-                            index == queue.currentIndex
-                        },
-                    )
-                },
-                startIndex = queue.currentIndex,
-            )
-        ) {
-            is EchoLinkCastPlan.Blocked -> return
-            is EchoLinkCastPlan.HandoffPcLibrary -> {
-                echoLinkSession.stopLocalCast()
-                castingToPc = true
-                remoteClient.handoffPhoneQueueToPc(
-                    tracks = plan.tracks,
-                    startIndex = plan.startIndex,
-                    positionMs = positionMs,
-                    onFailure = { castingToPc = false },
-                    onSuccess = { finishPhoneCast(phoneId) },
-                )
-            }
-            is EchoLinkCastPlan.LocalHttp -> {
-                castingToPc = true
-                val items = echoLinkSession.publishLocalCast(plan.tracks)
-                if (items == null) {
-                    castingToPc = false
-                    echoLinkSession.stopLocalCast()
-                    castSetupError = context.getString(R.string.echo_link_cast_no_lan)
-                    return
-                }
-                castSetupError = null
-                remoteClient.castRemoteQueueToPc(
-                    items = items,
-                    startIndex = plan.startIndex,
-                    positionMs = positionMs,
-                    onFailure = {
-                        castingToPc = false
-                        echoLinkSession.stopLocalCast()
+        val diagnostics = viewModel.playbackStatus.value.diagnostics
+        castingToPc = true
+        castSetupError = null
+        echoLinkSession.phoneCastTransfer.start(
+            buildPlan = {
+                EchoLinkCastPolicy.plan(
+                    tracks = queue.items.mapIndexed { index, item ->
+                        kotlin.coroutines.coroutineContext.ensureActive()
+                        item.toCastSource(diagnostics.takeIf { index == queue.currentIndex })
                     },
-                    onSuccess = { finishPhoneCast(phoneId) },
+                    startIndex = queue.currentIndex,
+                    maxTracks = Int.MAX_VALUE,
                 )
-            }
-        }
+            },
+            positionMs = positionMs,
+            onBlocked = { reason ->
+                castingToPc = false
+                castSetupError = context.getString(
+                    if (reason == EchoLinkCastBlockReason.ClippedTrack)
+                        app.echo.android.feature.connect.R.string.echo_link_cast_clipped_track
+                    else app.echo.android.feature.connect.R.string.echo_link_cast_unsupported_source,
+                )
+            },
+            onFailure = { error ->
+                castingToPc = false
+                castSetupError = if (error.message == "no_lan") context.getString(R.string.echo_link_cast_no_lan)
+                    else remoteClient.status.value.error
+                        ?: context.getString(app.echo.android.feature.connect.R.string.echo_link_cast_prepare_failed)
+            },
+            onSuccess = { finishPhoneCast(phoneId) },
+            onCancelled = { castingToPc = false },
+        )
     }
 
     fun requestPhoneCast(address: String, token: String) {
@@ -2330,6 +2325,8 @@ private fun EchoTrackRef.toCastSource(
     artworkUri = artworkUri,
     durationMs = durationMs,
     sourceId = sourceId,
+    clipStartMs = clipStartMs,
+    clipEndMs = clipEndMs,
     sampleRateHz = diagnostics?.sampleRateHz?.takeIf { it > 0 } ?: sampleRateHz,
     bitDepth = diagnostics?.bitDepth?.takeIf { it > 0 },
     channelCount = diagnostics?.channelCount?.takeIf { it > 0 },

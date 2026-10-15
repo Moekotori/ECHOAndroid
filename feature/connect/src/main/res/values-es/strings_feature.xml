@@ -116,7 +116,7 @@
     <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"Los archivos locales se administran en Biblioteca. No se necesita enlace a un servidor."</string>
     <string name="feature_connect_music_on_this_phone_8611a5">"Música en este teléfono"</string>
     <string name="feature_connect_not_configured_29b98a">"Sin configurar"</string>
-    <string name="feature_connect_pc_link_4ca6bd">"Enlace PC"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"Echo Link"</string>
     <string name="feature_connect_remove_acf88e">"Quitar"</string>
     <string name="feature_connect_remove_configuration_26bffc">"Quitar configuración"</string>
     <string name="feature_connect_remove_title_323067">"¿Quitar %1$s?"</string>
@@ -191,5 +191,5 @@
     <string name="echo_link_cast_send">Transmitir</string>
     <string name="echo_link_cast_pair_first">Emparejar primero</string>
     <string name="echo_link_cast_playing_here">Reproduciendo aquí · %1$s</string>
-    <string name="echo_link_battery_hint">El ahorro de batería y las restricciones en segundo plano de Android pueden interrumpir las conexiones de Echo Link, la transmisión o el uso compartido de la biblioteca del teléfono cuando la pantalla está apagada o ECHO está en segundo plano. Si ocurre, permite que ECHO se ejecute en segundo plano en los ajustes del sistema y configura su uso de batería como «Sin restricciones» (el nombre varía según el dispositivo). Esto puede aumentar el consumo de batería.</string>
+    <string name="echo_link_battery_hint">Si Echo Link se desconecta en segundo plano, permite que ECHO se ejecute en segundo plano y configura la batería como «Sin restricciones».</string>
 </resources>

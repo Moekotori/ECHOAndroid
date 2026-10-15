@@ -116,7 +116,7 @@
     <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"本機檔案在「音樂庫」中管理，不必在這裡設定連線。"</string>
     <string name="feature_connect_music_on_this_phone_8611a5">"手機裡的音樂"</string>
     <string name="feature_connect_not_configured_29b98a">"尚未設定"</string>
-    <string name="feature_connect_pc_link_4ca6bd">"PC 連線"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"Echo Link"</string>
     <string name="feature_connect_remove_acf88e">"移除"</string>
     <string name="feature_connect_remove_configuration_26bffc">"移除設定"</string>
     <string name="feature_connect_remove_title_323067">"移除 %1$s 設定？"</string>
@@ -193,5 +193,7 @@
     <string name="echo_link_cast_send">投送</string>
     <string name="echo_link_cast_pair_first">先配對</string>
     <string name="echo_link_cast_playing_here">正在這台裝置播放 · %1$s</string>
-    <string name="echo_link_battery_hint">Android 省電策略和背景限制可能導致 ECHO 在鎖定螢幕或退到背景後，Echo Link 連線、投放或手機音樂庫分享中斷。若遇到此問題，請在系統設定中允許 ECHO 在背景執行，並將其電池使用設為「不受限制」（不同手機名稱可能不同）。這可能增加耗電。</string>
+    <string name="echo_link_battery_hint">若鎖定螢幕或背景執行時斷線，請允許 ECHO 在背景執行，並將電池使用設為「不受限制」。</string>
+    <string name="echo_link_cast_clipped_track">待投送佇列包含 CUE 分軌或片段，暫不支援投送。請選擇完整音軌組成的佇列。</string>
+    <string name="echo_link_cast_prepare_failed">投送準備失敗，請重試。</string>
 </resources>

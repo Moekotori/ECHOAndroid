@@ -58,7 +58,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -770,60 +769,6 @@ private fun TrackMetadataEditorSheet(
     }
 }
 
-private class TrackMetadataEditorState {
-    var title by mutableStateOf("")
-    var artist by mutableStateOf("")
-    var album by mutableStateOf("")
-    var albumArtist by mutableStateOf("")
-    var trackNumber by mutableStateOf("")
-    var discNumber by mutableStateOf("")
-    var year by mutableStateOf("")
-    var composer by mutableStateOf("")
-    var lyrics by mutableStateOf("")
-    var lyricsLoading by mutableStateOf(false)
-    val canSave: Boolean
-        get() = title.isNotBlank() && artist.isNotBlank()
-
-    fun toUpdate(track: EchoTrack): EchoTrackMetadataUpdate =
-        EchoTrackMetadataUpdate(
-            trackId = track.id,
-            title = title.trim(),
-            artist = artist.trim(),
-            album = album.trim().takeIf { it.isNotBlank() },
-            albumArtist = albumArtist.trim().takeIf { it.isNotBlank() },
-            trackNumber = trackNumber.toPositiveIntOrNull(),
-            discNumber = discNumber.toPositiveIntOrNull(),
-            year = year.toPositiveIntOrNull(),
-            composer = composer.trim().takeIf { it.isNotBlank() },
-            artworkUri = track.artworkUri,
-            lyrics = lyrics,
-        )
-}
-
-@Composable
-private fun rememberTrackMetadataEditorState(track: EchoTrack): TrackMetadataEditorState {
-    val state = remember(track.id) {
-        TrackMetadataEditorState().apply {
-            title = track.title
-            artist = track.artist
-            album = track.album.orEmpty()
-            albumArtist = track.albumArtist.orEmpty()
-            trackNumber = track.trackNumber?.toString().orEmpty()
-            discNumber = track.discNumber?.toString().orEmpty()
-            year = track.year?.toString().orEmpty()
-            composer = track.composer.orEmpty()
-        }
-    }
-    val loader = LocalEmbeddedLyricsLoader.current
-    LaunchedEffect(track.id, loader) {
-        if (loader == null) return@LaunchedEffect
-        state.lyricsLoading = true
-        state.lyrics = runCatching { loader.load(track.id) }.getOrNull().orEmpty()
-        state.lyricsLoading = false
-    }
-    return state
-}
-
 @Composable
 private fun TrackMetadataEditorFields(
     state: TrackMetadataEditorState,
@@ -895,7 +840,7 @@ private fun TrackMetadataEditorFields(
     }
     TextField(
         value = state.lyrics,
-        onValueChange = { state.lyrics = it },
+        onValueChange = state::editLyrics,
         enabled = !saving && !state.lyricsLoading,
         label = { Text(stringResource(L10nR.string.metadata_lyrics)) },
         minLines = 4,
@@ -1178,9 +1123,6 @@ private fun formatTrackSampleRate(hz: Int): String =
     } else {
         String.format("%.1fkHz", hz / 1000.0)
     }
-
-private fun String.toPositiveIntOrNull(): Int? =
-    trim().toIntOrNull()?.takeIf { it > 0 }
 
 @Composable
 private fun formatTrackFileSize(bytes: Long): String =

@@ -116,7 +116,7 @@
     <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"本地文件在「曲库」中管理，无需在这里配置连接。"</string>
     <string name="feature_connect_music_on_this_phone_8611a5">"手机里的音乐"</string>
     <string name="feature_connect_not_configured_29b98a">"尚未配置"</string>
-    <string name="feature_connect_pc_link_4ca6bd">"PC 联动"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"Echo Link"</string>
     <string name="feature_connect_remove_acf88e">"移除"</string>
     <string name="feature_connect_remove_configuration_26bffc">"移除配置"</string>
     <string name="feature_connect_remove_title_323067">"移除 %1$s 配置？"</string>
@@ -193,5 +193,7 @@
     <string name="echo_link_cast_send">投送</string>
     <string name="echo_link_cast_pair_first">先配对</string>
     <string name="echo_link_cast_playing_here">正在此设备播放 · %1$s</string>
-    <string name="echo_link_battery_hint">Android 省电策略和后台限制可能导致 ECHO 在锁屏或退到后台后，Echo Link 连接、投放或手机曲库共享中断。若遇到此问题，请在系统设置中允许 ECHO 后台运行，并将其电池使用设为「不受限制」（不同手机名称可能不同）。这可能增加耗电。</string>
+    <string name="echo_link_battery_hint">若锁屏或后台时断连，请允许 ECHO 后台运行，并将电池使用设为「不受限制」。</string>
+    <string name="echo_link_cast_clipped_track">待投送队列包含 CUE 分轨或片段，暂不支持投送。请选择完整音轨组成的队列。</string>
+    <string name="echo_link_cast_prepare_failed">投送准备失败，请重试。</string>
 </resources>

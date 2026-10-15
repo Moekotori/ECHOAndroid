@@ -68,6 +68,15 @@ internal class LyricsController(
         }
         if (lastLyricsTrackId == trackId) updateLyricsForTrack(trackId, force = true)
     }
+
+    suspend fun applyEmbeddedLyricsEdit(trackId: String, text: String) {
+        val lyrics = withContext(Dispatchers.Default) {
+            EchoLyricsParser.parse(text, sourceLabel = "Embedded tags")
+        }
+        // The explicit tag edit becomes the selected source, including an intentional clear.
+        // Keep the old selection intact until the audio file has been written successfully.
+        saveEditedLyrics(trackId, lyrics)
+    }
     suspend fun backupSelections(lookup: suspend (Set<String>) -> Map<String,String>) = withContext(Dispatchers.IO) {
         importedLyricsStore.selectedForBackup(lookup)
     }
@@ -248,7 +257,9 @@ internal class LyricsController(
                     if (echoLinkLyrics != null) {
                         val userOffsetMs = importedLyricsStore.lyricsOffsetForTrack(trackId)
                         LyricsLoadResult(
-                            state = EchoLyricsLoadState.Ready(echoLinkLyrics),
+                            state = if (echoLinkLyrics.lines.any { it.text.isNotBlank() }) {
+                                EchoLyricsLoadState.Ready(echoLinkLyrics)
+                            } else EchoLyricsLoadState.Missing,
                             userOffsetMs = userOffsetMs,
                         )
                     } else {

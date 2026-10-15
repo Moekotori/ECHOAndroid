@@ -582,6 +582,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             handleEmbeddedTagWriteResult(
                 trackId = update.trackId,
                 result = libraryController.updateTrackMetadata(update).fileWrite,
+                lyricsText = update.lyrics,
+                syncLyricsSelection = true,
             )
         }
     }
@@ -635,6 +637,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     ),
                     lyricsText = pending.lyricsText,
                     artworkUri = pending.artworkUri,
+                    syncLyricsSelection = pending.syncLyricsSelection,
                 )
             }
         }
@@ -653,15 +656,34 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    private fun handleEmbeddedTagWriteResult(
+    private suspend fun handleEmbeddedTagWriteResult(
         trackId: String,
         result: EmbeddedTagWriteResult,
         lyricsText: String? = null,
         artworkUri: String? = null,
+        syncLyricsSelection: Boolean = false,
     ) {
         when (result) {
-            is EmbeddedTagWriteResult.Written ->
+            is EmbeddedTagWriteResult.Written -> {
+                if (syncLyricsSelection && lyricsText != null) {
+                    try {
+                        lyricsController.applyEmbeddedLyricsEdit(trackId, lyricsText)
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.Failed
+                        EchoErrorLog.record(
+                            EchoErrorSource.Library,
+                            "Audio tags were written, but the selected lyrics copy could not be updated.",
+                            detail = "$trackId: ${error.message}",
+                        )
+                        return
+                    }
+                } else if (lyricsController.currentTrackId == trackId) {
+                    lyricsController.updateLyricsForTrack(trackId, force = true)
+                }
                 _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.Written
+            }
             EmbeddedTagWriteResult.UnsupportedFormat -> {
                 _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.UnsupportedFormat
                 EchoErrorLog.record(
@@ -688,6 +710,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     intentSender = result.intentSender,
                     lyricsText = lyricsText,
                     artworkUri = artworkUri,
+                    syncLyricsSelection = syncLyricsSelection,
                 )
             EmbeddedTagWriteResult.NeedsStoragePermission ->
                 _pendingEmbeddedTagWrite.value = PendingEmbeddedTagWrite(
@@ -697,6 +720,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     needsStoragePermission = true,
                     lyricsText = lyricsText,
                     artworkUri = artworkUri,
+                    syncLyricsSelection = syncLyricsSelection,
                 )
         }
     }
@@ -2220,6 +2244,7 @@ data class PendingEmbeddedTagWrite(
     val needsStoragePermission: Boolean = false,
     val lyricsText: String? = null,
     val artworkUri: String? = null,
+    val syncLyricsSelection: Boolean = false,
 )
 
 enum class EmbeddedTagWriteUserMessage {
