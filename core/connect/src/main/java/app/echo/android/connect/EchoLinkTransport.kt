@@ -102,7 +102,8 @@ internal interface EchoLinkTransport {
     suspend fun fetchAlbums(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkAlbumPage
     suspend fun fetchAlbumTracks(endpoint: EchoRemoteEndpoint, albumId: String, page: Int, pageSize: Int): EchoLinkTrackPage
     suspend fun fetchFolders(endpoint: EchoRemoteEndpoint, path: String): EchoLinkFolderPage
-    suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int, query: String): EchoLinkFolderPage =
+    suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int, query: String,
+        sort: app.echo.android.model.library.FolderSortMode = app.echo.android.model.library.FolderSortMode.Path): EchoLinkFolderPage =
         fetchFolders(endpoint, path)
     suspend fun resolveStream(endpoint: EchoRemoteEndpoint, trackId: String): EchoLinkStreamResponse
     suspend fun fetchLyrics(endpoint: EchoRemoteEndpoint, trackId: String): EchoRemoteLyrics?
@@ -458,9 +459,10 @@ internal class OkHttpEchoLinkTransport(
         return@withContext json.toFolderPage(endpoint, path)
     }
 
-    override suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int, query: String): EchoLinkFolderPage =
+    override suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int, query: String,
+        sort: app.echo.android.model.library.FolderSortMode): EchoLinkFolderPage =
         withContext(responseDispatcher) {
-            if (endpoint.libraryOnly) bridge.folders(endpoint, path, page, query) else fetchFolders(endpoint, path)
+            if (endpoint.libraryOnly) bridge.folders(endpoint, path, page, query, sort) else fetchFolders(endpoint, path)
         }
 
     override suspend fun resolveStream(

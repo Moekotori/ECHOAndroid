@@ -248,6 +248,7 @@ fun LibraryScreen(
     linkedLibraryActive: Boolean,
     linkedLibraryAvailable: Boolean,
     linkedLibraryState: StateFlow<EchoRemoteLibraryState>,
+    linkedLibraryOnly: Boolean = false,
     selectedLibrarySourceId: String,
     artists: Flow<PagingData<ArtistSummary>>,
     composers: Flow<PagingData<app.echo.android.model.library.GenreSummary>>,
@@ -292,7 +293,7 @@ fun LibraryScreen(
     onChangeLinkedFolderPage: (Int) -> Unit = {},
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
-    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit = { _, _ -> },
+    onPlayLinkedQueueOnPc: ((List<EchoRemoteTrack>, Int) -> Unit)? = null,
     onPlayTrack: (EchoTrack, LibraryPlaybackOrigin) -> Unit,
     onPlayNext: (EchoTrack) -> Unit = {},
     onAddNextUp: (EchoTrack) -> Unit = {},
@@ -734,6 +735,7 @@ fun LibraryScreen(
                         }
                         LinkedEchoLibraryPage(
                             state = linkedState,
+                            libraryOnly = linkedLibraryOnly,
                             query = libraryQuery,
                             selectedMode = effectiveLinkedMode,
                             modes = linkedModes,
@@ -1146,6 +1148,7 @@ private fun LinkedLibraryRefreshAction(
 @Composable
 private fun LinkedEchoLibraryPage(
     state: EchoRemoteLibraryState,
+    libraryOnly: Boolean,
     query: String,
     selectedMode: LinkedLibraryMode,
     modes: List<LinkedLibraryMode>,
@@ -1173,7 +1176,7 @@ private fun LinkedEchoLibraryPage(
     onChangeFolderPage: (Int) -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
-    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: ((List<EchoRemoteTrack>, Int) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val tracks = state.tracks
@@ -1354,7 +1357,7 @@ private fun LinkedEchoLibraryPage(
             mode == LinkedLibraryMode.Songs -> LinkedTrackList(
                 tracks = sortedTracks,
                 onPlayLinkedTrack = onPlayLinkedTrack,
-                onPlayOnPc = { track -> onPlayLinkedQueueOnPc(listOf(track), 0) },
+                onPlayOnPc = onPlayLinkedQueueOnPc?.let { playOnPc -> { track -> playOnPc(listOf(track), 0) } },
                 showAudioInfoTags = showTrackAudioInfoTags,
                 loadedCount = state.tracks.size,
                 totalCount = state.totalCount,
@@ -1387,6 +1390,7 @@ private fun LinkedEchoLibraryPage(
             )
             mode == LinkedLibraryMode.Folders -> LinkedFolderBrowser(
                 state = state,
+                libraryOnly = libraryOnly,
                 sortMode = folderSortMode,
                 onOpenFolder = onRefreshFolders,
                 onChangePage = onChangeFolderPage,
@@ -1567,7 +1571,7 @@ private fun LinkedPlaylistTracksPage(
     onBack: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
-    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: ((List<EchoRemoteTrack>, Int) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     LibraryDetailFrame(
@@ -1626,7 +1630,7 @@ private fun LinkedPlaylistTracksPage(
                 stringResource(L10nR.string.feature_library_this_pc_echo_playlist_has_no_playable_tracks_b480ec),
             )
             else -> {
-                if (tracks.isNotEmpty()) {
+                if (tracks.isNotEmpty() && onPlayLinkedQueueOnPc != null) {
                     TextButton(
                         onClick = { onPlayLinkedQueueOnPc(tracks, 0) },
                         modifier = Modifier.fillMaxWidth(),
@@ -1640,10 +1644,10 @@ private fun LinkedPlaylistTracksPage(
                         val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
                         onPlayLinkedQueue(tracks, index)
                     },
-                    onPlayOnPc = { track ->
+                    onPlayOnPc = onPlayLinkedQueueOnPc?.let { playOnPc -> { track ->
                         val index = tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
-                        onPlayLinkedQueueOnPc(tracks, index)
-                    },
+                        playOnPc(tracks, index)
+                    } },
                     showAudioInfoTags = false,
                     modifier = Modifier.weight(1f),
                 )
@@ -1693,7 +1697,7 @@ private fun LinkedAlbumTracksPage(
     onBack: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
-    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: ((List<EchoRemoteTrack>, Int) -> Unit)?,
     onOpenArtist: (() -> Unit)? = null,
     onOpenRemoteArtist: ((EchoRemoteTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -1727,7 +1731,7 @@ private fun LinkedAlbumTracksPage(
         onShuffle = {
             if (tracks.isNotEmpty()) onPlayLinkedQueue(tracks.shuffled(), 0)
         },
-        onPlayOnPc = { if (tracks.isNotEmpty()) onPlayLinkedQueueOnPc(tracks, 0) },
+        onPlayOnPc = onPlayLinkedQueueOnPc?.let { playOnPc -> { if (tracks.isNotEmpty()) playOnPc(tracks, 0) } },
         onPlayTrack = { track ->
             val remote = remoteTracksByUiId[track.id] ?: return@AlbumDetailListPage
             val index = tracks.indexOfFirst { it.id == remote.id }.coerceAtLeast(0)
@@ -1749,7 +1753,7 @@ private fun LinkedArtistTracksPage(
     onBack: () -> Unit,
     onPlayLinkedTrack: (EchoRemoteTrack) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
-    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: ((List<EchoRemoteTrack>, Int) -> Unit)?,
     onOpenRemoteAlbum: ((EchoRemoteTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -1765,7 +1769,7 @@ private fun LinkedArtistTracksPage(
         onShuffle = {
             if (tracks.isNotEmpty()) onPlayLinkedQueue(tracks.shuffled(), 0)
         },
-        onPlayOnPc = { if (tracks.isNotEmpty()) onPlayLinkedQueueOnPc(tracks, 0) },
+        onPlayOnPc = onPlayLinkedQueueOnPc?.let { playOnPc -> { if (tracks.isNotEmpty()) playOnPc(tracks, 0) } },
         onPlayTrack = { track ->
             val remote = remoteTracksByUiId[track.id] ?: return@ArtistDetailListPage
             val index = tracks.indexOfFirst { it.id == remote.id }.coerceAtLeast(0)

@@ -1,6 +1,7 @@
 package app.echo.android.connect
 
 import app.echo.android.model.connect.*
+import app.echo.android.model.library.FolderSortMode
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -21,14 +22,15 @@ class EchoBridgeFolderPaginationTest {
             assertEquals("11", request.url.queryParameter("page"))
             assertEquals("find", request.url.queryParameter("q"))
             val songs = request.url.queryParameter("kind") == "songs"
+            assertEquals(if (songs) null else "sizeDesc", request.url.queryParameter("sort"))
             JSONObject().put("catalog", JSONObject().put("page", 11).put("pageSize", 50).put("total", if (songs) 521 else 520)
                 .put("entries", JSONArray().apply { repeat(if (songs) 21 else 20) { i ->
                     put(JSONObject().put("id", "item-${501 + i}").put("title", "Item").put("canPlay", true))
                 } }))
         }
-        val root = transport.folders(endpoint, "", 11, "find")
+        val root = transport.folders(endpoint, "", 11, "find", FolderSortMode.Size)
         assertEquals(1, requests.size); assertEquals(20, root.folders.size); assertTrue(root.tracks.isEmpty())
-        val child = transport.folders(endpoint, "node:opaque", 11, "find")
+        val child = transport.folders(endpoint, "node:opaque", 11, "find", FolderSortMode.Size)
         assertEquals(3, requests.size); assertEquals(20, child.folders.size); assertEquals(21, child.tracks.size)
         assertEquals(520, child.folderTotalCount); assertEquals(521, child.trackTotalCount)
         assertEquals("node:opaque", requests.last().url.queryParameter("parentId"))
@@ -90,12 +92,42 @@ class EchoBridgeFolderPaginationTest {
         } finally { browser.reset(); scope.cancel() }
     }
 
+    @Test fun changedSortResetsPageDiscardsLateResultsAndInvalidatesSavedParentPage() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val state = MutableStateFlow(EchoRemoteLibraryState())
+        val late = CompletableDeferred<EchoLinkFolderPage>()
+        val requests = mutableListOf<Pair<Int, FolderSortMode>>()
+        val transport = object : EchoLinkTransport by OkHttpEchoLinkTransport() {
+            override suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int,
+                query: String, sort: FolderSortMode): EchoLinkFolderPage {
+                requests += page to sort
+                return if (sort == FolderSortMode.TrackCount) withContext(NonCancellable) { late.await() }
+                    else samplePage(path, page)
+            }
+        }
+        val browser = EchoBridgeFolderBrowser(scope, transport, { endpoint }, state) { it.message.orEmpty() }
+        try {
+            browser.refresh(""); browser.changePage(11); browser.refresh("root:music")
+            browser.changeSort(FolderSortMode.TrackCount)
+            browser.changeSort(FolderSortMode.Duration)
+            late.complete(samplePage("old", 12)); yield()
+            assertEquals(1, state.value.folderPage)
+            assertEquals("root:music", state.value.folderPath)
+            assertEquals(listOf("1"), state.value.folders.map { it.path })
+            browser.refresh("")
+            assertEquals(1 to FolderSortMode.Duration, requests.last())
+            browser.changePage(2)
+            assertEquals(2 to FolderSortMode.Duration, requests.last())
+        } finally { late.complete(samplePage("old", 12)); browser.reset(); scope.cancel() }
+    }
+
     private fun samplePage(path: String, page: Int) = EchoLinkFolderPage(path,
         listOf(EchoRemoteFolder(page.toString(), "Folder")), emptyList(), page, 50, 1051, 0)
 
     private fun browser(scope: CoroutineScope, state: MutableStateFlow<EchoRemoteLibraryState>,
         fetch: suspend (String, Int, String) -> EchoLinkFolderPage): EchoBridgeFolderBrowser =
         EchoBridgeFolderBrowser(scope, object : EchoLinkTransport by OkHttpEchoLinkTransport() {
-            override suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int, query: String) = fetch(path, page, query)
+            override suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int, query: String,
+                sort: FolderSortMode) = fetch(path, page, query)
         }, { endpoint }, state) { it.message.orEmpty() }
 }

@@ -853,6 +853,10 @@ class EchoRemoteClient internal constructor(
 
     fun changeFolderPage(page: Int) = bridgeFolders.changePage(page)
 
+    fun changeFolderSort(sort: app.echo.android.model.library.FolderSortMode) {
+        if (endpoint?.libraryOnly == true) bridgeFolders.changeSort(sort)
+    }
+
     fun playQueueOnPc(tracks: List<EchoRemoteTrack>, startIndex: Int = 0) {
         val ids = EchoLinkLibraryQueryPolicy.playableLinkedPcTrackIds(tracks)
         val startId = EchoLinkLibraryQueryPolicy.queueReplaceStartId(

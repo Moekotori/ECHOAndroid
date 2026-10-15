@@ -21,15 +21,18 @@ import app.echo.android.model.library.FolderSortMode
 @Composable
 internal fun LinkedFolderBrowser(
     state: EchoRemoteLibraryState,
+    libraryOnly: Boolean,
     sortMode: FolderSortMode,
     onOpenFolder: (String) -> Unit,
     onChangePage: (Int) -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
-    onPlayLinkedQueueOnPc: (List<EchoRemoteTrack>, Int) -> Unit,
+    onPlayLinkedQueueOnPc: ((List<EchoRemoteTrack>, Int) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val tracks = state.folderTracks
-    val folders = remember(state.folders, sortMode) { state.folders.sortedForLinkedLibrary(sortMode) }
+    val folders = remember(state.folders, sortMode, libraryOnly) {
+        if (libraryOnly) state.folders else state.folders.sortedForLinkedLibrary(sortMode)
+    }
     val parent = state.folderParentPath ?: EchoLinkLibraryQueryPolicy.parentFolderPath(state.folderPath)
     val listState = rememberLazyListState()
     val paged = state.folderPageCount > 1
@@ -40,7 +43,7 @@ internal fun LinkedFolderBrowser(
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.feature_library_open_parent_folder_2a11c0))
         }
-        if (tracks.isNotEmpty()) TextButton(onClick = { onPlayLinkedQueueOnPc(tracks, 0) }, modifier = Modifier.fillMaxWidth()) {
+        if (tracks.isNotEmpty() && onPlayLinkedQueueOnPc != null) TextButton(onClick = { onPlayLinkedQueueOnPc(tracks, 0) }, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.feature_library_play_on_pc_7c21a4))
         }
         LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().weight(1f),
@@ -48,14 +51,15 @@ internal fun LinkedFolderBrowser(
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(folders, key = { "folder:${it.path}" }) { folder ->
                 LinkedPlaylistRow(EchoRemotePlaylist(id = folder.path, name = folder.name, artworkUrl = folder.artworkUrl,
-                    trackCount = folder.trackCount, sourceLabel = folder.path), onOpen = { onOpenFolder(folder.path) })
+                    trackCount = folder.trackCount, sourceLabel = if (libraryOnly) "ECHO Bridge" else folder.path),
+                    onOpen = { onOpenFolder(folder.path) })
             }
             items(tracks, key = { "track:${it.id ?: "${it.title}-${it.artist}"}" }) { track ->
                 TrackRow(track = track.toEchoTrack(), onClick = {
                     onPlayLinkedQueue(tracks, tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0))
-                }, onPlayOnPc = {
-                    onPlayLinkedQueueOnPc(tracks, tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0))
-                }, showAudioInfoTags = false)
+                }, onPlayOnPc = onPlayLinkedQueueOnPc?.let { playOnPc -> {
+                    playOnPc(tracks, tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0))
+                } }, showAudioInfoTags = false)
             }
             if (folders.isEmpty() && tracks.isEmpty() && state.loadingFolderPath == null) item("empty") {
                 Text(stringResource(R.string.feature_library_pc_echo_has_no_folders_to_show_9e12b8))

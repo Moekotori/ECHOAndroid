@@ -2,6 +2,7 @@ package app.echo.android.connect
 
 import app.echo.android.model.connect.EchoRemoteEndpoint
 import app.echo.android.model.connect.EchoRemoteLibraryState
+import app.echo.android.model.library.FolderSortMode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -17,16 +18,17 @@ internal class EchoBridgeFolderBrowser(
     private val state: MutableStateFlow<EchoRemoteLibraryState>,
     private val errorMessage: (Throwable) -> String,
 ) {
-    private data class Parent(val path: String, val page: Int, val query: String)
+    private data class Parent(val path: String, val page: Int, val query: String, val sort: FolderSortMode)
     private val parents = ArrayDeque<Parent>()
     private var job: Job? = null
     private var generation = 0L
     private var active = false
     private var query = ""
+    private var sort = FolderSortMode.Path
 
     fun reset() {
         generation++; job?.cancel(); job = null
-        parents.clear(); active = false; query = ""
+        parents.clear(); active = false; query = ""; sort = FolderSortMode.Path
     }
 
     fun refresh(path: String) {
@@ -36,12 +38,12 @@ internal class EchoBridgeFolderBrowser(
             val ancestor = parents.indexOfLast { it.path == path }
             if (ancestor >= 0) {
                 val parent = parents[ancestor]
-                page = if (parent.query == current.query) parent.page else 1
+                page = if (parent.query == current.query && parent.sort == sort) parent.page else 1
                 while (parents.size > ancestor) parents.removeLast()
             } else if (path.isEmpty()) parents.clear()
             else if (active) {
                 if (parents.size == 128) parents.removeFirst()
-                parents.addLast(Parent(current.folderPath, current.folderPage, query))
+                parents.addLast(Parent(current.folderPath, current.folderPage, query, sort))
             }
         }
         load(path, page, current.query)
@@ -57,9 +59,16 @@ internal class EchoBridgeFolderBrowser(
         if (active && query != value) load(state.value.folderPath, 1, value)
     }
 
+    fun changeSort(value: FolderSortMode) {
+        if (sort == value) return
+        sort = value
+        if (active) load(state.value.folderPath, 1, query)
+    }
+
     private fun load(path: String, page: Int, search: String) {
         val target = endpoint() ?: return
         val request = ++generation
+        val requestedSort = sort
         job?.cancel(); active = true; query = search
         state.update { it.copy(folderPath = path, folderPage = page,
             folderPageCount = if (it.folderPath == path) it.folderPageCount else 1,
@@ -67,7 +76,7 @@ internal class EchoBridgeFolderBrowser(
             loadingFolderPath = path, error = null) }
         job = scope.launch {
             try {
-                val result = transport.fetchFolderPage(target, path, page, search)
+                val result = transport.fetchFolderPage(target, path, page, search, requestedSort)
                 if (request != generation || !EchoLinkRequestPolicy.isSameEndpoint(endpoint(), target)) return@launch
                 val total = maxOf(result.folderTotalCount, result.trackTotalCount)
                 val count = (total - 1).coerceAtLeast(0) / result.pageSize + 1

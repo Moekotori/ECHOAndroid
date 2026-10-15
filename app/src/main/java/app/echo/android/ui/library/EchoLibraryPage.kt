@@ -71,6 +71,10 @@ internal fun EchoLibraryPage(
     val libraryAlbumSortMode by viewModel.libraryAlbumSortMode.collectAsStateWithLifecycle()
     val libraryArtistSortMode by viewModel.libraryArtistSortMode.collectAsStateWithLifecycle()
     val libraryFolderSortMode by viewModel.libraryFolderSortMode.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(libraryFolderSortMode, remoteStatus.endpoint?.id,
+        remoteStatus.endpoint?.libraryOnly, remoteStatus.connectionState) {
+        remoteClient.changeFolderSort(libraryFolderSortMode)
+    }
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val localPlaylists by viewModel.localPlaylists.collectAsStateWithLifecycle()
     var playlistCoverTarget by rememberSaveable { mutableStateOf<String?>(null) }
@@ -252,6 +256,7 @@ internal fun EchoLibraryPage(
                 appSettings.echoLinkPreferLinkedLibrary,
             linkedLibraryAvailable = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
             linkedLibraryState = remoteClient.library,
+            linkedLibraryOnly = remoteStatus.endpoint?.libraryOnly == true,
             selectedLibrarySourceId = appSettings.librarySelectedSource,
             artists = viewModel.artists,
             genres = viewModel.genres,
@@ -311,7 +316,7 @@ internal fun EchoLibraryPage(
                     playbackRouter = playbackRouter,
                 )
             },
-            onPlayLinkedQueueOnPc = { tracks, startIndex ->
+            onPlayLinkedQueueOnPc = if (remoteStatus.endpoint?.libraryOnly == true) null else { tracks, startIndex ->
                 playbackRouter.selectRemoteMode(true)
                 remoteClient.playQueueOnPc(tracks, startIndex)
             },

@@ -1,6 +1,7 @@
 package app.echo.android.connect
 
 import app.echo.android.model.connect.*
+import app.echo.android.model.library.FolderSortMode
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
@@ -46,9 +47,17 @@ internal class EchoBridgeTransport(private val execute: suspend (Request) -> JSO
         return EchoLinkPlaylistPage(rows, catalog.optInt("total", rows.size))
     }
 
-    suspend fun folders(endpoint: EchoRemoteEndpoint, path: String, page: Int = 1, query: String = ""): EchoLinkFolderPage {
+    suspend fun folders(endpoint: EchoRemoteEndpoint, path: String, page: Int = 1, query: String = "",
+        sort: FolderSortMode = FolderSortMode.Path): EchoLinkFolderPage {
         val catalog = catalog(endpoint, "folders", query, page,
-            if (path.isBlank()) null else "folder", path.takeIf(String::isNotBlank))
+            if (path.isBlank()) null else "folder", path.takeIf(String::isNotBlank), when (sort) {
+                FolderSortMode.Path -> "titleAsc"
+                FolderSortMode.TrackCount -> "trackCountDesc"
+                FolderSortMode.AlbumCount -> "albumCountDesc"
+                FolderSortMode.Duration -> "durationDesc"
+                FolderSortMode.Size -> "sizeDesc"
+                FolderSortMode.RecentlyModified -> "fileModifiedDesc"
+            })
         val rows = entries(catalog).map { EchoRemoteFolder(path = it.getString("id"),
             name = it.optText("title").orEmpty(), trackCount = it.optInt("count").coerceAtLeast(0),
             artworkUrl = EchoBridgeArtwork.url(endpoint, it.optText("coverId"))) }
@@ -82,10 +91,11 @@ internal class EchoBridgeTransport(private val execute: suspend (Request) -> JSO
     }
 
     private suspend fun catalog(endpoint: EchoRemoteEndpoint, kind: String, query: String, page: Int,
-        parentKind: String? = null, parentId: String? = null): JSONObject = get(endpoint, "catalog") {
+        parentKind: String? = null, parentId: String? = null, sort: String? = null): JSONObject = get(endpoint, "catalog") {
         addQueryParameter("kind", kind); addQueryParameter("page", page.coerceAtLeast(1).toString())
         query.trim().takeIf(String::isNotBlank)?.let { addQueryParameter("q", it.take(256)) }
         parentKind?.let { addQueryParameter("parentKind", it); addQueryParameter("parentId", parentId) }
+        sort?.let { addQueryParameter("sort", it) }
     }.getJSONObject("catalog").also {
         if (it.optInt("pageSize") != 50 || it.optInt("page") != page || it.getJSONArray("entries").length() > 50)
             throw EchoLinkHttpException("invalid_bridge_catalog")
