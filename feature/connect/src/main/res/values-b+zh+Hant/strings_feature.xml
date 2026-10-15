@@ -196,4 +196,7 @@
     <string name="echo_link_battery_hint">若鎖定螢幕或背景執行時斷線，請允許 ECHO 在背景執行，並將電池使用設為「不受限制」。</string>
     <string name="echo_link_cast_clipped_track">待投送佇列包含 CUE 分軌或片段，暫不支援投送。請選擇完整音軌組成的佇列。</string>
     <string name="echo_link_cast_prepare_failed">投送準備失敗，請重試。</string>
+    <string name="echo_link_cast_atomic_phone_required">目前電腦不支援安全的佇列投送，請更新電腦端，或僅投送單曲。</string>
+    <string name="echo_link_cast_atomic_pc_unavailable">PC 曲庫暫不支援佇列與進度的一次性交接。請在電腦端選擇佇列，或僅交接單曲。</string>
+    <string name="echo_link_cast_source_changed">準備期間播放曲目或佇列已變更，請重新投送目前內容。</string>
 </resources>

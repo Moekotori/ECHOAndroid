@@ -45,6 +45,8 @@ enum class EchoLinkCastBlockReason {
     ClippedTrack,
 }
 
+class EchoLinkAtomicQueueRequiredException(val pcLibrary: Boolean) : IllegalStateException("Atomic queue handoff required")
+
 object EchoLinkCastPolicy {
     const val MaxQueueSize = 50
     const val PathPrefix = "/echo-link/cast/"

@@ -1,5 +1,8 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayAlbum
+import app.echo.android.design.displayTrack
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -210,10 +213,10 @@ private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Uni
         ArtworkTile(album.artworkUri, modifier = Modifier.size(88.dp),
             accent = echoAccentColor(), cornerRadius = 4.dp, elevation = 0.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(album.title, style = MaterialTheme.typography.titleMedium,
+            Text(displayAlbum(album.title), style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(album.albumArtist ?: album.artist ?: stringResource(L10nR.string.feature_home_unknown_artist_85ee30),
+            Text(displayArtist(album.albumArtist ?: album.artist),
                 style = MaterialTheme.typography.bodyMedium, color = homeBodyColor(),
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
@@ -222,5 +225,5 @@ private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Uni
 
 @Composable
 private fun RecentTrackCard(track: EchoTrack, onClick: () -> Unit) {
-    HomeArtworkCard(track.artworkUri, track.title, track.artist, onClick)
+    HomeArtworkCard(track.artworkUri, displayTrack(track.title), displayArtist(track.artist), onClick)
 }

@@ -1,0 +1,10 @@
+<resources>
+    <string name="search_pc_disconnected">PC is not connected. Connect to search its music.</string>
+    <string name="search_connect_pc">Connect PC</string>
+    <string name="search_loading_library">Searching your library…</string>
+    <string name="search_loading_pc">Searching connected PC…</string>
+    <string name="search_library_failed">Some library results could not be loaded. Retry to load them.</string>
+    <string name="search_pc_failed">PC search failed. Check the connection and retry.</string>
+    <string name="search_empty_library">No matches in your library. Try a shorter query.</string>
+    <string name="search_empty_pc">No matches on the connected PC. Try a shorter query.</string>
+</resources>

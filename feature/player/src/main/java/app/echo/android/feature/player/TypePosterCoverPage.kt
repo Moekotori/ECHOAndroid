@@ -1,5 +1,8 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayAlbum
+import app.echo.android.design.displayTrack
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -32,7 +35,7 @@ internal fun TypePosterCoverPage(status: EchoPlaybackStatus, position: State<Lon
                                 artworkScale: Float, modifier: Modifier = Modifier) {
     val ink = ExpressivePlayerStyle.PosterInk
     val track = status.track
-    val fullTitle = track?.title ?: stringResource(R.string.feature_player_not_playing_d72324)
+    val fullTitle = track?.let { displayTrack(it.title) } ?: stringResource(R.string.feature_player_not_playing_d72324)
     val (title, edition) = remember(fullTitle) { recordSleeveTitleParts(fullTitle) }
     val lines = remember(title) { posterTitleLines(title) }
     val formats = remember(status.diagnostics) { playbackFormatChips(status.diagnostics, ::formatSampleRate).joinToString(" · ") }
@@ -47,7 +50,7 @@ internal fun TypePosterCoverPage(status: EchoPlaybackStatus, position: State<Lon
             }
         },
         details = {
-            Text(track?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
+            Text(track?.let { displayArtist(it.artist) } ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
                 modifier = Modifier.fillMaxWidth().openArtistWhen(track?.id, track?.artist, actions.openArtist),
                 color = ink, fontFamily = RecordSleeveStyle.BodyFont, fontSize = 27.sp,
                 lineHeight = 32.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -62,7 +65,7 @@ internal fun TypePosterCoverPage(status: EchoPlaybackStatus, position: State<Lon
                         onClickLabel = stringResource(R.string.feature_player_lyrics_b90c97), onClick = actions.lyrics),
                     shape = RectangleShape, sizeClass = EchoArtworkSize.Card)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(track?.album.orEmpty(), color = ink, fontFamily = RecordSleeveStyle.BodyFont,
+                    Text(track?.let { displayAlbum(it.album) }.orEmpty(), color = ink, fontFamily = RecordSleeveStyle.BodyFont,
                         fontSize = 20.sp, lineHeight = 24.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     Text(formats, color = ink, fontFamily = RecordSleeveStyle.BodyFont,
                         fontSize = 10.sp, lineHeight = 14.sp, letterSpacing = 0.7.sp, maxLines = 1,

@@ -15,37 +15,25 @@ import app.echo.android.lyrics.EchoLyricsEditing
 import app.echo.android.model.lyrics.*
 import kotlinx.coroutines.*
 
-private data class LyricsEditRow(val original: EchoLyricLine, val time: String, val text: String, val translation: String)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () -> Unit,
-    onSeek: (Long) -> Unit, onSave: suspend (EchoLyrics) -> Unit, onDismiss: () -> Unit) {
-    // Keep one editing session independent of background reloads and save-triggered Loading states.
-    val original = remember { lyrics }
-    val rows = remember { original.lines.take(2000).map { LyricsEditRow(it, EchoLyricsEditing.timestamp(it.startMs), it.text, it.translation.orEmpty()) }.toMutableStateList() }
+    onSeek: (Long) -> Unit, onSave: suspend (EchoLyrics) -> Unit, onDismiss: () -> Unit,
+    sourceLoading: Boolean = false, sourceError: String? = null) {
+    val session = remember { LyricsEditorSession(lyrics, sourceLoading) }
+    LaunchedEffect(lyrics, sourceLoading) { session.initialize(lyrics, sourceLoading) }
+    val rows = session.rows
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val scroll = rememberLazyListState()
     var active by remember { mutableIntStateOf(0) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
-    var saved by remember { mutableStateOf(false) }
     var exportText by remember { mutableStateOf<String?>(null) }
-    fun snapshot(draftRows: List<LyricsEditRow>): EchoLyrics {
-        require(original.lines.size <= 2000)
-        val lines = draftRows.map { row ->
-            val time = EchoLyricsEditing.parseTimestamp(row.time) ?: error("Invalid time")
-            val delta = if (row.original.startMs >= 0 && time >= 0) time - row.original.startMs else 0
-            row.original.copy(startMs = time, text = row.text, translation = row.translation.takeIf(String::isNotBlank),
-                words = if (row.text == row.original.text && time >= 0) row.original.words.map { it.copy(startMs = (it.startMs + delta).coerceAtLeast(0), endMs = it.endMs?.let { end -> (end + delta).coerceAtLeast(0) }) } else emptyList())
-        }
-        return EchoLyricsEditing.finish(original, lines)
-    }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         val text = exportText; exportText = null
         if (uri != null && text != null) scope.launch {
-            try { withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) } ?: error("Could not write") }; saved = true }
+            try { withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) } ?: error("Could not write") } }
             catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
         }
     }
@@ -60,6 +48,10 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
             Column(Modifier.padding(horizontal = 24.dp)) {
                 Text(stringResource(R.string.lyrics_edit_title), style = MaterialTheme.typography.headlineSmall)
                 Text(stringResource(R.string.lyrics_edit_hint), style = MaterialTheme.typography.bodySmall)
+                if (!session.sourceReady) {
+                    if (sourceError != null) Text(sourceError, color = MaterialTheme.colorScheme.error)
+                    else CircularProgressIndicator()
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onPlayPause) { Text(stringResource(R.string.lyrics_edit_play)) }
                     TextButton(onClick = {
@@ -69,8 +61,8 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
                             active = (index + 1).coerceAtMost(rows.lastIndex)
                             scope.launch { scroll.scrollToItem((active + 1).coerceAtMost(rows.size)) }
                         }
-                    }, enabled = !saving && rows.isNotEmpty()) { Text(stringResource(R.string.lyrics_edit_mark)) }
-                    TextButton(onClick = { if (rows.size < 2000) rows.add(LyricsEditRow(EchoLyricLine(-1, text = ""), "", "", "")) }, enabled = !saving) { Text(stringResource(R.string.lyrics_edit_add)) }
+                    }, enabled = session.sourceReady && !saving && rows.isNotEmpty()) { Text(stringResource(R.string.lyrics_edit_mark)) }
+                    TextButton(onClick = { if (rows.size < 2000) rows.add(LyricsEditRow(EchoLyricLine(-1, text = ""), "", "", "")) }, enabled = session.sourceReady && !saving) { Text(stringResource(R.string.lyrics_edit_add)) }
                 }
             }
             LazyColumn(Modifier.weight(1f), state = scroll, contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -79,27 +71,27 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
                         TextButton(onClick = { active = index; EchoLyricsEditing.parseTimestamp(rows[index].time)?.takeIf { it >= 0 }?.let(onSeek) }) {
                             Text(stringResource(if (active == index) R.string.lyrics_edit_active else R.string.lyrics_edit_line, index + 1))
                         }
-                        TextButton(onClick = { rows.removeAt(index); active = active.coerceAtMost((rows.size - 1).coerceAtLeast(0)) }, enabled = !saving) { Text(stringResource(R.string.lyrics_edit_delete)) }
+                        TextButton(onClick = { rows.removeAt(index); active = active.coerceAtMost((rows.size - 1).coerceAtLeast(0)) }, enabled = session.sourceReady && !saving) { Text(stringResource(R.string.lyrics_edit_delete)) }
                     }
-                    OutlinedTextField(rows[index].time, { rows[index] = rows[index].copy(time = it.take(14)); active = index }, label = { Text(stringResource(R.string.lyrics_edit_time)) }, singleLine = true, enabled = !saving)
-                    OutlinedTextField(rows[index].text, { rows[index] = rows[index].copy(text = it.take(3000)) }, label = { Text(stringResource(R.string.lyrics_edit_text)) }, modifier = Modifier.fillMaxWidth(), enabled = !saving)
-                    OutlinedTextField(rows[index].translation, { rows[index] = rows[index].copy(translation = it.take(3000)) }, label = { Text(stringResource(R.string.lyrics_edit_translation)) }, modifier = Modifier.fillMaxWidth(), enabled = !saving)
+                    OutlinedTextField(rows[index].time, { rows[index] = rows[index].copy(time = it.take(14)); active = index }, label = { Text(stringResource(R.string.lyrics_edit_time)) }, singleLine = true, enabled = session.sourceReady && !saving)
+                    OutlinedTextField(rows[index].text, { rows[index] = rows[index].copy(text = it.take(3000)) }, label = { Text(stringResource(R.string.lyrics_edit_text)) }, modifier = Modifier.fillMaxWidth(), enabled = session.sourceReady && !saving)
+                    OutlinedTextField(rows[index].translation, { rows[index] = rows[index].copy(translation = it.take(3000)) }, label = { Text(stringResource(R.string.lyrics_edit_translation)) }, modifier = Modifier.fillMaxWidth(), enabled = session.sourceReady && !saving)
                     HorizontalDivider()
                 } }
             }
             Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
                 if (error) Text(stringResource(R.string.lyrics_edit_error), color = MaterialTheme.colorScheme.error)
-                if (saved) Text(stringResource(R.string.lyrics_edit_saved), color = MaterialTheme.colorScheme.primary)
+                if (session.saved) Text(stringResource(R.string.lyrics_edit_saved), color = MaterialTheme.colorScheme.primary)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = { error = false; val draftRows = rows.toList(); saving = true; scope.launch {
-                        try { val draft = withContext(Dispatchers.Default) { snapshot(draftRows) }; onSave(draft); saved = true }
+                        try { val draft = withContext(Dispatchers.Default) { session.snapshot(draftRows) }; onSave(draft); session.markSaved(draftRows) }
                         catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
                         finally { saving = false }
-                    } }, enabled = rows.isNotEmpty() && !saving) { Text(stringResource(R.string.lyrics_edit_save)) }
+                    } }, enabled = session.sourceReady && rows.isNotEmpty() && !saving) { Text(stringResource(R.string.lyrics_edit_save)) }
                     OutlinedButton(onClick = { error = false; val draftRows = rows.toList(); scope.launch {
-                        try { exportText = withContext(Dispatchers.Default) { EchoLyricsEditing.toLrc(snapshot(draftRows)) }; export.launch("echo-lyrics.lrc") }
+                        try { exportText = withContext(Dispatchers.Default) { EchoLyricsEditing.toLrc(session.snapshot(draftRows)) }; export.launch("echo-lyrics.lrc") }
                         catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
-                    } }, enabled = !saving) { Text(stringResource(R.string.lyrics_edit_export)) }
+                    } }, enabled = session.sourceReady && !saving) { Text(stringResource(R.string.lyrics_edit_export)) }
                 }
             }
         }

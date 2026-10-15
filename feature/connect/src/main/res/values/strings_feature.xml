@@ -196,4 +196,7 @@
     <string name="echo_link_battery_hint">If Echo Link disconnects in the background, allow ECHO to run in the background and set battery usage to Unrestricted.</string>
     <string name="echo_link_cast_clipped_track">This queue contains CUE or clipped tracks, which cannot be cast yet. Choose a queue of whole tracks.</string>
     <string name="echo_link_cast_prepare_failed">Could not prepare the cast. Please try again.</string>
+    <string name="echo_link_cast_atomic_phone_required">This PC does not support safe queue casting. Update the PC app, or cast a single track.</string>
+    <string name="echo_link_cast_atomic_pc_unavailable">PC library queues cannot be handed off with their playback position safely yet. Select the queue on the PC, or hand off a single track.</string>
+    <string name="echo_link_cast_source_changed">Playback or the queue changed while preparing. Cast again to use the current selection.</string>
 </resources>

@@ -49,6 +49,7 @@ public final class FfmpegAudioDecoder
   private final String codecName;
   @Nullable private final byte[] extraData;
   private final @C.PcmEncoding int encoding;
+  private final boolean trimSeekFrame;
   private int outputBufferSize;
 
   private long nativeContext; // May be reassigned on resetting the codec.
@@ -76,6 +77,8 @@ public final class FfmpegAudioDecoder
     }
     checkNotNull(format.sampleMimeType);
     codecName = checkNotNull(FfmpegLibrary.getCodecName(format.sampleMimeType));
+    boolean demuxedByEcho = format.sampleMimeType.startsWith("audio/x-echo-ffmpeg-");
+    trimSeekFrame = demuxedByEcho || "ape".equals(codecName);
     extraData = getExtraData(format.sampleMimeType, format.initializationData);
     encoding = outputEncoding;
     outputBufferSize =
@@ -84,7 +87,8 @@ public final class FfmpegAudioDecoder
         ffmpegInitialize(codecName, extraData,
             encoding == C.ENCODING_PCM_32BIT ? 2 : (encoding == C.ENCODING_PCM_FLOAT ? 1 : 0),
             format.sampleRate, format.channelCount,
-            "ape".equals(codecName) ? Util.getPcmFrameSize(format.pcmEncoding, 1) * 8 : -1);
+            "ape".equals(codecName) ? Util.getPcmFrameSize(format.pcmEncoding, 1) * 8 : -1,
+            demuxedByEcho ? format.initializationData.get(1) : null);
     if (nativeContext == 0) {
       throw new FfmpegDecoderException("Initialization failed.");
     }
@@ -172,7 +176,7 @@ public final class FfmpegAudioDecoder
     outputData.limit(result);
     // APE frames can span several seconds. Keep the PCM after a seek target
     // instead of letting SimpleDecoder discard the whole enclosing frame.
-    if ("ape".equals(codecName) && !isAtLeastOutputStartTimeUs(inputBuffer.timeUs)) {
+    if (trimSeekFrame && !isAtLeastOutputStartTimeUs(inputBuffer.timeUs)) {
       int frameSize = Util.getPcmFrameSize(encoding, channelCount);
       int samples = result / frameSize;
       if (samples > 0 && isAtLeastOutputStartTimeUs(
@@ -231,6 +235,7 @@ public final class FfmpegAudioDecoder
    */
   @Nullable
   private static byte[] getExtraData(String mimeType, List<byte[]> initializationData) {
+    if (mimeType.startsWith("audio/x-echo-ffmpeg-")) return initializationData.get(0);
     switch (mimeType) {
       case "audio/ape":
       case "audio/x-ape":
@@ -348,7 +353,8 @@ public final class FfmpegAudioDecoder
       int outputMode,
       int rawSampleRate,
       int rawChannelCount,
-      int rawBitDepth);
+      int rawBitDepth,
+      @Nullable byte[] codecParameters);
 
   private native int ffmpegDecode(
       long context,

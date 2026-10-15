@@ -47,6 +47,7 @@ data class EchoLinkCastPublication(
     val artworkToken: String? = null,
     val durationMs: Long = 0L,
     val format: EchoRemoteAudioFormat? = null,
+    val peerHost: String? = null,
 )
 
 data class EchoLinkHttpReply(val status: Int = 200, val body: String)
@@ -234,7 +235,10 @@ class EchoLinkCastServer(
             reply(output, 400, "Bad Request", 0)
             return
         }
-        if (!EchoLinkCastPolicy.peerMatches(allowedPeerHost(), client.inetAddress?.hostAddress)) {
+        // Candidate and committed queues can temporarily belong to different devices.
+        val registered = locatePublication(request.path)
+        val peerHost = registered?.first?.peerHost ?: allowedPeerHost()
+        if (!EchoLinkCastPolicy.peerMatches(peerHost, client.inetAddress?.hostAddress)) {
             reply(output, 403, "Forbidden", 0)
             return
         }
@@ -252,7 +256,7 @@ class EchoLinkCastServer(
             lastActivityMs.set(nowMs())
             return
         }
-        val located = locatePublication(request.path) ?: resolvePublication?.invoke(request.path)
+        val located = registered ?: resolvePublication?.invoke(request.path)
         if (located == null) {
             reply(output, 404, "Not Found", 0)
             return

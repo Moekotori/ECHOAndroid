@@ -8,9 +8,9 @@ object EchoLrcFormatter {
         if (lines.isEmpty()) return ""
         val synced = lines.any { it.startMs >= 0L }
         return lines.flatMap { line ->
-            val body = line.text.trim()
+            val body = line.text.asSingleLyricLine().trim()
             val prefix = if (synced && line.startMs >= 0L) "[${formatTimestamp(line.startMs)}]" else ""
-            listOfNotNull(prefix + body, line.translation?.trim()?.takeIf { it.isNotEmpty() }?.let { prefix + it })
+            listOfNotNull(prefix + body, line.translation?.asSingleLyricLine()?.trim()?.takeIf { it.isNotEmpty() }?.let { prefix + it })
         }.joinToString("\n")
     }
 
@@ -22,3 +22,6 @@ object EchoLrcFormatter {
         return "%02d:%02d.%02d".format(java.util.Locale.ROOT, minutes, seconds, hundredths)
     }
 }
+
+internal fun String.asSingleLyricLine(): String =
+    replace("\r\n", "\n").replace('\r', '\n').replace('\n', ' ')

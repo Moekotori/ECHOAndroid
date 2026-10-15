@@ -17,7 +17,8 @@ object EchoLyricsEditing {
         lines.forEach { line -> if (line.startMs >= 0) { require(line.startMs >= previous); previous = line.startMs } }
         val fixed = lines.mapIndexed { index, line ->
             val next = lines.getOrNull(index + 1)?.startMs?.takeIf { it >= line.startMs && line.startMs >= 0 }
-            line.copy(endMs = next, words = line.words.takeIf { line.startMs >= 0 }.orEmpty())
+            val end = if (line.startMs < 0) null else line.endMs?.takeIf { it >= line.startMs } ?: next
+            line.copy(endMs = end, words = line.words.takeIf { line.startMs >= 0 }.orEmpty())
         }
         return original.copy(lines = fixed, offsetMs = 0, sourceLabel = "ECHO", metadata = original.metadata - "user_offset_ms")
     }
@@ -26,8 +27,8 @@ object EchoLyricsEditing {
         return buildString {
             append("[re:ECHO]\n")
             for (line in lyrics.lines) {
-                append('[').append(timestamp(line.startMs)).append(']').append(line.text.replace('\n', ' ')).append('\n')
-                line.translation?.takeIf { it.isNotBlank() }?.let { append('[').append(timestamp(line.startMs)).append(']').append(it.replace('\n',' ')).append('\n') }
+                append('[').append(timestamp(line.startMs)).append(']').append(line.text.asSingleLyricLine()).append('\n')
+                line.translation?.takeIf { it.isNotBlank() }?.let { append('[').append(timestamp(line.startMs)).append(']').append(it.asSingleLyricLine()).append('\n') }
             }
         }
     }

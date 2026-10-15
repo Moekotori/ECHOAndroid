@@ -117,6 +117,38 @@ public final class FfmpegLibrary {
    */
   @Nullable
   /* package */ static String getCodecName(String mimeType) {
+    // Private demuxer MIME names retain the exact ASF/AIFC codec variant.
+    if (mimeType.startsWith("audio/x-echo-ffmpeg-")) {
+      String codec = mimeType.substring("audio/x-echo-ffmpeg-".length());
+      switch (codec) {
+        case "dca":
+        case "dts": // avcodec_get_name(AV_CODEC_ID_DTS)
+          return "dca";
+        case "wavpack":
+        case "wmav1":
+        case "wmav2":
+        case "wmapro":
+        case "wmalossless":
+        case "pcm_s8":
+        case "pcm_u8":
+        case "pcm_s16be":
+        case "pcm_s16le":
+        case "pcm_s24be":
+        case "pcm_s24le":
+        case "pcm_s32be":
+        case "pcm_s32le":
+        case "pcm_f32be":
+        case "pcm_f32le":
+        case "pcm_f64be":
+        case "pcm_f64le":
+        case "pcm_alaw":
+        case "pcm_mulaw":
+        case "adpcm_ima_qt":
+          return codec;
+        default:
+          return null;
+      }
+    }
     @Nullable String dsdCodec = EchoDsdMime.ffmpegCodecName(mimeType);
     if (dsdCodec != null) {
       return dsdCodec;

@@ -31,10 +31,13 @@ FFmpeg sources and objects in the WSL cache above. CMake staging stays under
 `build/`. ABIs match USB audio: armeabi-v7a, arm64-v8a and x86_64, API 26 minimum,
 with 16 KB ELF segment alignment for the JNI shared library.
 
-FFmpeg is built audio-only, without networking, demuxers, encoders, programs,
+FFmpeg is built audio-only, without networking, protocols, encoders, programs,
 auto-detected external libraries, GPL, version3 or nonfree options. Decoder list
 and source checksum are in the build script. Original source, configuration,
 objects and logs remain under `build/ffmpeg` for inspection and relinking.
+Only the AIFF, raw DTS, WavPack and ASF demuxers and DTS parser are enabled.
+Their custom AVIO uses Media3's loader input and the app's authenticated data
+sources for out-of-order reads; FFmpeg cannot open URLs or sidecar files itself.
 
 ## Local bridge changes
 
@@ -55,6 +58,14 @@ platform decoder fails mid-track.
 
 The software backend includes AAC, MP3, AC-3/E-AC-3, TrueHD, DTS, Vorbis, Opus,
 AMR, FLAC, ALAC, APE, PCM A-law/mu-law and DSD (dsd_lsbf / dsd_msbf / planar) decoders.
+It also includes WavPack PCM, WMA v1/v2/Pro/Lossless, integer/float AIFF PCM
+(big/little endian) and AIFC IMA4. AIFF/AIFC, raw DTS core streams, `.wv` and
+unencrypted WMA/ASF audio use `EchoFfmpegExtractor`, then the same renderer and
+output chain as other audio. Seek and probing run on the loader thread. Probe
+reads, streams, index storage, codec extra data and emitted packets have explicit
+bounds; audio is not copied into a whole-file buffer. WMA's delayed samples are
+drained before EOS. DRM WMA, WMA Voice, automatic `.wvc` correction loading and
+WavPack DSD are outside this path. The strict USB format whitelist is unchanged.
 DSF and uncompressed DFF are demuxed by ECHO extractors, then converted to PCM
 and downsampled to 88.2 kHz (DSD64) or 176.4 kHz (DSD128+). DST-compressed DFF,
 native DSD and DoP are not supported. ECHO's APE extractor supports versions
@@ -94,3 +105,8 @@ With an emulator/device connected, run the single JNI/PCM smoke test explicitly:
 It checks codec availability and known mu-law samples decoded to both 16-bit and
 float PCM before/after flush. It does not establish whole-file format coverage,
 USB timing or real-device listening quality.
+
+The optional `EchoExtendedFormatsSmokeTest` checks five short synthesized files
+(AIFF, float AIFC, DTS, WavPack and WMA), PCM sample counts, lossless sample hashes
+and a seek in each. It does not run in default CI. Fixture generation and the
+reference results are documented in `src/androidTest/assets/format-smoke/README.md`.

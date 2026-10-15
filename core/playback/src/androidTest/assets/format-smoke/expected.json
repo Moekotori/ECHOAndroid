@@ -1,0 +1,27 @@
+{
+  "tone.wv": {
+    "codec": "wavpack",
+    "pcmBytes": 48000,
+    "sha256": "7ed2e21149cd83ebee5920b8b9cd0817fc8c2eb556ffe35fd32ede49882eed58"
+  },
+  "tone.aiff": {
+    "codec": "pcm_s16be",
+    "pcmBytes": 48000,
+    "sha256": "7ed2e21149cd83ebee5920b8b9cd0817fc8c2eb556ffe35fd32ede49882eed58"
+  },
+  "tone.dts": {
+    "codec": "dts",
+    "pcmBytes": 49152,
+    "sha256": "0ccbad9d5fd207e1f66be4fb3ce1c00a294954945b9182eb8ddedbce2170e7d3"
+  },
+  "tone.wma": {
+    "codec": "wmav2",
+    "pcmBytes": 40960,
+    "sha256": "1ad014fc97b1643e7eb02b6742e131e28c24d3164651e90bdc5ea0c7ebfd1788"
+  },
+  "tone.aifc": {
+    "codec": "pcm_f32be",
+    "pcmBytes": 48000,
+    "sha256": "975f077b8e05ed69c8daa4e5f3f9b2e12cd178aaf7d395e1a81dd833ca7dea2f"
+  }
+}

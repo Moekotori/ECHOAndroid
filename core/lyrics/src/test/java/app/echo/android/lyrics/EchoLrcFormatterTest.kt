@@ -52,4 +52,17 @@ class EchoLrcFormatterTest {
             Locale.setDefault(previous)
         }
     }
+
+    @Test
+    fun multilineTextAndTranslationKeepAllWordsOnFileRoundTrip() {
+        for (separator in listOf("\n", "\r\n", "\r")) {
+            val lyrics = EchoLyrics(lines = listOf(EchoLyricLine(1000,
+                text = "First${separator}Second", translation = "译文一${separator}译文二")))
+            for (formatted in listOf(EchoLrcFormatter.format(lyrics), EchoLyricsEditing.toLrc(lyrics))) {
+                val parsed = EchoLrcParser.parse(formatted).lines.single()
+                assertEquals("First Second", parsed.text)
+                assertEquals("译文一 译文二", parsed.translation)
+            }
+        }
+    }
 }

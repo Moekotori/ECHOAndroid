@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.*
@@ -39,6 +38,7 @@ import app.echo.android.model.connect.EchoSavedPcEndpoint
 @Composable
 internal fun PcLinkPanel(
     librarySyncActions: LibrarySyncActions? = null,
+    phoneLibraryShareContent: @Composable () -> Unit = {},
     remoteState: EchoRemoteConnectionState,
     pcTitle: String,
     trackTitle: String,
@@ -155,22 +155,11 @@ internal fun PcLinkPanel(
         )
     }
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(if (connected || hasSaved) pcTitle else stringResource(L10nR.string.remote_connect_title),
-                style = if (connected) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold, maxLines = if (connected) 1 else 2, overflow = TextOverflow.Ellipsis)
-            Text(remoteConnectionLabel(remoteState), color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelLarge)
-            if (!connected) {
-                ConnectNote(stringResource(L10nR.string.feature_connect_control_pc_playback_from_your_phone_or_browse_20f8b5))
-            }
-        }
-        if (!connected && !busy) {
-            EchoSteamNotice()
-        }
-        if (onOpenListening != null && !connected) {
-            ListenTogetherEntry(onOpen = onOpenListening)
-        }
+        PcLinkHeader(
+            title = if (connected || hasSaved) pcTitle else stringResource(L10nR.string.remote_connect_title),
+            state = remoteState,
+            showRequirement = !connected && !busy,
+        )
         remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
         if (connected || hasSaved) EchoLinkModeSwitch(remoteMode, onRemoteModeChange)
         if (connected && librarySyncActions != null) OutlinedButton(onClick = { showLibrarySync = true }, modifier = Modifier.fillMaxWidth()) {
@@ -229,78 +218,51 @@ internal fun PcLinkPanel(
             }
             else -> {
                 if (savedPcs.isNotEmpty() && !manual) {
-                    ConnectNote(stringResource(L10nR.string.feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8))
                     ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91)) {
                         savedPcs.asReversed().forEach { pc ->
-                            Row(
-                                Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                EchoIcon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                Column(Modifier.weight(1f)) {
-                                    Text(pc.name, style = MaterialTheme.typography.bodyMedium)
-                                    ConnectNote(pc.address)
-                                }
-                                TextButton(
-                                    onClick = { selectPc(pc.address, pc.token.orEmpty(), false) },
-                                    enabled = !busy,
-                                ) {
-                                    Text(stringResource(L10nR.string.feature_connect_connect_c7c091))
-                                }
-                                TextButton(
-                                    onClick = { onForgetSavedPc(pc) },
-                                    enabled = !busy,
-                                ) {
-                                    Text(
-                                        stringResource(L10nR.string.feature_connect_forget_30df50),
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
-                                }
-                            }
+                            PcDeviceRow(
+                                name = pc.name,
+                                address = pc.address,
+                                actionLabel = stringResource(L10nR.string.feature_connect_connect_c7c091),
+                                onConnect = { selectPc(pc.address, pc.token.orEmpty(), false) },
+                                onForget = { onForgetSavedPc(pc) },
+                            )
                         }
                     }
                 } else if (hasSaved && !manual) {
-                    ConnectNote(stringResource(L10nR.string.feature_connect_a_saved_pc_is_available_reconnect_or_pair_69fbf8))
                     Button(onClick = { selectPc(savedPcAddress.orEmpty(), savedPcToken.orEmpty(), false) }, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(L10nR.string.feature_connect_reconnect_pc_ea8c5f))
                     }
                 }
-                ConnectNote(stringResource(L10nR.string.echo_link_direct_address_hint))
                 ConnectSection(stringResource(L10nR.string.feature_connect_nearby_pcs_b9b12a),
                     action = { TextButton(onClick = onRefreshLanDevices) { Text(stringResource(L10nR.string.feature_connect_refresh_828c69)) } }) {
                     if (discoveredLanDevices.isEmpty()) {
-                        if (discoveryState == EchoLinkDiscoveryState.Searching) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        ConnectNote(stringResource(when (discoveryState) {
-                            EchoLinkDiscoveryState.Searching -> L10nR.string.echo_link_lan_searching
-                            EchoLinkDiscoveryState.Failed -> L10nR.string.echo_link_lan_failed
-                            else -> L10nR.string.feature_connect_no_pc_found_use_the_same_wi_fi_ce621e
-                        }), error = discoveryState == EchoLinkDiscoveryState.Failed)
+                        PcDiscoveryEmptyState(discoveryState)
                     }
                     discoveredLanDevices.forEach { device ->
-                        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).echoClickable(role = Role.Button) {
-                            val saved = savedPcs.firstOrNull { EchoLinkDiscoveryPolicy.addressMatchesDevice(it.address, device) }
-                            val selectedToken = saved?.token?.takeIf { it.isNotBlank() }
-                                ?: EchoLinkDiscoveryPolicy.tokenAfterSelecting(device, savedPcAddress, savedPcToken)
-                            selectPc(EchoLinkDiscoveryPolicy.addressLabel(device), selectedToken, device.requiresPairing)
-                            onSelectLanDevice(device)
-                        }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            EchoIcon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Column(Modifier.weight(1f)) {
-                                Text(device.name, style = MaterialTheme.typography.bodyMedium)
-                                ConnectNote(EchoLinkDiscoveryPolicy.addressLabel(device))
-                            }
-                            Text(stringResource(if (device.requiresPairing) L10nR.string.feature_connect_select_21bce2 else L10nR.string.feature_connect_connect_c7c091), style = MaterialTheme.typography.labelMedium)
-                        }
+                        PcDeviceRow(
+                            name = device.name,
+                            address = EchoLinkDiscoveryPolicy.addressLabel(device),
+                            actionLabel = stringResource(if (device.requiresPairing) L10nR.string.feature_connect_select_21bce2 else L10nR.string.feature_connect_connect_c7c091),
+                            onConnect = {
+                                val saved = savedPcs.firstOrNull { EchoLinkDiscoveryPolicy.addressMatchesDevice(it.address, device) }
+                                val selectedToken = saved?.token?.takeIf { it.isNotBlank() }
+                                    ?: EchoLinkDiscoveryPolicy.tokenAfterSelecting(device, savedPcAddress, savedPcToken)
+                                selectPc(EchoLinkDiscoveryPolicy.addressLabel(device), selectedToken, device.requiresPairing)
+                                onSelectLanDevice(device)
+                            },
+                        )
                     }
                 }
                 Column(Modifier.bringIntoViewRequester(connectionEntry)) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).echoClickable(role = Role.Button) { keyboard?.hide(); manual = !manual }, verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(L10nR.string.echo_link_pairing_entry), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
                         EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.echoExpandIndicator(manual))
                     }
                     EchoExpand(manual) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ConnectNote(stringResource(L10nR.string.echo_link_direct_address_hint))
                             ConnectInput(stringResource(L10nR.string.feature_connect_pc_address_or_pairing_link_a3e680), address, { address = it; token = "" }, "192.168.1.20:26789", url = true, onDone = connect,
                                 error = if (address.isNotBlank() && !validAddress) stringResource(L10nR.string.feature_connect_check_the_pc_address_or_paste_a_complete_0f216a) else null)
                             Button(onClick = connect, enabled = endpoint != null, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
@@ -310,6 +272,13 @@ internal fun PcLinkPanel(
                     }
                 }
             }
+        }
+        if (onOpenListening != null && !connected) {
+            ListenTogetherEntry(onOpen = onOpenListening)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+            phoneLibraryShareContent()
         }
         ConnectSection(stringResource(L10nR.string.feature_connect_link_preferences_f81ffb)) {
             ConnectPreference(stringResource(L10nR.string.feature_connect_auto_reconnect_5259cc),
@@ -323,6 +292,7 @@ internal fun PcLinkPanel(
                 Text(stringResource(L10nR.string.feature_connect_forget_saved_pc_8860a3), color = MaterialTheme.colorScheme.error)
             }
         }
+        ConnectNote(stringResource(L10nR.string.echo_link_battery_hint))
     }
     if (confirmForget) ForgetConnectionDialog(
         stringResource(L10nR.string.feature_connect_forget_saved_pc_80b440),

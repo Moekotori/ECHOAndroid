@@ -20,4 +20,15 @@ class EchoLyricsEditingTest {
     @Test(expected = IllegalArgumentException::class) fun reversedTimingDoesNotSilentlyReorderLines() {
         EchoLyricsEditing.finish(EchoLyrics(),listOf(EchoLyricLine(2000,text="A"),EchoLyricLine(1000,text="B")))
     }
+
+    @Test fun unchangedSavePreservesSilenceGapsAndFinalEnd() {
+        val original = EchoLyrics(lines = listOf(
+            EchoLyricLine(1000, endMs = 1500, text = "First"),
+            EchoLyricLine(5000, endMs = 5500, text = "Last"),
+        ))
+        val saved = EchoLyricsEditing.finish(original, original.lines)
+        assertEquals(listOf(1500L, 5500L), saved.lines.map { it.endMs })
+        assertNull(LyricsLineAtPosition.primaryText(saved, 2000))
+        assertNull(LyricsLineAtPosition.primaryText(saved, 6000))
+    }
 }

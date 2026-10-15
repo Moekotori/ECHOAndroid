@@ -7,6 +7,7 @@ import app.echo.android.connect.EchoLinkCastSourceTrack
 
 internal fun localCastPublications(
     tracks: List<EchoLinkCastSourceTrack>,
+    peerHost: String? = null,
     checkActive: () -> Unit = {},
 ): List<EchoLinkCastPublication> {
     return tracks.map { track ->
@@ -18,6 +19,7 @@ internal fun localCastPublications(
         EchoLinkCastPublication(
             token = EchoLinkCastPolicy.newToken(),
             trackId = track.id,
+            peerHost = peerHost,
             uri = track.uri,
             mimeType = track.mimeType,
             title = track.title,

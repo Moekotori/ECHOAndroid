@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayTrack
 import app.echo.android.feature.home.R as L10nR
 import androidx.compose.ui.res.stringResource
 
@@ -368,8 +370,8 @@ internal fun RoonRecentActivitySection(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             RoonRecentActivityCard(
-                title = status.track?.title ?: stringResource(L10nR.string.feature_home_local_music_a88e59),
-                subtitle = status.track?.artist ?: stringResource(L10nR.string.feature_home_pick_from_your_library_24e9be),
+                title = status.track?.let { displayTrack(it.title) } ?: stringResource(L10nR.string.feature_home_local_music_a88e59),
+                subtitle = status.track?.let { displayArtist(it.artist) } ?: stringResource(L10nR.string.feature_home_pick_from_your_library_24e9be),
                 artworkUri = status.track?.artworkUri,
                 accent = echoAccentColor(),
                 onClick = if (status.track != null) onPlayPause else onOpenLibrary,
@@ -620,7 +622,7 @@ internal fun RecommendationCard(
             elevation = 0.dp,
         )
         Text(
-            track.title,
+            displayTrack(track.title),
             color = homeTitleColor(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
@@ -628,7 +630,7 @@ internal fun RecommendationCard(
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            "${track.artist} · ${formatDuration(track.durationMs)}",
+            "${displayArtist(track.artist)} · ${formatDuration(track.durationMs)}",
             color = homeBodyColor(),
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
@@ -733,7 +735,7 @@ internal fun HomeGreeting(status: EchoPlaybackStatus) {
             fontWeight = FontWeight.Medium,
         )
         Text(
-            status.track?.artist?.takeIf { it.isNotBlank() } ?: "ECHO Mobile",
+            status.track?.let { displayArtist(it.artist) } ?: "ECHO Mobile",
             color = Color.White,
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.SemiBold,
@@ -800,7 +802,7 @@ internal fun DailyRecommendationCard(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                status.track?.title ?: stringResource(L10nR.string.feature_home_discover_great_music_c63445),
+                status.track?.let { displayTrack(it.title) } ?: stringResource(L10nR.string.feature_home_discover_great_music_c63445),
                 color = Color.White.copy(alpha = 0.88f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -964,8 +966,8 @@ internal fun QueuePreviewList(
         QueuePreviewItem(
             icon = Icons.Rounded.MusicNote,
             label = stringResource(L10nR.string.feature_home_now_124d95),
-            title = status.track?.title ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
-            detail = status.track?.artist ?: stringResource(L10nR.string.feature_home_pick_a_song_from_your_library_320636),
+            title = status.track?.let { displayTrack(it.title) } ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
+            detail = status.track?.let { displayArtist(it.artist) } ?: stringResource(L10nR.string.feature_home_pick_a_song_from_your_library_320636),
             active = status.track != null,
         )
         if (!compact) {
@@ -1286,7 +1288,7 @@ internal fun NowPlayingHero(
                 elevation = 18.dp,
             )
             Text(
-                status.track?.title ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
+                status.track?.let { displayTrack(it.title) } ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = homeTitleColor(),
@@ -1294,7 +1296,7 @@ internal fun NowPlayingHero(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                status.track?.artist ?: stringResource(L10nR.string.feature_home_pick_a_song_from_your_library_320636),
+                status.track?.let { displayArtist(it.artist) } ?: stringResource(L10nR.string.feature_home_pick_a_song_from_your_library_320636),
                 color = homeBodyColor(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1370,7 +1372,7 @@ internal fun CompactNowPlayingHero(
                     )
                 }
                 Text(
-                    status.track?.title ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
+                    status.track?.let { displayTrack(it.title) } ?: stringResource(L10nR.string.feature_home_nothing_playing_b290fe),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = homeTitleColor(),
@@ -1378,7 +1380,7 @@ internal fun CompactNowPlayingHero(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    status.track?.artist ?: stringResource(L10nR.string.feature_home_pick_a_song_from_your_library_320636),
+                    status.track?.let { displayArtist(it.artist) } ?: stringResource(L10nR.string.feature_home_pick_a_song_from_your_library_320636),
                     color = homeBodyColor(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

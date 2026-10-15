@@ -375,6 +375,12 @@ internal fun echoAudioFormatReadout(
 private fun codecLabel(mime: String?): String? {
     if (mime.isNullOrBlank()) return null
     return when {
+        mime.startsWith("audio/x-echo-ffmpeg-") -> when (val codec = mime.removePrefix("audio/x-echo-ffmpeg-")) {
+            "wavpack" -> "WavPack"
+            "wmav1", "wmav2", "wmapro", "wmalossless" -> "WMA"
+            "dts", "dca" -> "DTS"
+            else -> if (codec.startsWith("pcm_") || codec == "adpcm_ima_qt") "AIFF" else codec.uppercase()
+        }
         mime.equals("audio/raw", ignoreCase = true) -> "PCM"
         mime.contains("flac", ignoreCase = true) -> "FLAC"
         mime.contains("alac", ignoreCase = true) -> "ALAC"

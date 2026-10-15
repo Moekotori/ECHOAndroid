@@ -1,0 +1,10 @@
+<resources>
+    <string name="search_pc_disconnected">尚未连接电脑，连接后即可搜索电脑音乐。</string>
+    <string name="search_connect_pc">连接电脑</string>
+    <string name="search_loading_library">正在搜索曲库…</string>
+    <string name="search_loading_pc">正在搜索已连接的电脑…</string>
+    <string name="search_library_failed">部分曲库结果加载失败，可重试加载。</string>
+    <string name="search_pc_failed">电脑搜索失败，请检查连接后重试。</string>
+    <string name="search_empty_library">曲库中没有匹配结果，可以缩短搜索词。</string>
+    <string name="search_empty_pc">已连接的电脑中没有匹配结果，可以缩短搜索词。</string>
+</resources>

@@ -11,6 +11,27 @@ import org.junit.Test
 
 class EchoLinkCastServerTest {
     @Test
+    fun candidateCanUseNewPeerWithoutOpeningOldQueueToIt() {
+        val server = EchoLinkCastServer(openBody = EchoLinkCastBodyFactory { _, _ ->
+            EchoLinkCastBody(java.io.ByteArrayInputStream(byteArrayOf(1)), 1L, "audio/mpeg")
+        }, allowedPeerHost = { "203.0.113.9" }, bindHost = "127.0.0.1")
+        val client = OkHttpClient()
+        fun status(url: String) = client.newCall(Request.Builder().url(url).build()).execute().use { it.code }
+        try {
+            val port = server.start()
+            val old = server.publish(listOf(EchoLinkCastPublication(EchoLinkCastPolicy.newToken(), "old", "old",
+                title = "Old", artist = "Artist", peerHost = "203.0.113.9")), "127.0.0.1", port).single()
+            val candidate = server.prepare(listOf(EchoLinkCastPublication(EchoLinkCastPolicy.newToken(), "new", "new",
+                title = "New", artist = "Artist", peerHost = "127.0.0.1")), "127.0.0.1", port)
+            assertEquals(403, status(old.streamUrl))
+            assertEquals(200, status(candidate.items.single().streamUrl))
+            server.rollback(candidate)
+            assertEquals(403, status(old.streamUrl))
+            assertEquals(403, status(candidate.items.single().streamUrl))
+        } finally { server.stop() }
+    }
+
+    @Test
     fun replacementKeepsOldUrlsUntilCommitAndRollbackPreservesThem() {
         val server = EchoLinkCastServer(openBody = EchoLinkCastBodyFactory { _, _ ->
             EchoLinkCastBody(java.io.ByteArrayInputStream(byteArrayOf(1)), 1L, "audio/mpeg")

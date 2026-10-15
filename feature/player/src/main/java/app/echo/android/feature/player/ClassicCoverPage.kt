@@ -1,5 +1,8 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayAlbum
+import app.echo.android.design.displayTrack
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -101,14 +104,14 @@ internal fun ClassicCoverPage(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                displayedTrack?.title ?: stringResource(R.string.feature_player_not_playing_d72324),
+                                displayedTrack?.let { displayTrack(it.title) } ?: stringResource(R.string.feature_player_not_playing_d72324),
                                 modifier = Modifier.fillMaxWidth().basicMarquee(iterations = if (marqueeActive) Int.MAX_VALUE else 0),
                                 color = OnArt, style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             )
                             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 Text(
-                                    displayedTrack?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
+                                    displayedTrack?.let { displayArtist(it.artist) } ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .openArtistWhen(displayedTrack?.id, displayedTrack?.artist, onOpenArtist),
@@ -116,7 +119,7 @@ internal fun ClassicCoverPage(
                                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 )
                                 displayedTrack?.album?.takeIf { it.isNotBlank() }?.let {
-                                    Text(it, color = OnArtMuted, style = MaterialTheme.typography.bodySmall,
+                                    Text(displayAlbum(it), color = OnArtMuted, style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }

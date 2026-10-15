@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayAlbum
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -25,8 +27,8 @@ internal fun RecentAlbumCard(album: AlbumSummary, mode: RecentActivityMode, onCl
 internal fun RecommendedAlbumCard(album: AlbumSummary, onClick: () -> Unit) {
     HomeArtworkCard(
         artworkUri = album.artworkUri,
-        title = album.title,
-        subtitle = album.albumArtist ?: album.artist ?: stringResource(R.string.feature_home_unknown_artist_85ee30),
+        title = displayAlbum(album.title),
+        subtitle = displayArtist(album.albumArtist ?: album.artist),
         onClick = onClick,
     )
 }

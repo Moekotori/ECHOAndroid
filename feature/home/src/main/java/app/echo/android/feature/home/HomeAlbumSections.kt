@@ -1,5 +1,6 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.displayArtist
 import app.echo.android.design.EchoIcon
 
 import androidx.compose.foundation.background
@@ -137,7 +138,7 @@ private fun ArtistRankRow(
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             Text(
-                artist.name,
+                displayArtist(artist.name),
                 color = scheme.onSurface,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
