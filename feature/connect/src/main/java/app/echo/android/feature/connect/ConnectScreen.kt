@@ -165,11 +165,11 @@ fun ConnectScreen(
         if (openCastTabNonce > 0) pagerState.animateSilkToPage(2, lightweight)
     }
     LaunchedEffect(openPcTabNonce, openPcQueueNonce) {
-        if (openPcTabNonce > 0 || openPcQueueNonce > 0) pagerState.animateSilkToPage(1, lightweight)
+        if (openPcTabNonce > 0 || openPcQueueNonce > 0) pagerState.animateSilkToPage(0, lightweight)
     }
     val tabs = listOf(
-        stringResource(L10nR.string.feature_connect_library_sources_09e6db),
         stringResource(L10nR.string.feature_connect_pc_link_4ca6bd),
+        stringResource(L10nR.string.feature_connect_library_sources_09e6db),
         stringResource(L10nR.string.echo_link_cast_tab),
     )
     val shortLandscape = echoShortLandscape()
@@ -226,11 +226,11 @@ fun ConnectScreen(
                             .padding(top = 24.dp, bottom = 188.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
-                        if (tab == 1 || tab == 2) {
+                        if (tab == 2) {
                             ConnectNote(stringResource(L10nR.string.echo_link_battery_hint))
                         }
                         when (tab) {
-                            0 -> RemoteSourcesPanel(
+                            1 -> RemoteSourcesPanel(
                                 subsonicServerUrl = subsonicServerUrl,
                                 subsonicUsername = subsonicUsername,
                                 subsonicPassword = subsonicPassword,
@@ -258,70 +258,72 @@ fun ConnectScreen(
                                 onClearJellyfin = onClearJellyfinCredentials,
                                 onCancel = onCancelRemoteSync,
                             )
-                            1 -> {
-                            if (!libraryOnly) PhoneLibraryShareControl(
-                                status = phoneLibraryShareStatus,
-                                connectionState = remoteState,
-                                active = remoteControlsActive && pagerState.settledPage == 1,
-                                onConnectRequested = { openShareConnectionNonce++ },
-                                onChange = onPhoneLibraryShareChange,
-                            )
-                            PcLinkPanel(
-                                librarySyncActions = librarySyncActions,
-                                remoteState = remoteState,
-                                pcTitle = pcTitle,
-                                trackTitle = trackTitle,
-                                trackArtist = trackArtist,
-                                trackArtworkUrl = trackArtworkUrl,
-                                isPlaying = isPlaying,
-                                remoteError = remoteError,
-                                savedPcAddress = savedPcAddress,
-                                savedPcToken = savedPcToken,
-                                savedPcs = savedPcs,
-                                autoReconnectEnabled = autoReconnectEnabled,
-                                linkedLibraryDefault = linkedLibraryDefault,
-                                positionMs = positionMs,
-                                durationMs = durationMs,
-                                volume = volume,
-                                volumeControlEnabled = volumeControlEnabled,
-                                volumeLockedReason = volumeLockedReason,
-                                outputMode = outputMode,
-                                currentTrackId = currentTrackId,
-                                queueItems = queueItems,
-                                queueTotalCount = queueTotalCount,
-                                onConnectPc = onConnectPc,
-                                onPlayPause = onPlayPause,
-                                onPrevious = onPrevious,
-                                onNext = onNext,
-                                onStop = onStop,
-                                onSeek = onSeek,
-                                onVolume = onVolume,
-                                onPlayQueueItem = onPlayQueueItem,
-                                onOpenFullQueue = onOpenFullQueue,
-                                onHandoffPhoneToPc = onHandoffPhoneToPc,
-                                onDisconnect = onDisconnect,
-                                onForgetPc = onForgetPc,
-                                onForgetSavedPc = onForgetSavedPc,
-                                onAutoReconnectChange = onAutoReconnectChange,
-                                onLinkedLibraryDefaultChange = onLinkedLibraryDefaultChange,
-                                discoveryState = discoveryState,
-                                discoveredLanDevices = discoveredLanDevices,
-                                onSelectLanDevice = onSelectLanDevice,
-                                onRefreshLanDevices = onRefreshLanDevices,
-                                remoteLibrary = remoteLibrary,
-                                onSearchPcLibrary = onSearchPcLibrary,
-                                onLoadMorePcLibrary = onLoadMorePcLibrary,
-                                active = remoteControlsActive && pagerState.settledPage == 1,
-                                onOpenListening = onOpenListening,
-                                remoteMode = remoteMode,
-                                libraryOnly = libraryOnly,
-                                onRemoteModeChange = onRemoteModeChange,
-                                onOpenPcLibrary = onOpenPcLibrary,
-                                openQueueNonce = openPcQueueNonce,
-                                onQueueRequestHandled = onPcQueueOpened,
-                                openConnectionNonce = openShareConnectionNonce,
-                                onConnectionRequestHandled = { openShareConnectionNonce = 0 },
-                            )
+                            0 -> {
+                                PcLinkPanel(
+                                    librarySyncActions = librarySyncActions,
+                                    phoneLibraryShareContent = {
+                                        if (!libraryOnly) PhoneLibraryShareControl(
+                                            status = phoneLibraryShareStatus,
+                                            connectionState = remoteState,
+                                            active = remoteControlsActive && pagerState.settledPage == 0,
+                                            onConnectRequested = { openShareConnectionNonce++ },
+                                            onChange = onPhoneLibraryShareChange,
+                                        )
+                                    },
+                                    remoteState = remoteState,
+                                    pcTitle = pcTitle,
+                                    trackTitle = trackTitle,
+                                    trackArtist = trackArtist,
+                                    trackArtworkUrl = trackArtworkUrl,
+                                    isPlaying = isPlaying,
+                                    remoteError = remoteError,
+                                    savedPcAddress = savedPcAddress,
+                                    savedPcToken = savedPcToken,
+                                    savedPcs = savedPcs,
+                                    autoReconnectEnabled = autoReconnectEnabled,
+                                    linkedLibraryDefault = linkedLibraryDefault,
+                                    positionMs = positionMs,
+                                    durationMs = durationMs,
+                                    volume = volume,
+                                    volumeControlEnabled = volumeControlEnabled,
+                                    volumeLockedReason = volumeLockedReason,
+                                    outputMode = outputMode,
+                                    currentTrackId = currentTrackId,
+                                    queueItems = queueItems,
+                                    queueTotalCount = queueTotalCount,
+                                    onConnectPc = onConnectPc,
+                                    onPlayPause = onPlayPause,
+                                    onPrevious = onPrevious,
+                                    onNext = onNext,
+                                    onStop = onStop,
+                                    onSeek = onSeek,
+                                    onVolume = onVolume,
+                                    onPlayQueueItem = onPlayQueueItem,
+                                    onOpenFullQueue = onOpenFullQueue,
+                                    onHandoffPhoneToPc = onHandoffPhoneToPc,
+                                    onDisconnect = onDisconnect,
+                                    onForgetPc = onForgetPc,
+                                    onForgetSavedPc = onForgetSavedPc,
+                                    onAutoReconnectChange = onAutoReconnectChange,
+                                    onLinkedLibraryDefaultChange = onLinkedLibraryDefaultChange,
+                                    discoveryState = discoveryState,
+                                    discoveredLanDevices = discoveredLanDevices,
+                                    onSelectLanDevice = onSelectLanDevice,
+                                    onRefreshLanDevices = onRefreshLanDevices,
+                                    remoteLibrary = remoteLibrary,
+                                    onSearchPcLibrary = onSearchPcLibrary,
+                                    onLoadMorePcLibrary = onLoadMorePcLibrary,
+                                    active = remoteControlsActive && pagerState.settledPage == 0,
+                                    onOpenListening = onOpenListening,
+                                    remoteMode = remoteMode,
+                                    libraryOnly = libraryOnly,
+                                    onRemoteModeChange = onRemoteModeChange,
+                                    onOpenPcLibrary = onOpenPcLibrary,
+                                    openQueueNonce = openPcQueueNonce,
+                                    onQueueRequestHandled = onPcQueueOpened,
+                                    openConnectionNonce = openShareConnectionNonce,
+                                    onConnectionRequestHandled = { openShareConnectionNonce = 0 },
+                                )
                             }
                             else -> CastDevicesPanel(
                                 phoneTrackTitle = phoneTrackTitle,
@@ -357,7 +359,7 @@ fun ConnectScreen(
                                 activeRendererId = activeRendererId,
                                 onCastToRenderer = onCastToRenderer,
                                 onRequestPairing = {
-                                    selectTab(1)
+                                    selectTab(0)
                                     onRequestPairing()
                                 },
                                 onRefreshLanDevices = onRefreshLanDevices,

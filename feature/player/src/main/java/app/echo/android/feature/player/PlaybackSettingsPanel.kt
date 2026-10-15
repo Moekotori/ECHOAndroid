@@ -1,5 +1,7 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayTrack
 import app.echo.android.feature.player.R as L10nR
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ScrollState
@@ -267,7 +269,7 @@ private fun PlaybackSettingsSheet(
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(
                             if (moreExpanded) stringResource(L10nR.string.playback_more_settings)
-                            else status.track?.title?.takeIf { it.isNotBlank() }
+                            else status.track?.let { displayTrack(it.title) }
                                 ?: stringResource(L10nR.string.feature_player_playback_settings_651436),
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                             color = titleColor,
@@ -276,7 +278,7 @@ private fun PlaybackSettingsSheet(
                         )
                         Text(
                             if (moreExpanded) playbackSettingsSummary(status)
-                            else status.track?.artist.orEmpty(),
+                            else status.track?.let { displayArtist(it.artist) }.orEmpty(),
                             color = mutedColor,
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,

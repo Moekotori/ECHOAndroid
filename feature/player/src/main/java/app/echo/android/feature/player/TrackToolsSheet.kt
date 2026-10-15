@@ -1,5 +1,7 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayTrack
 import app.echo.android.design.EchoRangeSlider
 import app.echo.android.design.EchoIcon
 
@@ -56,8 +58,8 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Text(stringResource(R.string.track_tools_title), style = MaterialTheme.typography.headlineSmall)
-                Text(track.title, style = MaterialTheme.typography.titleMedium)
-                Text(track.artist, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(displayTrack(track.title), style = MaterialTheme.typography.titleMedium)
+                Text(displayArtist(track.artist), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item {
                 val loopLabel = stringResource(R.string.track_loop_title)

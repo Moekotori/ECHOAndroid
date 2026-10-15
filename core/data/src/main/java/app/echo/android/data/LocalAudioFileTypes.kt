@@ -8,6 +8,8 @@ internal object LocalAudioFileTypes {
         return when {
             lower.endsWith(".flac") -> "audio/flac"
             lower.endsWith(".ape") -> "audio/ape"
+            lower.endsWith(".wv") -> "audio/x-wavpack"
+            lower.endsWith(".wma") || lower.endsWith(".asf") -> "audio/x-ms-wma"
             lower.endsWith(".mp3") -> "audio/mpeg"
             lower.endsWith(".mp2") -> "audio/mpeg"
             lower.endsWith(".m4a") || lower.endsWith(".m4b") -> "audio/mp4"
@@ -76,7 +78,7 @@ internal object LocalAudioFileTypes {
 }
 
 internal val MediaStoreFallbackExtensions = listOf(
-    "ape", "dsf", "dff", "ac3", "eac3", "ec3", "dts", "amr", "aiff", "aif", "aifc",
+    "ape", "wv", "wma", "asf", "dsf", "dff", "ac3", "eac3", "ec3", "dts", "amr", "aiff", "aif", "aifc",
 )
 
 internal fun String?.isAudioMime(): Boolean {

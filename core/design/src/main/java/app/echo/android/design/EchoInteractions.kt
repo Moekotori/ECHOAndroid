@@ -204,8 +204,10 @@ fun rememberContentPagerNestedScroll(
     val default = PagerDefaults.pageNestedScrollConnection(state, Orientation.Horizontal)
     return remember(state, default, flingBehavior) {
         object : NestedScrollConnection {
+            private val dragAxis = EchoPagerDragAxis()
+
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
-                if (source == NestedScrollSource.UserInput && !echoHorizontalGestureOwnsScroll(Offset.Zero, available)) Offset.Zero
+                if (source == NestedScrollSource.UserInput && !dragAxis.ownsScroll(Offset.Zero, available)) Offset.Zero
                 else default.onPreScroll(available, source).copy(y = 0f)
 
             override fun onPostScroll(
@@ -213,7 +215,7 @@ fun rememberContentPagerNestedScroll(
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                if (source == NestedScrollSource.UserInput && !echoHorizontalGestureOwnsScroll(consumed, available)) return Offset.Zero
+                if (source == NestedScrollSource.UserInput && !dragAxis.ownsScroll(consumed, available)) return Offset.Zero
                 if (source == NestedScrollSource.UserInput && available.x != 0f) {
                     val consumedX = -state.dispatchRawDelta(-available.x)
                     return Offset(x = consumedX, y = 0f)
@@ -222,19 +224,27 @@ fun rememberContentPagerNestedScroll(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity =
-                default.onPreFling(available)
+                if (dragAxis.isVertical && state.currentPageOffsetFraction.absoluteValue <= 0.001f) Velocity.Zero
+                else default.onPreFling(available)
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (!echoPagerOwnsFling(consumed, available, state.currentPageOffsetFraction)) {
-                    return Velocity.Zero
-                }
-                if (available.x != 0f || state.currentPageOffsetFraction.absoluteValue > 0.001f) {
-                    state.scroll {
-                        with(flingBehavior) { performFling(-available.x) }
+                try {
+                    if (dragAxis.isVertical && state.currentPageOffsetFraction.absoluteValue <= 0.001f) {
+                        return Velocity.Zero
                     }
-                    return available.copy(y = 0f)
+                    if (!echoPagerOwnsFling(consumed, available, state.currentPageOffsetFraction)) {
+                        return Velocity.Zero
+                    }
+                    if (available.x != 0f || state.currentPageOffsetFraction.absoluteValue > 0.001f) {
+                        state.scroll {
+                            with(flingBehavior) { performFling(-available.x) }
+                        }
+                        return available.copy(y = 0f)
+                    }
+                    return Velocity.Zero
+                } finally {
+                    dragAxis.reset()
                 }
-                return Velocity.Zero
             }
         }
     }

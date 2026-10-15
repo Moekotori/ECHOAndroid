@@ -7,6 +7,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoSwitch
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import app.echo.android.model.connect.EchoRemoteConnectionState
 
 @Composable
@@ -33,14 +36,16 @@ internal fun PhoneLibraryShareControl(
             change(true)
         }
     }
+    val title = stringResource(R.string.phone_library_share_title)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(end = 16.dp)) {
-                Text(stringResource(R.string.phone_library_share_title), style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(stringResource(R.string.phone_library_share_description),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Switch(
+            EchoSwitch(
+                modifier = Modifier.semantics { contentDescription = title },
                 checked = awaitingConnection || status == "starting" || status == "sharing",
                 onCheckedChange = { enabled ->
                     if (enabled && !connected) {

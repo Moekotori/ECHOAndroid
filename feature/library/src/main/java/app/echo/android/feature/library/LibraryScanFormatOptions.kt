@@ -13,9 +13,9 @@ import androidx.compose.ui.unit.dp
 import java.util.Locale
 
 private val ScanExtensions = listOf(
-    "flac", "ape", "wav", "aiff", "aif", "aifc", "dsf", "dff",
+    "flac", "ape", "wv", "wav", "aiff", "aif", "aifc", "dsf", "dff",
     "mp3", "mp2", "m4a", "m4b", "aac", "ogg", "oga", "opus", "mka",
-    "ac3", "eac3", "dts", "amr",
+    "ac3", "eac3", "dts", "amr", "wma", "asf",
 )
 
 @OptIn(ExperimentalLayoutApi::class)

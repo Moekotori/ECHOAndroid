@@ -126,7 +126,8 @@ const AVCodec* getCodecByName(JNIEnv* env, jstring codecName);
  */
 AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
                               jbyteArray extraData, jint outputMode,
-                              jint rawSampleRate, jint rawChannelCount, jint rawBitDepth);
+                              jint rawSampleRate, jint rawChannelCount, jint rawBitDepth,
+                              jbyteArray codecParameters);
 
 struct GrowOutputBufferCallback {
   uint8_t* operator()(int requiredSize) const;
@@ -197,14 +198,15 @@ LIBRARY_FUNC(jboolean, ffmpegHasDecoder, jstring codecName) {
 
 AUDIO_DECODER_FUNC(jlong, ffmpegInitialize, jstring codecName,
                    jbyteArray extraData, jint outputMode,
-                   jint rawSampleRate, jint rawChannelCount, jint rawBitDepth) {
+                   jint rawSampleRate, jint rawChannelCount, jint rawBitDepth,
+                   jbyteArray codecParameters) {
   const AVCodec* codec = getCodecByName(env, codecName);
   if (!codec) {
     LOGE("Codec not found.");
     return 0L;
   }
   return (jlong)createContext(env, codec, extraData, outputMode, rawSampleRate,
-                              rawChannelCount, rawBitDepth);
+                              rawChannelCount, rawBitDepth, codecParameters);
 }
 
 AUDIO_DECODER_FUNC(jint, ffmpegDecode, jlong context, jobject inputData,
@@ -233,7 +235,7 @@ AUDIO_DECODER_FUNC(jint, ffmpegDecode, jlong context, jobject inputData,
     LOGE("Failed to allocate packet.");
     return -1;
   }
-  packet->data = inputBuffer;
+  packet->data = inputSize == 0 ? nullptr : inputBuffer;
   packet->size = inputSize;
   const int ret =
       decodePacket((AVCodecContext*)context, packet, outputBuffer, outputSize,
@@ -299,7 +301,7 @@ AUDIO_DECODER_FUNC(jlong, ffmpegReset, jlong jContext, jbyteArray extraData) {
     }
     return (jlong)createContext(env, codec, extraData, outputMode,
                                 /* rawSampleRate= */ -1,
-                                /* rawChannelCount= */ -1, /* rawBitDepth= */ -1);
+                                /* rawChannelCount= */ -1, /* rawBitDepth= */ -1, nullptr);
   }
 
   free_resampler_swr(resampler_state(context));
@@ -325,7 +327,8 @@ const AVCodec* getCodecByName(JNIEnv* env, jstring codecName) {
 
 AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
                               jbyteArray extraData, jint outputMode,
-                              jint rawSampleRate, jint rawChannelCount, jint rawBitDepth) {
+                              jint rawSampleRate, jint rawChannelCount, jint rawBitDepth,
+                              jbyteArray codecParameters) {
   AVCodecContext* context = avcodec_alloc_context3(codec);
   if (!context) {
     LOGE("Failed to allocate context.");
@@ -339,7 +342,7 @@ AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
     jsize size = env->GetArrayLength(extraData);
     context->extradata_size = size;
     context->extradata =
-        (uint8_t*)av_malloc(size + AV_INPUT_BUFFER_PADDING_SIZE);
+        (uint8_t*)av_mallocz(size + AV_INPUT_BUFFER_PADDING_SIZE);
     if (!context->extradata) {
       LOGE("Failed to allocate extradata.");
       releaseContext(context);
@@ -350,12 +353,25 @@ AVCodecContext* createContext(JNIEnv* env, const AVCodec* codec,
   if (context->codec_id == AV_CODEC_ID_PCM_MULAW ||
       context->codec_id == AV_CODEC_ID_PCM_ALAW ||
       context->codec_id == AV_CODEC_ID_APE ||
+      codecParameters ||
       is_dsd_codec(codec)) {
     context->sample_rate = rawSampleRate;
     av_channel_layout_default(&context->ch_layout, rawChannelCount);
   }
   if (context->codec_id == AV_CODEC_ID_APE) {
     context->bits_per_coded_sample = rawBitDepth;
+  }
+  if (codecParameters) {
+    if (env->GetArrayLength(codecParameters) != 16) {
+      releaseContext(context);
+      return NULL;
+    }
+    uint8_t parameters[16];
+    env->GetByteArrayRegion(codecParameters, 0, 16, reinterpret_cast<jbyte*>(parameters));
+    context->bits_per_coded_sample = AV_RL32(parameters);
+    context->block_align = AV_RL32(parameters + 4);
+    context->codec_tag = AV_RL32(parameters + 8);
+    context->bit_rate = AV_RL32(parameters + 12);
   }
   context->err_recognition = outputMode == 2 ? (AV_EF_CRCCHECK | AV_EF_EXPLODE) : AV_EF_IGNORE_ERR;
   int result = avcodec_open2(context, codec, NULL);
@@ -413,7 +429,7 @@ int decodePacket(AVCodecContext* context, AVPacket* packet,
     result = avcodec_receive_frame(context, frame);
     if (result) {
       av_frame_free(&frame);
-      if (result == AVERROR(EAGAIN)) {
+      if (result == AVERROR(EAGAIN) || result == AVERROR_EOF) {
         break;
       }
       logError("avcodec_receive_frame", result);

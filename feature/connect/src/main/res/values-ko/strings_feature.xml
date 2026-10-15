@@ -116,7 +116,7 @@
     <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"로컬 파일은 라이브러리에서 관리합니다. 서버 연결은 필요 없습니다."</string>
     <string name="feature_connect_music_on_this_phone_8611a5">"이 휴대전화의 음악"</string>
     <string name="feature_connect_not_configured_29b98a">"설정되지 않음"</string>
-    <string name="feature_connect_pc_link_4ca6bd">"PC 연결"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"Echo Link"</string>
     <string name="feature_connect_remove_acf88e">"삭제"</string>
     <string name="feature_connect_remove_configuration_26bffc">"설정 삭제"</string>
     <string name="feature_connect_remove_title_323067">"%1$s 설정을 삭제할까요?"</string>
@@ -191,5 +191,5 @@
     <string name="echo_link_cast_send">캐스트</string>
     <string name="echo_link_cast_pair_first">먼저 페어링</string>
     <string name="echo_link_cast_playing_here">여기서 재생 중 · %1$s</string>
-    <string name="echo_link_battery_hint">Android 절전 기능과 백그라운드 제한으로 인해 화면이 꺼지거나 ECHO가 백그라운드로 전환되면 Echo Link 연결, 캐스트 또는 휴대전화 라이브러리 공유가 중단될 수 있습니다. 이 경우 시스템 설정에서 ECHO의 백그라운드 실행을 허용하고 배터리 사용을 «제한 없음»으로 설정하세요(기기에 따라 명칭이 다를 수 있음). 배터리 사용량이 늘어날 수 있습니다.</string>
+    <string name="echo_link_battery_hint">화면이 꺼지거나 백그라운드에서 연결이 끊기면 ECHO의 백그라운드 실행을 허용하고 배터리 사용을 «제한 없음»으로 설정하세요.</string>
 </resources>

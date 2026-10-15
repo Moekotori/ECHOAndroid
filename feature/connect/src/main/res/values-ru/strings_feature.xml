@@ -116,7 +116,7 @@
     <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"Локальные файлы управляются в Библиотеке. Подключение к серверу не требуется."</string>
     <string name="feature_connect_music_on_this_phone_8611a5">"Музыка на этом телефоне"</string>
     <string name="feature_connect_not_configured_29b98a">"Не настроено"</string>
-    <string name="feature_connect_pc_link_4ca6bd">"Связь с ПК"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"Echo Link"</string>
     <string name="feature_connect_remove_acf88e">"Удалить"</string>
     <string name="feature_connect_remove_configuration_26bffc">"Удалить конфигурацию"</string>
     <string name="feature_connect_remove_title_323067">"Удалить %1$s?"</string>
@@ -191,5 +191,5 @@
     <string name="echo_link_cast_send">Транслировать</string>
     <string name="echo_link_cast_pair_first">Сначала сопряжение</string>
     <string name="echo_link_cast_playing_here">Играет здесь · %1$s</string>
-    <string name="echo_link_battery_hint">Энергосбережение и ограничения фоновой работы Android могут прерывать соединения Echo Link, трансляцию или общий доступ к медиатеке телефона, когда экран выключен или ECHO работает в фоне. Если это происходит, разрешите ECHO работать в фоне в системных настройках и выберите режим использования батареи «Без ограничений» (названия зависят от устройства). Это может увеличить расход заряда.</string>
+    <string name="echo_link_battery_hint">Если Echo Link отключается в фоне, разрешите ECHO работать в фоне и установите режим батареи «Без ограничений».</string>
 </resources>

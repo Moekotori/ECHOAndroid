@@ -1,5 +1,8 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayAlbum
+import app.echo.android.design.displayTrack
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,7 +43,7 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
     val ink = ExpressivePlayerStyle.PixelInk
     val paper = ExpressivePlayerStyle.PixelPaper
     val track = status.track
-    val fullTitle = track?.title ?: stringResource(R.string.feature_player_not_playing_d72324)
+    val fullTitle = track?.let { displayTrack(it.title) } ?: stringResource(R.string.feature_player_not_playing_d72324)
     val (title, edition) = remember(fullTitle) { recordSleeveTitleParts(fullTitle) }
     val formats = remember(status.diagnostics) { playbackFormatChips(status.diagnostics, ::formatSampleRate).joinToString(" · ") }
     PlayerCoverLayout(
@@ -54,7 +57,7 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
                             fontWeight = FontWeight.Bold, lineHeight = 1.05.em),
                         autoSize = TextAutoSize.StepBased(22.sp, 36.sp, 1.sp), maxLines = 2,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
-                    Text(track?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
+                    Text(track?.let { displayArtist(it.artist) } ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
                         modifier = Modifier.fillMaxWidth().openArtistWhen(track?.id, track?.artist, actions.openArtist),
                         color = ink, fontFamily = ExpressivePlayerStyle.PixelBody, fontSize = 27.sp,
                         lineHeight = 28.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -73,7 +76,7 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(track?.album.orEmpty(), color = ink, fontFamily = ExpressivePlayerStyle.PixelBody,
+                    Text(track?.let { displayAlbum(it.album) }.orEmpty(), color = ink, fontFamily = ExpressivePlayerStyle.PixelBody,
                         fontSize = 18.sp, lineHeight = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(formats, color = ink, fontFamily = ExpressivePlayerStyle.PixelBody,
                         fontSize = 18.sp, lineHeight = 22.sp, maxLines = 1,

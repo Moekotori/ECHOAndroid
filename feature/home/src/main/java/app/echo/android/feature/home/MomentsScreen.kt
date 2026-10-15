@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayTrack
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,7 +31,7 @@ fun MomentsScreen(query: String, moments: LazyPagingItems<EchoSavedMoment>, onQu
                 Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Column(Modifier.weight(1f).clickable(enabled = moment.track.uri.isNotBlank()) { onPlay(moment) }.padding(vertical = 8.dp)) {
                         Text(moment.bookmark.label, style = MaterialTheme.typography.titleMedium)
-                        Text("${moment.track.title} · ${moment.track.artist}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${displayTrack(moment.track.title)} · ${displayArtist(moment.track.artist)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         val ms = moment.bookmark.positionMs
                         Text("%d:%02d.%03d".format(ms / 60000, ms / 1000 % 60, ms % 1000), style = MaterialTheme.typography.bodySmall)
                     }

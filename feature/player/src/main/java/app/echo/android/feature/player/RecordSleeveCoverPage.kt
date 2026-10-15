@@ -1,5 +1,8 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayAlbum
+import app.echo.android.design.displayTrack
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -72,7 +75,7 @@ internal fun RecordSleeveCoverPage(
             if (!LocalPlayerCoverLandscape.current) {
             Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
                 Text(
-                    text = track?.album.orEmpty().uppercase(java.util.Locale.ROOT),
+                    text = track?.let { displayAlbum(it.album) }.orEmpty().uppercase(java.util.Locale.ROOT),
                     color = RecordSleeveStyle.Ink,
                     fontFamily = RecordSleeveStyle.BodyFont,
                     fontSize = 11.sp,
@@ -109,7 +112,7 @@ internal fun RecordSleeveCoverPage(
             Box(Modifier.fillMaxWidth().height(1.dp).background(RecordSleeveStyle.Rule))
             Spacer(Modifier.height(if (landscape) 4.dp else 10.dp))
             NowPlayingTrackTransition(track, previousRequestedFrom, Modifier.fillMaxWidth()) { displayedTrack ->
-                val fullTitle = displayedTrack?.title ?: stringResource(R.string.feature_player_not_playing_d72324)
+                val fullTitle = displayedTrack?.let { displayTrack(it.title) } ?: stringResource(R.string.feature_player_not_playing_d72324)
                 val (title, edition) = remember(fullTitle) { recordSleeveTitleParts(fullTitle) }
                 Column(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -150,7 +153,7 @@ internal fun RecordSleeveCoverPage(
                     Spacer(Modifier.height(if (landscape) 2.dp else 8.dp))
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        displayedTrack?.artist ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
+                        displayedTrack?.let { displayArtist(it.artist) } ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
                         modifier = Modifier
                             .weight(1f)
                             .openArtistWhen(displayedTrack?.id, displayedTrack?.artist, onOpenArtist),
@@ -163,7 +166,7 @@ internal fun RecordSleeveCoverPage(
                     )
                     if (landscape && !displayedTrack?.album.isNullOrBlank()) {
                         Text(
-                            displayedTrack?.album.orEmpty().uppercase(java.util.Locale.ROOT),
+                            displayedTrack?.let { displayAlbum(it.album) }.orEmpty().uppercase(java.util.Locale.ROOT),
                             modifier = Modifier.weight(1f).padding(start = 12.dp),
                             color = RecordSleeveStyle.Ink.copy(alpha = 0.6f),
                             fontFamily = RecordSleeveStyle.BodyFont,

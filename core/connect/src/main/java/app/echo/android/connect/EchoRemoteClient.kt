@@ -880,7 +880,7 @@ class EchoRemoteClient internal constructor(
         positionMs: Long,
         onFailure: (Throwable?) -> Unit = {},
         onSuccess: () -> Unit = {},
-    ) {
+    ): Job? {
         val startTrack = tracks.getOrNull(startIndex) ?: tracks.firstOrNull()
         val trackId = startTrack?.id?.takeIf { it.isNotBlank() } ?: run {
             _library.update {
@@ -889,7 +889,7 @@ class EchoRemoteClient internal constructor(
                 )
             }
             onFailure(null)
-            return
+            return null
         }
         val target = endpoint ?: run {
             _status.update {
@@ -899,20 +899,13 @@ class EchoRemoteClient internal constructor(
                 )
             }
             onFailure(null)
-            return
+            return null
         }
-        val ids = EchoLinkLibraryQueryPolicy.playableLinkedPcTrackIds(tracks)
-        val startId = EchoLinkLibraryQueryPolicy.queueReplaceStartId(ids, trackId) ?: trackId
-        val connection = connectGeneration
-        scope.launch {
-            if (ids.size > 1) {
-                val replaced = dispatchCommand(
-                    target = target,
-                    command = EchoRemoteCommand.QueueReplace(trackIds = ids, startTrackId = startId),
-                    onFailure = onFailure,
-                )
-                if (!replaced || connection != connectGeneration) return@launch
-            }
+        if (tracks.size > 1) {
+            onFailure(EchoLinkAtomicQueueRequiredException(pcLibrary = true))
+            return null
+        }
+        return scope.launch {
             dispatchCommand(
                 target = target,
                 command = EchoRemoteCommand.HandoffToPc(trackId, positionMs.coerceAtLeast(0L)),
@@ -928,14 +921,14 @@ class EchoRemoteClient internal constructor(
         positionMs: Long,
         onFailure: (Throwable?) -> Unit = {},
         onSuccess: () -> Unit = {},
-    ) {
+    ): Job? {
         val startItem = items.getOrNull(startIndex) ?: items.firstOrNull()
         if (startItem == null || startItem.streamUrl.isBlank()) {
             val message = text(R.string.connect_no_local_cast_file)
             _library.update { it.copy(error = message) }
             _status.update { it.copy(error = message) }
             onFailure(null)
-            return
+            return null
         }
         val target = endpoint ?: run {
             _status.update {
@@ -945,42 +938,29 @@ class EchoRemoteClient internal constructor(
                 )
             }
             onFailure(null)
-            return
+            return null
         }
-        val connection = connectGeneration
-        val safePosition = positionMs.coerceAtLeast(0L)
-        scope.launch {
-            val castFailure: (Throwable) -> Unit = { error ->
+        val atomic = _status.value.playback.supportsAtomicPhoneQueue
+        if (items.size > 1 && !atomic) {
+            onFailure(EchoLinkAtomicQueueRequiredException(pcLibrary = false))
+            return null
+        }
+        val command = if (atomic) EchoRemoteCommand.QueueReplaceRemote(
+            items = items,
+            startTrackId = startItem.id,
+            positionMs = positionMs.coerceAtLeast(0L),
+            startIndex = if (startIndex in items.indices) startIndex else 0,
+        ) else EchoRemoteCommand.PlayRemoteStream(
+            streamUrl = startItem.streamUrl,
+            positionMs = positionMs.coerceAtLeast(0L),
+            track = startItem.toRemoteTrack(),
+            audio = startItem.audio,
+        )
+        return scope.launch {
+            dispatchCommand(target, command, onSuccess = onSuccess, onFailure = { error ->
                 applyCastFailure(error)
                 onFailure(error)
-            }
-            if (items.size > 1) {
-                val atomic = _status.value.playback.supportsAtomicPhoneQueue
-                val replaced = dispatchCommand(
-                    target = target,
-                    command = EchoRemoteCommand.QueueReplaceRemote(
-                        items = items,
-                        startTrackId = startItem.id,
-                        positionMs = if (atomic) safePosition else 0L,
-                        startIndex = if (atomic) (if (startIndex in items.indices) startIndex else 0) else null,
-                    ),
-                    onSuccess = { if (atomic) onSuccess() },
-                    onFailure = castFailure,
-                )
-                if (!replaced || connection != connectGeneration) return@launch
-                if (atomic) return@launch
-            }
-            dispatchCommand(
-                target = target,
-                command = EchoRemoteCommand.PlayRemoteStream(
-                    streamUrl = startItem.streamUrl,
-                    positionMs = safePosition,
-                    track = startItem.toRemoteTrack(),
-                    audio = startItem.audio,
-                ),
-                onSuccess = onSuccess,
-                onFailure = castFailure,
-            )
+            })
         }
     }
 

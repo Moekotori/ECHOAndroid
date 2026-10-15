@@ -47,9 +47,15 @@ data class EchoLinkCastPublication(
     val artworkToken: String? = null,
     val durationMs: Long = 0L,
     val format: EchoRemoteAudioFormat? = null,
+    val peerHost: String? = null,
 )
 
 data class EchoLinkHttpReply(val status: Int = 200, val body: String)
+
+class EchoLinkCastPreparedQueue internal constructor(
+    val items: List<EchoRemoteStreamItem>,
+    internal val tokens: Set<String>,
+)
 
 class EchoLinkCastServer(
     private val openBody: EchoLinkCastBodyFactory,
@@ -62,6 +68,8 @@ class EchoLinkCastServer(
     private val openArtwork: ((EchoLinkCastPublication, Long) -> EchoLinkCastBody?)? = null,
 ) {
     private val publications = ConcurrentHashMap<String, EchoLinkCastPublication>()
+    private var preparedQueue: EchoLinkCastPreparedQueue? = null
+    val hasPublications: Boolean get() = publications.isNotEmpty()
     private val running = AtomicBoolean(false)
     private val port = AtomicInteger(0)
     private val serverSocket = AtomicReference<ServerSocket?>(null)
@@ -100,6 +108,7 @@ class EchoLinkCastServer(
     fun stop() {
         running.set(false)
         publications.clear()
+        preparedQueue = null
         activeClients.forEach { runCatching { it.close() } }
         activeClients.clear()
         runCatching { serverSocket.getAndSet(null)?.close() }
@@ -118,14 +127,15 @@ class EchoLinkCastServer(
         return nowMs - last >= timeoutMs
     }
 
-    fun publish(items: List<EchoLinkCastPublication>, host: String, boundPort: Int): List<EchoRemoteStreamItem> {
+    @Synchronized
+    fun prepare(items: List<EchoLinkCastPublication>, host: String, boundPort: Int): EchoLinkCastPreparedQueue {
+        check(preparedQueue == null) { "A cast queue is already being prepared" }
         val next = LinkedHashMap<String, EchoLinkCastPublication>()
         items.forEach { item ->
             if (EchoLinkCastPolicy.isCastToken(item.token)) next[item.token] = item
         }
-        publications.keys.retainAll(next.keys)
-        publications.putAll(next)
-        return next.values.map { item ->
+        require(next.isNotEmpty() && next.keys.none { publications.containsKey(it) }) { "Cast tokens must be new" }
+        val streams = next.values.map { item ->
             EchoRemoteStreamItem(
                 id = item.trackId,
                 streamUrl = EchoLinkCastPolicy.streamUrl(host, boundPort, item.token),
@@ -137,10 +147,36 @@ class EchoLinkCastServer(
                 audio = item.format,
             )
         }
+        publications.putAll(next)
+        return EchoLinkCastPreparedQueue(streams, next.keys.toSet()).also { preparedQueue = it }
     }
 
+    @Synchronized
+    fun commit(prepared: EchoLinkCastPreparedQueue): Boolean {
+        if (preparedQueue !== prepared) return false
+        publications.keys.retainAll(prepared.tokens)
+        preparedQueue = null
+        return true
+    }
+
+    @Synchronized
+    fun rollback(prepared: EchoLinkCastPreparedQueue) {
+        if (preparedQueue !== prepared) return
+        publications.keys.removeAll(prepared.tokens)
+        preparedQueue = null
+    }
+
+    @Synchronized
+    fun publish(items: List<EchoLinkCastPublication>, host: String, boundPort: Int): List<EchoRemoteStreamItem> {
+        val prepared = prepare(items, host, boundPort)
+        check(commit(prepared))
+        return prepared.items
+    }
+
+    @Synchronized
     fun clear() {
         publications.clear()
+        preparedQueue = null
     }
 
     private fun acceptLoop(socket: ServerSocket) {
@@ -199,7 +235,10 @@ class EchoLinkCastServer(
             reply(output, 400, "Bad Request", 0)
             return
         }
-        if (!EchoLinkCastPolicy.peerMatches(allowedPeerHost(), client.inetAddress?.hostAddress)) {
+        // Candidate and committed queues can temporarily belong to different devices.
+        val registered = locatePublication(request.path)
+        val peerHost = registered?.first?.peerHost ?: allowedPeerHost()
+        if (!EchoLinkCastPolicy.peerMatches(peerHost, client.inetAddress?.hostAddress)) {
             reply(output, 403, "Forbidden", 0)
             return
         }
@@ -217,7 +256,7 @@ class EchoLinkCastServer(
             lastActivityMs.set(nowMs())
             return
         }
-        val located = locatePublication(request.path) ?: resolvePublication?.invoke(request.path)
+        val located = registered ?: resolvePublication?.invoke(request.path)
         if (located == null) {
             reply(output, 404, "Not Found", 0)
             return

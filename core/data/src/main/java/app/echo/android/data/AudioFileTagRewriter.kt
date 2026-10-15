@@ -462,7 +462,7 @@ internal object AudioFileTagRewriter {
         val managed = HashSet(if (version == 4) ManagedId3v24 else ManagedId3v23)
         if (fields.composer != null || fields.composerModified) managed += "TCOM"
         if (fields.genre != null || fields.genreModified) managed += "TCON"
-        if (fields.lyrics != null) managed += "USLT"
+        if (fields.lyrics != null) managed += setOf("USLT", "SYLT")
         if (fields.artworkBytes != null) managed += "APIC"
         val kept = frames.filterNot { frame ->
             frame.id in managed ||
@@ -606,7 +606,9 @@ internal object AudioFileTagRewriter {
             genre = text("TCON")?.takeIf { it.isNotBlank() },
             lyrics = frames.asSequence().filter { it.id == "USLT" }
                 .mapNotNull { readableId3Payload(it, majorVersion)?.let(::decodeUslt) }.firstOrNull()
-                ?: custom.firstOrNull { it.first.uppercase(java.util.Locale.ROOT) in Id3LyricsKeys }?.second,
+                ?: custom.firstOrNull { it.first.uppercase(java.util.Locale.ROOT) in Id3LyricsKeys }?.second
+                ?: frames.asSequence().filter { it.id == "SYLT" }
+                    .mapNotNull { readableId3Payload(it, majorVersion)?.let(::decodeSyncedId3Lyrics) }.firstOrNull(),
             artworkBytes = artwork?.bytes,
             artworkMime = artwork?.mime,
             replayGainTrackGainDb = custom.firstOrNull { it.first.equals("REPLAYGAIN_TRACK_GAIN", true) }
@@ -1067,6 +1069,9 @@ internal object AudioFileTagRewriter {
         "TRK" to "TRCK",
         "TPA" to "TPOS",
         "TYE" to "TYER",
+        "ULT" to "USLT",
+        "SLT" to "SYLT",
+        "TXX" to "TXXX",
     )
 }
 

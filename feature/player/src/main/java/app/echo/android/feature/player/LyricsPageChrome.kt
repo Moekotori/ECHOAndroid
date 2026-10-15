@@ -1,5 +1,7 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayTrack
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,11 +36,11 @@ internal fun LyricsTrackHeading(
             horizontalAlignment = if (landscape) Alignment.Start else Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(track.title, color = OnArt, fontFamily = LocalPlayerPageStyle.current.displayFont ?: FontFamily.Serif,
+            Text(displayTrack(track.title), color = OnArt, fontFamily = LocalPlayerPageStyle.current.displayFont ?: FontFamily.Serif,
                 fontSize = if (landscape) 21.sp else 23.sp, fontWeight = FontWeight.SemiBold,
                 textAlign = if (landscape) TextAlign.Start else TextAlign.Center,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(track.artist, color = OnArtMuted, style = MaterialTheme.typography.bodyMedium,
+            Text(displayArtist(track.artist), color = OnArtMuted, style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.fillMaxWidth().openArtistWhen(track.id, track.artist, onOpenArtist),
                 textAlign = if (landscape) TextAlign.Start else TextAlign.Center,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -69,9 +71,9 @@ internal fun LyricsTrackIdentity(
         EchoArtworkImage(track.artworkUri, null, Modifier.size(artworkSize.dp),
             shape = RoundedCornerShape(7.dp), sizeClass = EchoArtworkSize.Tiny)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = OnArt, style = MaterialTheme.typography.titleMedium,
+            Text(displayTrack(track.title), color = OnArt, style = MaterialTheme.typography.titleMedium,
                 maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
-            Text(track.artist, color = OnArtMuted, style = MaterialTheme.typography.bodySmall,
+            Text(displayArtist(track.artist), color = OnArtMuted, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.fillMaxWidth().openArtistWhen(track.id, track.artist, onOpenArtist),
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

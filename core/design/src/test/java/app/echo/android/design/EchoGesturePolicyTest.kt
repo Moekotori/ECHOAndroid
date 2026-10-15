@@ -6,6 +6,24 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EchoGesturePolicyTest {
+    @Test fun verticalDragCannotSwitchAxisOnHorizontalJitterOrAtTheEdge() {
+        val axis = EchoPagerDragAxis()
+        assertFalse(axis.ownsScroll(Offset.Zero, Offset(2f, 24f)))
+        assertFalse(axis.ownsScroll(Offset(0f, 1f), Offset(6f, 0f)))
+        assertFalse(axis.ownsScroll(Offset.Zero, Offset(12f, 0f)))
+        axis.reset()
+        assertTrue(axis.ownsScroll(Offset.Zero, Offset(24f, 2f)))
+    }
+
+    @Test fun horizontalDragKeepsItsAxisAndEmptyEventsDoNotLockIt() {
+        val axis = EchoPagerDragAxis()
+        assertFalse(axis.ownsScroll(Offset.Zero, Offset.Zero))
+        assertTrue(axis.ownsScroll(Offset.Zero, Offset(24f, 2f)))
+        assertTrue(axis.ownsScroll(Offset.Zero, Offset(1f, 6f)))
+        axis.reset()
+        assertFalse(axis.ownsScroll(Offset.Zero, Offset(2f, 24f)))
+    }
+
     @Test fun verticalFlingResidueCannotStartPaging() {
         assertFalse(echoPagerOwnsFling(Velocity(0f, 2000f), Velocity(300f, 0f), 0f))
         assertFalse(echoPagerOwnsFling(Velocity.Zero, Velocity(300f, 1800f), 0f))

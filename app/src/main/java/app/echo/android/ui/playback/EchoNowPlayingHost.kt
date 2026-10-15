@@ -56,7 +56,10 @@ internal fun EchoNowPlayingHost(
         app.echo.android.feature.player.LyricsEditorSheet(source,
             position = { if (castActive) playbackPosition.value.positionMs else viewModel.currentPlaybackPositionMs() },
             onPlayPause = onPlayPause, onSeek = onSeek,
-            onSave = { viewModel.saveEditedLyrics(track.id, it) }, onDismiss = { showLyricsEditor = false })
+            onSave = { viewModel.saveEditedLyrics(track.id, it) }, onDismiss = { showLyricsEditor = false },
+            sourceLoading = lyricsState !is app.echo.android.model.lyrics.EchoLyricsLoadState.Ready &&
+                lyricsState !is app.echo.android.model.lyrics.EchoLyricsLoadState.Missing,
+            sourceError = (lyricsState as? app.echo.android.model.lyrics.EchoLyricsLoadState.Error)?.message)
     }
     var showTrackTools by remember(playbackStatus.track?.id) { mutableStateOf(false) }
     if (showTrackTools) playbackStatus.track?.let { track ->

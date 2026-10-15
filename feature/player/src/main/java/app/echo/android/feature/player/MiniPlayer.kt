@@ -1,5 +1,7 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayTrack
 import app.echo.android.feature.player.R as L10nR
 import androidx.compose.ui.res.stringResource
 
@@ -205,7 +207,7 @@ fun MiniPlayer(
                         verticalArrangement = Arrangement.spacedBy(if (compactDock) 2.dp else 1.dp),
                     ) {
                         Text(
-                            status.track?.title ?: "ECHO Mobile",
+                            status.track?.let { displayTrack(it.title) } ?: "ECHO Mobile",
                             modifier = Modifier.basicMarquee(
                                 iterations = if (marqueeActive) Int.MAX_VALUE else 0,
                                 initialDelayMillis = 700,
@@ -218,7 +220,7 @@ fun MiniPlayer(
                             style = MaterialTheme.typography.titleSmall,
                         )
                         Text(
-                            status.track?.artist ?: stringResource(L10nR.string.feature_player_ready_97b946),
+                            status.track?.let { displayArtist(it.artist) } ?: stringResource(L10nR.string.feature_player_ready_97b946),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             color = chrome.secondary,

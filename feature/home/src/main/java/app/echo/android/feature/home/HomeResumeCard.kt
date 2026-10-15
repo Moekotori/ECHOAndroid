@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayTrack
 import app.echo.android.design.EchoIcon
 
 import androidx.compose.foundation.layout.*
@@ -39,10 +41,10 @@ internal fun HomeResumeSection(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(stringResource(if (status.isPlaying) R.string.feature_home_playing_d86b54 else R.string.home_resume),
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text(track.title, style = MaterialTheme.typography.titleSmall,
+                Text(displayTrack(track.title), style = MaterialTheme.typography.titleSmall,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(track.artist, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+                    Text(displayArtist(track.artist), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     ResumePosition(positionState, status.positionMs, status.durationMs)
                 }

@@ -1,5 +1,7 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayAlbum
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -139,7 +141,7 @@ internal fun QueueTrackRow(
 
 @Composable
 private fun queueTrackDetail(track: EchoTrackRef): String {
-    val album = track.album?.takeIf { it.isNotBlank() }
-    return listOfNotNull(track.artist.takeIf { it.isNotBlank() }, album).joinToString(" · ")
+    val album = track.album?.takeIf { it.isNotBlank() }?.let { displayAlbum(it) }
+    return listOfNotNull(displayArtist(track.artist), album).joinToString(" · ")
         .ifBlank { stringResource(R.string.feature_player_local_queue_c7d54b) }
 }

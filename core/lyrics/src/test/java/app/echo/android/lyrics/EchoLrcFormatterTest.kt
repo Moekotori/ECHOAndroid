@@ -4,6 +4,7 @@ import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyrics
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.Locale
 
 class EchoLrcFormatterTest {
     @Test
@@ -29,5 +30,39 @@ class EchoLrcFormatterTest {
             ),
         )
         assertEquals("第一行\n第二行", EchoLrcFormatter.format(lyrics))
+    }
+
+    @Test
+    fun preservesTranslationWhenWrittenLyricsAreParsedAgain() {
+        val lyrics = EchoLyrics(lines = listOf(EchoLyricLine(1000, text = "Original", translation = "译文")))
+        val parsed = EchoLrcParser.parse(EchoLrcFormatter.format(lyrics))
+        assertEquals("Original", parsed.lines.single().text)
+        assertEquals("译文", parsed.lines.single().translation)
+    }
+
+    @Test
+    fun timestampsRemainReadableWithArabicSystemLocale() {
+        val previous = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-EG"))
+            val formatted = EchoLrcFormatter.format(EchoLyrics(lines = listOf(EchoLyricLine(1000, text = "Words"))))
+            assertEquals("[00:01.00]Words", formatted)
+            assertEquals(1000L, EchoLrcParser.parse(formatted).lines.single().startMs)
+        } finally {
+            Locale.setDefault(previous)
+        }
+    }
+
+    @Test
+    fun multilineTextAndTranslationKeepAllWordsOnFileRoundTrip() {
+        for (separator in listOf("\n", "\r\n", "\r")) {
+            val lyrics = EchoLyrics(lines = listOf(EchoLyricLine(1000,
+                text = "First${separator}Second", translation = "译文一${separator}译文二")))
+            for (formatted in listOf(EchoLrcFormatter.format(lyrics), EchoLyricsEditing.toLrc(lyrics))) {
+                val parsed = EchoLrcParser.parse(formatted).lines.single()
+                assertEquals("First Second", parsed.text)
+                assertEquals("译文一 译文二", parsed.translation)
+            }
+        }
     }
 }

@@ -106,6 +106,9 @@ internal fun CastDevicesPanel(
                 if (blockedReason == EchoLinkCastBlockReason.UnsupportedSource) {
                     ConnectNote(stringResource(L10nR.string.echo_link_cast_unsupported_source))
                 }
+                if (blockedReason == EchoLinkCastBlockReason.ClippedTrack) {
+                    ConnectNote(stringResource(L10nR.string.echo_link_cast_clipped_track))
+                }
                 if (showDsdWarning) {
                     ConnectNote(stringResource(L10nR.string.echo_link_cast_dsd_warning))
                 }

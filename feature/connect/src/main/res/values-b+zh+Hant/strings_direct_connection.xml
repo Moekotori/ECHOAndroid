@@ -2,6 +2,5 @@
 <resources>
     <string name="echo_link_direct_address_hint">在電腦 ECHOSteam 中開啟 Echo Link，在同一區域網路內選擇附近電腦或輸入 IP 即可連線。不支援直接連線的電腦仍可使用完整配對連結。</string>
     <string name="echo_link_pairing_entry">輸入 PC 位址或配對連結</string>
-    <string name="echo_link_steam_edition_title">ECHO Steam 版</string>
-    <string name="echo_link_steam_edition_requirement">PC 聯動需要 ECHO Steam 版，社群版不可用。</string>
+    <string name="echo_link_steam_edition_requirement">需要 ECHO Pro</string>
 </resources>

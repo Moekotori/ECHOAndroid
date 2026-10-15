@@ -1,5 +1,7 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayAlbum
 import app.echo.android.design.EchoIcon
 
 import androidx.compose.foundation.layout.*
@@ -56,9 +58,9 @@ internal fun HomeDailyAlbumSection(
                     modifier = Modifier.weight(0.42f).aspectRatio(1f),
                     accent = MaterialTheme.colorScheme.primary, cornerRadius = 4.dp, elevation = 0.dp)
                 Column(Modifier.weight(0.58f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(album.title, style = MaterialTheme.typography.titleMedium,
+                    Text(displayAlbum(album.title), style = MaterialTheme.typography.titleMedium,
                         maxLines = 3, overflow = TextOverflow.Ellipsis)
-                    Text(album.albumArtist ?: album.artist ?: stringResource(R.string.feature_home_unknown_artist_85ee30),
+                    Text(displayArtist(album.albumArtist ?: album.artist),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(6.dp))

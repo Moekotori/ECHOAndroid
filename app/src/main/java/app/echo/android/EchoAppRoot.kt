@@ -71,6 +71,7 @@ import app.echo.android.feature.home.SearchResultType
 import app.echo.android.connect.EchoDlnaException
 import app.echo.android.connect.EchoPairingParser
 import app.echo.android.connect.EchoLinkCastFormat
+import app.echo.android.connect.EchoLinkCastBlockReason
 import app.echo.android.connect.EchoLinkCastPlan
 import app.echo.android.connect.EchoLinkCastPolicy
 import app.echo.android.connect.EchoLinkCastSourceTrack
@@ -145,6 +146,9 @@ import app.echo.android.R
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
@@ -322,25 +326,30 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
 
     val pendingEmbeddedTagWrite by viewModel.pendingEmbeddedTagWrite.collectAsStateWithLifecycle()
     val embeddedTagWriteMessage by viewModel.embeddedTagWriteMessage.collectAsStateWithLifecycle()
+    var launchedTagWriteRequestId by rememberSaveable { mutableStateOf<Long?>(null) }
     val mediaStoreTagWriteLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { result ->
-        viewModel.onEmbeddedTagWriteAccessResult(result.resultCode == Activity.RESULT_OK)
+        val requestId = launchedTagWriteRequestId
+        launchedTagWriteRequestId = null
+        if (requestId != null) viewModel.onEmbeddedTagWriteAccessResult(requestId, result.resultCode == Activity.RESULT_OK)
     }
     val storageTagWriteLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        viewModel.onEmbeddedTagWriteAccessResult(granted)
+        val requestId = launchedTagWriteRequestId
+        launchedTagWriteRequestId = null
+        if (requestId != null) viewModel.onEmbeddedTagWriteAccessResult(requestId, granted)
     }
-    var launchedTagWriteRequestId by remember { mutableStateOf<Long?>(null) }
-    LaunchedEffect(pendingEmbeddedTagWrite) {
+    LaunchedEffect(pendingEmbeddedTagWrite, launchedTagWriteRequestId) {
         val pending = pendingEmbeddedTagWrite ?: return@LaunchedEffect
-        if (launchedTagWriteRequestId == pending.requestId) return@LaunchedEffect
+        if (launchedTagWriteRequestId != null) return@LaunchedEffect
         launchedTagWriteRequestId = pending.requestId
         if (pending.needsStoragePermission) {
             val permission = writeStoragePermissionName()
             if (permission == null) {
-                viewModel.onEmbeddedTagWriteAccessResult(false)
+                launchedTagWriteRequestId = null
+                viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
             } else {
                 storageTagWriteLauncher.launch(permission)
             }
@@ -357,7 +366,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             }
         }.getOrNull()
         if (sender == null) {
-            viewModel.onEmbeddedTagWriteAccessResult(false)
+            launchedTagWriteRequestId = null
+            viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
         } else {
             mediaStoreTagWriteLauncher.launch(IntentSenderRequest.Builder(sender).build())
         }
@@ -393,14 +403,30 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()
     val playbackStatus by viewModel.playbackStatus.collectAsStateWithLifecycle()
     val playbackQueue by viewModel.playbackQueue.collectAsStateWithLifecycle()
-    var castingToPc by remember { mutableStateOf(false) }
+    val phoneCastTransferState by echoLinkSession.phoneCastTransfer.state.collectAsStateWithLifecycle()
+    var lanCastPreparing by remember { mutableStateOf(false) }
+    val castingToPc = lanCastPreparing || phoneCastTransferState.isBusy
     var pendingCast by remember { mutableStateOf<Pair<String, String>?>(null) }
     var sendingCastAddress by remember { mutableStateOf<String?>(null) }
     var openCastTabNonce by remember { mutableIntStateOf(0) }
     var openPcTabNonce by remember { mutableIntStateOf(0) }
     var openPcQueueNonce by remember { mutableIntStateOf(0) }
     var settingsSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
-    var castSetupError by remember { mutableStateOf<String?>(null) }
+    var localCastSetupError by remember { mutableStateOf<String?>(null) }
+    val phoneCastIssueMessage = phoneCastTransferState.issue?.let { issue ->
+        val resource = when (issue) {
+            EchoPhoneCastIssue.NoLan -> R.string.echo_link_cast_no_lan
+            EchoPhoneCastIssue.ClippedTrack -> app.echo.android.feature.connect.R.string.echo_link_cast_clipped_track
+            EchoPhoneCastIssue.UnsupportedSource -> app.echo.android.feature.connect.R.string.echo_link_cast_unsupported_source
+            EchoPhoneCastIssue.AtomicPhoneQueueRequired -> app.echo.android.feature.connect.R.string.echo_link_cast_atomic_phone_required
+            EchoPhoneCastIssue.AtomicPcQueueUnavailable -> app.echo.android.feature.connect.R.string.echo_link_cast_atomic_pc_unavailable
+            EchoPhoneCastIssue.SourceChanged -> app.echo.android.feature.connect.R.string.echo_link_cast_source_changed
+            EchoPhoneCastIssue.Failed -> app.echo.android.feature.connect.R.string.echo_link_cast_prepare_failed
+        }
+        context.getString(resource)
+    }
+    val castSetupError = localCastSetupError ?: phoneCastIssueMessage
+    val effectiveSendingCastAddress = if (phoneCastTransferState.isBusy) phoneCastTransferState.targetAddress else sendingCastAddress
     val phoneLibraryShareStatus by echoLinkSession.phoneLibrary.status.collectAsStateWithLifecycle()
     val castSessionActive by echoLinkSession.castActive.collectAsStateWithLifecycle()
     val castSessionName by echoLinkSession.castTargetName.collectAsStateWithLifecycle()
@@ -430,11 +456,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             sendingCastAddress = null
         }
     }
-    val phoneCastPlan = remember(playbackQueue) {
-        EchoLinkCastPolicy.plan(
-            tracks = playbackQueue.items.map { it.toCastSource() },
-            startIndex = playbackQueue.currentIndex,
-        )
+    val phoneCastPlan by produceState<EchoLinkCastPlan>(
+        EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.EmptyQueue), playbackQueue,
+    ) {
+        value = withContext(Dispatchers.Default) {
+            EchoLinkCastPolicy.plan(
+                tracks = playbackQueue.items.map { it.toCastSource() },
+                startIndex = playbackQueue.currentIndex,
+                maxTracks = Int.MAX_VALUE,
+            )
+        }
     }
     val phoneCastFormatLabel = remember(playbackStatus.track, playbackStatus.diagnostics) {
         val track = playbackStatus.track ?: return@remember null
@@ -556,17 +587,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         }
     }
 
-    fun finishPhoneCast(pauseTrackId: String?) {
-        castingToPc = false
-        echoLinkSession.markCastStarted(remoteClient.status.value.endpoint?.name)
-        if (pauseTrackId != null) {
-            val live = viewModel.playbackStatus.value
-            if (live.track?.id == pauseTrackId && live.isPlaying) viewModel.pause()
-        }
-    }
-
     fun stopPhoneCast() {
-        castingToPc = false
+        lanCastPreparing = false
         pendingCast = null
         sendingCastAddress = null
         echoLinkSession.stopCastPlayback()
@@ -587,8 +609,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
 
     fun performDlnaCast(renderer: EchoLanRenderer) {
         if (castingToPc) return
+        echoLinkSession.phoneCastTransfer.clearIssue()
         sendingCastAddress = renderer.host
-        castSetupError = null
+        localCastSetupError = null
         val queue = viewModel.playbackQueue.value
         val phoneId = viewModel.playbackStatus.value.track?.id
         val positionMs = viewModel.playbackPosition.value.positionMs
@@ -607,17 +630,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             is EchoLinkCastPlan.Blocked -> return
             is EchoLinkCastPlan.HandoffPcLibrary -> {
                 sendingCastAddress = null
-                castSetupError = context.getString(R.string.echo_link_cast_pc_library_not_tv)
+                localCastSetupError = context.getString(R.string.echo_link_cast_pc_library_not_tv)
             }
             is EchoLinkCastPlan.LocalHttp -> {
-                castingToPc = true
+                lanCastPreparing = true
                 val onFailure: (Throwable) -> Unit = { error ->
-                    castingToPc = false
+                    lanCastPreparing = false
                     sendingCastAddress = null
-                    castSetupError = dlnaErrorMessage(error)
+                    localCastSetupError = dlnaErrorMessage(error)
                 }
                 val onSuccess: () -> Unit = {
-                    castingToPc = false
+                    lanCastPreparing = false
                     if (phoneId != null) {
                         val live = viewModel.playbackStatus.value
                         if (live.track?.id == phoneId && live.isPlaying) viewModel.pause()
@@ -655,60 +678,31 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     .removePrefix("https://")
             }
         }
-        val queue = viewModel.playbackQueue.value
-        val phoneId = viewModel.playbackStatus.value.track?.id
-        val positionMs = viewModel.playbackPosition.value.positionMs
-        when (
-            val plan = EchoLinkCastPolicy.plan(
-                tracks = queue.items.mapIndexed { index, item ->
-                    item.toCastSource(
-                        diagnostics = viewModel.playbackStatus.value.diagnostics.takeIf {
-                            index == queue.currentIndex
-                        },
-                    )
-                },
-                startIndex = queue.currentIndex,
-            )
-        ) {
-            is EchoLinkCastPlan.Blocked -> return
-            is EchoLinkCastPlan.HandoffPcLibrary -> {
-                echoLinkSession.stopLocalCast()
-                castingToPc = true
-                remoteClient.handoffPhoneQueueToPc(
-                    tracks = plan.tracks,
-                    startIndex = plan.startIndex,
-                    positionMs = positionMs,
-                    onFailure = { castingToPc = false },
-                    onSuccess = { finishPhoneCast(phoneId) },
-                )
-            }
-            is EchoLinkCastPlan.LocalHttp -> {
-                castingToPc = true
-                val items = echoLinkSession.publishLocalCast(plan.tracks)
-                if (items == null) {
-                    castingToPc = false
-                    echoLinkSession.stopLocalCast()
-                    castSetupError = context.getString(R.string.echo_link_cast_no_lan)
-                    return
-                }
-                castSetupError = null
-                remoteClient.castRemoteQueueToPc(
-                    items = items,
-                    startIndex = plan.startIndex,
-                    positionMs = positionMs,
-                    onFailure = {
-                        castingToPc = false
-                        echoLinkSession.stopLocalCast()
+        localCastSetupError = null
+        echoLinkSession.phoneCastTransfer.start(
+            source = {
+                EchoPhoneCastSource(viewModel.playbackQueue.value, viewModel.playbackStatus.value,
+                    viewModel.currentPlaybackPositionMs())
+            },
+            buildPlan = { snapshot ->
+                EchoLinkCastPolicy.plan(
+                    tracks = snapshot.queue.items.mapIndexed { index, item ->
+                        kotlin.coroutines.coroutineContext.ensureActive()
+                        item.toCastSource(snapshot.playback.diagnostics.takeIf { index == snapshot.queue.currentIndex })
                     },
-                    onSuccess = { finishPhoneCast(phoneId) },
+                    startIndex = snapshot.queue.currentIndex,
+                    maxTracks = Int.MAX_VALUE,
                 )
-            }
-        }
+            },
+            pausePhone = { viewModel.pause() },
+        )
     }
 
     fun requestPhoneCast(address: String, token: String) {
+        if (castingToPc) return
+        echoLinkSession.phoneCastTransfer.clearIssue()
         sendingCastAddress = address
-        castSetupError = null
+        localCastSetupError = null
         val endpoint = remoteClient.status.value.endpoint
         val parsed = EchoLinkDiscoveryPolicy.parseLanHostPort(address)
         val alreadyConnected = remoteClient.status.value.connectionState == EchoRemoteConnectionState.Connected &&
@@ -1620,7 +1614,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 trackArtist = remoteStatus.playback.track?.artist.orEmpty(),
                                 trackArtworkUrl = remoteStatus.playback.track?.artworkUrl,
                                 isPlaying = remoteStatus.playback.state == EchoRemotePlaybackState.Playing,
-                                remoteError = remoteStatus.error ?: castSetupError,
+                                remoteError = castSetupError ?: remoteStatus.error,
                                 savedPcAddress = appSettings.echoLinkPcAddress,
                                 savedPcToken = appSettings.echoLinkPcToken,
                                 autoReconnectEnabled = appSettings.echoLinkAutoReconnectEnabled,
@@ -1682,7 +1676,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 casting = castingToPc,
                                 castSessionActive = castSessionActive,
                                 castSessionName = castSessionName,
-                                sendingAddress = sendingCastAddress,
+                                sendingAddress = effectiveSendingCastAddress,
                                 connectedLanAddress = remoteStatus.endpoint?.takeUnless { it.libraryOnly }?.let { endpoint ->
                                     EchoLinkCastPolicy.advertisedBaseUrl(endpoint.host, endpoint.port)
                                         .removePrefix("http://")
@@ -1978,7 +1972,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     casting = castingToPc || pendingCast != null,
                     castSessionActive = castSessionActive,
                     castSessionName = castSessionName,
-                    sendingAddress = sendingCastAddress,
+                    sendingAddress = effectiveSendingCastAddress,
                     castSetupError = castSetupError,
                     activeRendererId = dlnaRenderer?.id,
                     onCastToAddress = { address, token -> localNetwork.run { requestPhoneCast(address, token) } },
@@ -2021,6 +2015,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 app.echo.android.ui.home.EchoUnifiedSearchHost(viewModel, remoteClient, echoLinkPlaybackRouter, searchQuery, searchVisible,
                     "${remoteStatus.endpoint?.id}:${remoteStatus.connectionState}",
                     onQuery = { searchQuery = it }, onClose = { searchVisible = false },
+                    onConnect = { searchVisible = false; openPcTabNonce++; selectDockTab(EchoTab.Connect) },
                     onAlbum = { album ->
                         searchVisible = false; detailReturnPage = EchoPagerPage.Now
                         selectedArtist = null; selectedFolder = null; selectedPlaylist = null; selectedGenre = null
@@ -2326,22 +2321,6 @@ private fun rememberSystemPowerSaveMode(): Boolean {
     return powerSaveMode
 }
 
-private fun EchoTrackRef.toCastSource(
-    diagnostics: EchoPlaybackDiagnostics? = null,
-): EchoLinkCastSourceTrack = EchoLinkCastSourceTrack(
-    id = id,
-    uri = uri,
-    title = title,
-    artist = artist,
-    album = album,
-    artworkUri = artworkUri,
-    durationMs = durationMs,
-    sourceId = sourceId,
-    sampleRateHz = diagnostics?.sampleRateHz?.takeIf { it > 0 } ?: sampleRateHz,
-    bitDepth = diagnostics?.bitDepth?.takeIf { it > 0 },
-    channelCount = diagnostics?.channelCount?.takeIf { it > 0 },
-    codec = diagnostics?.codec?.takeIf { it.isNotBlank() },
-)
 
 private fun Context.findActivity(): Activity? {
     var current: Context? = this

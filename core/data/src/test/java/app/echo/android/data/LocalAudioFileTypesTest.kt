@@ -21,11 +21,17 @@ class LocalAudioFileTypesTest {
         assertTrue(LocalAudioFileTypes.isSupported("track", "application/ogg"))
         assertTrue(LocalAudioFileTypes.isSupported("track", "application/x-flac"))
         assertFalse(LocalAudioFileTypes.isSupported("notes.txt", "text/plain"))
-        assertFalse(LocalAudioFileTypes.isSupported("track.wv", null))
+        assertTrue(LocalAudioFileTypes.isSupported("track.wv", null))
     }
 
     @Test
     fun ffmpegBackedContainersAreImportedByExtension() {
+        assertEquals("audio/x-wavpack", LocalAudioFileTypes.mimeTypeForFileName("track.WV"))
+        assertEquals("audio/x-ms-wma", LocalAudioFileTypes.mimeTypeForFileName("track.WMA"))
+        assertEquals("audio/x-ms-wma", LocalAudioFileTypes.mimeTypeForFileName("track.asf"))
+        assertTrue(LocalAudioFileTypes.isSupported("track.wma", "application/octet-stream"))
+        val fallback = LocalAudioFileTypes.mediaStoreFallbackNameClause("display_name").second
+        assertTrue(listOf("%.wv", "%.wma", "%.asf").all { it in fallback })
         assertEquals("audio/ac3", LocalAudioFileTypes.mimeTypeForFileName("surround.ac3"))
         assertEquals("audio/eac3", LocalAudioFileTypes.mimeTypeForFileName("atmos.eac3"))
         assertEquals("audio/eac3", LocalAudioFileTypes.mimeTypeForFileName("atmos.ec3"))

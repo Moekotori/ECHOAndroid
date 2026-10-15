@@ -692,53 +692,36 @@ class EchoRemoteClientTest {
     }
 
     @Test
-    fun multiTrackHandoffSendsQueueReplaceThenHandoff() = runBlocking {
+    fun multiTrackPcLibraryHandoffIsRejectedBeforeChangingThePcQueue() = runBlocking {
         val transport = FakeEchoLinkTransport()
-        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
-        client.connect(endpoint, refreshLibraryOnConnect = false)
-        delay(20)
-        var acknowledged = false
-        client.handoffPhoneQueueToPc(
-            tracks = listOf(remoteTrack("a"), remoteTrack("b"), remoteTrack("c")),
-            startIndex = 1,
-            positionMs = 4_200,
-        ) { acknowledged = true }
-        delay(50)
-        assertEquals(
-            listOf("queueReplace", "handoff"),
-            transport.commands.map {
-                when (it) {
-                    is EchoRemoteCommand.QueueReplace -> "queueReplace"
-                    is EchoRemoteCommand.HandoffToPc -> "handoff"
-                    else -> it::class.simpleName
-                }
-            },
-        )
-        val replace = transport.commands.filterIsInstance<EchoRemoteCommand.QueueReplace>().single()
-        assertEquals("b", replace.startTrackId)
-        assertEquals(4_200L, (transport.commands.last() as EchoRemoteCommand.HandoffToPc).positionMs)
-        assertTrue(acknowledged)
-        client.disconnect()
+        val client = EchoRemoteClient(this, transport)
+        try {
+            client.connect(endpoint, false)
+            delay(20)
+            client.ingest(app.echo.android.model.connect.EchoRemoteMessage.StatusSnapshot(
+                EchoRemotePlaybackSnapshot(supportsAtomicPhoneQueue = true)))
+            var failure: Throwable? = null
+            client.handoffPhoneQueueToPc(listOf(remoteTrack("a"), remoteTrack("b")), 1, 4200,
+                onFailure = { failure = it })
+            assertTrue(failure is EchoLinkAtomicQueueRequiredException)
+            assertTrue((failure as EchoLinkAtomicQueueRequiredException).pcLibrary)
+            assertTrue(transport.commands.isEmpty())
+        } finally { client.disconnect() }
     }
 
     @Test
-    fun failedQueueReplaceDoesNotSendHandoff() = runBlocking {
-        val transport = FakeEchoLinkTransport(failCommand = true)
-        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
-        client.connect(endpoint, refreshLibraryOnConnect = false)
-        delay(20)
-        var acknowledged = false
-        client.handoffPhoneQueueToPc(
-            tracks = listOf(remoteTrack("a"), remoteTrack("b")),
-            startIndex = 0,
-            positionMs = 900,
-        ) { acknowledged = true }
-        delay(40)
-        assertEquals(1, transport.commands.size)
-        assertTrue(transport.commands.single() is EchoRemoteCommand.QueueReplace)
-        assertFalse(acknowledged)
-        assertEquals(EchoRemoteConnectionState.Connected, client.status.value.connectionState)
-        client.disconnect()
+    fun singleTrackPcLibraryHandoffRemainsOneCommand() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport)
+        try {
+            client.connect(endpoint, false)
+            delay(20)
+            var acknowledged = false
+            client.handoffPhoneQueueToPc(listOf(remoteTrack("a")), 0, 4200,
+                onSuccess = { acknowledged = true })?.join()
+            assertEquals(EchoRemoteCommand.HandoffToPc("a", 4200), transport.commands.single())
+            assertTrue(acknowledged)
+        } finally { client.disconnect() }
     }
 
     @Test
@@ -875,35 +858,21 @@ class EchoRemoteClientTest {
     }
 
     @Test
-    fun multiTrackCastSendsQueueReplaceRemoteThenPlayRemoteStream() = runBlocking {
+    fun legacyPcMultiTrackCastIsRejectedWithoutSendingEitherCommand() = runBlocking {
         val transport = FakeEchoLinkTransport()
-        val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
-        client.connect(endpoint, refreshLibraryOnConnect = false)
-        delay(20)
-        var acknowledged = false
-        client.castRemoteQueueToPc(
-            items = listOf(
-                EchoRemoteStreamItem("a", "http://phone/echo-link/cast/a", "A", "Artist"),
-                EchoRemoteStreamItem("b", "http://phone/echo-link/cast/b", "B", "Artist"),
-            ),
-            startIndex = 1,
-            positionMs = 3_000,
-        ) { acknowledged = true }
-        delay(50)
-        assertEquals(
-            listOf("queueReplaceRemote", "playRemoteStream"),
-            transport.commands.map {
-                when (it) {
-                    is EchoRemoteCommand.QueueReplaceRemote -> "queueReplaceRemote"
-                    is EchoRemoteCommand.PlayRemoteStream -> "playRemoteStream"
-                    else -> it::class.simpleName
-                }
-            },
-        )
-        assertEquals("b", (transport.commands.first() as EchoRemoteCommand.QueueReplaceRemote).startTrackId)
-        assertEquals(3_000L, (transport.commands.last() as EchoRemoteCommand.PlayRemoteStream).positionMs)
-        assertTrue(acknowledged)
-        client.disconnect()
+        val client = EchoRemoteClient(this, transport)
+        try {
+            client.connect(endpoint, false)
+            delay(20)
+            var failure: Throwable? = null
+            client.castRemoteQueueToPc(listOf(
+                EchoRemoteStreamItem("a", "http://phone/a", "A", "Artist"),
+                EchoRemoteStreamItem("b", "http://phone/b", "B", "Artist")), 1, 3000,
+                onFailure = { failure = it })
+            assertTrue(failure is EchoLinkAtomicQueueRequiredException)
+            assertFalse((failure as EchoLinkAtomicQueueRequiredException).pcLibrary)
+            assertTrue(transport.commands.isEmpty())
+        } finally { client.disconnect() }
     }
 
     @Test

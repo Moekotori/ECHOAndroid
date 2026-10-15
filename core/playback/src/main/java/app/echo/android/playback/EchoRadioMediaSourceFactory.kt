@@ -19,7 +19,8 @@ import app.echo.android.model.radio.EchoRadioStation
 /** Radio playlists and segments always go upstream, never through the song disk cache. */
 @UnstableApi
 internal class EchoRadioMediaSourceFactory(context: Context) : MediaSource.Factory {
-    private val songs = DefaultMediaSourceFactory(echoPlaybackDataSourceFactory(context), EchoExtractorsFactory())
+    private val songs = DefaultMediaSourceFactory(echoPlaybackDataSourceFactory(context),
+        EchoExtractorsFactory(echoRemoteAuthDataSourceFactory(context)))
     private val radio = DefaultMediaSourceFactory(
         DefaultDataSource.Factory(
             context.applicationContext,
@@ -29,7 +30,7 @@ internal class EchoRadioMediaSourceFactory(context: Context) : MediaSource.Facto
                 .setAllowCrossProtocolRedirects(true)
                 .setUserAgent("ECHOAndroid"),
         ),
-        EchoExtractorsFactory(),
+        EchoExtractorsFactory(echoRemoteAuthDataSourceFactory(context)),
     ).setLoadErrorHandlingPolicy(EchoRadioLoadErrorPolicy())
 
     override fun createMediaSource(mediaItem: MediaItem): MediaSource =

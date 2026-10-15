@@ -1,5 +1,7 @@
 package app.echo.android.feature.player.afterglow
 
+import app.echo.android.design.displayArtist
+import app.echo.android.design.displayTrack
 import app.echo.android.design.EchoIcon
 
 import android.os.SystemClock
@@ -106,7 +108,7 @@ internal fun AfterglowImmersivePage(
                 modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp))
             else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-                    Text(status.track?.title.orEmpty(), color = Color(palette.foreground), style = MaterialTheme.typography.headlineSmall)
+                    Text(status.track?.let { displayTrack(it.title) }.orEmpty(), color = Color(palette.foreground), style = MaterialTheme.typography.headlineSmall)
                     if (chrome.visible) TextButton(onClick = onImport) { Text(stringResource(R.string.feature_player_import_lyrics_e7494e)) }
                 }
             }
@@ -140,8 +142,8 @@ private fun AfterglowChromeOverlay(
             .statusBarsPadding().padding(horizontal = 12.dp, vertical = if (shortLandscape) 6.dp else 18.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onDismiss) { EchoIcon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.feature_player_close_player_d23966), tint = Color.White) }
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(status.track?.title.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(status.track?.artist.orEmpty(), color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(status.track?.let { displayTrack(it.title) }.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(status.track?.let { displayArtist(it.artist) }.orEmpty(), color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             LyricsPageActions(onSettings, onCast, castActive, Color.White, onMenuExpanded = onActionsMenu)
         }

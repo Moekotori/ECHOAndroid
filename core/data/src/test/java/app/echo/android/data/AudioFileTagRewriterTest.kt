@@ -261,6 +261,27 @@ class AudioFileTagRewriterTest {
     }
 
     @Test
+    fun explicitLyricsEditRemovesStaleSyncedLyricsButUnrelatedEditKeepsThem() {
+        val synced = Id3FrameBytes("SYLT", byteArrayOf(3) + "eng".toByteArray() +
+            byteArrayOf(2, 1, 0) + "old lyrics".toByteArray() + byteArrayOf(0, 0, 0, 3, -24))
+        val original = id3File(4, listOf(synced), FAKE_MP3)
+        assertTrue(rewrite(original, SAMPLE_FIELDS, "audio/mpeg").asString().contains("SYLT"))
+        for (lyrics in listOf("new lyrics", "")) {
+            val rewritten = rewrite(original, SAMPLE_FIELDS.copy(lyrics = lyrics), "audio/mpeg")
+            assertTrue(!rewritten.asString().contains("SYLT"))
+            assertEquals(lyrics.takeIf { it.isNotEmpty() }, readLocalAudioTags(rewritten.inputStream())?.lyrics)
+        }
+    }
+
+    @Test
+    fun unrelatedTagEditPreservesLegacyId3v22Lyrics() {
+        val payload = byteArrayOf(3) + "eng".toByteArray() + byteArrayOf(0) + "Old lyrics".toByteArray()
+        val frame = "ULT".toByteArray() + byteArrayOf(0, 0, payload.size.toByte()) + payload
+        val rewritten = rewrite(id3File(2, listOf(frame), FAKE_MP3), SAMPLE_FIELDS, "audio/mpeg")
+        assertEquals("Old lyrics", readLocalAudioTags(rewritten.inputStream())?.lyrics)
+    }
+
+    @Test
     fun flacWritesLyricsAndArtwork() {
         val original = flacFile(
             comments = listOf("TITLE=Old", "ARTIST=Who", "REPLAYGAIN_TRACK_GAIN=-6.00 dB"),

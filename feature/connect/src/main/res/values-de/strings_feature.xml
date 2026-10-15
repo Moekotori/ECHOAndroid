@@ -116,7 +116,7 @@
     <string name="feature_connect_local_files_are_managed_in_library_no_server_c5274c">"Lokale Dateien werden in der Bibliothek verwaltet. Keine Serververbindung nötig."</string>
     <string name="feature_connect_music_on_this_phone_8611a5">"Musik auf diesem Telefon"</string>
     <string name="feature_connect_not_configured_29b98a">"Nicht konfiguriert"</string>
-    <string name="feature_connect_pc_link_4ca6bd">"PC-Verbindung"</string>
+    <string name="feature_connect_pc_link_4ca6bd">"Echo Link"</string>
     <string name="feature_connect_remove_acf88e">"Entfernen"</string>
     <string name="feature_connect_remove_configuration_26bffc">"Konfiguration entfernen"</string>
     <string name="feature_connect_remove_title_323067">"%1$s entfernen?"</string>
@@ -191,5 +191,5 @@
     <string name="echo_link_cast_send">Cast</string>
     <string name="echo_link_cast_pair_first">Zuerst koppeln</string>
     <string name="echo_link_cast_playing_here">Wiedergabe hier · %1$s</string>
-    <string name="echo_link_battery_hint">Android-Energiesparfunktionen und Hintergrundbeschränkungen können Echo Link-Verbindungen, Casting oder die Freigabe der Smartphone-Mediathek unterbrechen, wenn der Bildschirm aus ist oder ECHO im Hintergrund läuft. Erlauben Sie in diesem Fall ECHO in den Systemeinstellungen die Hintergrundausführung und stellen Sie die Akkunutzung auf „Uneingeschränkt“ (Bezeichnungen variieren je nach Gerät). Dies kann den Akkuverbrauch erhöhen.</string>
+    <string name="echo_link_battery_hint">Bei Verbindungsabbrüchen im Hintergrund erlauben Sie ECHO die Hintergrundausführung und stellen Sie die Akkunutzung auf „Uneingeschränkt“.</string>
 </resources>

@@ -66,6 +66,34 @@ class EchoLinkCastPolicyTest {
     }
 
     @Test
+    fun pcCastKeepsRemainingQueueBeyondFiftyTracks() {
+        val tracks = (0 until 180).map { source(id = "track-$it", uri = "content://media/$it") }
+        val plan = EchoLinkCastPolicy.plan(tracks, startIndex = 17, maxTracks = Int.MAX_VALUE) as EchoLinkCastPlan.LocalHttp
+        assertEquals(tracks.drop(17), plan.tracks)
+        assertEquals(0, plan.startIndex)
+
+        val pcTracks = tracks.map { it.copy(id = EchoLinkPlaybackUri.mediaId(it.id), uri = "echo-link://track/${it.id}") }
+        val handoff = EchoLinkCastPolicy.plan(pcTracks, startIndex = 17, maxTracks = Int.MAX_VALUE) as EchoLinkCastPlan.HandoffPcLibrary
+        assertEquals(tracks.drop(17).map { it.id }, handoff.tracks.map { it.id })
+
+        // The shared policy still bounds DLNA / Chromecast queues by default.
+        assertEquals(50, (EchoLinkCastPolicy.plan(tracks, 17) as EchoLinkCastPlan.LocalHttp).tracks.size)
+    }
+
+    @Test
+    fun clippedTracksBlockTheWholeCastRun() {
+        val whole = source("whole", "content://media/1")
+        val clip = source("clip", "content://media/2").copy(clipStartMs = 60000, clipEndMs = 120000)
+        val result = EchoLinkCastPolicy.plan(listOf(whole, clip), 0) as EchoLinkCastPlan.Blocked
+        assertEquals(EchoLinkCastBlockReason.ClippedTrack, result.reason)
+        // The first CUE segment can start at zero; its end boundary must still block casting.
+        val firstClip = clip.copy(clipStartMs = 0)
+        assertEquals(EchoLinkCastBlockReason.ClippedTrack,
+            (EchoLinkCastPolicy.plan(listOf(firstClip), 0) as EchoLinkCastPlan.Blocked).reason)
+        assertTrue(EchoLinkCastPolicy.plan(listOf(clip, whole), 1) is EchoLinkCastPlan.LocalHttp)
+    }
+
+    @Test
     fun mixedQueueStopsAtSourceChange() {
         val plan = EchoLinkCastPolicy.plan(
             listOf(
