@@ -29,6 +29,11 @@ class EchoPhoneLibrarySession(
     private var target: EchoRemoteEndpoint? = null
     private var registration: EchoPhoneLibraryRegistration? = null
     private var generation = 0
+    private val routeDbDispatcher = Dispatchers.IO.limitedParallelism(2)
+    private val publicationCache = object : LinkedHashMap<String, EchoLinkCastPublication>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, EchoLinkCastPublication>?): Boolean =
+            size > MaxPublicationCacheEntries
+    }
 
     fun start() {
         val connection = client.status.value
@@ -43,6 +48,7 @@ class EchoPhoneLibrarySession(
         val current = ++generation
         state.value = "starting"
         target = endpoint
+        publicationCache.clear()
         job = scope.launch {
             var ownedServer: EchoLinkCastServer? = null
             var stage = "route"
@@ -63,6 +69,7 @@ class EchoPhoneLibrarySession(
                     metadata = { path, headers -> readyRoutes.get()?.metadata(path, headers) },
                     resolvePublication = { path -> readyRoutes.get()?.publication(path) },
                     openArtwork = artwork::open,
+                    maxConnections = EchoLinkCastPolicy.PhoneLibraryMaxConnections,
                 )
                 ownedServer = created
                 server = created
@@ -70,11 +77,15 @@ class EchoPhoneLibrarySession(
                     val port = created.start()
                     val url = EchoLinkCastPolicy.advertisedBaseUrl(host, port)
                     readyRoutes.set(EchoPhoneLibraryRoutes(token, url,
-                        page = { query, offset, size -> runBlocking {
+                        page = { query, offset, size -> runBlocking(routeDbDispatcher) {
                             val (rows, total) = catalog.page(query, offset, size)
-                            EchoPhoneLibraryPage(rows.map(::publication), total)
+                            val publications = rows.map(::publication)
+                            synchronized(publicationCache) {
+                                publications.forEach { publicationCache[it.trackId] = it }
+                            }
+                            EchoPhoneLibraryPage(publications, total)
                         } },
-                        track = { id -> runBlocking { catalog.track(id)?.let(::publication) } },
+                        track = { id -> cachedPublication(id, catalog) },
                         catalog = { query -> runBlocking { categories.page(query) } },
                         lyrics = { id -> runBlocking { lyrics.read(id) } },
                     ))
@@ -109,6 +120,7 @@ class EchoPhoneLibrarySession(
                 ownedServer?.stop()
                 if (current == generation) {
                     client.setBackgroundConnectionRequired(false)
+                    publicationCache.clear()
                     server = null
                     EchoPhoneLibraryService.stop(application)
                 }
@@ -137,6 +149,7 @@ class EchoPhoneLibrarySession(
         job = null
         server?.stop()
         server = null
+        publicationCache.clear()
         EchoPhoneLibraryService.stop(application)
         val oldTarget = target
         val oldRegistration = registration
@@ -157,4 +170,20 @@ class EchoPhoneLibrarySession(
         artworkUrl = row.artworkUri?.takeIf(EchoLinkCastPolicy::isLocalFileUri),
         format = EchoLinkCastFormat.fromTrack(row.contentUri, row.mimeType, row.sampleRateHz, null, null, null),
     )
+
+    private fun cachedPublication(
+        id: String,
+        catalog: EchoSharedLocalLibrary,
+    ): EchoLinkCastPublication? {
+        synchronized(publicationCache) { publicationCache[id] }?.let { return it }
+        val item = runCatching {
+            runBlocking(routeDbDispatcher) { catalog.track(id)?.let(::publication) }
+        }.getOrNull() ?: return null
+        synchronized(publicationCache) { publicationCache[id] = item }
+        return item
+    }
+
+    private companion object {
+        const val MaxPublicationCacheEntries = 4096
+    }
 }

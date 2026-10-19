@@ -1,5 +1,9 @@
 package app.echo.android.listening
 
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+
 sealed interface EchoListeningOutput {
     data class Packet(val packet: EchoListeningPacket) : EchoListeningOutput
     data object Gap : EchoListeningOutput
@@ -15,42 +19,45 @@ class EchoListeningJitter(
     private val maxAhead: Int = 50,
     private val gapWaitMs: Long = 40,
 ) {
+    private val lock = ReentrantLock()
+    private val packetSignal = lock.newCondition()
     private var epoch = 0L
     private val queued = HashMap<Int, EchoListeningPacket>(maxAhead)
     private var nextSequence = 0
     private var primed = false
     private var gapSinceMs: Long? = null
 
-    @Synchronized
     fun reset(epoch: Long) {
-        this.epoch = epoch
-        queued.clear()
-        primed = false
-        gapSinceMs = null
+        lock.withLock {
+            this.epoch = epoch
+            queued.clear()
+            primed = false
+            gapSinceMs = null
+            packetSignal.signalAll()
+        }
     }
 
-    @Synchronized
-    fun push(packet: EchoListeningPacket): Boolean {
-        if (packet.epoch != epoch) return false
+    fun push(packet: EchoListeningPacket): Boolean = lock.withLock {
+        if (packet.epoch != epoch) return@withLock false
         val sequence = packet.sequence
         if (primed) {
-            if (Integer.compareUnsigned(sequence, nextSequence) < 0) return false
-            if (unsignedDistance(nextSequence, sequence) > maxAhead) return false
+            if (Integer.compareUnsigned(sequence, nextSequence) < 0) return@withLock false
+            if (unsignedDistance(nextSequence, sequence) > maxAhead) return@withLock false
         }
         if (queued.size >= maxAhead && !queued.containsKey(sequence)) {
             val anchor = if (primed) nextSequence else lowestSequence() ?: sequence
             val furthest = queued.keys.maxWith(unsignedFrom(anchor))
-            if (unsignedDistance(anchor, sequence) >= unsignedDistance(anchor, furthest)) return false
+            if (unsignedDistance(anchor, sequence) >= unsignedDistance(anchor, furthest)) return@withLock false
             queued.remove(furthest)
         }
         queued[sequence] = packet
-        return true
+        packetSignal.signalAll()
+        true
     }
 
-    @Synchronized
-    fun poll(nowMs: Long): EchoListeningOutput? {
+    fun poll(nowMs: Long): EchoListeningOutput? = lock.withLock {
         if (!primed) {
-            if (queued.size < targetPackets) return null
+            if (queued.size < targetPackets) return@withLock null
             primed = true
             nextSequence = queued.keys.minWith(UNSIGNED)
             gapSinceMs = null
@@ -59,18 +66,31 @@ class EchoListeningJitter(
         if (ready != null) {
             gapSinceMs = null
             nextSequence += 1
-            return EchoListeningOutput.Packet(ready)
+            return@withLock EchoListeningOutput.Packet(ready)
         }
-        if (queued.isEmpty()) return null
+        if (queued.isEmpty()) return@withLock null
         val waited = gapSinceMs
         if (waited == null) {
             gapSinceMs = nowMs
-            return null
+            return@withLock null
         }
-        if (nowMs - waited < gapWaitMs) return null
+        if (nowMs - waited < gapWaitMs) return@withLock null
         gapSinceMs = null
         nextSequence += 1
-        return EchoListeningOutput.Gap
+        EchoListeningOutput.Gap
+    }
+
+    /** Blocks until a packet/reset arrives or the audio thread should re-check its deadline. */
+    fun awaitPacket(timeoutMs: Long) {
+        if (timeoutMs <= 0L) return
+        lock.lock()
+        try {
+            packetSignal.await(timeoutMs, TimeUnit.MILLISECONDS)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+        } finally {
+            lock.unlock()
+        }
     }
 
     private fun lowestSequence(): Int? =
