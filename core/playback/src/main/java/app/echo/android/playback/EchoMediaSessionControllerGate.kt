@@ -33,7 +33,13 @@ object EchoMediaSessionControllerGate {
         packageName = controllerInfo.packageName,
         uid = controllerInfo.uid,
         controllerVersion = controllerInfo.controllerVersion,
-    ) || isAllowed(context, controllerInfo, session)
+    ) || isLegacyTransportController(controllerInfo.uid, controllerInfo.controllerVersion) ||
+        isAllowed(context, controllerInfo, session)
+
+    // A platform session token already permits transport controls. Companion apps and
+    // vendor media panels need not have privileged media/library access to use it.
+    internal fun isLegacyTransportController(uid: Int, controllerVersion: Int): Boolean =
+        uid >= 0 && controllerVersion == MediaSession.ControllerInfo.LEGACY_CONTROLLER_VERSION
 
     // Media3 supplies this synthetic identity from onBind before it knows the browser caller.
     // Only allow it when selecting the service session; onConnect must check the real caller.

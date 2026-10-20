@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_word_style_title">Word highlight style</string>
+    <string name="lyrics_word_style_hint">Choose how each word lights up while it is sung. Lyrics with real word timing follow it exactly; estimated timing automatically uses a softer version so a rough guess is never drawn across the glyphs.</string>
+    <string name="lyrics_word_style_sweep">Sweep</string>
+    <string name="lyrics_word_style_fade">Fade</string>
+    <string name="lyrics_word_style_lift">Lift</string>
+    <string name="lyrics_word_style_hop">Hop</string>
+    <string name="lyrics_word_style_swell">Swell</string>
+    <string name="lyrics_word_style_halo">Halo</string>
+    <string name="lyrics_word_style_spot">Spotlight</string>
+    <string name="lyrics_word_style_wave">Wave</string>
+    <string name="lyrics_word_style_lens">Magnifier</string>
+    <string name="lyrics_word_style_flip">Flip</string>
+    <string name="lyrics_word_style_spark">Sparkle</string>
+    <string name="lyrics_word_style_scan">Scan line</string>
+    <string name="lyrics_word_style_underline">Underline</string>
+    <string name="lyrics_word_style_dots">Halftone</string>
+</resources>

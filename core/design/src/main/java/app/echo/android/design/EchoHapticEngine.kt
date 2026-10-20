@@ -25,12 +25,12 @@ internal class EchoHapticEngine(private val context: Context, private val richFe
         if (Build.VERSION.SDK_INT < 33 &&
             Settings.System.getInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) == 0) return
         val effect = effects[kind.ordinal] ?: runCatching { buildEffect(device, kind) }
-            .getOrElse { legacyEffect(kind) }.also { effects[kind.ordinal] = it }
+            .getOrElse { fallbackEffect(device, kind) }.also { effects[kind.ordinal] = it }
         try {
             vibrate(device, effect)
         } catch (_: RuntimeException) {
             // Broken vendor envelope/primitive implementations must not break the playback action.
-            val fallback = legacyEffect(kind)
+            val fallback = fallbackEffect(device, kind)
             effects[kind.ordinal] = fallback
             runCatching { vibrate(device, fallback) }
         }
@@ -69,13 +69,24 @@ internal class EchoHapticEngine(private val context: Context, private val richFe
             if (device.areAllPrimitivesSupported(primitive)) return VibrationEffect.startComposition()
                 .addPrimitive(primitive, strength(kind)).compose()
         }
-        return legacyEffect(kind)
+        return fallbackEffect(device, kind)
     }
 
-    private fun legacyEffect(kind: EchoHapticKind): VibrationEffect = VibrationEffect.createOneShot(
-        if (kind == EchoHapticKind.Seek || kind == EchoHapticKind.Tick) 8L else 18L,
-        VibrationEffect.DEFAULT_AMPLITUDE,
-    )
+    private fun fallbackEffect(device: Vibrator, kind: EchoHapticKind): VibrationEffect {
+        // Many linear actuators expose tuned presets but no composition primitives.
+        // Let the system/HAL supply its calibrated pulse instead of a full-strength buzz.
+        if (Build.VERSION.SDK_INT >= 29) return VibrationEffect.createPredefined(
+            when (kind) {
+                EchoHapticKind.Tick, EchoHapticKind.Seek, EchoHapticKind.Grab -> VibrationEffect.EFFECT_TICK
+                EchoHapticKind.Confirm, EchoHapticKind.Drop -> VibrationEffect.EFFECT_CLICK
+            },
+        )
+        return VibrationEffect.createOneShot(
+            if (kind == EchoHapticKind.Seek || kind == EchoHapticKind.Tick) 8L else 18L,
+            if (device.hasAmplitudeControl()) (strength(kind) * 255).toInt().coerceIn(1, 255)
+            else VibrationEffect.DEFAULT_AMPLITUDE,
+        )
+    }
 
     private fun strength(kind: EchoHapticKind) = when (kind) {
         EchoHapticKind.Confirm -> 0.65f

@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.settings.EchoFontFamilyMode
 import app.echo.android.design.EchoIcon
 
 import androidx.compose.foundation.layout.*
@@ -24,7 +25,7 @@ import app.echo.android.design.echoFontFamilyForMode
 @Composable
 internal fun SettingsAboutIdentity(appVersionLabel: String) {
     val colors = MaterialTheme.colorScheme
-    val brandFont = echoFontFamilyForMode("outfit")
+    val brandFont = echoFontFamilyForMode(EchoFontFamilyMode.Outfit)
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 30.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

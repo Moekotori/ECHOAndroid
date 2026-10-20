@@ -35,6 +35,7 @@ class EchoPlaybackTileService : TileService() {
 
     override fun onStartListening() {
         super.onStartListening()
+        releaseController()
         updateTileFromSnapshot()
         val token = SessionToken(this, ComponentName(this, EchoPlaybackService::class.java))
         val future = MediaController.Builder(this, token).buildAsync()
@@ -52,15 +53,26 @@ class EchoPlaybackTileService : TileService() {
     }
 
     override fun onStopListening() {
-        controller?.removeListener(playerListener)
-        controller?.release()
-        controller = null
-        controllerFuture = null
+        releaseController()
         super.onStopListening()
     }
 
+    override fun onDestroy() {
+        releaseController()
+        super.onDestroy()
+    }
+
+    private fun releaseController() {
+        val future = controllerFuture
+        // Invalidate first so a late connection callback cannot retain a stopped tile.
+        controllerFuture = null
+        controller?.removeListener(playerListener)
+        controller = null
+        future?.let(MediaController::releaseFuture)
+    }
+
     override fun onClick() {
-        val connected = controller
+        val connected = controller?.takeIf { it.isConnected }
         if (connected != null) {
             if (connected.playWhenReady) {
                 connected.pause()
@@ -78,6 +90,7 @@ class EchoPlaybackTileService : TileService() {
             updateTileFromPlayer(connected)
             return
         }
+        releaseController()
         EchoPlaybackRemote.togglePlayPause(this)
         updateTileFromSnapshot()
     }

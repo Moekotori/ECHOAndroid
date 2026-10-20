@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.settings.EchoBackgroundMode
 import app.echo.android.design.backgroundMaxBlur
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.Arrangement
@@ -71,7 +72,7 @@ internal fun SettingsAppearanceContent(
         )
     }
 
-    val backgroundDisabled = customBackgroundMode == "video" &&
+    val backgroundDisabled = customBackgroundMode == EchoBackgroundMode.Video &&
         LocalEchoEffectivePerformanceMode.current.isLightweight
     val maxBlur = LocalEchoEffectivePerformanceMode.current.backgroundMaxBlur
     SettingsSectionCard(
@@ -86,10 +87,10 @@ internal fun SettingsAppearanceContent(
             )
         },
     ) {
-        if (customBackgroundMode != "default" && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
+        if (customBackgroundMode != EchoBackgroundMode.Default && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
             val selectedStyle = EchoBackgroundStyle.entries.firstOrNull {
                 it.matches(customBackgroundBlur, customBackgroundBrightness, customBackgroundGlass,
-                    customBackgroundScale, maxBlur, isVideo = customBackgroundMode == "video")
+                    customBackgroundScale, maxBlur, isVideo = customBackgroundMode == EchoBackgroundMode.Video)
             }
             SettingsChoiceGroupRow(
                 title = stringResource(R.string.settings_bg_style),
@@ -102,7 +103,7 @@ internal fun SettingsAppearanceContent(
                 },
             )
             Text(
-                stringResource(if (customBackgroundMode == "video") R.string.settings_bg_style_video_detail
+                stringResource(if (customBackgroundMode == EchoBackgroundMode.Video) R.string.settings_bg_style_video_detail
                     else R.string.settings_bg_style_detail),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -114,11 +115,11 @@ internal fun SettingsAppearanceContent(
 
     }
 
-    if (customBackgroundMode != "default" && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
+    if (customBackgroundMode != EchoBackgroundMode.Default && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
         SettingsSectionCard(title = stringResource(R.string.settings_section_background_adjustments), secondary = true) {
             SettingsBackgroundAdjustments(
                 uri = customBackgroundUri,
-                isVideo = customBackgroundMode == "video",
+                isVideo = customBackgroundMode == EchoBackgroundMode.Video,
                 blur = customBackgroundBlur.coerceIn(0f, maxBlur),
                 brightness = customBackgroundBrightness,
                 glass = customBackgroundGlass,

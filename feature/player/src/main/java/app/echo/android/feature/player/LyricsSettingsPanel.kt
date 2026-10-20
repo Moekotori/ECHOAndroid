@@ -39,6 +39,7 @@ import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoTheme
 import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
+import app.echo.android.model.settings.EchoLyricsWordHighlightStyle
 import kotlin.math.roundToInt
 import app.echo.android.feature.player.R as L10nR
 
@@ -60,6 +61,7 @@ internal fun LyricsSettingsPanel(
     lyricsWordHighlightEnabled: Boolean,
     lyricsEstimatedWordHighlightEnabled: Boolean,
     lyricsWordHighlightIntensity: Float,
+    lyricsWordHighlightStyle: String,
     lyricsImmersiveModeEnabled: Boolean,
     lyricsMotionMode: String,
     lyricAccent: Color,
@@ -83,6 +85,7 @@ internal fun LyricsSettingsPanel(
     onLyricsWordHighlightEnabledChange: (Boolean) -> Unit,
     onLyricsEstimatedWordHighlightEnabledChange: (Boolean) -> Unit,
     onLyricsWordHighlightIntensityChange: (Float) -> Unit,
+    onLyricsWordHighlightStyleChange: (String) -> Unit,
     onLyricsImmersiveModeChange: (Boolean) -> Unit,
     onLyricsMotionModeChange: (String) -> Unit,
     onLyricsShowTranslationChange: (Boolean) -> Unit,
@@ -204,6 +207,12 @@ internal fun LyricsSettingsPanel(
                                             onLyricsEstimatedWordHighlightEnabledChange,
                                             hint = stringResource(L10nR.string.lyrics_setting_estimated_word_highlight_hint),
                                         )
+                                        SettingsGroupLabel(stringResource(L10nR.string.lyrics_word_style_title))
+                                        LyricsWordStyleChoices(EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle),
+                                            onLyricsWordHighlightStyleChange)
+                                        Text(stringResource(L10nR.string.lyrics_word_style_hint), color = mutedColor,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(horizontal = PlaybackRowInset))
                                         LyricsSettingSlider(stringResource(L10nR.string.lyrics_setting_highlight_strength), lyricsWordHighlightIntensity,
                                             0.45f..1.35f, 1f, onLyricsWordHighlightIntensityChange)
                                     }

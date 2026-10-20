@@ -1,5 +1,8 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.settings.EchoBackgroundMode
+import app.echo.android.model.settings.EchoLyricsMotionMode
+import app.echo.android.model.settings.EchoThemeMode
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -161,7 +164,7 @@ fun SettingsScreen(
     soundSummary: String = "",
     permissionState: SettingsPermissionState = SettingsPermissionState(),
     onOpenPermissionSettings: (SettingsPermissionTarget) -> Unit = {},
-    lyricsMotionMode: String = "smooth",
+    lyricsMotionMode: String = EchoLyricsMotionMode.Smooth,
     onLyricsMotionModeChange: (String) -> Unit = {},
     lyricsWordHighlightEnabled: Boolean = true,
     onLyricsWordHighlightEnabledChange: (Boolean) -> Unit = {},
@@ -178,9 +181,9 @@ fun SettingsScreen(
         searchAvailability = SettingsSearchAvailability(
             scheduledDarkEnabled = scheduledDarkModeEnabled,
             customBackgroundMode = customBackgroundMode,
-            backgroundAdvancedAvailable = customBackgroundMode != "default" &&
+            backgroundAdvancedAvailable = customBackgroundMode != EchoBackgroundMode.Default &&
                 !customBackgroundUri.isNullOrBlank() &&
-                !(customBackgroundMode == "video" &&
+                !(customBackgroundMode == EchoBackgroundMode.Video &&
                     effectivePerformanceMode == EchoEffectivePerformanceMode.Lightweight.id),
             trackFadeEnabled = trackTransitions.fadeEnabled,
             replayGainEnabled = replayGainEnabled,
@@ -198,8 +201,8 @@ fun SettingsScreen(
                 if (permissionState.needsAttention(floatingLyrics.enabled)) R.string.permissions_attention
                 else R.string.permissions_ready),
             SettingsCategory.Appearance to stringResource(when (themeMode) {
-                "dark" -> R.string.settings_theme_dark
-                "light" -> R.string.settings_theme_light
+                EchoThemeMode.Dark -> R.string.settings_theme_dark
+                EchoThemeMode.Light -> R.string.settings_theme_light
                 else -> R.string.settings_theme_system
             }),
             SettingsCategory.Interface to languageDetail(appLanguage),

@@ -1,5 +1,7 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.settings.EchoBackgroundMode
+import app.echo.android.model.settings.EchoFontFamilyMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import app.echo.android.design.echoClickable
@@ -114,8 +116,8 @@ internal fun SettingsTextInputRow(
 internal fun backgroundDetail(mode: String, uri: String?): String {
     val fileName = uri?.substringAfterLast('/')?.takeLast(28)
     return when {
-        mode == "image" && !fileName.isNullOrBlank() -> stringResource(R.string.settings_bg_image, fileName)
-        mode == "video" && !fileName.isNullOrBlank() -> stringResource(R.string.settings_bg_video, fileName)
+        mode == EchoBackgroundMode.Image && !fileName.isNullOrBlank() -> stringResource(R.string.settings_bg_image, fileName)
+        mode == EchoBackgroundMode.Video && !fileName.isNullOrBlank() -> stringResource(R.string.settings_bg_video, fileName)
         else -> stringResource(R.string.settings_bg_default)
     }
 }
@@ -160,13 +162,13 @@ internal fun performanceModeDetail(mode: String, effectiveMode: String): String 
 
 @Composable
 internal fun fontOptions(importedFontUri: String?): List<SettingsChoiceOption> = buildList {
-    add(SettingsChoiceOption("system", stringResource(R.string.settings_font_system)))
-    add(SettingsChoiceOption("outfit", stringResource(R.string.settings_font_outfit)))
-    add(SettingsChoiceOption("serif", stringResource(R.string.settings_font_serif)))
-    add(SettingsChoiceOption("monospace", stringResource(R.string.settings_font_mono)))
+    add(SettingsChoiceOption(EchoFontFamilyMode.System, stringResource(R.string.settings_font_system)))
+    add(SettingsChoiceOption(EchoFontFamilyMode.Outfit, stringResource(R.string.settings_font_outfit)))
+    add(SettingsChoiceOption(EchoFontFamilyMode.Serif, stringResource(R.string.settings_font_serif)))
+    add(SettingsChoiceOption(EchoFontFamilyMode.Monospace, stringResource(R.string.settings_font_mono)))
     add(
         SettingsChoiceOption(
-            "imported",
+            EchoFontFamilyMode.Imported,
             if (importedFontUri.isNullOrBlank()) {
                 stringResource(R.string.settings_font_import)
             } else {
@@ -179,10 +181,10 @@ internal fun fontOptions(importedFontUri: String?): List<SettingsChoiceOption> =
 @Composable
 internal fun fontDetail(mode: String, importedFontUri: String?): String =
     when (mode) {
-        "outfit" -> stringResource(R.string.settings_font_detail_outfit)
-        "serif" -> stringResource(R.string.settings_font_detail_serif)
-        "monospace" -> stringResource(R.string.settings_font_detail_mono)
-        "imported" -> importedFontUri?.substringAfterLast('/')?.takeLast(28)?.let {
+        EchoFontFamilyMode.Outfit -> stringResource(R.string.settings_font_detail_outfit)
+        EchoFontFamilyMode.Serif -> stringResource(R.string.settings_font_detail_serif)
+        EchoFontFamilyMode.Monospace -> stringResource(R.string.settings_font_detail_mono)
+        EchoFontFamilyMode.Imported -> importedFontUri?.substringAfterLast('/')?.takeLast(28)?.let {
             stringResource(R.string.settings_font_detail_imported, it)
         } ?: stringResource(R.string.settings_font_detail_pick)
         else -> stringResource(R.string.settings_font_detail_system)
@@ -240,7 +242,7 @@ internal fun SettingsBackgroundSourceRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (mode != "default" || !uri.isNullOrBlank()) Text(
+            if (mode != EchoBackgroundMode.Default || !uri.isNullOrBlank()) Text(
                 backgroundDetail(mode, uri),
                 color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
@@ -250,14 +252,14 @@ internal fun SettingsBackgroundSourceRow(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 BackgroundSourceAction(
                     label = stringResource(R.string.settings_bg_image_label),
-                    selected = mode == "image" && !uri.isNullOrBlank(),
+                    selected = mode == EchoBackgroundMode.Image && !uri.isNullOrBlank(),
                     enabled = true,
                     modifier = Modifier.weight(1f),
                     onClick = onPickImageBackground,
                 )
                 BackgroundSourceAction(
                     label = stringResource(R.string.settings_bg_video_label),
-                    selected = mode == "video" && !uri.isNullOrBlank(),
+                    selected = mode == EchoBackgroundMode.Video && !uri.isNullOrBlank(),
                     enabled = true,
                     modifier = Modifier.weight(1f),
                     onClick = onPickVideoBackground,

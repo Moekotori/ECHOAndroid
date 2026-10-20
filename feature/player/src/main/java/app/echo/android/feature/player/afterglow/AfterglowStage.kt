@@ -73,7 +73,31 @@ internal fun AfterglowStage(
     var chosenScene by rememberSaveable(style) { mutableStateOf<String?>(null) }
     val palette = AfterglowPalette.forStyle(style, variant)
     LaunchedEffect(palette) { onStagePalette(palette) }
-    val clock = rememberAfterglowPosition(hostPosition, trackKey, playing, speed, renderActive && windowFocused,
+    // The echosteam engine is the default renderer; lightweight mode, an unsupported document or any
+    // engine failure keeps the native stage below.
+    var engineFailed by remember(lyrics, style) { mutableStateOf(false) }
+    if (plan != null && budget.framesPerSecond > 0 && !engineFailed) {
+        val controller = remember { AfterglowEngineController() }
+        val engineIndex by remember(plan, hostPosition, lyrics.offsetMs) {
+            derivedStateOf(structuralEqualityPolicy()) { plan.indexAt(hostPosition.value + lyrics.offsetMs) }
+        }
+        Box(modifier) {
+            AfterglowEngineStage(plan, AfterglowEngineProject.look(style), title, "", durationMs,
+                (seed.toLong() and 0xFFFFFFFFL), hostPosition, lyrics.offsetMs, playing, speed, renderActive, budget, motion,
+                wordHighlight, estimatedWordHighlight, palette.background, title, controller,
+                onFailed = { engineFailed = true }, onSeed = { seed = it.toInt() }, modifier = Modifier.fillMaxSize())
+            val sceneControls: @Composable () -> Unit = {
+                AfterglowControls(engineIndex, plan, lyrics.offsetMs, style, AfterglowScene.forStyle(style).first(), null,
+                    onScene = {}, onPalette = { variant = (variant + 1) % 3; controller.palette() },
+                    onRandomize = controller::randomize, onSeek = onSeek,
+                    onInteraction = onControlsInteraction, onMenu = onControlsMenu, scenes = false)
+            }
+            if (controlsLayer != null) controlsLayer(sceneControls)
+            else Box(Modifier.align(Alignment.BottomCenter).padding(20.dp)) { sceneControls() }
+        }
+        return
+    }
+    val clock =rememberAfterglowPosition(hostPosition, trackKey, playing, speed, renderActive && windowFocused,
         if (plan != null && textFits && (motion || wordHighlight && budget.glyphMotion && timedInk)) budget.framesPerSecond else 0)
     val index by remember(plan, clock, lyrics.offsetMs) {
         derivedStateOf(structuralEqualityPolicy()) { plan?.indexAt(clock.value + lyrics.offsetMs) ?: -1 }

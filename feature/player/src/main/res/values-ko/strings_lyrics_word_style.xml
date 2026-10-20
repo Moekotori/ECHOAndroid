@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_word_style_title">단어 강조 스타일</string>
+    <string name="lyrics_word_style_hint">단어가 불리는 동안 켜지는 방식을 고릅니다. 단어 타이밍이 있는 가사는 실제 진행을 따르고, 추정 타이밍 가사는 자동으로 부드러운 방식으로 표시되어 부정확한 시간이 글자 위에 그려지지 않습니다.</string>
+    <string name="lyrics_word_style_sweep">스윕</string>
+    <string name="lyrics_word_style_fade">페이드</string>
+    <string name="lyrics_word_style_lift">떠오름</string>
+    <string name="lyrics_word_style_hop">통통</string>
+    <string name="lyrics_word_style_swell">살짝 확대</string>
+    <string name="lyrics_word_style_halo">헤일로</string>
+    <string name="lyrics_word_style_spot">스포트라이트</string>
+    <string name="lyrics_word_style_wave">물결</string>
+    <string name="lyrics_word_style_lens">돋보기</string>
+    <string name="lyrics_word_style_flip">플립</string>
+    <string name="lyrics_word_style_spark">반짝임</string>
+    <string name="lyrics_word_style_scan">스캔라인</string>
+    <string name="lyrics_word_style_underline">밑줄</string>
+    <string name="lyrics_word_style_dots">망점</string>
+</resources>

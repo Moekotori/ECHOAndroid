@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.settings.EchoLyricsMotionMode
 import androidx.compose.runtime.Composable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -58,9 +59,9 @@ internal fun SettingsAccessibilityContent(
             title = stringResource(R.string.accessibility_lyrics_motion),
             detail = stringResource(R.string.accessibility_lyrics_motion_detail),
             options = listOf(
-                SettingsChoiceOption("calm", stringResource(R.string.accessibility_motion_calm)),
-                SettingsChoiceOption("smooth", stringResource(R.string.accessibility_motion_smooth)),
-                SettingsChoiceOption("stage", stringResource(R.string.accessibility_motion_stage)),
+                SettingsChoiceOption(EchoLyricsMotionMode.Calm, stringResource(R.string.accessibility_motion_calm)),
+                SettingsChoiceOption(EchoLyricsMotionMode.Smooth, stringResource(R.string.accessibility_motion_smooth)),
+                SettingsChoiceOption(EchoLyricsMotionMode.Stage, stringResource(R.string.accessibility_motion_stage)),
             ),
             selectedValue = lyricsMotionMode,
             onOptionSelected = onLyricsMotionModeChange,

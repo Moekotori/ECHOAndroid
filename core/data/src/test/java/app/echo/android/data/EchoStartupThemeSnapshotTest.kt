@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoCustomColors
+import app.echo.android.model.settings.EchoThemeMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_word_style_title">Стиль подсветки слов</string>
+    <string name="lyrics_word_style_hint">Выбирает, как слово загорается во время пения. Тексты с точными временными метками слов следуют им точно; при оценённом времени автоматически используется более мягкий вариант, чтобы приблизительное время не рисовалось поверх букв.</string>
+    <string name="lyrics_word_style_sweep">Развёртка</string>
+    <string name="lyrics_word_style_fade">Появление</string>
+    <string name="lyrics_word_style_lift">Подъём</string>
+    <string name="lyrics_word_style_hop">Прыжок</string>
+    <string name="lyrics_word_style_swell">Увеличение</string>
+    <string name="lyrics_word_style_halo">Ореол</string>
+    <string name="lyrics_word_style_spot">Прожектор</string>
+    <string name="lyrics_word_style_wave">Волна</string>
+    <string name="lyrics_word_style_lens">Лупа</string>
+    <string name="lyrics_word_style_flip">Переворот</string>
+    <string name="lyrics_word_style_spark">Искры</string>
+    <string name="lyrics_word_style_scan">Линия сканирования</string>
+    <string name="lyrics_word_style_underline">Подчёркивание</string>
+    <string name="lyrics_word_style_dots">Растр</string>
+</resources>

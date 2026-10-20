@@ -5,6 +5,7 @@ import app.echo.android.model.settings.EchoAppLanguage
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoCustomColors
 import app.echo.android.model.settings.EchoLyricsPageStyle
+import app.echo.android.model.settings.EchoThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext

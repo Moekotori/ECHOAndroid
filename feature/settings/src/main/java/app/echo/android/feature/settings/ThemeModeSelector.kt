@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.settings.EchoThemeMode
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -32,9 +33,9 @@ internal fun ThemeModeSelector(
             style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
         Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             listOf(
-                "light" to R.string.settings_theme_light,
-                "dark" to R.string.settings_theme_dark,
-                "system" to R.string.settings_theme_system,
+                EchoThemeMode.Light to R.string.settings_theme_light,
+                EchoThemeMode.Dark to R.string.settings_theme_dark,
+                EchoThemeMode.System to R.string.settings_theme_system,
             ).forEach { (mode, label) ->
                 val selected = selectedMode == mode
                 Box(

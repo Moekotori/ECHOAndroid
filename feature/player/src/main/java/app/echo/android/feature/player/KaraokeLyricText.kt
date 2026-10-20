@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.model.settings.EchoLyricsWordHighlightStyle
 
 /** Read the clock in drawing only: word progress does not re-layout the text on every tick. */
 @Composable
@@ -49,6 +50,12 @@ internal fun KaraokeLyricText(
     val muted = unhighlightedAlpha?.coerceIn(0f, 1f)
         ?: (0.36f + intensity.coerceIn(0.45f, 1.35f) * 0.12f).coerceIn(0.4f, 0.55f)
     val animateInk = animationsVisible && !LocalEchoEffectivePerformanceMode.current.isLightweight
+    val highlightStyle = resolveLyricWordHighlightStyle(LocalLyricsWordHighlightStyle.current, animateInk)
+    val styleLayer = remember(line.text, words, lineEndMs, highlightStyle, timed) {
+        if (timed && highlightStyle != EchoLyricsWordHighlightStyle.Sweep) {
+            KaraokeWordStyleLayer(highlightStyle, words, shapes, estimatedTiming = line.words.isEmpty(), lineEndMs = lineEndMs)
+        } else null
+    }
     val lightEnabled = timed && animateInk && glowEnabled
     val effects = remember(line.text, words, highlightColor, lightEnabled) {
         if (lightEnabled) KaraokeWordEffects(highlightColor) else null
@@ -77,6 +84,10 @@ internal fun KaraokeLyricText(
             val baseColor = if (timed) color.copy(alpha = color.alpha *
                 if (!started) muted else (1f - ink * (1f - muted))) else color
             val now = if (timed && result != null && ink > 0f) position.value else 0L
+            if (styleLayer != null && result != null && ink > 0f) {
+                styleLayer.draw(this, result, baseColor, highlightColor, ink, intensity, now)
+                return@drawWithContent
+            }
             if (timed && result != null && ink > 0f) {
                 clip.prepare(result, words, lineEndMs, shapes, now)
             }

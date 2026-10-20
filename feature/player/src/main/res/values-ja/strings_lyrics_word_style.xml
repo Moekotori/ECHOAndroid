@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_word_style_title">単語ハイライトのスタイル</string>
+    <string name="lyrics_word_style_hint">歌っている単語の光り方を選びます。単語タイミングのある歌詞は実際の進行どおりに表示し、推定タイミングの歌詞は自動でやわらかい表現になり、不正確な時間を文字の上に描きません。</string>
+    <string name="lyrics_word_style_sweep">スイープ</string>
+    <string name="lyrics_word_style_fade">フェード</string>
+    <string name="lyrics_word_style_lift">ふわっと浮く</string>
+    <string name="lyrics_word_style_hop">ぴょん</string>
+    <string name="lyrics_word_style_swell">ふくらみ</string>
+    <string name="lyrics_word_style_halo">ハロー</string>
+    <string name="lyrics_word_style_spot">スポットライト</string>
+    <string name="lyrics_word_style_wave">ウェーブ</string>
+    <string name="lyrics_word_style_lens">虫眼鏡</string>
+    <string name="lyrics_word_style_flip">フリップ</string>
+    <string name="lyrics_word_style_spark">きらめき</string>
+    <string name="lyrics_word_style_scan">スキャンライン</string>
+    <string name="lyrics_word_style_underline">下線</string>
+    <string name="lyrics_word_style_dots">ハーフトーン</string>
+</resources>

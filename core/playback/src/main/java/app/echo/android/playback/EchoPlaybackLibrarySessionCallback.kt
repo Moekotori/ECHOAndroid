@@ -12,6 +12,7 @@ import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
+import androidx.media3.session.SessionCommands
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
 import com.google.common.collect.ImmutableList
@@ -65,6 +66,14 @@ internal class EchoPlaybackLibrarySessionCallback(
         controller: MediaSession.ControllerInfo,
     ): MediaSession.ConnectionResult {
         if (!EchoMediaSessionControllerGate.isAllowed(context, controller, session)) {
+            if (EchoMediaSessionControllerGate.isLegacyTransportController(controller.uid, controller.controllerVersion)) {
+                return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                    .setAvailableSessionCommands(SessionCommands.EMPTY)
+                    .setAvailablePlayerCommands(echoLegacyTransportCommands())
+                    .setCustomLayout(emptyList())
+                    .setMediaButtonPreferences(emptyList())
+                    .build()
+            }
             EchoErrorLog.record(
                 EchoErrorSource.Playback,
                 "Media controller connection rejected.",

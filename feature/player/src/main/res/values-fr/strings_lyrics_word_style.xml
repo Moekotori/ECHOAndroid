@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_word_style_title">Style de surlignage des mots</string>
+    <string name="lyrics_word_style_hint">Choisit comment chaque mot s’allume pendant qu’il est chanté. Les paroles avec un vrai minutage mot à mot le suivent fidèlement ; avec un minutage estimé, une version plus douce est utilisée automatiquement pour ne pas dessiner une approximation sur les lettres.</string>
+    <string name="lyrics_word_style_sweep">Balayage</string>
+    <string name="lyrics_word_style_fade">Fondu</string>
+    <string name="lyrics_word_style_lift">Soulèvement</string>
+    <string name="lyrics_word_style_hop">Rebond</string>
+    <string name="lyrics_word_style_swell">Gonflement</string>
+    <string name="lyrics_word_style_halo">Halo</string>
+    <string name="lyrics_word_style_spot">Projecteur</string>
+    <string name="lyrics_word_style_wave">Vague</string>
+    <string name="lyrics_word_style_lens">Loupe</string>
+    <string name="lyrics_word_style_flip">Bascule</string>
+    <string name="lyrics_word_style_spark">Scintillement</string>
+    <string name="lyrics_word_style_scan">Ligne de balayage</string>
+    <string name="lyrics_word_style_underline">Soulignement</string>
+    <string name="lyrics_word_style_dots">Demi-teinte</string>
+</resources>

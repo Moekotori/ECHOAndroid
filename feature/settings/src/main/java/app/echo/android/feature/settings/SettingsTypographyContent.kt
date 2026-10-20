@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.settings.EchoFontFamilyMode
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -33,7 +34,7 @@ internal fun SettingsTypographyContent(
             options = fontOptions(importedFontUri),
             selectedValue = uiFontFamily,
             onOptionSelected = { value ->
-                if (value == "imported" && importedFontUri.isNullOrBlank()) {
+                if (value == EchoFontFamilyMode.Imported && importedFontUri.isNullOrBlank()) {
                     onImportUiFont()
                 } else {
                     onUiFontFamilyChange(value)
@@ -46,7 +47,7 @@ internal fun SettingsTypographyContent(
             options = fontOptions(importedFontUri),
             selectedValue = lyricsFontFamily,
             onOptionSelected = { value ->
-                if (value == "imported" && importedFontUri.isNullOrBlank()) {
+                if (value == EchoFontFamilyMode.Imported && importedFontUri.isNullOrBlank()) {
                     onImportLyricsFont()
                 } else {
                     onLyricsFontFamilyChange(value)

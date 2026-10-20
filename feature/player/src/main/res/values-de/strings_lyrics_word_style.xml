@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_word_style_title">Wort-Hervorhebung</string>
+    <string name="lyrics_word_style_hint">Legt fest, wie ein Wort beim Singen aufleuchtet. Texte mit echten Wortzeiten folgen ihnen genau; bei geschätzten Zeiten wird automatisch eine weichere Variante verwendet, damit eine grobe Schätzung nicht über die Buchstaben gezeichnet wird.</string>
+    <string name="lyrics_word_style_sweep">Wischen</string>
+    <string name="lyrics_word_style_fade">Einblenden</string>
+    <string name="lyrics_word_style_lift">Anheben</string>
+    <string name="lyrics_word_style_hop">Hüpfen</string>
+    <string name="lyrics_word_style_swell">Anschwellen</string>
+    <string name="lyrics_word_style_halo">Heiligenschein</string>
+    <string name="lyrics_word_style_spot">Scheinwerfer</string>
+    <string name="lyrics_word_style_wave">Welle</string>
+    <string name="lyrics_word_style_lens">Lupe</string>
+    <string name="lyrics_word_style_flip">Kippen</string>
+    <string name="lyrics_word_style_spark">Funkeln</string>
+    <string name="lyrics_word_style_scan">Scanlinie</string>
+    <string name="lyrics_word_style_underline">Unterstreichung</string>
+    <string name="lyrics_word_style_dots">Halbton</string>
+</resources>

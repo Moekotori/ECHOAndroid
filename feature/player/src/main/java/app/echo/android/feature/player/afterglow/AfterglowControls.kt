@@ -24,7 +24,7 @@ internal fun AfterglowControls(
     index: Int, plan: AfterglowPlan?, offsetMs: Long, style: EchoLyricsPageStyle,
     scene: AfterglowScene, chosenScene: String?, onScene: (String?) -> Unit,
     onPalette: () -> Unit, onRandomize: () -> Unit, onSeek: (Long) -> Unit,
-    onInteraction: () -> Unit = {}, onMenu: (Boolean) -> Unit = {},
+    onInteraction: () -> Unit = {}, onMenu: (Boolean) -> Unit = {}, scenes: Boolean = true,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     LaunchedEffect(menuOpen) { onMenu(menuOpen) }
@@ -40,7 +40,7 @@ internal fun AfterglowControls(
             }
         }
         Row {
-            Box {
+            if (scenes) Box {
                 IconButton(onClick = { onInteraction(); menuOpen = true }) {
                     EchoIcon(Icons.Rounded.Landscape, stringResource(R.string.afterglow_scene) + " · " + stringResource(scene.title))
                 }

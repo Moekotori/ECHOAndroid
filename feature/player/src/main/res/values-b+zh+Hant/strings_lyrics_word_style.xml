@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_word_style_title">逐字高亮樣式</string>
+    <string name="lyrics_word_style_hint">選擇目前詞逐字變亮的方式。有逐字時間的歌詞依真實進度顯示；估算時間的歌詞會自動改用柔和版本，不把不準的時間畫在字上。</string>
+    <string name="lyrics_word_style_sweep">掃光</string>
+    <string name="lyrics_word_style_fade">漸顯</string>
+    <string name="lyrics_word_style_lift">浮起</string>
+    <string name="lyrics_word_style_hop">輕跳</string>
+    <string name="lyrics_word_style_swell">微放大</string>
+    <string name="lyrics_word_style_halo">光暈</string>
+    <string name="lyrics_word_style_spot">追光</string>
+    <string name="lyrics_word_style_wave">波浪</string>
+    <string name="lyrics_word_style_lens">放大鏡</string>
+    <string name="lyrics_word_style_flip">翻轉</string>
+    <string name="lyrics_word_style_spark">星點</string>
+    <string name="lyrics_word_style_scan">掃描線</string>
+    <string name="lyrics_word_style_underline">底線</string>
+    <string name="lyrics_word_style_dots">網點</string>
+</resources>

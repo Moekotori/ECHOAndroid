@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_word_style_title">Estilo de resaltado de palabras</string>
+    <string name="lyrics_word_style_hint">Elige cómo se ilumina cada palabra mientras se canta. La letra con tiempos reales por palabra los sigue con exactitud; con tiempos estimados se usa automáticamente una versión más suave para no dibujar una aproximación sobre las letras.</string>
+    <string name="lyrics_word_style_sweep">Barrido</string>
+    <string name="lyrics_word_style_fade">Aparición</string>
+    <string name="lyrics_word_style_lift">Elevación</string>
+    <string name="lyrics_word_style_hop">Salto</string>
+    <string name="lyrics_word_style_swell">Hinchazón</string>
+    <string name="lyrics_word_style_halo">Halo</string>
+    <string name="lyrics_word_style_spot">Foco</string>
+    <string name="lyrics_word_style_wave">Onda</string>
+    <string name="lyrics_word_style_lens">Lupa</string>
+    <string name="lyrics_word_style_flip">Giro</string>
+    <string name="lyrics_word_style_spark">Destello</string>
+    <string name="lyrics_word_style_scan">Línea de escaneo</string>
+    <string name="lyrics_word_style_underline">Subrayado</string>
+    <string name="lyrics_word_style_dots">Semitono</string>
+</resources>

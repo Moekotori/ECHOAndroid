@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.settings.EchoBackgroundMode
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -299,7 +300,7 @@ internal fun settingsSearchAnchorResource(item: SettingsSearchItem, availability
         SettingsSearchRequirement.DarkTime -> !availability.scheduledDarkEnabled
         SettingsSearchRequirement.CustomBackground -> !availability.backgroundAdvancedAvailable
         SettingsSearchRequirement.BackgroundAdvanced -> !availability.backgroundAdvancedAvailable
-        SettingsSearchRequirement.ImageBackground -> availability.customBackgroundMode != "image" ||
+        SettingsSearchRequirement.ImageBackground -> availability.customBackgroundMode != EchoBackgroundMode.Image ||
             !availability.backgroundAdvancedAvailable
         SettingsSearchRequirement.TrackFade -> !availability.trackFadeEnabled
         SettingsSearchRequirement.ReplayGain -> !availability.replayGainEnabled
