@@ -218,22 +218,22 @@ class EchoLinkSession(private val application: Application) {
         }
     }
 
-    fun publishLocalCast(
+    suspend fun publishLocalCast(
         tracks: List<EchoLinkCastSourceTrack>,
         peerHost: String? = null,
         advertisedHost: String? = null,
-    ): List<EchoRemoteStreamItem>? {
+    ): List<EchoRemoteStreamItem>? = withContext(Dispatchers.IO) {
         castPeerHost.set(peerHost ?: client.status.value.endpoint?.host)
-        val host = advertisedHost ?: EchoLinkLanAddresses.ipv4(application) ?: return null
-        val port = runCatching { castServer.start() }.getOrNull() ?: return null
+        val host = advertisedHost ?: EchoLinkLanAddresses.ipv4(application) ?: return@withContext null
+        val port = runCatching { castServer.start() }.getOrNull() ?: return@withContext null
         val publications = localCastPublications(tracks, peerHost = peerHost ?: client.status.value.endpoint?.host)
         val items = castServer.publish(publications, host, port)
-        if (items.isEmpty()) return null
+        if (items.isEmpty()) return@withContext null
         if (runCatching { EchoLinkCastService.start(application) }.isFailure) {
             castServer.stop()
-            return null
+            return@withContext null
         }
-        return items
+        items
     }
 
     // Called on IO; the caller owns rollback even if cancellation arrives during preparation.

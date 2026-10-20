@@ -28,9 +28,18 @@ import app.echo.android.usbaudio.UsbAudioProbe
 import app.echo.android.usbaudio.UsbEndpointSyncType
 import app.echo.android.usbaudio.UsbEndpointTransferType
 import app.echo.android.usbaudio.UsbExclusiveOutputState
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object EchoUsbExclusiveApplyPolicy {
     fun shouldFallBackToMixer(
@@ -126,11 +135,14 @@ class EchoUsbAudioMonitor(context: Context) {
     private val usbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
     private val usbAudioProbe = UsbAudioProbe(appContext)
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var exclusiveEnabled = retainedExclusiveEnabled
-    private val _status = MutableStateFlow(scan())
+    private val scanScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scanMutex = Mutex()
+    private val scanGeneration = AtomicLong(0L)
+    @Volatile private var exclusiveEnabled = retainedExclusiveEnabled
+    private val _status = MutableStateFlow(EchoUsbAudioStatus(exclusiveEnabled = exclusiveEnabled))
     val status: StateFlow<EchoUsbAudioStatus> = _status.asStateFlow()
     private var receiverRegistered = false
-    private var permissionRequestPendingDeviceName: String? = null
+    @Volatile private var permissionRequestPendingDeviceName: String? = null
 
     private val callback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
@@ -175,6 +187,8 @@ class EchoUsbAudioMonitor(context: Context) {
             runCatching { appContext.unregisterReceiver(usbReceiver) }
             receiverRegistered = false
         }
+        scanGeneration.incrementAndGet()
+        scanScope.coroutineContext.cancelChildren()
     }
 
     fun setExclusiveEnabled(enabled: Boolean) {
@@ -196,17 +210,40 @@ class EchoUsbAudioMonitor(context: Context) {
         // Exclusive playback claims the USB streaming interface itself.
         // Mixer bit-perfect attributes fight that claim and can make the
         // AudioTrack fallback lose the device, so they are not requested here.
-        _status.value = scan().copy(
-            lastRequestedSampleRateHz = sampleRateHz?.takeIf { it > 0 },
-            lastRequestError = null,
+        requestScan(
+            requestedSampleRateHz = sampleRateHz?.takeIf { it > 0 },
+            clearRequestError = true,
         )
     }
 
     private fun refresh() {
-        _status.value = scan().copy(
-            lastRequestedSampleRateHz = _status.value.lastRequestedSampleRateHz,
-            lastRequestError = _status.value.lastRequestError,
-        )
+        requestScan(requestedSampleRateHz = null, clearRequestError = false)
+    }
+
+    private fun requestScan(requestedSampleRateHz: Int?, clearRequestError: Boolean) {
+        val generation = scanGeneration.incrementAndGet()
+        if (clearRequestError) {
+            _status.update {
+                it.copy(lastRequestedSampleRateHz = requestedSampleRateHz, lastRequestError = null)
+            }
+        }
+        scanScope.launch {
+            if (generation != scanGeneration.get()) return@launch
+            val scanned = scanMutex.withLock {
+                if (generation != scanGeneration.get()) return@withLock null
+                runCatching { scan() }.getOrNull()
+            } ?: return@launch
+            if (generation != scanGeneration.get()) return@launch
+            val current = _status.value
+            _status.value = scanned.copy(
+                lastRequestedSampleRateHz = if (clearRequestError) {
+                    requestedSampleRateHz
+                } else {
+                    current.lastRequestedSampleRateHz
+                },
+                lastRequestError = if (clearRequestError) null else current.lastRequestError,
+            )
+        }
     }
 
     private fun scan(): EchoUsbAudioStatus {
@@ -227,7 +264,8 @@ class EchoUsbAudioMonitor(context: Context) {
         val pendingDeviceName = permissionRequestPendingDeviceName
         val pendingDeviceMatches = pendingDeviceName != null &&
             (usbSnapshot.deviceName == pendingDeviceName || usbDevice?.deviceName == pendingDeviceName)
-        if (hostPermissionGranted && pendingDeviceMatches) {
+        if (hostPermissionGranted && pendingDeviceMatches &&
+            permissionRequestPendingDeviceName == pendingDeviceName) {
             permissionRequestPendingDeviceName = null
         }
         val hostPermissionPending = !hostPermissionGranted && (usbSnapshot.permissionPending || pendingDeviceMatches)

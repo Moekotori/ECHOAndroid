@@ -442,7 +442,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val lanCast by echoLinkSession.castPlayback.collectAsStateWithLifecycle()
     // 投送时播放页和迷你播放器显示远端设备的曲目与播放状态；进度走单独的 flow。
     val shellPlaybackStatus = remember(playbackStatus, lanCast) {
-        lanCast?.let { playbackStatus.withLanCast(it, echoLinkSession.castPosition.value.positionMs) } ?: playbackStatus
+        lanCast?.let { playbackStatus.withLanCast(it, positionMs = 0L) } ?: playbackStatus
     }
     val shellPositionFlow = if (lanCast != null) echoLinkSession.castPosition else viewModel.playbackPosition
     fun routedPlayPause() {

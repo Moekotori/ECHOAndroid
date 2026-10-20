@@ -67,6 +67,7 @@ class EchoLinkCastServer(
     private val metadata: ((String, Map<String, String>) -> EchoLinkHttpReply?)? = null,
     private val resolvePublication: ((String) -> Pair<EchoLinkCastPublication, Boolean>?)? = null,
     private val openArtwork: ((EchoLinkCastPublication, Long) -> EchoLinkCastBody?)? = null,
+    private val maxConnections: Int = EchoLinkCastPolicy.MaxConnections,
 ) {
     private val publications = ConcurrentHashMap<String, EchoLinkCastPublication>()
     private var preparedQueue: EchoLinkCastPreparedQueue? = null
@@ -76,7 +77,7 @@ class EchoLinkCastServer(
     private val serverSocket = AtomicReference<ServerSocket?>(null)
     private val acceptThread = AtomicReference<Thread?>(null)
     private val workers = AtomicReference(newWorkers())
-    private val connections = Semaphore(EchoLinkCastPolicy.MaxConnections)
+    private val connections = Semaphore(maxConnections)
     private val lastActivityMs = AtomicLong(0L)
     private val activeClients = ConcurrentHashMap.newKeySet<Socket>()
 
@@ -510,7 +511,7 @@ class EchoLinkCastServer(
         if (totalLength != null) minOf(range?.second ?: Long.MAX_VALUE, totalLength - 1L)
         else range?.second
 
-    private fun newWorkers() = Executors.newFixedThreadPool(EchoLinkCastPolicy.MaxConnections) { runnable ->
+    private fun newWorkers() = Executors.newFixedThreadPool(maxConnections) { runnable ->
         Thread(runnable, "echo-link-cast-io").apply { isDaemon = true }
     }
 
