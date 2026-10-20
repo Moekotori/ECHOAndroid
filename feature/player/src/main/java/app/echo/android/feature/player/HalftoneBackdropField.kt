@@ -27,7 +27,7 @@ internal class HalftoneBackdropField(deep: Color, private val grid: ArtworkColor
     private var luminance = FloatArray(0)
     private var rowFade = FloatArray(0)
 
-    override fun draw(canvas: Canvas, width: Float, height: Float, elapsedMs: Long, opacity: Float) {
+    override fun draw(canvas: Canvas, width: Float, height: Float, elapsedMs: Long, opacity: Float, pulse: Float) {
         if (width <= 0f || height <= 0f || opacity <= 0f) return
         if (width != laidOutWidth || height != laidOutHeight) layout(width, height)
         val alpha = (opacity.coerceIn(0f, 1f) * 255f).toInt()

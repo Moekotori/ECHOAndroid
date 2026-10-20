@@ -20,7 +20,7 @@ internal fun fluidBackdropFps(mode: EchoEffectivePerformanceMode): Int = when (m
 
 /** Restarts its timestamp after hiding/resuming, keeping the surface frozen while invisible. */
 @Composable
-internal fun rememberFluidBackdropTime(visible: Boolean, fps: Int): State<Long> {
+internal fun rememberFluidBackdropTime(visible: Boolean, fps: Int, rate: () -> Float = { 1f }): State<Long> {
     val elapsed = remember { mutableLongStateOf(0L) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(visible, fps, lifecycle) {
@@ -30,7 +30,7 @@ internal fun rememberFluidBackdropTime(visible: Boolean, fps: Int): State<Long> 
             val gate = LyricsFrameGate(fps)
             while (isActive) {
                 withFrameNanos { frameNs ->
-                    if (gate.accept(frameNs)) elapsed.longValue = clock.advance(frameNs)
+                    if (gate.accept(frameNs)) elapsed.longValue = clock.advance(frameNs, rate())
                 }
             }
         }
@@ -43,8 +43,11 @@ internal class FluidBackdropClock(initialMs: Long = 0L) {
     private var elapsedNs = initialMs * 1_000_000L
     private var previousNs = Long.MIN_VALUE
 
-    fun advance(frameNs: Long): Long {
-        if (previousNs != Long.MIN_VALUE) elapsedNs += (frameNs - previousNs).coerceIn(0L, 100_000_000L)
+    /** [rate] scales decorative time, e.g. close to zero while paused; 1 is real time. */
+    fun advance(frameNs: Long, rate: Float = 1f): Long {
+        if (previousNs != Long.MIN_VALUE) {
+            elapsedNs += ((frameNs - previousNs).coerceIn(0L, 100_000_000L) * rate.coerceIn(0f, 1f)).toLong()
+        }
         previousNs = frameNs
         return elapsedNs / 1_000_000L
     }

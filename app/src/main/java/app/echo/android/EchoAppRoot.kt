@@ -111,7 +111,8 @@ import app.echo.android.ui.shell.echoPlayerDepth
 import app.echo.android.design.EchoPlayerTransitionRoot
 import app.echo.android.design.EchoExpandedPlayer
 import app.echo.android.design.rememberEchoBackProgress
-import app.echo.android.ui.shell.EchoOverlayBackHandler
+import app.echo.android.design.EchoOverlayBackHandler
+import app.echo.android.design.rememberEchoOverlayBack
 import app.echo.android.ui.shell.EchoBottomDockHost
 import app.echo.android.ui.shell.EchoAdaptiveShell
 import app.echo.android.ui.shell.EchoPagerPage
@@ -790,6 +791,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     LaunchedEffect(queueSheetVisible) {
         if (queueSheetVisible) queueBack.restore()
     }
+    val pageLightweight = effectivePerformanceMode.isLightweight
+    val searchBack = rememberEchoOverlayBack(searchVisible, pageLightweight)
+    val addMusicBack = rememberEchoOverlayBack(addMusicVisible, pageLightweight)
+    val historyBack = rememberEchoOverlayBack(playbackHistoryVisible, pageLightweight)
+    val statsBack = rememberEchoOverlayBack(listeningStatsVisible, pageLightweight)
+    val listeningBack = rememberEchoOverlayBack(listeningVisible, pageLightweight)
+    val errorLogBack = rememberEchoOverlayBack(errorLogVisible, pageLightweight)
+    val pluginsBack = rememberEchoOverlayBack(pluginsVisible, pageLightweight)
+    val libraryDetailBack = rememberEchoBackProgress(pageLightweight)
+    val pageCoverCount = listOf(
+        searchVisible, errorLogVisible, listeningStatsVisible, playbackHistoryVisible,
+        listeningVisible, pluginsVisible, addMusicVisible,
+    ).count { it }
     val openLyricsRequest by EchoLaunchActions.openLyrics.collectAsStateWithLifecycle()
     LaunchedEffect(openLyricsRequest) {
         if (openLyricsRequest) {
@@ -1092,19 +1106,39 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         )
     }
 
-    EchoOverlayBackHandler(enabled = listeningVisible && !pluginsVisible) {
+    EchoOverlayBackHandler(
+        enabled = listeningVisible && !pluginsVisible,
+        onProgress = listeningBack::update,
+        onCancel = { listeningBack.restore() },
+    ) {
         listeningVisible = false
     }
-    EchoOverlayBackHandler(enabled = playbackHistoryVisible && !listeningStatsVisible && !pluginsVisible) {
+    EchoOverlayBackHandler(
+        enabled = playbackHistoryVisible && !listeningStatsVisible && !pluginsVisible,
+        onProgress = historyBack::update,
+        onCancel = { historyBack.restore() },
+    ) {
         playbackHistoryVisible = false
     }
-    EchoOverlayBackHandler(enabled = listeningStatsVisible && !pluginsVisible) {
+    EchoOverlayBackHandler(
+        enabled = listeningStatsVisible && !pluginsVisible,
+        onProgress = statsBack::update,
+        onCancel = { statsBack.restore() },
+    ) {
         listeningStatsVisible = false
     }
-    EchoOverlayBackHandler(enabled = searchVisible && !listeningVisible && !pluginsVisible) {
+    EchoOverlayBackHandler(
+        enabled = searchVisible && !listeningVisible && !pluginsVisible,
+        onProgress = searchBack::update,
+        onCancel = { searchBack.restore() },
+    ) {
         searchVisible = false
     }
-    EchoOverlayBackHandler(enabled = errorLogVisible && !pluginsVisible) {
+    EchoOverlayBackHandler(
+        enabled = errorLogVisible && !pluginsVisible,
+        onProgress = errorLogBack::update,
+        onCancel = { errorLogBack.restore() },
+    ) {
         errorLogVisible = false
     }
     EchoOverlayBackHandler(
@@ -1119,7 +1153,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         onCancel = { nowPlayingBack.restore() },
         onDismiss = { nowPlayingExpanded = false },
     )
-    EchoOverlayBackHandler(enabled = addMusicVisible && !pluginsVisible) {
+    EchoOverlayBackHandler(
+        enabled = addMusicVisible && !pluginsVisible,
+        onProgress = addMusicBack::update,
+        onCancel = { addMusicBack.restore() },
+    ) {
         addMusicVisible = false
     }
     val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible || libraryRepairVisible
@@ -1136,7 +1174,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         if (discoverCastDevices) viewModel.startEchoLinkDiscovery()
         onDispose { if (discoverCastDevices) viewModel.stopEchoLinkDiscovery() }
     }
-    EchoOverlayBackHandler(enabled = !shellOverlayOpen && libraryDetailOpen) {
+    EchoOverlayBackHandler(
+        enabled = !shellOverlayOpen && libraryDetailOpen,
+        onProgress = libraryDetailBack::update,
+        onCancel = { libraryDetailBack.restore() },
+    ) {
+        libraryDetailBack.reset()
         closeLibraryDetail()
     }
     EchoOverlayBackHandler(
@@ -1197,7 +1240,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 },
                 onSelectTab = { selectDockTab(EchoTab.entries[it]) },
                 modifier = Modifier.fillMaxSize()
-                    .echoPageUnderlay(searchVisible || errorLogVisible || listeningStatsVisible || playbackHistoryVisible || listeningVisible || pluginsVisible || addMusicVisible)
+                    .echoPageUnderlay(
+                        obscured = searchVisible || errorLogVisible || listeningStatsVisible || playbackHistoryVisible || listeningVisible || pluginsVisible || addMusicVisible,
+                        // Hand the page back only when the dragged overlay is the sole cover.
+                        backProgress = {
+                            if (pageCoverCount == 1) maxOf(searchBack.value, errorLogBack.value, statsBack.value, historyBack.value, listeningBack.value, addMusicBack.value, pluginsBack.value) else 0f
+                        },
+                    )
                     .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBack.value, nowPlayingDragProgress) },
             ) { sideNavigation ->
                 val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
@@ -1249,6 +1298,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 selectedPlaylist = selectedPlaylist,
                                 outerNavigationOwnsTransition = detailReturnPage != null &&
                                     detailReturnPage != EchoPagerPage.Library,
+                                detailBackProgress = { libraryDetailBack.value },
                                 onRequestPermission = { permissionLauncher.launch(permission) },
                                 onScanFolder = { options ->
                                     pendingScanOptions = options
@@ -2015,7 +2065,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     onCancelSleepTimer = viewModel::cancelSleepTimer,
                     modifier = Modifier.fillMaxSize(),
             )
-            EchoPageOverlay(visible = searchVisible, onHidden = { searchQuery = "" }) {
+            EchoPageOverlay(
+                visible = searchVisible,
+                onHidden = { searchQuery = ""; searchBack.reset() },
+                backProgress = { searchBack.value },
+            ) {
                 app.echo.android.ui.home.EchoUnifiedSearchHost(viewModel, remoteClient, echoLinkPlaybackRouter, searchQuery, searchVisible,
                     "${remoteStatus.endpoint?.id}:${remoteStatus.connectionState}",
                     onQuery = { searchQuery = it }, onClose = { searchVisible = false },
@@ -2044,7 +2098,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     onDismiss = { libraryRepairVisible = false },
                 )
             }
-            EchoPageOverlay(visible = addMusicVisible) {
+            EchoPageOverlay(
+                visible = addMusicVisible,
+                onHidden = { addMusicBack.reset() },
+                backProgress = { addMusicBack.value },
+            ) {
                 app.echo.android.ui.library.EchoAddMusicPage(
                     viewModel = viewModel,
                     settings = appSettings,
@@ -2064,14 +2122,22 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     },
                 )
             }
-            EchoPageOverlay(visible = playbackHistoryVisible) {
+            EchoPageOverlay(
+                visible = playbackHistoryVisible,
+                onHidden = { historyBack.reset() },
+                backProgress = { historyBack.value },
+            ) {
                 app.echo.android.ui.home.EchoPlaybackHistoryPage(
                     controller = viewModel.playbackHistory,
                     onStats = { listeningStatsVisible = true },
                     onBack = { playbackHistoryVisible = false },
                 )
             }
-            EchoPageOverlay(visible = listeningStatsVisible) {
+            EchoPageOverlay(
+                visible = listeningStatsVisible,
+                onHidden = { statsBack.reset() },
+                backProgress = { statsBack.value },
+            ) {
                 val listeningStats by viewModel.listeningStats.collectAsStateWithLifecycle()
                 val monthlyRecap by viewModel.monthlyRecap.collectAsStateWithLifecycle()
                 val monthlyRecapError by viewModel.monthlyRecapError.collectAsStateWithLifecycle()
@@ -2089,7 +2155,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            EchoPageOverlay(visible = listeningVisible) {
+            EchoPageOverlay(
+                visible = listeningVisible,
+                onHidden = { listeningBack.reset() },
+                backProgress = { listeningBack.value },
+            ) {
                 ListeningScreen(
                     state = listeningState,
                     initialInput = listeningDraft,
@@ -2123,6 +2193,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             }
             EchoPageOverlay(
                 visible = errorLogVisible,
+                onHidden = { errorLogBack.reset() },
+                backProgress = { errorLogBack.value },
             ) {
                 val errorLogRecords by produceState(
                     initialValue = emptyList<EchoErrorRecord>(),
@@ -2145,6 +2217,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 visible = pluginsVisible,
                 playback = viewModel,
                 onVisibleChange = { pluginsVisible = it },
+                back = pluginsBack,
             )
             val permissionEntries = remember(
                 permissionActivity,

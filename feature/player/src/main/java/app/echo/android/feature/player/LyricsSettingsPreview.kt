@@ -36,6 +36,7 @@ internal fun LyricsSettingsPreview(
     highlightEnabled: Boolean,
     highlightIntensity: Float,
     motionMode: String,
+    animateMotion: Boolean = false,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val previewScale = animateFloatAsState(
@@ -53,7 +54,12 @@ internal fun LyricsSettingsPreview(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalAlignment = lyricsHorizontalAlignment(alignment),
         ) {
-            if (alignment == "vertical") {
+            if (animateMotion) {
+                LyricsMotionPreview(
+                    pageStyle, fontFamily, fontScale, alignment, lineSpacing, accent,
+                    highlightEnabled, highlightIntensity, motionMode,
+                )
+            } else if (alignment == "vertical") {
                 VerticalLyricText(
                     line = app.echo.android.model.lyrics.EchoLyricLine(-1, text = stringResource(R.string.lyrics_vertical_preview)),
                     lineEndMs = null, active = false, position = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0L) },

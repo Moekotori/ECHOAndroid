@@ -9,9 +9,10 @@ import app.echo.android.design.ArtworkColorGrid
 /**
  * One decorative surface painted behind the player. Implementations build their paints and shaders once
  * and reuse them on every frame; [elapsedMs] is decoration time only and never playback position.
+ * [pulse] is a 0..1 decorative kick that decays after each lyric line change; fields may ignore it.
  */
 internal interface BackdropField {
-    fun draw(canvas: Canvas, width: Float, height: Float, elapsedMs: Long, opacity: Float)
+    fun draw(canvas: Canvas, width: Float, height: Float, elapsedMs: Long, opacity: Float, pulse: Float)
 }
 
 /** Pulls every cover color toward the page color so the surface follows the app theme. */

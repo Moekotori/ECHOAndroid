@@ -29,6 +29,8 @@ internal fun PlaybackAdvancedSettings(
     appearance: PlayerAppearance,
     onAppearancePreview: (PlayerAppearance) -> Unit,
     onAppearanceCommit: () -> Unit,
+    lyricsBackdrop: String,
+    onLyricsBackdropChange: (String) -> Unit,
     status: EchoPlaybackStatus,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
     onSetReplayGain: (Boolean, Float) -> Unit,
@@ -46,7 +48,7 @@ internal fun PlaybackAdvancedSettings(
     val haptics = rememberEchoHapticPerformer()
     var speedExpanded by remember { mutableStateOf(false) }
     var lyricsOffsetExpanded by remember { mutableStateOf(false) }
-    PlayerAppearanceSettings(appearance, onAppearancePreview, onAppearanceCommit)
+    PlayerAppearanceSettings(appearance, onAppearancePreview, onAppearanceCommit, lyricsBackdrop, onLyricsBackdropChange)
     PlaybackSettingsSection(
         icon = Icons.Rounded.Speed,
         framed = false,

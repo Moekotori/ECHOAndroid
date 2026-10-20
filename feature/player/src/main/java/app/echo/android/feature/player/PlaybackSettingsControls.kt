@@ -23,7 +23,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -59,6 +58,34 @@ import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.echoPressFeedback
 import app.echo.android.design.echoTheme
 import app.echo.android.design.rememberEchoHapticPerformer
+import app.echo.android.design.EchoStateContent
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoExpandIndicator
+import androidx.compose.ui.unit.Dp
+
+private val PlaybackRowShape = RoundedCornerShape(18.dp)
+private val PlaybackRowMinHeight: Dp = 60.dp
+private val PlaybackRowInset: Dp = 6.dp
+
+/** Soft round icon plate for unframed rows; the plate, not a card, carries the visual weight. */
+@Composable
+private fun PlaybackRowBadge(icon: ImageVector, active: Boolean = false) {
+    val dark = LocalEchoDarkTheme.current
+    val accent = echoAccentColor()
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val plate by animateColorAsState(
+        targetValue = when {
+            active -> accent.copy(alpha = if (dark) 0.30f else 0.20f)
+            dark -> Color.White.copy(alpha = 0.08f)
+            else -> echoTheme().muted.copy(alpha = 0.13f)
+        },
+        animationSpec = tween(if (lightweight) 0 else 240, easing = LyricsSettingsMotionEasing),
+        label = "playback-row-badge",
+    )
+    Box(Modifier.size(38.dp).clip(CircleShape).background(plate), contentAlignment = Alignment.Center) {
+        EchoIcon(icon, contentDescription = null, tint = if (dark) Color.White else echoTheme().heading, modifier = Modifier.size(19.dp))
+    }
+}
 
 @Composable
 internal fun PlaybackSettingsSection(
@@ -69,37 +96,44 @@ internal fun PlaybackSettingsSection(
     onToggleExpanded: (() -> Unit)? = null,
     framed: Boolean = true,
     showDivider: Boolean = true,
+    revealOrder: Int? = null,
     trailing: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
     Column(
-        Modifier.fillMaxWidth().echoPageSection().then(
+        Modifier.fillMaxWidth().echoPageSection(revealOrder).then(
             if (framed) Modifier.clip(RoundedCornerShape(22.dp))
                 .background(if (dark) Color.White.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surfaceContainerLow)
                 .padding(horizontal = 14.dp, vertical = 12.dp)
-            else Modifier.padding(vertical = 4.dp),
+            else Modifier,
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(if (framed) 8.dp else 2.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth().then(if (onToggleExpanded != null)
-                Modifier.echoClickable(role = Role.Button, onClick = onToggleExpanded) else Modifier)
-                .heightIn(min = 48.dp).padding(horizontal = 2.dp, vertical = 6.dp),
+            Modifier.fillMaxWidth()
+                .then(if (framed) Modifier else Modifier.clip(PlaybackRowShape))
+                .then(if (onToggleExpanded != null)
+                    Modifier.echoClickable(role = Role.Button, onClick = onToggleExpanded) else Modifier)
+                .heightIn(min = if (framed) 48.dp else PlaybackRowMinHeight)
+                .padding(horizontal = if (framed) 2.dp else PlaybackRowInset, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (framed) 10.dp else 14.dp),
         ) {
-            EchoIcon(icon, null, tint = echoTheme().heading, modifier = Modifier.size(20.dp))
+            if (framed) EchoIcon(icon, null, tint = echoTheme().heading, modifier = Modifier.size(20.dp))
+            else PlaybackRowBadge(icon, active = expanded)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, color = if (dark) Color.White else echoTheme().heading,
                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-                if (detail.isNotBlank()) Text(detail, color = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted,
-                    style = MaterialTheme.typography.bodySmall)
+                if (detail.isNotBlank()) EchoStateContent(detail) {
+                    Text(it, color = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted,
+                        style = MaterialTheme.typography.bodySmall)
+                }
             }
             trailing()
-            if (onToggleExpanded != null) EchoIcon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+            if (onToggleExpanded != null) EchoIcon(Icons.Rounded.ExpandMore,
                 contentDescription = stringResource(if (expanded) L10nR.string.playback_collapse else L10nR.string.playback_expand),
-                tint = echoTheme().muted, modifier = Modifier.size(20.dp))
+                tint = echoTheme().muted, modifier = Modifier.size(20.dp).echoExpandIndicator(expanded))
         }
         EchoExpand(expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
@@ -319,6 +353,7 @@ internal fun PlaybackToggleRow(
     modifier: Modifier = Modifier,
     framed: Boolean = true,
     enabled: Boolean = true,
+    revealOrder: Int? = null,
 ) {
     val dark = LocalEchoDarkTheme.current
     val accent = echoAccentColor()
@@ -336,9 +371,10 @@ internal fun PlaybackToggleRow(
     )
     Row(
         modifier = modifier
+            .then(if (revealOrder != null) Modifier.echoPageSection(revealOrder) else Modifier)
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .heightIn(min = if (framed) 48.dp else PlaybackRowMinHeight)
+            .clip(if (framed) RoundedCornerShape(14.dp) else PlaybackRowShape)
             .background(containerColor)
             .then(
                 if (framed) {
@@ -362,21 +398,25 @@ internal fun PlaybackToggleRow(
                 role = Role.Switch,
                 onValueChange = onCheckedChange,
             )
-            .padding(horizontal = if (framed) 14.dp else 2.dp),
+            .padding(horizontal = if (framed) 14.dp else PlaybackRowInset),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (framed) 10.dp else 14.dp),
     ) {
-        EchoIcon(
-            icon,
-            contentDescription = null,
-            tint = (if (dark) Color.White else echoTheme().heading).copy(alpha = if (enabled) 1f else 0.38f),
-            modifier = Modifier.size(18.dp),
-        )
+        if (framed) {
+            EchoIcon(
+                icon,
+                contentDescription = null,
+                tint = (if (dark) Color.White else echoTheme().heading).copy(alpha = if (enabled) 1f else 0.38f),
+                modifier = Modifier.size(18.dp),
+            )
+        } else {
+            PlaybackRowBadge(icon, active = checked && enabled)
+        }
         Text(
             title,
             modifier = Modifier.weight(1f),
             color = (if (dark) Color.White else echoTheme().heading).copy(alpha = if (enabled) 1f else 0.38f),
-            style = MaterialTheme.typography.labelLarge,
+            style = if (framed) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -393,13 +433,15 @@ internal fun PlaybackActionRow(
     detail: String? = null,
     modifier: Modifier = Modifier,
     framed: Boolean = true,
+    revealOrder: Int? = null,
 ) {
     val dark = LocalEchoDarkTheme.current
     Row(
         modifier = modifier
+            .then(if (revealOrder != null) Modifier.echoPageSection(revealOrder) else Modifier)
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .heightIn(min = if (framed) 48.dp else PlaybackRowMinHeight)
+            .clip(if (framed) RoundedCornerShape(14.dp) else PlaybackRowShape)
             .background(
                 if (!framed) Color.Transparent
                 else if (dark) echoTheme().panel.copy(alpha = 0.50f)
@@ -416,14 +458,16 @@ internal fun PlaybackActionRow(
                 },
             )
             .echoClickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = if (framed) 14.dp else 2.dp),
+            .padding(horizontal = if (framed) 14.dp else PlaybackRowInset),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (framed) 10.dp else 14.dp),
     ) {
-        EchoIcon(icon, contentDescription = null, tint = if (dark) Color.White else echoTheme().heading, modifier = Modifier.size(18.dp))
+        if (framed) EchoIcon(icon, contentDescription = null, tint = if (dark) Color.White else echoTheme().heading, modifier = Modifier.size(18.dp))
+        else PlaybackRowBadge(icon)
         Column(Modifier.weight(1f).padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(text, color = if (dark) Color.White else echoTheme().heading,
-                style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                style = if (framed) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium)
             if (!detail.isNullOrBlank()) Text(detail, color = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted,
                 style = MaterialTheme.typography.bodySmall)
         }

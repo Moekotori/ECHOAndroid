@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_manager_title">가사 · %1$s</string>
-    <string name="lyrics_manager_hint">결과를 눌러 미리 보세요. 선택한 가사는 오프라인으로 저장됩니다.</string>
+    <string name="lyrics_manager_hint">결과를 누르면 가사가 적용되고 오프라인으로 저장됩니다.</string>
     <string name="lyrics_manager_search">온라인 검색 / 새로고침</string>
     <string name="lyrics_manager_import">가사 파일 가져오기</string>
     <string name="lyrics_manager_clear">선택을 해제하고 자동 가사 사용</string>

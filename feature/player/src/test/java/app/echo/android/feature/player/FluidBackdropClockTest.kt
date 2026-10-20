@@ -23,6 +23,15 @@ class FluidBackdropClockTest {
     }
 
     @Test
+    fun rateSlowsDecorativeTimeWhilePaused() {
+        val clock = FluidBackdropClock()
+        clock.advance(1_000_000_000L)
+        assertEquals(40L, clock.advance(1_040_000_000L, 1f))
+        assertEquals(41L, clock.advance(1_080_000_000L, 0.04f))
+        assertEquals(41L, clock.advance(1_120_000_000L, 0f))
+    }
+
+    @Test
     fun stalledFramesDoNotJumpTheSurface() {
         val clock = FluidBackdropClock()
         clock.advance(1_000_000_000L)

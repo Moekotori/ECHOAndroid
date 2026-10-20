@@ -47,7 +47,7 @@ internal suspend fun followLyricsLine(
                 targetValue = distance,
                 animationSpec = if (lightweight) tween(240) else spring(
                     dampingRatio = 1f,
-                    stiffness = when (motionMode) { "calm" -> 240f; "stage" -> 110f; else -> 160f },
+                    stiffness = lyricsMotionProfile(motionMode).followStiffness,
                     visibilityThreshold = 0.5f,
                 ),
             ) {

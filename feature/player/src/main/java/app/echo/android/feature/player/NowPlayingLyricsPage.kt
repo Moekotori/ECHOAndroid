@@ -61,6 +61,7 @@ internal fun NowPlayingLyricsPage(
     showBackdrop: Boolean = false,
     backdropStyle: EchoLyricsBackdrop = EchoLyricsBackdrop.Fluid,
     colorGrid: ArtworkColorGrid? = null,
+    backdropLink: BackdropLink? = null,
     showTransportDock: Boolean = true,
     modifier: Modifier = Modifier,
     animationsVisible: Boolean = true,
@@ -90,7 +91,7 @@ internal fun NowPlayingLyricsPage(
             lightweight = lightweight,
             highPerformance = performance.isHighPerformance,
         )) {
-            if (showBackdrop) LyricsPageBackdrop(palette, { 1f }, animationsVisible && status.track != null, Modifier.fillMaxSize(), backdropStyle, colorGrid)
+            if (showBackdrop) LyricsPageBackdrop(palette, { 1f }, animationsVisible && status.track != null, Modifier.fillMaxSize(), backdropStyle, colorGrid, backdropLink)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -163,7 +164,7 @@ internal fun NowPlayingLyricsPage(
                                         wordHighlight = lyricsWordHighlightEnabled, estimatedHighlight = lyricsEstimatedWordHighlightEnabled,
                                         highlightIntensity = lyricsWordHighlightIntensity,
                                         showTranslation = lyricsShowTranslation, showRomanization = lyricsShowRomanization,
-                                        visible = animationsVisible, modifier = Modifier.fillMaxSize(),
+                                        visible = animationsVisible, motionMode = lyricsMotionMode, modifier = Modifier.fillMaxSize(),
                                     )
                                 } else if (lyricsPageStyle.isAfterglow) {
                                     key(status.track?.id) {

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_manager_title">Liedtext · %1$s</string>
-    <string name="lyrics_manager_hint">Wählen Sie ein Ergebnis zur Vorschau. Ausgewählte Liedtexte werden offline gespeichert.</string>
+    <string name="lyrics_manager_hint">Tippen Sie auf ein Ergebnis, um es zu verwenden und offline zu speichern.</string>
     <string name="lyrics_manager_search">Online suchen / aktualisieren</string>
     <string name="lyrics_manager_import">Liedtextdatei importieren</string>
     <string name="lyrics_manager_clear">Auswahl löschen und automatischen Liedtext verwenden</string>

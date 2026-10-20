@@ -332,6 +332,7 @@ fun LibraryScreen(
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onCloseDetail: () -> Unit,
     outerNavigationOwnsTransition: Boolean = false,
+    detailBackProgress: () -> Float = { 0f },
     onLinkedLibraryPageOpenChanged: (Boolean) -> Unit = {},
     linkedDetailBackEnabled: Boolean = true,
     onOpenConnect: () -> Unit = {},
@@ -805,7 +806,13 @@ fun LibraryScreen(
         reportLinkedPage.value(linkedPageOpen)
         onDispose { reportLinkedPage.value(false) }
     }
-    androidx.activity.compose.BackHandler(enabled = linkedDetailOpen && linkedDetailBackEnabled) {
+    val linkedBack = app.echo.android.design.rememberEchoBackProgress()
+    app.echo.android.design.EchoOverlayBackHandler(
+        enabled = linkedDetailOpen && linkedDetailBackEnabled,
+        onProgress = linkedBack::update,
+        onCancel = { linkedBack.restore() },
+    ) {
+        linkedBack.reset()
         when {
             selectedLinkedAlbum != null -> selectedLinkedAlbum = null
             selectedLinkedArtist != null -> selectedLinkedArtist = null
@@ -837,6 +844,14 @@ fun LibraryScreen(
     }
 
     val splitDetails = prefersSplit
+    // Scrub only the plain "detail -> browser" return; stepping album -> artist or leaving
+    // for another tab keeps its committed transition.
+    val detailReturnsToBrowser = !splitDetails && !outerNavigationOwnsTransition && when (detailTransitionTarget) {
+        LibraryDetailTransitionTarget.Browser -> false
+        is LibraryDetailTransitionTarget.AlbumDetail -> activeArtistDetail == null
+        is LibraryDetailTransitionTarget.LinkedAlbum -> linkedArtistDetail == null
+        else -> true
+    }
     val browserRenderer: @Composable () -> Unit = { SharedLibraryBrowser() }
     val latestBrowserRenderer = rememberUpdatedState(browserRenderer)
     val browserPane = remember { movableContentOf { latestBrowserRenderer.value() } }
@@ -1053,6 +1068,11 @@ fun LibraryScreen(
             targetState = detailTransitionTarget,
             split = splitDetails,
             outerNavigationOwnsTransition = outerNavigationOwnsTransition,
+            back = if (detailReturnsToBrowser) {
+                app.echo.android.design.EchoPageBack<LibraryDetailTransitionTarget>(
+                    LibraryDetailTransitionTarget.Browser,
+                ) { maxOf(detailBackProgress(), linkedBack.value) }
+            } else null,
             modifier = Modifier.fillMaxSize(),
             content = { DetailContent(it) },
         )

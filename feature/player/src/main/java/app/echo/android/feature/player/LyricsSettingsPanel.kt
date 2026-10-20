@@ -119,7 +119,7 @@ internal fun LyricsSettingsPanel(
                         touchSize = 48.dp, iconSize = 22.dp, tint = titleColor, background = Color.Transparent, onClick = onDismiss)
                 }
             }
-            if (category != null && category != LyricsSettingsCategory.Content) LyricsSettingsPreview(
+            if (category != null && category != LyricsSettingsCategory.Content && category != LyricsSettingsCategory.Backdrop) LyricsSettingsPreview(
                 pageStyle = lyricsPageStyle,
                 fontFamily = lyricsFontFamily,
                 fontScale = lyricsFontScale,
@@ -130,12 +130,14 @@ internal fun LyricsSettingsPanel(
                 highlightEnabled = lyricsWordHighlightEnabled,
                 highlightIntensity = lyricsWordHighlightIntensity,
                 motionMode = lyricsMotionMode,
+                animateMotion = category == LyricsSettingsCategory.Motion,
             )
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides titleColor) {
                 key(category) {
                     Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())
                         .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (category == null) LyricsSettingsMenu(
+                            backdropSummary = stringResource(lyricsBackdropLabel(EchoLyricsBackdrop.fromId(lyricsBackdrop))),
                             typographySummary = "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",
                             colorSummary = lyricsColorLabel(lyricsColorMode),
                             motionSummary = lyricsMotionLabel(lyricsMotionMode),
@@ -143,9 +145,14 @@ internal fun LyricsSettingsPanel(
                         )
                         if (category == LyricsSettingsCategory.Appearance) {
                             PlayerPageStyleSelector(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle), onLyricsPageStyleChange)
-                            Text(stringResource(L10nR.string.lyrics_backdrop_title), style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
-                            LyricsSettingChoices(options = lyricsBackdropOptions(), selected = lyricsBackdrop, onSelect = onLyricsBackdropChange)
+                        }
+                        if (category == LyricsSettingsCategory.Backdrop) {
+                            PlayerBackdropChoices(
+                                selected = EchoLyricsBackdrop.fromId(lyricsBackdrop),
+                                flatSurface = playerPageStyle != app.echo.android.model.settings.EchoPlayerPageStyle.Classic.id,
+                                onSelect = onLyricsBackdropChange,
+                                onUseClassic = { onLyricsPageStyleChange(app.echo.android.model.settings.EchoPlayerPageStyle.Classic.id) },
+                            )
                         }
                         if (category == LyricsSettingsCategory.Typography) {
                             LyricsSettingChoices(options = lyricsFontOptions(), selected = lyricsFontMode, onSelect = { value ->
@@ -270,13 +277,6 @@ private fun lyricsColorLabel(mode: String): String = when (mode) {
     "mint" -> stringResource(L10nR.string.feature_player_green_d7b519)
     else -> stringResource(L10nR.string.feature_player_white_cc6c04)
 }
-
-@Composable
-private fun lyricsBackdropOptions(): List<Pair<String, String>> = listOf(
-    EchoLyricsBackdrop.Fluid.id to stringResource(L10nR.string.lyrics_backdrop_fluid),
-    EchoLyricsBackdrop.Mesh.id to stringResource(L10nR.string.lyrics_backdrop_mesh),
-    EchoLyricsBackdrop.Halftone.id to stringResource(L10nR.string.lyrics_backdrop_halftone),
-)
 
 @Composable
 private fun lyricsAlignmentLabel(mode: String): String = when (mode) {

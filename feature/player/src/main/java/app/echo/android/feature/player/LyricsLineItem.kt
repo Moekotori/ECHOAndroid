@@ -42,7 +42,7 @@ internal fun LyricsLineItem(
     focusGlowEnabled: Boolean,
     showTranslation: Boolean,
     showRomanization: Boolean,
-    motionIntensity: Float,
+    motion: LyricsMotionProfile,
     animateFocus: Boolean,
     paper: Boolean,
     onClick: (() -> Unit)?,
@@ -50,7 +50,7 @@ internal fun LyricsLineItem(
 ) {
     val transitionDuration = if (animateFocus) 320 else 0
     val contextMotion = if (animateFocus) spring<Float>(dampingRatio = 1f,
-        stiffness = 260f - 110f * motionIntensity.coerceIn(0f, 1f), visibilityThreshold = 0.001f)
+        stiffness = motion.focusStiffness, visibilityThreshold = 0.001f)
     else tween(0)
     val textAlign = lyricsTextAlign(lyricsAlignment)
     val horizontalAlignment = lyricsHorizontalAlignment(lyricsAlignment)
@@ -85,14 +85,23 @@ internal fun LyricsLineItem(
         label = "lyrics-secondary-alpha",
     )
     val textScale = animateFloatAsState(
-        // Focus changes the visual type size even with motion disabled.
-        targetValue = if (focused) 1f else when (focusDistance) { 1 -> 0.90f; 2 -> 0.85f; else -> 0.82f },
+        // Calm keeps a fixed size; the other presets draw within the same measured bounds.
+        targetValue = motion.scale(focused, focusDistance),
         animationSpec = contextMotion,
         label = "lyrics-text-scale",
+    )
+    val textLift = animateFloatAsState(
+        targetValue = if (focused) 0f else motion.liftDp,
+        animationSpec = contextMotion,
+        label = "lyrics-text-lift",
     )
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                // Move captions together with their line, leaving the measured scroll anchor intact.
+                translationY = textLift.value.dp.toPx() * spacing.coerceAtMost(1f)
+            }
             .drawBehind {
                 if (paper && markerAlpha.value > 0f) {
                     drawLine(
@@ -132,7 +141,7 @@ internal fun LyricsLineItem(
             estimatedWordHighlightEnabled = estimatedWordHighlightEnabled,
             animationsVisible = animateFocus,
             glowEnabled = focusGlowEnabled && !paper,
-            motionIntensity = motionIntensity,
+            motionIntensity = motion.intensity,
             position = positionMsState,
             color = lyricAccent,
             highlightColor = highlightColor,

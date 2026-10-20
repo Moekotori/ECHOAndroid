@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.paging.compose.LazyPagingItems
+import app.echo.android.design.EchoPageBack
 import app.echo.android.design.EchoPageContent
 import app.echo.android.design.rememberEchoContentMotion
 import app.echo.android.model.connect.EchoRemotePlaylist
@@ -57,6 +58,7 @@ internal fun LibraryDetailTransition(
     targetState: LibraryDetailTransitionTarget,
     split: Boolean,
     outerNavigationOwnsTransition: Boolean = false,
+    back: EchoPageBack<LibraryDetailTransitionTarget>? = null,
     modifier: Modifier = Modifier,
     content: @Composable (LibraryDetailTransitionTarget) -> Unit,
 ) {
@@ -95,6 +97,7 @@ internal fun LibraryDetailTransition(
             }
         } else null,
         modifier = modifier,
+        back = back,
         label = "library-detail-transition",
     ) { target ->
         savedState.SaveableStateProvider(target.pageKey) { content(target) }

@@ -31,8 +31,6 @@ internal fun localCastPublications(
             durationMs = track.durationMs,
             format = EchoLinkCastFormat.fromTrack(
                 uri = app.echo.android.model.library.CueSheetPolicy.playbackUri(track.uri),
-            sourceRange = if (track.clipStartMs > 0 || track.clipEndMs > 0) app.echo.android.model.connect.EchoRemoteSourceRange(
-                track.clipStartMs / 1000.0, track.clipEndMs.takeIf { it > track.clipStartMs }?.div(1000.0)) else null,
                 mimeType = track.mimeType,
                 sampleRateHz = track.sampleRateHz,
                 bitDepth = track.bitDepth,

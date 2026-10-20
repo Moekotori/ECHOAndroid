@@ -22,7 +22,7 @@ internal class FluidArtworkField(palette: ArtworkPalette) : BackdropField {
         Field(palette.deep, 0.80f, 0.90f, 5.4),
     )
 
-    override fun draw(canvas: Canvas, width: Float, height: Float, elapsedMs: Long, opacity: Float) {
+    override fun draw(canvas: Canvas, width: Float, height: Float, elapsedMs: Long, opacity: Float, pulse: Float) {
         if (width <= 0f || height <= 0f || opacity <= 0f) return
         val alpha = (opacity.coerceIn(0f, 1f) * 255f).toInt()
         base.alpha = alpha

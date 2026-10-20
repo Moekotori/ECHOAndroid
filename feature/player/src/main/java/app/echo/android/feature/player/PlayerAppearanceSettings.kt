@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Palette
@@ -22,6 +23,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoPlayerPageStyle
 
 @Composable
@@ -29,12 +31,17 @@ internal fun PlayerAppearanceSettings(
     appearance: PlayerAppearance,
     onPreview: (PlayerAppearance) -> Unit,
     onCommit: () -> Unit,
+    lyricsBackdrop: String,
+    onLyricsBackdropChange: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val pageStyle = EchoPlayerPageStyle.fromId(appearance.style)
+    val backdrop = EchoLyricsBackdrop.fromId(lyricsBackdrop)
     PlaybackSettingsSection(
         icon = Icons.Rounded.Palette,
         title = stringResource(R.string.player_appearance_title),
-        detail = stringResource(playerPageStyleLabel(EchoPlayerPageStyle.fromId(appearance.style))),
+        detail = stringResource(playerPageStyleLabel(pageStyle)) +
+            if (appearance.usesFlatSurface) "" else " · " + stringResource(lyricsBackdropLabel(backdrop)),
         expanded = expanded,
         onToggleExpanded = { expanded = !expanded },
         framed = false,
@@ -47,6 +54,14 @@ internal fun PlayerAppearanceSettings(
         PlayerPageStyleSelector(EchoPlayerPageStyle.fromId(appearance.style)) { id ->
             onPreview(appearance.copy(style = id)); onCommit()
         }
+        Text(stringResource(R.string.lyrics_backdrop_title), style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp))
+        PlayerBackdropChoices(
+            selected = backdrop,
+            flatSurface = appearance.usesFlatSurface,
+            onSelect = onLyricsBackdropChange,
+            onUseClassic = { onPreview(appearance.copy(style = EchoPlayerPageStyle.Classic.id)); onCommit() },
+        )
         AppearanceScaleSlider(
             label = stringResource(R.string.player_appearance_text_size),
             value = appearance.textScale,

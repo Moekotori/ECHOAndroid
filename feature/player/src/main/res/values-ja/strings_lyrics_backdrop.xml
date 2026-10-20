@@ -3,4 +3,9 @@
     <string name="lyrics_backdrop_fluid">フルイド</string>
     <string name="lyrics_backdrop_mesh">グロー</string>
     <string name="lyrics_backdrop_halftone">ハーフトーン</string>
+    <string name="lyrics_backdrop_ridge">リッジ</string>
+    <string name="lyrics_backdrop_vinyl">レコード</string>
+    <string name="lyrics_backdrop_detail">背景はジャケットの色から作られます。リッジとレコードは、歌詞の行の切り替わりや再生・一時停止にも反応します。</string>
+    <string name="lyrics_backdrop_needs_classic">現在のプレーヤースタイルは単色の背景を使うため、背景スタイルは「クラシック」スタイルでのみ表示されます。</string>
+    <string name="lyrics_backdrop_use_classic">クラシックに切り替える</string>
 </resources>

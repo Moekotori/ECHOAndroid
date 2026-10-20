@@ -1,7 +1,8 @@
-package app.echo.android.ui.shell
+package app.echo.android.design
 
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.CancellationException
@@ -9,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /** Ignore a stale enabled callback, and commit navigation only if its owner is still active. */
-internal suspend fun collectEchoBackGesture(
+suspend fun collectEchoBackGesture(
     progress: Flow<Float>,
     isActive: () -> Boolean,
     onProgress: (Float) -> Unit,
@@ -30,8 +31,16 @@ internal suspend fun collectEchoBackGesture(
     }
 }
 
+/** Per-overlay gesture progress: a stacked overlay must not inherit the one dragged above it. */
 @Composable
-internal fun EchoOverlayBackHandler(
+fun rememberEchoOverlayBack(visible: Boolean, lightweight: Boolean): EchoBackProgress {
+    val back = rememberEchoBackProgress(lightweight)
+    LaunchedEffect(visible) { if (visible) back.restore() }
+    return back
+}
+
+@Composable
+fun EchoOverlayBackHandler(
     enabled: Boolean,
     onProgress: (Float) -> Unit = {},
     onCancel: () -> Unit = { onProgress(0f) },

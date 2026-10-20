@@ -24,12 +24,13 @@ internal fun LyricsPageBackdrop(
     modifier: Modifier,
     backdropStyle: EchoLyricsBackdrop = EchoLyricsBackdrop.Fluid,
     colorGrid: ArtworkColorGrid? = null,
+    link: BackdropLink? = null,
 ) {
     if (LocalLyricsPageStyle.current == EchoLyricsPageStyle.Paper || LocalLyricsPageStyle.current.isAfterglow) {
         Box(modifier.background(LocalEchoTheme.current.bgTop))
     } else {
         Box(modifier) {
-            NowPlayingBackdrop(palette, reveal, Modifier.fillMaxSize(), animationsVisible, backdropStyle, colorGrid)
+            NowPlayingBackdrop(palette, reveal, Modifier.fillMaxSize(), animationsVisible, backdropStyle, colorGrid, link)
         }
     }
 }

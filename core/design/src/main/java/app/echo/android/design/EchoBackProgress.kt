@@ -66,6 +66,11 @@ class EchoBackProgress internal constructor(
     fun reset() = update(0f)
 }
 
+/** Follows the effective performance mode, so callers need no `:core:model` types. */
+@Composable
+fun rememberEchoBackProgress(): EchoBackProgress =
+    rememberEchoBackProgress(LocalEchoEffectivePerformanceMode.current.isLightweight)
+
 @Composable
 fun rememberEchoBackProgress(lightweight: Boolean): EchoBackProgress {
     val scope = rememberCoroutineScope()

@@ -1,4 +1,4 @@
-package app.echo.android.ui.shell
+package app.echo.android.design
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.flow

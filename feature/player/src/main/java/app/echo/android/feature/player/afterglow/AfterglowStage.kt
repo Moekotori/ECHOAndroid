@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.feature.player.lyricsMotionProfile
 import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.settings.EchoLyricsPageStyle
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +53,7 @@ internal fun AfterglowStage(
     val renderActive = visible && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
     val windowFocused = LocalWindowInfo.current.isWindowFocused
     val motion = budget.glyphMotion && motionMode != "calm"
+    val motionStrength = lyricsMotionProfile(motionMode).intensity
     val result by produceState<AfterglowPlanResult?>(null, lyrics, durationMs) {
         value = null
         value = AfterglowPlanResult(lyrics, durationMs, withContext(Dispatchers.Default) {
@@ -148,7 +150,7 @@ internal fun AfterglowStage(
                 } else canvas.drawColor(palette.background)
                 textLayout?.takeIf { it.line === line }?.let { layout ->
                     drawAfterglowText(canvas, layout, prepared?.palette ?: palette, position, endMs, composition,
-                        motion, wordHighlight && budget.glyphMotion, highlightIntensity, size.width, size.height)
+                        motion, wordHighlight && budget.glyphMotion, highlightIntensity, size.width, size.height, motionStrength)
                 }
                 canvas.restore()
             }

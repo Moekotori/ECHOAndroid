@@ -108,6 +108,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -320,6 +321,18 @@ fun NowPlayingScreen(
         }
     }
     val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
+    // The backdrop reads these lazily; only a line change or play/pause reaches it, never a position tick.
+    val backdropLink = if (backdropStyle.reactsToLyrics) {
+        val timeline = remember(readyLyrics) { readyLyrics?.lines?.let(::LyricsTimeline) }
+        val playing = rememberUpdatedState(status.isPlaying)
+        val lineIndex = remember(timeline, positionMsState) {
+            derivedStateOf { timeline?.lastStarted(positionMsState.value) ?: -1 }
+        }
+        remember(playing, lineIndex) { BackdropLink(playing, lineIndex) }
+    } else {
+        val playing = rememberUpdatedState(status.isPlaying)
+        remember(playing) { BackdropLink(playing, mutableIntStateOf(-1)) }
+    }
     val hasTranslation = remember(readyLyrics) {
         readyLyrics?.lines?.any { !it.translation.isNullOrBlank() } == true
     }
@@ -480,7 +493,7 @@ fun NowPlayingScreen(
             if (drawLyricsBackdrop) {
                 val backdropModifier = Modifier.fillMaxSize()
                 LyricsPageBackdrop(palette, lyricsReveal,
-                    presentationExpanded && !overlayBlocking && track != null, backdropModifier, backdropStyle, colorGrid)
+                    presentationExpanded && !overlayBlocking && track != null, backdropModifier, backdropStyle, colorGrid, backdropLink)
             }
             Column(
                 modifier = Modifier
@@ -596,6 +609,7 @@ fun NowPlayingScreen(
                             showBackdrop = split,
                             backdropStyle = backdropStyle,
                             colorGrid = colorGrid,
+                            backdropLink = backdropLink,
                             showLyricsControlDeck = showLyricsControlDeck,
                             lyricsFontFamily = styledLyricsFont,
                             lyricsFontScale = lyricsFontScale,
@@ -770,6 +784,8 @@ fun NowPlayingScreen(
                             val next = appearanceDraft.current
                             onPlayerAppearanceChange(next.style, next.textScale, next.artworkScale)
                         },
+                        lyricsBackdrop = backdropStyle.id,
+                        onLyricsBackdropChange = onLyricsBackdropChange,
                         visible = playbackSettingsVisible,
                         status = status,
                         onSetRepeatMode = onSetRepeatMode,
@@ -1055,13 +1071,6 @@ internal fun lyricsHorizontalAlignment(alignment: String): Alignment.Horizontal 
     when (alignment) {
         "start" -> Alignment.Start
         else -> Alignment.CenterHorizontally
-    }
-
-internal fun lyricsMotionIntensity(mode: String): Float =
-    when (mode) {
-        "calm" -> 0.35f
-        "stage" -> 1.0f
-        else -> 0.68f
     }
 
 @Composable

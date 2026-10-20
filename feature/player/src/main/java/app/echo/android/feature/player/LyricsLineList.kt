@@ -44,6 +44,7 @@ internal fun LyricsLineList(
     highlightColor: Color = lyricAccent,
     paper: Boolean = false,
     durationMs: Long = 0L,
+    interactive: Boolean = true,
 ) {
     BoxWithConstraints(modifier = modifier) {
         val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
@@ -100,10 +101,11 @@ internal fun LyricsLineList(
         }
         val scale = lyricsFontScale.coerceIn(0.50f, 1.28f)
         val spacing = lyricsLineSpacing.coerceIn(0.50f, 1.38f)
-        val motionIntensity = if (animateFocus) lyricsMotionIntensity(lyricsMotionMode) else 0f
+        val motion = lyricsMotionProfile(if (animateFocus) lyricsMotionMode else "calm")
         val immersive = lyricsImmersiveModeEnabled && synced
         LazyColumn(
             state = listState,
+            userScrollEnabled = interactive,
             modifier = Modifier.fillMaxSize().lyricsViewportFade(!lightweight).lyricsFrameRate(
                 visible = animationsVisible, continuousMotion = false,
                 scrolling = listState.isScrollInProgress, lightweight = lightweight,
@@ -122,7 +124,7 @@ internal fun LyricsLineList(
                 // Overlapping vocals may share word highlighting, but only one line grows.
                 val focused = index == focusIndex
                 val focusDistance = if (focused || active) 0 else if (focusIndex >= 0) abs(index - focusIndex).coerceAtMost(4) else 1
-                val seekable = synced && line.startMs >= 0L
+                val seekable = interactive && synced && line.startMs >= 0L
                 LyricsLineItem(
                     line = line, lineEndMs = timeline.endAt(index) ?: durationMs.takeIf { it > line.startMs }, positionMsState = positionMsState,
                     active = active, focused = focused, focusDistance = focusDistance, immersive = immersive,
@@ -132,7 +134,7 @@ internal fun LyricsLineList(
                     wordHighlightEnabled = lyricsWordHighlightEnabled && !lightweight && animationsVisible,
                     estimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
                     focusGlowEnabled = focusGlowEnabled, showTranslation = showTranslation,
-                    showRomanization = showRomanization, motionIntensity = motionIntensity,
+                    showRomanization = showRomanization, motion = motion,
                     animateFocus = animateFocus, paper = paper,
                     onClick = if (seekable) ({
                         calibrationIndex = null

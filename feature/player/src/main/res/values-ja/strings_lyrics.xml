@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_manager_title">歌詞 · %1$s</string>
-    <string name="lyrics_manager_hint">候補をプレビューし、選択するとオフライン保存されます。</string>
+    <string name="lyrics_manager_hint">候補をタップすると適用され、オフライン保存されます。</string>
     <string name="lyrics_manager_search">オンライン検索 / 更新</string>
     <string name="lyrics_manager_import">歌詞ファイルを読み込む</string>
     <string name="lyrics_manager_clear">選択を解除して自動歌詞に戻す</string>

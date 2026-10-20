@@ -8,7 +8,7 @@ import kotlin.math.sin
 internal fun drawAfterglowText(
     canvas: Canvas, layout: AfterglowTextLayout, palette: AfterglowPalette,
     positionMs: Long, endMs: Long, composition: Int, motion: Boolean, wordHighlight: Boolean,
-    intensity: Float, width: Float, height: Float,
+    intensity: Float, width: Float, height: Float, motionStrength: Float = 1f,
 ) {
     val line = layout.line
     val elapsed = positionMs - line.startMs
@@ -22,13 +22,13 @@ internal fun drawAfterglowText(
     val centerY = height * layout.direction.anchorY
     val marginX = if (layout.direction == AfterglowTypography.Margin) -width * 0.035f else 0f
     canvas.translate((width - layout.paragraph.width) * 0.5f + marginX,
-        centerY - layout.height * 0.5f - exitProgress * layout.paragraph.paint.textSize * 0.22f)
+        centerY - layout.height * 0.5f - exitProgress * layout.paragraph.paint.textSize * 0.22f * motionStrength)
     // Camera motion is small and deterministic, and does not alter measured line wrapping.
     if (motion) {
-        val angle = layout.direction.tilt + sin(elapsed * 0.00022f) * 0.45f
+        val angle = (layout.direction.tilt + sin(elapsed * 0.00022f) * 0.45f) * motionStrength
         canvas.rotate(angle, layout.paragraph.width * 0.5f, layout.height * 0.5f)
         val push = if (layout.direction == AfterglowTypography.Hero) (1f - entrance) * 0.12f else (1f - entrance) * 0.025f
-        val scale = 1f + push + sin(elapsed * 0.00018f) * 0.005f - exitProgress * 0.035f
+        val scale = 1f + (push + sin(elapsed * 0.00018f) * 0.005f - exitProgress * 0.035f) * motionStrength
         canvas.scale(scale, scale, layout.paragraph.width * 0.5f, layout.displayHeight * 0.5f)
     }
     val paint = layout.paragraph.paint
@@ -65,7 +65,7 @@ internal fun drawAfterglowText(
             val enter = if (motion) afterglowFraction(positionMs, line.startMs + delayMs, line.startMs + delayMs + 300L) else 1f
             if (enter <= 0f) continue
             val eased = 1f - (1f - enter) * (1f - enter) * (1f - enter)
-            val dy = (1f - eased) * paint.textSize * 0.38f
+            val dy = (1f - eased) * paint.textSize * 0.38f * motionStrength
             val dx = if (placed.row >= 0) layout.rowShifts[placed.row] else 0f
             paint.color = palette.foreground
             paint.alpha = (255 * enter * exit).toInt().coerceIn(0, 255)

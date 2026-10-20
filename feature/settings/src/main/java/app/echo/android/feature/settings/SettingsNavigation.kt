@@ -10,7 +10,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
+import app.echo.android.design.EchoOverlayBackHandler
+import app.echo.android.design.EchoPageBack
 import app.echo.android.design.EchoPageContent
+import app.echo.android.design.rememberEchoBackProgress
 import app.echo.android.design.EchoPageEntrance
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
@@ -69,9 +72,15 @@ internal fun SettingsNavigation(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     // Pager neighbours remain composed: they must not intercept another page's back action.
-    BackHandler(enabled = isActive && selected != null) {
+    val detailBack = rememberEchoBackProgress(lightweight)
+    EchoOverlayBackHandler(
+        enabled = isActive && selected != null,
+        onProgress = detailBack::update,
+        onCancel = { detailBack.restore() },
+    ) {
         focusManager.clearFocus()
         keyboardController?.hide()
+        detailBack.reset()
         selected = null
         searchFocus = null
     }
@@ -121,6 +130,7 @@ internal fun SettingsNavigation(
                 isBackward = { _, target -> target == null },
                 modifier = Modifier.fillMaxSize().imePadding(),
                 label = "settings-navigation",
+                back = if (selected != null) EchoPageBack(null) { detailBack.value } else null,
                 transitionSpec = {
                     val backward = targetState == null
                     val exitSpec = EchoMotion.pageFadeOut(lightweight)

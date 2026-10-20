@@ -41,6 +41,8 @@ object EchoMotion {
     const val PageDepthScale = 0.94f
     const val PageDepthAlpha = 0.86f
     const val PageCornerDp = 22f
+    const val PageBackScaleDrop = 0.10f
+    const val PageBackCornerDp = 28f
 
     fun pageFadeIn(lightweight: Boolean) = tween<Float>(
         durationMillis = if (lightweight) PageLightweightMs else FadeMs,

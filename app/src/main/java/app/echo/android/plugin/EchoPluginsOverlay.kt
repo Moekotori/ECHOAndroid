@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.echo.android.EchoAndroidViewModel
+import app.echo.android.design.EchoBackProgress
 import app.echo.android.design.EchoPageOverlay
 import app.echo.android.feature.plugins.PluginsHost
 import java.io.ByteArrayOutputStream
@@ -51,6 +52,7 @@ internal fun EchoPluginsOverlay(
     visible: Boolean,
     playback: EchoAndroidViewModel,
     onVisibleChange: (Boolean) -> Unit,
+    back: EchoBackProgress,
 ) {
     val plugins = viewModel<EchoPluginViewModel>()
     val context = LocalContext.current
@@ -129,6 +131,8 @@ internal fun EchoPluginsOverlay(
     }
     EchoPageOverlay(
         visible = visible,
+        onHidden = { back.reset() },
+        backProgress = { back.value },
     ) {
         val snapshot by plugins.snapshot.collectAsStateWithLifecycle()
         val blockPager = remember {
@@ -163,6 +167,8 @@ internal fun EchoPluginsOverlay(
                     }
                 },
                 onBack = { onVisibleChange(false) },
+                onBackProgress = back::update,
+                onBackCancel = { back.restore() },
                 onEnable = plugins::setEnabled,
                 onGrant = plugins::setGrant,
                 onDelete = plugins::delete,

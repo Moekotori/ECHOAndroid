@@ -54,7 +54,10 @@ fun LyricsManagerDialog(
                     }
                 }
                 items(candidates, key = { it.id }) { candidate ->
-                    Column(Modifier.fillMaxWidth().clickable { previewId = candidate.id }.padding(vertical = 8.dp)) {
+                    Column(Modifier.fillMaxWidth().clickable {
+                        previewId = candidate.id
+                        if (candidate.id != selectedId) onChoose(candidate.id)
+                    }.padding(vertical = 8.dp)) {
                         Text("${candidate.title} · ${candidate.artist}", style = MaterialTheme.typography.titleSmall)
                         Text(listOfNotNull(candidate.lyrics.sourceLabel, candidate.album,
                             candidate.durationMs.takeIf { it > 0 }?.let { "${it / 1000}s" },
@@ -62,17 +65,21 @@ fun LyricsManagerDialog(
                                 stringResource(R.string.lyrics_manager_word_timed)
                             } else null
                         ).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+                        if (candidate.id == selectedId) {
+                            Text(stringResource(R.string.lyrics_manager_saved),
+                                Modifier.padding(top = 6.dp), style = MaterialTheme.typography.labelLarge)
+                        }
                         if (previewId == candidate.id) {
+                            // Keep retry/save reachable before a potentially tall multilingual preview.
+                            if (candidate.id != selectedId) {
+                                TextButton(onClick = { onChoose(candidate.id) }) {
+                                    Text(stringResource(R.string.lyrics_manager_use))
+                                }
+                            }
                             candidate.lyrics.lines.filter { it.text.isNotBlank() }.take(6).forEach { line ->
                                 Text(line.text, Modifier.padding(top = 6.dp))
                                 line.translation?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                                 line.romanization?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                            }
-                            TextButton(onClick = { onChoose(candidate.id) }) {
-                                Text(stringResource(
-                                    if (candidate.id == selectedId) R.string.lyrics_manager_saved
-                                    else R.string.lyrics_manager_use,
-                                ))
                             }
                         }
                     }

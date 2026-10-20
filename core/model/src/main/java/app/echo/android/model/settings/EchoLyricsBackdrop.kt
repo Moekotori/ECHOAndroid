@@ -5,6 +5,8 @@ enum class EchoLyricsBackdrop(val id: String) {
     Fluid("fluid"),
     Mesh("mesh"),
     Halftone("halftone"),
+    Ridge("ridge"),
+    Vinyl("vinyl"),
     ;
 
     /** Styles that paint straight from the cover's color grid instead of the three-color palette. */

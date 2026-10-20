@@ -1,6 +1,8 @@
 package app.echo.android.feature.plugins
 
-import androidx.activity.compose.BackHandler
+import app.echo.android.design.EchoOverlayBackHandler
+import app.echo.android.design.EchoPageBack
+import app.echo.android.design.rememberEchoBackProgress
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -49,6 +51,8 @@ fun PluginsHost(
     focusPluginId: String? = null,
     onFocusPluginConsumed: () -> Unit = {},
     isActive: Boolean = true,
+    onBackProgress: (Float) -> Unit = {},
+    onBackCancel: () -> Unit = {},
 ) {
     var destinationName by rememberSaveable { mutableStateOf(PluginDestination.List.name) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -82,12 +86,23 @@ fun PluginsHost(
             show(PluginDestination.List)
         }
     }
-    BackHandler(enabled = isActive) {
+    // The list closes the whole overlay; deeper pages scrub back through the page stack.
+    val pageBack = rememberEchoBackProgress()
+    EchoOverlayBackHandler(
+        enabled = isActive,
+        onProgress = { if (destination == PluginDestination.List) onBackProgress(it) else pageBack.update(it) },
+        onCancel = { if (destination == PluginDestination.List) onBackCancel() else pageBack.restore() },
+    ) {
         when (destination) {
             PluginDestination.List -> onBack()
-            PluginDestination.Page -> show(PluginDestination.Detail)
-            else -> show(PluginDestination.List)
+            PluginDestination.Page -> { pageBack.reset(); show(PluginDestination.Detail) }
+            else -> { pageBack.reset(); show(PluginDestination.List) }
         }
+    }
+    val backDestination = when (destination) {
+        PluginDestination.List -> null
+        PluginDestination.Page -> PluginDestination.Detail
+        else -> PluginDestination.List
     }
     EchoPageContent(
         targetState = PluginPageTarget(destination, selected),
@@ -95,6 +110,9 @@ fun PluginsHost(
         isBackward = { initial, target -> target.destination.depth < initial.destination.depth },
         modifier = Modifier.fillMaxSize(),
         label = "plugin-navigation",
+        back = backDestination?.let {
+            EchoPageBack(PluginPageTarget(it, selected)) { pageBack.value }
+        },
     ) { target ->
         pageState.SaveableStateProvider(target.key) {
             when (target.destination) {

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +32,7 @@ import app.echo.android.design.echoTheme
 
 internal enum class LyricsSettingsCategory(val titleRes: Int, val icon: ImageVector) {
     Appearance(R.string.player_appearance_title, Icons.Rounded.Palette),
+    Backdrop(R.string.lyrics_backdrop_title, Icons.Rounded.Wallpaper),
     Typography(R.string.lyrics_setting_typography, Icons.Rounded.TextFields),
     Color(R.string.lyrics_setting_color_background, Icons.Rounded.ColorLens),
     Motion(R.string.lyrics_setting_motion, Icons.Rounded.Lyrics),
@@ -40,6 +42,7 @@ internal enum class LyricsSettingsCategory(val titleRes: Int, val icon: ImageVec
 /** The overview exposes destinations, while only the selected controls are composed. */
 @Composable
 internal fun LyricsSettingsMenu(
+    backdropSummary: String,
     typographySummary: String,
     colorSummary: String,
     motionSummary: String,
@@ -49,6 +52,7 @@ internal fun LyricsSettingsMenu(
     Column(Modifier.fillMaxWidth()) {
         LyricsSettingsCategory.entries.forEachIndexed { index, category ->
             val summary = when (category) {
+                LyricsSettingsCategory.Backdrop -> backdropSummary
                 LyricsSettingsCategory.Typography -> typographySummary
                 LyricsSettingsCategory.Color -> colorSummary
                 LyricsSettingsCategory.Motion -> motionSummary

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_manager_title">歌詞 · %1$s</string>
-    <string name="lyrics_manager_hint">點一下候選預覽，選用後自動儲存到本機。</string>
+    <string name="lyrics_manager_hint">點一下候選即可選用，並自動儲存到本機。</string>
     <string name="lyrics_manager_search">線上搜尋 / 重新取得</string>
     <string name="lyrics_manager_import">匯入歌詞檔案</string>
     <string name="lyrics_manager_clear">解除選擇 / 匯入綁定，恢復自動歌詞</string>

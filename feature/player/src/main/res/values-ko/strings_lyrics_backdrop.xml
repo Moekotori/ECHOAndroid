@@ -3,4 +3,9 @@
     <string name="lyrics_backdrop_fluid">유체</string>
     <string name="lyrics_backdrop_mesh">글로우</string>
     <string name="lyrics_backdrop_halftone">하프톤</string>
+    <string name="lyrics_backdrop_ridge">능선</string>
+    <string name="lyrics_backdrop_vinyl">레코드</string>
+    <string name="lyrics_backdrop_detail">배경은 앨범 커버의 색으로 만들어집니다. 능선과 레코드는 가사 줄이 바뀔 때와 재생·일시정지에도 반응합니다.</string>
+    <string name="lyrics_backdrop_needs_classic">현재 플레이어 스타일은 단색 배경을 사용하므로 배경 스타일은 \'클래식\' 스타일에서만 표시됩니다.</string>
+    <string name="lyrics_backdrop_use_classic">클래식으로 전환</string>
 </resources>

@@ -3,4 +3,9 @@
     <string name="lyrics_backdrop_fluid">流体</string>
     <string name="lyrics_backdrop_mesh">流光</string>
     <string name="lyrics_backdrop_halftone">半调</string>
+    <string name="lyrics_backdrop_ridge">山脊线</string>
+    <string name="lyrics_backdrop_vinyl">唱片</string>
+    <string name="lyrics_backdrop_detail">背景由封面的颜色生成。山脊线和唱片还会跟着每一句歌词和播放、暂停变化。</string>
+    <string name="lyrics_backdrop_needs_classic">当前播放页风格使用纯色底,背景样式只在「经典」风格下显示。</string>
+    <string name="lyrics_backdrop_use_classic">切换到经典</string>
 </resources>
