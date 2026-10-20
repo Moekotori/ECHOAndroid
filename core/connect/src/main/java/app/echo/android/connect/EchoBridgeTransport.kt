@@ -25,7 +25,7 @@ internal class EchoBridgeTransport(private val execute: suspend (Request) -> JSO
         parentKind: String? = null, parentId: String? = null): EchoLinkTrackPage {
         val catalog = catalog(endpoint, "songs", query, page, parentKind, parentId)
         val rows = entries(catalog).mapNotNull { it.toRemoteTrack(endpoint)?.copy(
-            canPlayOnPhone = it.optBoolean("canPlay", false), sourceLabel = "ECHO Bridge",
+            canPlayOnPhone = it.bridgeCanPlayOnPhone(), sourceLabel = "ECHO Bridge",
             artworkUrl = EchoBridgeArtwork.url(endpoint, it.optText("coverId"))) }
         return EchoLinkTrackPage(rows, catalog.optInt("total", rows.size))
     }
@@ -68,14 +68,14 @@ internal class EchoBridgeTransport(private val execute: suspend (Request) -> JSO
     }
 
     suspend fun stream(endpoint: EchoRemoteEndpoint, id: String): EchoLinkStreamResponse {
-        val track = get(endpoint, "stream") { addQueryParameter("id", id) }.getJSONObject("track")
-        if (!track.optBoolean("canPlay", false)) throw EchoLinkHttpException("peer_track_not_playable", 422)
+        val track = get(endpoint, "stream") { addQueryParameter("id", id); addQueryParameter("sourceRange", "1") }.getJSONObject("track")
+        if (!track.bridgeCanPlayOnPhone()) throw EchoLinkHttpException("unsupported_format", 415)
         val url = track.getString("streamUrl").toHttpUrlOrNull()
         if (url == null || url.scheme != endpoint.scheme || url.host != endpoint.host || url.port != endpoint.port ||
             !url.encodedPath.startsWith("/echo-link/media/") || url.username.isNotEmpty() || url.password.isNotEmpty()) {
             throw EchoLinkHttpException("invalid_bridge_stream")
         }
-        return EchoLinkStreamResponse(url.toString(), track.toRemoteTrack(endpoint))
+        return EchoLinkStreamResponse(url.toString(), track.toRemoteTrack(endpoint), sourceRange = track.sourceRange())
     }
 
     suspend fun lyrics(endpoint: EchoRemoteEndpoint, id: String): EchoRemoteLyrics? {
@@ -83,7 +83,7 @@ internal class EchoBridgeTransport(private val execute: suspend (Request) -> JSO
         if (json.optString("kind") in listOf("empty", "instrumental")) return null
         val lines = json.optJSONArray("lines")
         if (lines != null && lines.length() > 0) {
-            require(lines.length() <= 2000) { "Bridge returned too many lyric lines" }
+            require(lines.length() <= 4000) { "Bridge returned too many lyric lines" }
             return EchoRemoteLyrics(rawText = json.toString(), sourceLabel = "ECHO Bridge")
         }
         val text = json.optText("syncedText") ?: json.optText("plainText") ?: return null

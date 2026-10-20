@@ -71,6 +71,7 @@ object EchoLinkCastPolicy {
         tracks: List<EchoLinkCastSourceTrack>,
         startIndex: Int,
         maxTracks: Int = MaxQueueSize,
+        sourceRanges: Boolean = false,
     ): EchoLinkCastPlan {
         if (tracks.isEmpty()) return EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.EmptyQueue)
         val start = startIndex.coerceIn(0, tracks.lastIndex)
@@ -82,7 +83,7 @@ object EchoLinkCastPolicy {
             kind(track.id, track.uri, track.sourceId) == startKind
         }.take(maxTracks).toList()
         if (run.isEmpty()) return EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.EmptyQueue)
-        if (run.any { it.clipStartMs > 0L || it.clipEndMs > 0L }) {
+        if (!sourceRanges && run.any { it.clipStartMs > 0L || it.clipEndMs > 0L }) {
             return EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.ClippedTrack)
         }
         return when (startKind) {

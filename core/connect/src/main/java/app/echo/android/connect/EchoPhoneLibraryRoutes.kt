@@ -46,12 +46,14 @@ class EchoPhoneLibraryRoutes(
                     .put("coverId", row.coverId ?: JSONObject.NULL).putOpt("artist", row.artist).putOpt("album", row.album)
                     .putOpt("durationMs", row.durationMs).putOpt("canPlay", row.canPlay).putOpt("sampleRate", row.sampleRate)) }
                 return EchoLinkHttpReply(body = JSONObject().put("catalog", JSONObject().put("entries", entries)
-                    .put("total", result.total).put("page", result.page).put("pageSize", 50)
+                    .put("total", result.total).put("page", result.page).put("pageSize", 50).put("supportsScopedSearch", true)
                     .apply { if (result.parentKind != null && result.parentId != null) put("parent", JSONObject()
                         .put("kind", result.parentKind).put("id", result.parentId)) }).toString())
             }
             if (route.endsWith("/track")) {
                 val item = track(params["id"].orEmpty()) ?: return EchoLinkHttpReply(404, "{\"error\":\"track_not_found\"}")
+                if (item.sourceRange != null && params["sourceRange"] != "1")
+                    return EchoLinkHttpReply(415, "{\"error\":\"source_range_not_supported\"}")
                 return EchoLinkHttpReply(body = JSONObject().put("track", json(item)).toString())
             }
             val pageNumber = params["page"]?.toIntOrNull()?.coerceIn(1, 100_000) ?: 1
@@ -80,6 +82,7 @@ class EchoPhoneLibraryRoutes(
         return JSONObject().put("id", item.trackId).put("title", item.title).put("artist", item.artist)
             .put("album", item.album.orEmpty()).put("durationMs", item.durationMs)
             .put("streamUrl", "$baseUrl/echo-link/phone-stream/$token/$id")
+            .putOpt("sourceRange", item.sourceRange?.toJson())
             .putOpt("artworkUrl", item.artworkUrl?.let { "$baseUrl/echo-link/phone-art/$token/$id" })
             .putOpt("audio", item.format?.let { format -> JSONObject().putOpt("mimeType", format.mimeType)
                 .putOpt("sampleRateHz", format.sampleRateHz).putOpt("codec", format.codec) })

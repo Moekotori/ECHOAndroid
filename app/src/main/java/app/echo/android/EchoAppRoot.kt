@@ -391,9 +391,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val remoteMode by echoLinkPlaybackRouter.remoteMode.collectAsStateWithLifecycle()
     LaunchedEffect(remoteClient) {
         viewModel.setEchoLinkPlaybackResolver { ref ->
-            val trackId = EchoLinkPlaybackUri.trackId(ref.id, ref.uri) ?: return@setEchoLinkPlaybackResolver ref
-            val streamUrl = remoteClient.resolvePhoneStreamUrl(trackId) ?: return@setEchoLinkPlaybackResolver ref
-            ref.copy(uri = streamUrl)
+            EchoLinkPlaybackUri.trackId(ref.id, ref.uri) ?: return@setEchoLinkPlaybackResolver ref
+            remoteClient.resolvePhonePlaybackTrack(ref)
         }
         viewModel.setEchoLinkLyricsFetcher { mediaId ->
             val trackId = EchoLinkPlaybackUri.trackIdFromMediaId(mediaId) ?: return@setEchoLinkLyricsFetcher null
@@ -692,6 +691,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     },
                     startIndex = snapshot.queue.currentIndex,
                     maxTracks = Int.MAX_VALUE,
+                    sourceRanges = echoLinkSession.client.status.value.playback.supportsSourceRanges,
                 )
             },
             pausePhone = { viewModel.pause() },

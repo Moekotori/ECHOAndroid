@@ -871,7 +871,8 @@ class EchoRemoteClient internal constructor(
             }
             return
         }
-        send(EchoRemoteCommand.QueueReplace(trackIds = ids, startTrackId = startId))
+        send(EchoRemoteCommand.QueueReplace(trackIds = ids, startTrackId = startId,
+            startIndex = tracks.take(startIndex.coerceIn(0, tracks.size)).count { !it.id.isNullOrBlank() }))
     }
 
     fun handoffPhoneQueueToPc(
@@ -1045,6 +1046,7 @@ class EchoRemoteClient internal constructor(
                     track.toPhonePlaybackTrack(
                         if (track.id == requestedId) stream.streamUrl
                         else EchoLinkPlaybackUri.persistUri(requireNotNull(track.id)),
+                        if (track.id == requestedId) stream.sourceRange else track.sourceRange,
                     )
                 }
             }
@@ -1310,6 +1312,14 @@ class EchoRemoteClient internal constructor(
         }
     }
 
+    suspend fun resolvePhonePlaybackTrack(ref: app.echo.android.model.playback.EchoTrackRef): app.echo.android.model.playback.EchoTrackRef {
+        val id = EchoLinkPlaybackUri.trackId(ref.id, ref.uri) ?: return ref
+        val target = endpoint ?: return ref
+        val source = resolveCachedStream(target, id)
+        return ref.copy(uri = source.streamUrl, clipStartMs = source.sourceRange?.startMs ?: 0L,
+            clipEndMs = source.sourceRange?.endMs ?: 0L)
+    }
+
     suspend fun resolvePhoneStreamUrl(trackId: String): String? {
         val target = endpoint ?: return null
         if (trackId.isBlank()) return null
@@ -1334,6 +1344,7 @@ class EchoRemoteClient internal constructor(
                 streamUrl = cached.streamUrl,
                 track = null,
                 expiresAtEpochMs = cached.expiresAtEpochMs,
+                sourceRange = cached.sourceRange,
             )
         }
         val stream = transport.resolveStream(target, trackId)
@@ -1349,6 +1360,7 @@ class EchoRemoteClient internal constructor(
             streamCache[key] = CachedEchoLinkStream(
                 streamUrl = url,
                 expiresAtEpochMs = requireNotNull(expiresAt),
+                sourceRange = stream.sourceRange,
             )
         }
     }
@@ -1384,11 +1396,12 @@ class EchoRemoteClient internal constructor(
 }
 
 private data class CachedEchoLinkStream(
+    val sourceRange: app.echo.android.model.connect.EchoRemoteSourceRange? = null,
     val streamUrl: String,
     val expiresAtEpochMs: Long,
 )
 
-internal fun EchoRemoteTrack.toPhonePlaybackTrack(streamUrl: String): EchoTrack {
+internal fun EchoRemoteTrack.toPhonePlaybackTrack(streamUrl: String, range: app.echo.android.model.connect.EchoRemoteSourceRange? = sourceRange): EchoTrack {
     val trackId = id?.takeIf { it.isNotBlank() } ?: streamUrl.hashCode().toString()
     return EchoTrack(
         id = EchoLinkPlaybackUri.mediaId(trackId),
@@ -1399,6 +1412,7 @@ internal fun EchoRemoteTrack.toPhonePlaybackTrack(streamUrl: String): EchoTrack 
         artworkUri = artworkUrl,
         durationMs = durationMs,
         source = LibrarySource.EchoLink,
+        clipStartMs = range?.startMs ?: 0L, clipEndMs = range?.endMs ?: 0L,
     )
 }
 

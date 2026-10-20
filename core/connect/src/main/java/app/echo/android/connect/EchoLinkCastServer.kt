@@ -48,6 +48,7 @@ data class EchoLinkCastPublication(
     val durationMs: Long = 0L,
     val format: EchoRemoteAudioFormat? = null,
     val peerHost: String? = null,
+    val sourceRange: app.echo.android.model.connect.EchoRemoteSourceRange? = null,
 )
 
 data class EchoLinkHttpReply(val status: Int = 200, val body: String)
@@ -145,6 +146,7 @@ class EchoLinkCastServer(
                 artworkUrl = publishedArtworkUrl(item, host, boundPort),
                 durationMs = item.durationMs,
                 audio = item.format,
+                sourceRange = item.sourceRange,
             )
         }
         publications.putAll(next)

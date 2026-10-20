@@ -72,7 +72,7 @@ internal fun JSONObject?.toRemoteQueue(endpoint: EchoRemoteEndpoint): EchoRemote
     return EchoRemotePlaybackQueue(
         currentTrackId = optText("currentTrackId") ?: optText("currentId"),
         items = items,
-        totalCount = optInt("totalCount", items.size).coerceAtLeast(items.size),
+        totalCount = optInt("totalCount", optInt("total", items.size)).coerceAtLeast(items.size),
         revision = optLong("revision", -1).takeIf { it >= 0 },
         currentQueueId = optText("currentQueueId"),
     )

@@ -57,3 +57,9 @@ The current desktop checkout implements the same phone-library protocol and expo
 ## Artist album detail scope (2026-10-14)
 
 Shared catalog now supports `kind=albums&parentKind=artist&parentId=...`. Room filters album keys through the selected artist's shared local track credits before counting and paging; complete album metadata/counts remain intact. The response confirms the actual scope with `catalog.parent={kind:"artist",id:...}`. Updated desktop clients reject an older unscoped response instead of showing the whole library under an artist. Both sides must load these updates for this tab; existing category and track queries remain compatible. This adds no database migration, background scan, source-media write, or playback-engine change.
+
+## CUE 分轨与协议补齐
+
+共享手机 CUE 时只读打开原文件（去除本地 URI fragment），`sourceRange` 独立携带物理起止秒数；电脑选曲请求必须带 `sourceRange=1`，旧接收端明确返回 415。手机接收电脑 CUE 时将同一范围用于现有 Media3 clipping，缓存能力地址时同时保留范围；进度和 seek 仍相对单首曲目。仅 EchoLink 点对点传输允许分轨投送，DLNA/Chromecast 保持原有边界。
+
+`queueReplace` 可携带 `startIndex` 区分同一歌曲的重复 occurrence。新版来源用 `supportsScopedSearch` 声明容器内搜索能力。共享歌词使用 4000 行、每行 1000 词、总计 16000 词/100000 字符和 512 KiB 响应上限。

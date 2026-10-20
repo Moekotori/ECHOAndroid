@@ -14,5 +14,6 @@ data class EchoRemotePlaybackSnapshot(
     // Absent on older PCs: do not claim a mode or offer unsupported controls.
     val playbackOrder: EchoRemotePlaybackOrder? = null,
     val supportsAtomicPhoneQueue: Boolean = false,
+    val supportsSourceRanges: Boolean = false,
     val queueIdentityAvailable: Boolean = false,
 )

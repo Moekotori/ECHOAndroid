@@ -126,7 +126,7 @@ interface LibraryTrackDao {
 
     @Query("""
         SELECT * FROM library_tracks
-        WHERE source IN ('mediastore', 'saf') AND clipStartMs = 0 AND clipEndMs = 0 AND id NOT LIKE '%#cue:%'
+        WHERE source IN ('mediastore', 'saf')
           AND (contentUri LIKE 'content:%' OR contentUri LIKE 'file:%')
           AND (:query = '' OR title LIKE :pattern ESCAPE '\' OR artist LIKE :pattern ESCAPE '\' OR album LIKE :pattern ESCAPE '\')
         ORDER BY title COLLATE NOCASE, id LIMIT :limit OFFSET :offset
@@ -135,7 +135,7 @@ interface LibraryTrackDao {
 
     @Query("""
         SELECT COUNT(*) FROM library_tracks
-        WHERE source IN ('mediastore', 'saf') AND clipStartMs = 0 AND clipEndMs = 0 AND id NOT LIKE '%#cue:%'
+        WHERE source IN ('mediastore', 'saf')
           AND (contentUri LIKE 'content:%' OR contentUri LIKE 'file:%')
           AND (:query = '' OR title LIKE :pattern ESCAPE '\' OR artist LIKE :pattern ESCAPE '\' OR album LIKE :pattern ESCAPE '\')
     """)

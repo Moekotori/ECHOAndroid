@@ -15,6 +15,7 @@ sealed interface EchoRemoteCommand {
     data class QueueReplace(
         val trackIds: List<String>,
         val startTrackId: String,
+        val startIndex: Int? = null,
     ) : EchoRemoteCommand
     data class PlayRemoteStream(
         val streamUrl: String,

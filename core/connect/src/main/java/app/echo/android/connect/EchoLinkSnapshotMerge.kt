@@ -30,6 +30,7 @@ internal fun mergeEchoLinkSnapshot(
         outputMode = if (message.outputIncluded) incoming.outputMode else previous.outputMode,
         playbackOrder = if (message.playbackOrderIncluded) incoming.playbackOrder else previous.playbackOrder,
         supportsAtomicPhoneQueue = incoming.supportsAtomicPhoneQueue || previous.supportsAtomicPhoneQueue,
+        supportsSourceRanges = incoming.supportsSourceRanges || previous.supportsSourceRanges,
         queueIdentityAvailable = incoming.queueIdentityAvailable || previous.queueIdentityAvailable,
     )
 }

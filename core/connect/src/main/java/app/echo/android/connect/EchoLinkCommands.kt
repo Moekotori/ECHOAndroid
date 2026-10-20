@@ -45,6 +45,7 @@ internal fun EchoRemoteCommand.toJson(): JSONObject {
             json.put("trackIds", JSONArray(trackIds))
             json.put("startTrackId", startTrackId)
             json.put("output", "pc")
+            startIndex?.let { json.put("startIndex", it) }
         }
         is EchoRemoteCommand.PlayRemoteStream -> {
             json.put("command", "playRemoteStream")
@@ -76,6 +77,7 @@ private fun EchoRemoteTrack.toCommandJson(): JSONObject = JSONObject()
     .put("album", album.orEmpty())
     .put("durationMs", durationMs)
     .putOpt("artworkUrl", artworkUrl)
+    .putOpt("sourceRange", sourceRange?.toJson())
 
 private fun EchoRemoteStreamItem.toCommandJson(): JSONObject = JSONObject()
     .put("id", id)
@@ -86,6 +88,7 @@ private fun EchoRemoteStreamItem.toCommandJson(): JSONObject = JSONObject()
     .put("durationMs", durationMs)
     .putOpt("artworkUrl", artworkUrl)
     .also { json -> audio?.toCommandJson()?.let { json.put("audio", it) } }
+    .putOpt("sourceRange", sourceRange?.toJson())
 
 private fun EchoRemoteAudioFormat.toCommandJson(): JSONObject {
     val json = JSONObject()

@@ -69,6 +69,7 @@ internal data class EchoLinkStreamResponse(
     val streamUrl: String,
     val track: EchoRemoteTrack?,
     val expiresAtEpochMs: Long? = null,
+    val sourceRange: app.echo.android.model.connect.EchoRemoteSourceRange? = null,
 )
 
 internal interface EchoLinkTransport {
@@ -474,7 +475,7 @@ internal class OkHttpEchoLinkTransport(
             Request.Builder()
                 .url(endpoint.url("library", "tracks", trackId, "stream"))
                 .authorized(endpoint)
-                .post(JSONObject().put("target", "phone").toString().toRequestBody(JsonMediaType))
+                .post(JSONObject().put("target", "phone").put("sourceRange", 1).toString().toRequestBody(JsonMediaType))
                 .build(),
         )
         return@withContext json.toStreamResponse(endpoint)
@@ -580,7 +581,9 @@ private fun JSONObject.toStatusResponse(endpoint: EchoRemoteEndpoint): EchoLinkS
     val playbackJson = optJSONObject("playback") ?: this
     return EchoLinkStatusResponse(
         deviceName = device?.optText("name") ?: optText("deviceName"),
-        playback = playbackJson.toPlaybackSnapshot(endpoint),
+        playback = playbackJson.toPlaybackSnapshot(endpoint).copy(
+            supportsSourceRanges = optJSONObject("capabilities")?.optBoolean("sourceRanges", false) == true,
+        ),
     )
 }
 
@@ -592,6 +595,7 @@ internal fun JSONObject.toStreamResponse(endpoint: EchoRemoteEndpoint): EchoLink
         streamUrl = streamUrl,
         track = optJSONObject("track")?.toRemoteTrack(endpoint),
         expiresAtEpochMs = optLong("expiresAtEpochMs").takeIf { it > 0L },
+        sourceRange = sourceRange(),
     )
 }
 
@@ -617,6 +621,7 @@ internal fun JSONObject.toRemoteTrack(endpoint: EchoRemoteEndpoint): EchoRemoteT
         canPlayOnPhone = optBoolean("canPlayOnPhone", true),
         queueId = optText("queueId"),
         queueIndex = optInt("queueIndex", -1).takeIf { it >= 0 },
+        sourceRange = sourceRange(),
     )
 }
 

@@ -73,8 +73,7 @@ class EchoSharedLocalCatalog(private val database: EchoLibraryDatabase) {
         return """SELECT 'track' AS kind, t.id, t.title, COALESCE(t.artist,'') || ' · ' || COALESCE(t.album,'') AS subtitle,
             0 AS count, CASE WHEN t.artworkUri LIKE 'content:%' OR t.artworkUri LIKE 'file:%' THEN t.id END AS coverId,
             t.artist, t.album, t.durationMs, t.sampleRateHz AS sampleRate, t.discNumber, t.trackNumber,
-            CASE WHEN t.clipStartMs = 0 AND t.clipEndMs = 0 AND t.id NOT LIKE '%#cue:%'
-                AND COALESCE(t.mimeType,'') NOT LIKE '%dsd%' AND COALESCE(t.mimeType,'') NOT LIKE '%dsf%'
+            CASE WHEN COALESCE(t.mimeType,'') NOT LIKE '%dsd%' AND COALESCE(t.mimeType,'') NOT LIKE '%dsf%'
                 AND COALESCE(t.mimeType,'') NOT LIKE '%dff%' THEN 1 ELSE 0 END AS canPlay,
             $order AS sortOrder FROM $from WHERE $where"""
     }

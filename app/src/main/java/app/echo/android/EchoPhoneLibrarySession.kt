@@ -151,10 +151,13 @@ class EchoPhoneLibrarySession(
     }
 
     private fun publication(row: app.echo.android.data.LibraryTrackEntity) = EchoLinkCastPublication(
-        token = "unused-local-publication", trackId = row.id, uri = row.contentUri,
+        token = "unused-local-publication", trackId = row.id, uri = app.echo.android.model.library.CueSheetPolicy.playbackUri(row.contentUri),
         title = row.title, artist = row.artist, album = row.album, durationMs = row.durationMs,
         mimeType = row.mimeType,
         artworkUrl = row.artworkUri?.takeIf(EchoLinkCastPolicy::isLocalFileUri),
         format = EchoLinkCastFormat.fromTrack(row.contentUri, row.mimeType, row.sampleRateHz, null, null, null),
+        sourceRange = if (row.clipStartMs > 0 || row.clipEndMs > 0 || app.echo.android.model.library.CueSheetPolicy.isCueTrackId(row.id))
+            app.echo.android.model.connect.EchoRemoteSourceRange(row.clipStartMs / 1000.0,
+                row.clipEndMs.takeIf { it > row.clipStartMs }?.div(1000.0)) else null,
     )
 }
