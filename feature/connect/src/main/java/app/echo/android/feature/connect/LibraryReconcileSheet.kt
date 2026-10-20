@@ -13,11 +13,17 @@ import app.echo.android.model.connect.*
 import kotlinx.coroutines.*
 
 class LibraryReconcileActions(val index: suspend () -> List<EchoSyncIndexRow>, val preview: suspend (List<String>) -> List<EchoSyncDraft>,
-    val apply: suspend (List<EchoSyncDraft>,Map<String,EchoSyncChoice>) -> EchoSyncApplyResult)
+    val apply: suspend (List<EchoSyncDraft>,Map<String,EchoSyncChoice>) -> EchoSyncApplyResult,
+    val personalState: PersonalStateSyncActions? = null)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryReconcileSheet(actions: LibraryReconcileActions,onLegacy: () -> Unit,onDismiss: () -> Unit) {
+    var showPersonalState by remember { mutableStateOf(false) }
+    if (showPersonalState && actions.personalState != null) {
+        PersonalStateSyncSheet(actions.personalState) { showPersonalState = false }
+        return
+    }
     val scope = rememberCoroutineScope()
     var rows by remember { mutableStateOf<List<EchoSyncIndexRow>>(emptyList()) }
     var selected by remember { mutableStateOf(setOf("favorites")) }
@@ -43,6 +49,9 @@ internal fun LibraryReconcileSheet(actions: LibraryReconcileActions,onLegacy: ()
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (failed) { Text(stringResource(R.string.reconcile_error),color = MaterialTheme.colorScheme.error); TextButton(onClick = { drafts = null; refresh++ },enabled = !busy) { Text(stringResource(R.string.sync_retry)) } }
                 if (unsupported) Text(stringResource(R.string.sync_unsupported))
+                if (actions.personalState != null) TextButton(onClick = { showPersonalState = true }, enabled = !busy) {
+                    Text(stringResource(R.string.personal_sync_title))
+                }
                 TextButton(onClick = onLegacy,enabled = !busy) { Text(stringResource(R.string.reconcile_legacy)) }
                 result?.let { Text(stringResource(R.string.reconcile_result,it.matched,it.missing))
                     if (it.keptExisting) Text(stringResource(R.string.reconcile_kept)) }

@@ -171,6 +171,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val updater: EchoUpdateViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     EchoUpdateHost(updater)
     val context = LocalContext.current
+    val remoteWriteFailure by viewModel.remoteLibraryTools.failure.collectAsStateWithLifecycle()
+    val remoteWriteFailureMessage = stringResource(app.echo.android.feature.library.R.string.remote_playlist_error)
+    LaunchedEffect(remoteWriteFailure) {
+        if (remoteWriteFailure) {
+            android.widget.Toast.makeText(context, remoteWriteFailureMessage, android.widget.Toast.LENGTH_LONG).show()
+            viewModel.remoteLibraryTools.dismissFailure()
+        }
+    }
     val lyricsActionError by viewModel.lyricsManagementError.collectAsStateWithLifecycle()
     LaunchedEffect(lyricsActionError) {
         lyricsActionError?.let { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show() }
@@ -959,6 +967,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
     fun selectEchoLinkMode(remote: Boolean) {
         if (remoteMode == remote) return
+        viewModel.cancelPendingPlaybackSelection()
         echoLinkPlaybackRouter.selectRemoteMode(remote)
         nowPlayingExpanded = false
         queueSheetVisible = false
@@ -1348,8 +1357,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
                             val errorLogCount by viewModel.errorLogCount.collectAsStateWithLifecycle(0)
                             val backupNotice by viewModel.backupNotice.collectAsStateWithLifecycle()
-                            val offlineUsedBytes by remember(viewModel) { viewModel.observeOfflineUsedBytes() }
-                                .collectAsStateWithLifecycle(0L)
                             val settingsEqualizerState by viewModel.equalizerState.collectAsStateWithLifecycle()
                             SettingsScreen(
                                 permissionState = rememberEchoSettingsPermissions(
@@ -1394,8 +1401,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 effectivePerformanceMode = effectivePerformanceMode.id,
                                 trackAudioInfoTagsVisible = appSettings.trackAudioInfoTagsVisible,
                                 watchedFolderRescanEnabled = appSettings.watchedFolderRescanEnabled,
-                                offlineWifiOnly = appSettings.offlineWifiOnly,
-                                offlineUsedBytes = offlineUsedBytes,
                                 pcHandoffEnabled = appSettings.pcHandoffEnabled,
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
                                 lockScreenLyricsEnabled = appSettings.lockScreenLyricsEnabled,
@@ -1475,7 +1480,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onPerformanceModeChange = viewModel::setPerformanceMode,
                                 onTrackAudioInfoTagsVisibleChange = viewModel::setTrackAudioInfoTagsVisible,
                                 onWatchedFolderRescanEnabledChange = viewModel::setWatchedFolderRescanEnabled,
-                                onOfflineWifiOnlyChange = viewModel::setOfflineWifiOnly,
                                 onPcHandoffEnabledChange = viewModel::setPcHandoffEnabled,
                                 onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
                                 onLockScreenLyricsEnabledChange = viewModel::setLockScreenLyricsEnabled,
@@ -1705,6 +1709,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 ),
                                 onDisconnect = remoteClient::disconnect,
                                 onForgetPc = {
+                                    viewModel.cancelPendingPlaybackSelection()
                                     echoLinkPlaybackRouter.selectRemoteMode(false)
                                     remoteClient.disconnect()
                                     viewModel.clearEchoLinkPcEndpoint()
@@ -2006,7 +2011,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     onClearNextUp = viewModel::clearNextUp,
                     onSetRepeatMode = viewModel::setRepeatMode,
                     onToggleShuffle = viewModel::toggleShuffle,
-                    onPinQueueOffline = viewModel::pinCurrentQueueOffline,
                     onSetSleepTimerEndOfTrack = viewModel::setSleepTimerEndOfTrack,
                     onCancelSleepTimer = viewModel::cancelSleepTimer,
                     modifier = Modifier.fillMaxSize(),

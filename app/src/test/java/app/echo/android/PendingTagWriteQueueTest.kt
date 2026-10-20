@@ -7,6 +7,21 @@ class PendingTagWriteQueueTest {
     private data class Request(val id: Long, val track: String)
 
     @Test
+    fun cancelledBatchRequestCanBeRemovedWithoutConsumingAnotherRequest() {
+        val queue = PendingTagWriteQueue<Request> { it.id }
+        queue.enqueue(Request(1, "single"))
+        queue.enqueue(Request(2, "cancelled batch"))
+        queue.enqueue(Request(3, "next"))
+        queue.remove(2)
+        assertEquals(1L, queue.pending.value?.id)
+        assertNull(queue.take(2))
+        queue.take(1)
+        assertEquals(3L, queue.pending.value?.id)
+        queue.remove(3)
+        assertNull(queue.pending.value)
+    }
+
+    @Test
     fun callbacksCannotConsumeAnotherTracksAuthorization() {
         val queue = PendingTagWriteQueue<Request> { it.id }
         val first = Request(1, "A")

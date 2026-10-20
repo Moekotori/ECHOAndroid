@@ -46,7 +46,7 @@ internal class TrackMetadataEditorState {
             trackNumber = trackNumber.toPositiveIntOrNull(),
             discNumber = discNumber.toPositiveIntOrNull(),
             year = year.toPositiveIntOrNull(),
-            composer = composer.trim().takeIf { it.isNotBlank() },
+            composer = composer.trim(),
             artworkUri = track.artworkUri,
             lyrics = lyrics.takeIf { lyricsEdited },
         )

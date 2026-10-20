@@ -93,7 +93,6 @@ fun PlaybackQueueSheet(
     onDragProgress: (Float) -> Unit = {},
     predictiveBackProgress: () -> Float = { 0f },
     onHidden: () -> Unit = {},
-    onPinQueueOffline: (() -> Unit)? = null,
     onSetSleepTimerEndOfTrack: (() -> Unit)? = null,
     onCancelSleepTimer: (() -> Unit)? = null,
 ) {
@@ -219,7 +218,6 @@ fun PlaybackQueueSheet(
                 onClearNextUp = onClearNextUp,
                 onSetRepeatMode = onSetRepeatMode,
                 onToggleShuffle = onToggleShuffle,
-                onPinQueueOffline = onPinQueueOffline,
                 onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
                 onCancelSleepTimer = onCancelSleepTimer,
                 onHandleDrag = { delta ->
@@ -265,7 +263,6 @@ private fun QueueSheetSurface(
     onSetRepeatMode: (EchoRepeatMode) -> Unit,
     onToggleShuffle: () -> Unit,
     motionProgress: () -> Float,
-    onPinQueueOffline: (() -> Unit)?,
     onSetSleepTimerEndOfTrack: (() -> Unit)?,
     onCancelSleepTimer: (() -> Unit)?,
     onHandleDrag: (Float) -> Unit,
@@ -281,17 +278,18 @@ private fun QueueSheetSurface(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var showPrevious by rememberSaveable { mutableStateOf(false) }
+    val shortWindow = app.echo.android.design.LocalEchoLayout.current.heightDp < 600f
     val compact = sections.nextUp.isEmpty() && sections.continuation.isEmpty() && !showPrevious
 
     Box(
         modifier = modifier
+            .widthIn(max = 560.dp)
             .fillMaxWidth()
             .statusBarsPadding()
-            .widthIn(max = 560.dp)
             .then(if (lightweight) Modifier else Modifier.animateContentSize(
                 animationSpec = EchoMotion.silkSize(360), alignment = Alignment.BottomCenter,
             ))
-            .then(if (empty) Modifier.wrapContentHeight() else Modifier.fillMaxHeight(if (compact) 0.42f else 0.74f))
+            .then(if (empty) Modifier.wrapContentHeight() else Modifier.fillMaxHeight(if (shortWindow) 0.94f else if (compact) 0.42f else 0.74f))
             .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             .background(queueSurfaceColor())
             .navigationBarsPadding(),
@@ -326,7 +324,6 @@ private fun QueueSheetSurface(
                 status = status,
                 onDismiss = onDismiss,
                 onClearQueue = onClearQueue,
-                onPinQueueOffline = onPinQueueOffline,
                 sections = sections,
                 showPrevious = showPrevious,
                 onTogglePrevious = { showPrevious = !showPrevious },

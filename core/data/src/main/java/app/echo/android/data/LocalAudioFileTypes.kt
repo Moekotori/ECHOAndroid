@@ -44,11 +44,11 @@ internal object LocalAudioFileTypes {
     }
 
     fun resolvedMimeType(name: String, mimeType: String?): String? =
-        mimeType?.takeIf { it.isAudioMime() } ?: mimeTypeForFileName(name)
+        mimeType.normalizedMediaMime()?.takeIf { it.isAudioMime() } ?: mimeTypeForFileName(name)
 
     /**
-     * Android often leaves DSD/surround in MediaStore.Files with IS_MUSIC=0.
-     * Device scan still picks them up by filename.
+     * Some providers leave even WAV/FLAC in MediaStore.Files without an audio
+     * classification. Device scan still picks up known audio extensions.
      */
     fun mediaStoreFallbackNameClause(column: String): Pair<String, Array<String>> {
         val clause = MediaStoreFallbackExtensions.joinToString(" OR ") { "$column LIKE ?" }
@@ -79,10 +79,11 @@ internal object LocalAudioFileTypes {
 
 internal val MediaStoreFallbackExtensions = listOf(
     "ape", "wv", "wma", "asf", "dsf", "dff", "ac3", "eac3", "ec3", "dts", "amr", "aiff", "aif", "aifc",
+    "flac", "mp3", "mp2", "m4a", "m4b", "aac", "adts", "ogg", "oga", "opus", "wav", "wave", "mka",
 )
 
 internal fun String?.isAudioMime(): Boolean {
-    val mime = this?.lowercase(Locale.ROOT) ?: return false
+    val mime = normalizedMediaMime() ?: return false
     return mime.startsWith("audio/") || mime in ApplicationAudioMimes
 }
 
@@ -94,4 +95,7 @@ private val ApplicationAudioMimes = setOf(
 )
 
 internal fun String?.isVideoMime(): Boolean =
-    this?.startsWith("video/", ignoreCase = true) == true
+    normalizedMediaMime()?.startsWith("video/") == true
+
+private fun String?.normalizedMediaMime(): String? =
+    this?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT)

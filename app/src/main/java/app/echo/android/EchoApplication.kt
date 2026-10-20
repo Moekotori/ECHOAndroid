@@ -9,9 +9,7 @@ import app.echo.android.data.EchoErrorLogRepository
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoRadioStore
 import app.echo.android.data.EchoSettingsStore
-import app.echo.android.data.LibraryOfflineStore
 import app.echo.android.data.ListeningHistoryRepository
-import java.io.File
 import app.echo.android.data.readEchoStartupThemeSnapshot
 import app.echo.android.i18n.initializeEchoAppLocale
 import app.echo.android.i18n.wrapEchoAppLocale
@@ -53,23 +51,12 @@ class EchoApplication : Application(), ImageLoaderFactory {
     val listening by lazy { app.echo.android.listening.EchoListeningRuntime(this) }
     internal val lyricsSession: EchoNowPlayingLyricsSession by lazy { EchoNowPlayingLyricsSession(this) }
     internal val scrobbleSession by lazy {
-        EchoScrobbleSession(EchoPlaybackProcessRuntime.scope, EchoPlaybackProcessRuntime.surface)
+        EchoScrobbleSession(this, EchoPlaybackProcessRuntime.scope, EchoPlaybackProcessRuntime.surface)
     }
     val listeningHistory by lazy { ListeningHistoryRepository(EchoLibraryDatabase.create(this)) }
     private val listeningHistoryRecorder by lazy {
         ListeningHistoryRecorder(EchoPlaybackProcessRuntime.scope, listeningHistory)
     }
-    internal val offlineDownloads: EchoOfflineDownloads by lazy {
-        EchoOfflineDownloads(
-            app = this,
-            store = LibraryOfflineStore(
-                database = EchoLibraryDatabase.create(this),
-                directory = File(filesDir, "offline"),
-            ),
-            settings = EchoSettingsStore(this),
-        )
-    }
-
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base.wrapEchoAppLocale(base.readEchoStartupThemeSnapshot().appLanguage))
     }
@@ -85,10 +72,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
         EchoErrorLogRepository.create(this)
         EchoPlaybackCachePolicy.bindDeviceConstraints(this)
         EchoPlaybackProcessRuntime.scope.launch {
-            val ids = app.echo.android.data.EchoRemotePinStore(this@EchoApplication).load()
-            app.echo.android.playback.pinRemotePlaybackKeys(
-                app.echo.android.model.playback.EchoRemotePinPolicy.pinTokens(ids),
-            )
+            app.echo.android.data.cleanupLegacyOfflineMusic(this@EchoApplication)
         }
         EchoPlaybackProcessRuntime.setStreamResolver { mediaId, uri ->
             val id = app.echo.android.model.playback.EchoLinkPlaybackUri.trackId(mediaId, uri)
@@ -112,7 +96,6 @@ class EchoApplication : Application(), ImageLoaderFactory {
         EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore))
         lyricsSession.start(settingsStore)
         scrobbleSession.start(settingsStore.appSettings)
-        offlineDownloads.start()
         listeningHistoryRecorder.start(EchoPlaybackProcessRuntime.surface)
         app.echo.android.lyrics.overlay.EchoFloatingLyricsController(this, settingsStore).start()
         EchoPlaybackProcessRuntime.scope.launch {

@@ -87,6 +87,8 @@ internal fun HomeArtistRankingSection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         HomeSectionHeader(stringResource(L10nR.string.feature_home_artist_ranking_80100b))
+        HomeBlock() {
+          Column {
         if (artists.isEmpty()) {
             EmptyRankingNotice(
                 title = stringResource(L10nR.string.feature_home_no_ranking_data_yet_810ddb),
@@ -103,6 +105,8 @@ internal fun HomeArtistRankingSection(
                     onClick = { onOpenArtist(artist) },
                 )
             }
+        }
+          }
         }
     }
 }
@@ -130,7 +134,7 @@ private fun ArtistRankRow(
             rank.toString().padStart(2, '0'),
             color = if (rank == 1) scheme.primary else scheme.onSurfaceVariant,
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.width(34.dp),
         )
         Column(
@@ -141,7 +145,7 @@ private fun ArtistRankRow(
                 displayArtist(artist.name),
                 color = scheme.onSurface,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

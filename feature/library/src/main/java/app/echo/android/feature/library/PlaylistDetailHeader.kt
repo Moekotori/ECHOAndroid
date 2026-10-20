@@ -54,7 +54,6 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.echoClickable
 import app.echo.android.model.library.EchoPlaylist
-import app.echo.android.model.library.LibraryOfflinePin
 import app.echo.android.feature.library.R as L10nR
 
 internal data class PlaylistDetailColors(
@@ -147,24 +146,25 @@ internal fun PlaylistHero(
     durationMs: Long,
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
-    offlinePin: LibraryOfflinePin? = null,
-    onToggleOffline: (() -> Unit)? = null,
 ) {
     val colors = rememberPlaylistDetailColors()
     val fontScale = LocalDensity.current.fontScale
+    val compact = app.echo.android.design.LocalEchoLayout.current.compactHeader &&
+        app.echo.android.design.LocalEchoLayout.current.heightDp < 600f
     Column(Modifier.fillMaxWidth()) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 26.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(
+            top = if (compact) 8.dp else 20.dp, bottom = if (compact) 12.dp else 26.dp)) {
             // Keep long names and enlarged accessibility text out of a narrow side column.
             if (maxWidth < 320.dp || fontScale > 1.2f) {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     PlaylistCover(playlist, coverUris, echoAccentColor(),
-                        Modifier.size(156.dp).align(Alignment.CenterHorizontally))
+                        Modifier.size(if (compact) 104.dp else 156.dp).align(Alignment.CenterHorizontally))
                     PlaylistHeroText(playlist, durationMs)
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    PlaylistCover(playlist, coverUris, echoAccentColor(), Modifier.size(124.dp))
+                    PlaylistCover(playlist, coverUris, echoAccentColor(), Modifier.size(if (compact) 96.dp else 124.dp))
                     PlaylistHeroText(playlist, durationMs, Modifier.weight(1f))
                 }
             }
@@ -177,11 +177,6 @@ internal fun PlaylistHero(
             PlaylistActionButton(Icons.Rounded.Shuffle,
                 stringResource(L10nR.string.feature_library_shuffle_34e7ce),
                 onShuffle, enabled = playlist.trackCount > 0)
-        }
-        if (onToggleOffline != null) {
-            Spacer(Modifier.height(10.dp))
-            PlaylistActionButton(libraryOfflinePinIcon(offlinePin), libraryOfflinePinLabel(offlinePin),
-                onToggleOffline)
         }
         Spacer(Modifier.height(22.dp))
     }

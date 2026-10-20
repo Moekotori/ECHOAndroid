@@ -1,5 +1,11 @@
 package app.echo.android
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import app.echo.android.data.ScrobbleOutboxStore
+import java.io.File
+import kotlinx.coroutines.Job
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -14,11 +20,26 @@ import kotlinx.coroutines.flow.map
 
 /** Application-owned scrobblers keep the same listen when the activity is recreated. */
 internal class EchoScrobbleSession(
+    context: Context,
     scope: CoroutineScope,
     private val surface: StateFlow<EchoPlaybackSurfaceSnapshot>,
 ) {
-    val lastFm = LastFmScrobbleController(scope)
-    val listenBrainz = ListenBrainzScrobbleController(scope)
+    val lastFm = LastFmScrobbleController(scope, ScrobbleOutboxStore(File(context.noBackupFilesDir, "lastfm-listens.json")))
+    val listenBrainz = ListenBrainzScrobbleController(scope, ScrobbleOutboxStore(File(context.noBackupFilesDir, "listenbrainz-listens.json")))
+    init {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java)
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                lastFm.retryPendingWhenConnected()
+                listenBrainz.retryPendingWhenConnected()
+            }
+        }
+        connectivity?.registerDefaultNetworkCallback(callback)
+        scope.coroutineContext[Job]?.invokeOnCompletion {
+            connectivity?.unregisterNetworkCallback(callback)
+        }
+    }
+
     private var started = false
 
     fun start(settings: Flow<EchoAppSettings>) {

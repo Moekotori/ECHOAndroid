@@ -889,9 +889,11 @@ internal class LibraryController(
         trackId: String,
         lyricsText: String? = null,
         artworkUri: String? = null,
+        composerModified: Boolean = false,
+        genreModified: Boolean = false,
     ): EmbeddedTagWriteResult =
         withContext(Dispatchers.IO) {
-            repository.writeEmbeddedTagsForTrack(trackId, lyricsText, artworkUri)
+            repository.writeEmbeddedTagsForTrack(trackId, lyricsText, artworkUri, composerModified, genreModified)
         }
 
     suspend fun updateTrackArtwork(trackId: String, artworkUri: Uri): TrackMetadataUpdateResult =

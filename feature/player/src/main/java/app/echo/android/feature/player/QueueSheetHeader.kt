@@ -11,7 +11,6 @@ import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.ClearAll
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MyLocation
@@ -37,7 +36,6 @@ import app.echo.android.design.EchoDropdownMenuItem
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.echoIconColor
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRemotePinPolicy
 import app.echo.android.model.playback.EchoSleepTimerMode
 import app.echo.android.model.playback.PlaybackQueueState
 
@@ -52,16 +50,12 @@ internal fun QueueSheetHeader(
     onClearNextUp: () -> Unit,
     onLocateCurrent: () -> Unit,
     onTogglePrevious: () -> Unit,
-    onPinQueueOffline: (() -> Unit)?,
     onSetSleepTimerEndOfTrack: (() -> Unit)?,
     onCancelSleepTimer: (() -> Unit)?,
 ) {
     val ink = echoIconColor()
     var expanded by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
-    val canPin = remember(queueState.items) {
-        queueState.items.any { EchoRemotePinPolicy.canPin(it.sourceId, it.id, it.uri) }
-    }
     val stopAfterCurrent = status.sleepTimerMode == EchoSleepTimerMode.EndOfTrack
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -105,11 +99,6 @@ internal fun QueueSheetHeader(
                         expanded = false
                         if (stopAfterCurrent) onCancelSleepTimer() else onSetSleepTimerEndOfTrack()
                     },
-                )
-                if (canPin && onPinQueueOffline != null) EchoDropdownMenuItem(
-                    text = { Text(stringResource(R.string.queue_keep_offline)) }, selected = false,
-                    leadingIcon = { EchoIcon(Icons.Rounded.Download, null) },
-                    onClick = { expanded = false; onPinQueueOffline() },
                 )
                 EchoDropdownMenuDivider()
                 if (sections.nextUp.isNotEmpty()) EchoDropdownMenuItem(

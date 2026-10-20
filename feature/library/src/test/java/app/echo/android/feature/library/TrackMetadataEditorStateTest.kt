@@ -9,6 +9,14 @@ class TrackMetadataEditorStateTest {
     private val track = EchoTrack("track", "content://audio/1", "Title", "Artist")
 
     @Test
+    fun clearingComposerSendsExplicitEmptyValue() {
+        val state = TrackMetadataEditorState()
+        state.composer = "Composer"
+        state.composer = ""
+        assertEquals("", state.toUpdate(track).composer)
+    }
+
+    @Test
     fun unrelatedSavePreservesLyricsBeforeAndAfterLoading() {
         val state = TrackMetadataEditorState()
         assertNull(state.toUpdate(track).lyrics)

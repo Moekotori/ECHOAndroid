@@ -1,5 +1,6 @@
 package app.echo.android.feature.home
 
+import androidx.compose.foundation.layout.PaddingValues
 import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.feature.home.R as L10nR
@@ -1556,20 +1557,18 @@ internal fun HomeLibraryNotice(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .echoClickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        EchoIcon(Icons.Rounded.LibraryMusic, contentDescription = null,
-            tint = echoAccentColor(), modifier = Modifier.size(28.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, color = homeTitleColor(), style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium)
-            Text(subtitle, color = homeBodyColor(), style = MaterialTheme.typography.bodySmall)
+    HomeBlock(modifier = modifier, onClick = onClick, verticalPadding = 12.dp) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            EchoIcon(Icons.Rounded.LibraryMusic, contentDescription = null,
+                tint = echoAccentColor(), modifier = Modifier.size(28.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, color = homeTitleColor(), style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold)
+                Text(subtitle, color = homeBodyColor(), style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

@@ -52,6 +52,19 @@ class EmbeddedTagReplaceTest {
         }
     }
 
+    @Test
+    fun permissionFailureAfterPartialWriteRestoresOrKeepsBackup() {
+        var restored = false
+        assertEquals(EmbeddedTagReplaceStatus.Restored, replaceEmbeddedTagsWithRestore(
+            replace = { throw SecurityException("permission revoked after write began") },
+            verify = { error("must not verify failed write") }, restore = { restored = true },
+        ))
+        assertTrue(restored)
+        assertEquals(EmbeddedTagReplaceStatus.BackupKept, replaceEmbeddedTagsWithRestore(
+            replace = {}, verify = { false }, restore = { throw SecurityException("restore denied") },
+        ))
+    }
+
     private fun withTempDir(block: (File) -> Unit) {
         val dir = File(System.getProperty("java.io.tmpdir"), "echo-tag-${System.nanoTime()}")
         assertTrue(dir.mkdirs())

@@ -362,6 +362,8 @@ fun PageChrome(
                         } else {
                             Text(
                                 title,
+                                maxLines = if (compactChrome) 1 else Int.MAX_VALUE,
+                                overflow = TextOverflow.Ellipsis,
                                 style = titleStyle,
                                 color = if (dark) Color.White.copy(alpha = 0.96f) else scheme.onSurface,
                             )
@@ -540,7 +542,7 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
     return palette
 }
 
-private suspend fun loadArtworkSwatch(
+internal suspend fun loadArtworkSwatch(
     context: android.content.Context,
     artworkUri: String?,
     sampleSize: Int,

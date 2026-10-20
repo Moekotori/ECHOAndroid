@@ -11,6 +11,33 @@ import org.junit.Test
 
 class WavTagReaderTest {
     @Test
+    fun rf64ReadsTagsAfterMoreThanFourGiBWithoutReadingPcm() {
+        val dataSize = 0x1_0000_0001L
+        val fmt = fmtChunk()
+        val info = infoList(mapOf("INAM" to "RF64 title".toByteArray()))
+        val riffSize = 4L + 36 + fmt.size + 8 + dataSize + 1 + info.size
+        val ds64 = ByteBuffer.allocate(28).order(ByteOrder.LITTLE_ENDIAN)
+            .putLong(riffSize).putLong(dataSize).putLong(0).putInt(0).array()
+        val prefix = "RF64".toByteArray() + byteArrayOf(-1, -1, -1, -1) + "WAVE".toByteArray() +
+            chunk("ds64", ds64) + fmt + "data".toByteArray() + byteArrayOf(-1, -1, -1, -1)
+        val tailStart = prefix.size + dataSize + 1
+        var bytesRequested = 0
+        val input = RandomAccessTagInput(tailStart + info.size, {}) { position, count ->
+            bytesRequested += count
+            ByteArray(count) { index ->
+                val offset = position + index
+                when {
+                    offset < prefix.size -> prefix[offset.toInt()]
+                    offset >= tailStart -> info[(offset - tailStart).toInt()]
+                    else -> 0
+                }
+            }
+        }
+        assertEquals("RF64 title", readLocalAudioTags(input)?.title)
+        org.junit.Assert.assertTrue(bytesRequested < 300 * 1024)
+    }
+
+    @Test
     fun readsUtf8InfoTags() {
         val wav = wavWithInfo(
             "INAM" to "青花瓷".toByteArray(StandardCharsets.UTF_8),

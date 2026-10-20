@@ -18,7 +18,9 @@ internal fun SettingsWideNavigation(
     home: @Composable () -> Unit,
     detail: @Composable () -> Unit,
 ) {
-    val navigationWidth = (LocalEchoLayout.current.widthDp * 0.32f).dp.coerceIn(260.dp, 340.dp)
+    val layout = LocalEchoLayout.current
+    val minimumNavigationWidth = if (layout.shortLandscape) 220.dp else 260.dp
+    val navigationWidth = (layout.widthDp * 0.32f).dp.coerceIn(minimumNavigationWidth, 340.dp)
     Row(Modifier.fillMaxSize().imePadding()) {
         EchoLayoutBounds(Modifier.width(navigationWidth).fillMaxHeight()) {
             PageChrome(title = stringResource(R.string.settings_title), subtitle = null, compactHeader = true, badgeContent = {}) { home() }

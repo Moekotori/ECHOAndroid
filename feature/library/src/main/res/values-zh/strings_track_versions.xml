@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_versions_title">歌曲版本</string>
+    <string name="track_versions_explanation">按标题、歌手、专辑和时长关联，保留原歌曲与歌单。首选来源不可用时，开始播放会回退到可用版本。</string>
+    <string name="track_versions_auto">自动 · 优先本地文件</string>
+    <string name="track_versions_empty">已索引曲库中没有其他匹配版本。</string>
+    <string name="track_versions_close">关闭</string>
+</resources>

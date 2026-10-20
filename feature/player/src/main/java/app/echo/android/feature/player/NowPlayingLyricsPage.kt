@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.ArtworkColorGrid
 import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoDarkTheme
@@ -20,6 +21,7 @@ import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.feature.player.afterglow.AfterglowStage
 import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
 import app.echo.android.feature.player.R as L10nR
 
@@ -57,6 +59,8 @@ internal fun NowPlayingLyricsPage(
     lyricsPageStyle: EchoLyricsPageStyle,
     palette: ArtworkPalette,
     showBackdrop: Boolean = false,
+    backdropStyle: EchoLyricsBackdrop = EchoLyricsBackdrop.Fluid,
+    colorGrid: ArtworkColorGrid? = null,
     showTransportDock: Boolean = true,
     modifier: Modifier = Modifier,
     animationsVisible: Boolean = true,
@@ -86,7 +90,7 @@ internal fun NowPlayingLyricsPage(
             lightweight = lightweight,
             highPerformance = performance.isHighPerformance,
         )) {
-            if (showBackdrop) LyricsPageBackdrop(palette, { 1f }, animationsVisible && status.track != null, Modifier.fillMaxSize())
+            if (showBackdrop) LyricsPageBackdrop(palette, { 1f }, animationsVisible && status.track != null, Modifier.fillMaxSize(), backdropStyle, colorGrid)
             Box(
                 modifier = Modifier
                     .fillMaxSize()

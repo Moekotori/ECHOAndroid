@@ -66,3 +66,23 @@ internal object EmbeddedTagBackup {
         return dest
     }
 }
+
+/** Permission errors after replacement starts require the same rollback as I/O failures. */
+internal fun replaceEmbeddedTagsWithRestore(
+    replace: () -> Unit,
+    verify: () -> Boolean,
+    restore: () -> Unit,
+): EmbeddedTagReplaceStatus {
+    try {
+        replace()
+        if (verify()) return EmbeddedTagReplaceStatus.Replaced
+    } catch (_: Exception) {
+        // The target may already be partially overwritten.
+    }
+    return try {
+        restore()
+        EmbeddedTagReplaceStatus.Restored
+    } catch (_: Exception) {
+        EmbeddedTagReplaceStatus.BackupKept
+    }
+}

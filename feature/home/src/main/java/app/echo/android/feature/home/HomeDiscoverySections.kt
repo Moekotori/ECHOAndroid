@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.echoPressFeedback
 import app.echo.android.model.library.AlbumSummary
@@ -37,7 +39,7 @@ internal fun HomeDailyAlbumSection(
         ?: albums.getOrNull(if (albums.isEmpty()) 0 else Math.floorMod(day, albums.size.toLong()).toInt())
         ?: return
     LaunchedEffect(album.albumKey) { selectedKey = album.albumKey }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(stringResource(R.string.home_daily_album)) {
             TextButton(enabled = albums.size > 1, onClick = {
                 val index = albums.indexOfFirst { it.albumKey == album.albumKey }
@@ -46,27 +48,24 @@ internal fun HomeDailyAlbumSection(
                 Text(stringResource(R.string.home_daily_album_another), style = MaterialTheme.typography.labelLarge)
             }
         }
-        val interaction = remember { MutableInteractionSource() }
-        Surface(
-            onClick = { onOpen(album) }, color = Color.Transparent, shape = RoundedCornerShape(4.dp),
-            interactionSource = interaction,
-            modifier = Modifier.echoPressFeedback(interaction),
-        ) {
+        HomeBlock(onClick = { onOpen(album) }, verticalPadding = 2.dp) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 ArtworkTile(album.artworkUri,
                     modifier = Modifier.weight(0.42f).aspectRatio(1f),
-                    accent = MaterialTheme.colorScheme.primary, cornerRadius = 4.dp, elevation = 0.dp)
-                Column(Modifier.weight(0.58f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    accent = MaterialTheme.colorScheme.primary, cornerRadius = HomeCoverCorner, elevation = 0.dp)
+                Column(Modifier.weight(0.58f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(displayAlbum(album.title), style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 3, overflow = TextOverflow.Ellipsis)
                     Text(displayArtist(album.albumArtist ?: album.artist),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Spacer(Modifier.height(6.dp))
-                    FilledTonalButton(onClick = { onPlay(album) }, shape = RoundedCornerShape(4.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp), modifier = Modifier.heightIn(min = 48.dp)) {
-                        EchoIcon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.height(10.dp))
+                    Button(onClick = { onPlay(album) }, shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(start = 12.dp, end = 18.dp), modifier = Modifier.heightIn(min = 48.dp)) {
+                        EchoIcon(Icons.Rounded.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.home_daily_album_play), style = MaterialTheme.typography.labelLarge)
                     }

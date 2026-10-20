@@ -4,134 +4,139 @@ import app.echo.android.model.library.CueSheet
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.CueSheetTrack
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 
+/** Bounded text parser. An incomplete sheet never authorizes a partial library replacement. */
 object CueSheetParser {
-    private val IndexTime = Regex("""^(\d{1,3}):(\d{2}):(\d{2})$""")
-    private val TrackHeader = Regex("""^(\d{1,2})\s+AUDIO$""", RegexOption.IGNORE_CASE)
+    private val TrackHeader = Regex("""^(\d+)\s+(\S+)$""")
+    private val Index = Regex("""^0*([01])\s+(\d+)(?::(\d+):(\d+))?$""")
+    private val DataMode = Regex("""^(?:MODE[12]/\d+|CDI/\d+)$""", RegexOption.IGNORE_CASE)
+    private val FileValue = Regex("""^(?:"((?:[^"\\]|\\.)+)"|'((?:[^'\\]|\\.)+)'|(.+?))(?:\s+\S+)?$""")
 
-    fun parse(bytes: ByteArray): CueSheet? {
-        if (bytes.isEmpty() || bytes.size > CueSheetPolicy.MaxCueBytes) return null
-        val text = decode(bytes)
-        return parseText(text)
-    }
+    fun parse(bytes: ByteArray): CueSheet? =
+        if (bytes.isEmpty() || bytes.size > CueSheetPolicy.MaxCueBytes) null else parseText(decode(bytes))
 
     fun parseText(text: String): CueSheet? {
-        var fileName: String? = null
-        var currentFile: String? = null
+        if (text.isEmpty() || text.length > CueSheetPolicy.MaxCueBytes || '\u0000' in text) return null
+        var file: String? = null
+        var firstFile: String? = null
         var album: String? = null
         var performer: String? = null
         var year: Int? = null
         var genre: String? = null
-        val tracks = ArrayList<CueSheetTrack>(8)
-        var number = 0
+        val tracks = ArrayList<CueSheetTrack>()
+        val numbers = HashSet<Int>()
+        val lastBySource = HashMap<String, Int>()
+        var number: Int? = null
         var title: String? = null
-        var trackPerformer: String? = null
-        var startMs: Long? = null
-        var inTrack = false
-
-        fun commit() {
-            if (!inTrack) return
-            val start = startMs ?: return
-            val name = title?.takeIf { it.isNotBlank() } ?: "Track $number"
-            tracks += CueSheetTrack(
-                number = number,
-                title = name.take(200),
-                performer = trackPerformer,
-                startMs = start,
-                fileName = currentFile,
-            )
-            inTrack = false
-            title = null
-            trackPerformer = null
-            startMs = null
+        var artist: String? = null
+        var start: Long? = null
+        var pregap: Long? = null
+        var data = false
+        var failed = false
+        fun sourceKey() = file.orEmpty().replace('\\', '/').lowercase(Locale.ROOT)
+        fun bound(time: Long) {
+            val previous = lastBySource[sourceKey()] ?: return
+            val track = tracks[previous]
+            if (time <= track.startMs) { failed = true; return }
+            if (track.endMs == 0L) tracks[previous] = track.copy(endMs = time)
         }
-
+        fun commit() {
+            val n = number
+            val offset = start
+            if (n != null && !data) {
+                if (offset == null || pregap?.let { it > offset } == true) failed = true
+                else {
+                    bound(offset)
+                    lastBySource[sourceKey()] = tracks.size
+                    tracks += CueSheetTrack(n, title ?: "Track $n", artist, offset, fileName = file)
+                }
+            }
+            // Always clear, even for incomplete or non-audio tracks.
+            number = null; title = null; artist = null; start = null; pregap = null; data = false
+        }
         for (raw in text.lineSequence()) {
-            val line = raw.trim().trimStart('\uFEFF')
-            if (line.isEmpty()) continue
+            val line = raw.trim().trimStart('\uFEFF').trimStart()
             val (command, argument) = splitCommand(line) ?: continue
             when (command) {
                 "FILE" -> {
+                    val match = FileValue.matchEntire(argument) ?: return null
+                    val next = match.groups[1]?.value?.replace("\\\"", "\"")
+                        ?: match.groups[2]?.value?.replace("\\'", "'") ?: match.groupValues[3].trim()
+                    if (next.isBlank()) return null
+                    // FILE may appear inside TRACK before INDEX 01 (e.g. pregap in another file).
+                    if (number != null && start == null) {
+                        if (file != next) pregap = null
+                    } else commit()
+                    file = next
+                    if (firstFile == null) firstFile = next
+                }
+                "TRACK" -> {
                     commit()
-                    currentFile = unquote(argument.substringBeforeLast(' ', argument)).takeIf { it.isNotEmpty() }
-                    if (fileName == null) fileName = currentFile
+                    val match = TrackHeader.matchEntire(argument) ?: return null
+                    val n = match.groupValues[1].toIntOrNull() ?: return null
+                    if (n <= 0 || !numbers.add(n) || numbers.size > CueSheetPolicy.MaxTracks) return null
+                    val mode = match.groupValues[2]
+                    data = !mode.equals("AUDIO", true)
+                    if (data && !DataMode.matches(mode)) return null
+                    number = n
                 }
-                "TITLE" -> {
-                    val value = unquote(argument).takeIf { it.isNotEmpty() }
-                    if (inTrack) title = value else if (album == null) album = value
-                }
-                "PERFORMER" -> {
-                    val value = unquote(argument).takeIf { it.isNotEmpty() }
-                    if (inTrack) trackPerformer = value else if (performer == null) performer = value
+                "TITLE", "PERFORMER" -> {
+                    val value = unquote(argument) ?: return null
+                    if (number != null) {
+                        if (!data) { if (command == "TITLE") title = value else artist = value }
+                    } else if (command == "TITLE") album = value else performer = value
                 }
                 "REM" -> {
                     val rem = splitCommand(argument) ?: continue
                     when (rem.first) {
-                        "GENRE" -> if (genre == null) genre = unquote(rem.second).takeIf { it.isNotEmpty() }
-                        "DATE" -> if (year == null) year = unquote(rem.second).take(4).toIntOrNull()?.takeIf { it in 1000..9999 }
+                        "GENRE" -> genre = unquote(rem.second)
+                        "DATE" -> year = unquote(rem.second)?.take(4)?.toIntOrNull()?.takeIf { it in 1000..9999 }
                     }
                 }
-                "TRACK" -> {
-                    commit()
-                    val match = TrackHeader.matchEntire(argument.trim()) ?: continue
-                    number = match.groupValues[1].toInt()
-                    if (number in 1..CueSheetPolicy.MaxTracks) {
-                        inTrack = true
+                "INDEX" -> if (number != null) {
+                    val match = Index.matchEntire(argument)
+                    // Higher indices do not define movement boundaries.
+                    if (match == null) {
+                        val index = argument.takeWhile { !it.isWhitespace() }.toIntOrNull()
+                        if (index == null || index <= 1) return null
+                        continue
                     }
-                }
-                "INDEX" -> if (inTrack) {
-                    val parts = argument.trim().split(Regex("\\s+"), limit = 2)
-                    if (parts.size == 2) {
-                        val index = parts[0].trimStart('0').ifEmpty { "0" }
-                        when {
-                            index == "1" -> startMs = parseIndex(parts[1])
-                            index == "0" && startMs == null -> startMs = parseIndex(parts[1])
-                        }
-                    }
+                    val time = indexTime(match) ?: return null
+                    if (data) bound(time)
+                    else if (match.groupValues[1] == "0") pregap = time
+                    else { if (start != null) return null; start = time }
                 }
             }
-            if (tracks.size >= CueSheetPolicy.MaxTracks) break
+            if (failed) return null
         }
         commit()
-        if (tracks.size < 2 && tracks.none { it.startMs > 0L }) return null
-        if (tracks.isEmpty()) return null
-        return CueSheet(
-            fileName = fileName,
-            album = album,
-            performer = performer,
-            year = year,
-            genre = genre,
-            tracks = tracks,
-        )
+        if (failed || tracks.isEmpty()) return null
+        return CueSheet(firstFile, album, performer, year, genre, tracks)
     }
 
-    private fun parseIndex(raw: String): Long? {
-        val match = IndexTime.matchEntire(raw.trim()) ?: return null
-        val minutes = match.groupValues[1].toInt()
-        val seconds = match.groupValues[2].toInt()
-        val frames = match.groupValues[3].toInt()
-        if (seconds > 59 || frames > 74) return null
-        return CueSheetPolicy.framesToMs(minutes, seconds, frames)
+    private fun indexTime(match: MatchResult): Long? {
+        val first = match.groupValues[2].toLongOrNull() ?: return null
+        if (match.groups[3] == null) return first.takeIf { it <= Long.MAX_VALUE / 1000 }?.let { it * 1000 / 75 }
+        val seconds = match.groupValues[3].toIntOrNull() ?: return null
+        val frames = match.groupValues[4].toIntOrNull() ?: return null
+        if (seconds !in 0..59 || frames !in 0..74 || first > Int.MAX_VALUE) return null
+        return CueSheetPolicy.framesToMs(first.toInt(), seconds, frames)
     }
 
     private fun splitCommand(line: String): Pair<String, String>? {
-        val trimmed = line.trim()
-        if (trimmed.isEmpty()) return null
-        val split = trimmed.indexOf(' ')
-        return if (split < 0) {
-            trimmed.uppercase() to ""
-        } else {
-            trimmed.substring(0, split).uppercase() to trimmed.substring(split + 1).trim()
-        }
+        if (line.isBlank()) return null
+        val split = line.indexOfFirst(Char::isWhitespace)
+        return if (split < 0) line.uppercase(Locale.ROOT) to "" else
+            line.substring(0, split).uppercase(Locale.ROOT) to line.substring(split + 1).trim()
     }
 
-    private fun unquote(raw: String): String {
-        val trimmed = raw.trim()
-        return if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
-            trimmed.substring(1, trimmed.length - 1)
-        } else {
-            trimmed
-        }
+    private fun unquote(raw: String): String? {
+        val value = raw.trim()
+        if (value.isEmpty()) return null
+        if (value[0] != '"' && value[0] != '\'') return value
+        if (value.length < 2 || value.last() != value[0]) return null
+        return value.substring(1, value.length - 1).replace("\\${value[0]}", "${value[0]}")
     }
 
     internal fun decode(bytes: ByteArray): String =

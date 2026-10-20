@@ -29,6 +29,7 @@ import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.settings.EchoAppLanguage
+import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
 import app.echo.android.model.settings.EchoPlayerPageStyle
 import app.echo.android.model.settings.EchoColorTheme
@@ -105,6 +106,7 @@ data class EchoAppSettings(
     val uiFontScale: Float = 1f,
     val uiDensityScale: Float = 1f,
     val lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
+    val lyricsBackdrop: String = EchoLyricsBackdrop.Fluid.id,
     val lyricsFontFamily: String = EchoLyricsPageStyle.Mist.defaultFontFamily,
     val lyricsFontScale: Float = 1f,
     val lyricsColorMode: String = EchoLyricsColorMode.White,
@@ -147,7 +149,6 @@ data class EchoAppSettings(
     val replayGainPreampDb: Float = 0f,
     val librarySelectedSource: String = EchoLibrarySelectedSource.Local,
     val watchedFolderRescanEnabled: Boolean = LibraryFolderWatchPolicy.RescanEnabledByDefault,
-    val offlineWifiOnly: Boolean = true,
     val subsonicServerUrl: String? = null,
     val subsonicUsername: String? = null,
     val subsonicPassword: String? = null,
@@ -360,6 +361,7 @@ class EchoSettingsStore(
                 lyricsPageStyle = lyricsStyle.id,
                 lyricsFontFamily = normalizeFontFamilyMode(preferences[Keys.LyricsFontFamily]
                     ?: EchoPlayerPageStyle.fromId(PlayerAppearancePreferences.style(preferences)).defaultFontFamily),
+                lyricsBackdrop = EchoLyricsBackdrop.fromId(preferences[Keys.LyricsBackdrop]).id,
                 lyricsFontScale = (preferences[Keys.LyricsFontScale] ?: 1f).coerceIn(0.50f, 1.28f),
                 lyricsColorMode = preferences[Keys.LyricsColorMode] ?: EchoLyricsColorMode.White,
                 lyricsAlignment = normalizeLyricsAlignment(preferences[Keys.LyricsAlignment]
@@ -424,7 +426,6 @@ class EchoSettingsStore(
                 libraryScanOptions = decodeLibraryScanOptions(preferences[Keys.LibraryScanOptions]),
                 watchedFolderRescanEnabled = preferences[Keys.WatchedFolderRescanEnabled]
                     ?: LibraryFolderWatchPolicy.RescanEnabledByDefault,
-                offlineWifiOnly = preferences[Keys.OfflineWifiOnly] ?: true,
                 subsonicServerUrl = preferences[Keys.SubsonicServerUrl]
                     ?.let(::normalizeSubsonicBaseUrl)
                     ?.takeIf { it.isNotBlank() },
@@ -899,6 +900,10 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.LyricsColorMode] = value }
     }
 
+    suspend fun setLyricsBackdrop(value: String) {
+        context.echoSettings.edit { it[Keys.LyricsBackdrop] = EchoLyricsBackdrop.fromId(value).id }
+    }
+
     suspend fun setLyricsAlignment(value: String) {
         context.echoSettings.edit { it[Keys.LyricsAlignment] = normalizeLyricsAlignment(value) }
     }
@@ -1267,9 +1272,6 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.WatchedFolderRescanEnabled] = enabled }
     }
 
-    suspend fun setOfflineWifiOnly(enabled: Boolean) {
-        context.echoSettings.edit { it[Keys.OfflineWifiOnly] = enabled }
-    }
 
     suspend fun watchedFolderRescanEnabled(): Boolean =
         context.echoSettings.data.first()[Keys.WatchedFolderRescanEnabled]
@@ -1755,6 +1757,7 @@ class EchoSettingsStore(
         val UiFontScale = floatPreferencesKey("ui_font_scale")
         val UiDensityScale = floatPreferencesKey("ui_density_scale")
         val LyricsPageStyle = stringPreferencesKey("lyrics_page_style")
+        val LyricsBackdrop = stringPreferencesKey("lyrics_backdrop")
         val LyricsFontFamily = stringPreferencesKey("lyrics_font_family")
         val LyricsFontScale = floatPreferencesKey("lyrics_font_scale")
         val LyricsColorMode = stringPreferencesKey("lyrics_color_mode")
@@ -1798,7 +1801,6 @@ class EchoSettingsStore(
         val EchoLinkSharePhoneLibraryEnabled = booleanPreferencesKey("echo_link_share_phone_library_enabled")
         val LibrarySelectedSource = stringPreferencesKey("library_selected_source")
         val WatchedFolderRescanEnabled = booleanPreferencesKey("watched_folder_rescan_enabled")
-        val OfflineWifiOnly = booleanPreferencesKey("offline_wifi_only")
         val WatchedLibraryTrees = stringPreferencesKey("watched_library_trees")
         val LastPlaybackSession = stringPreferencesKey("last_playback_session")
         val SubsonicServerUrl = stringPreferencesKey("subsonic_server_url")

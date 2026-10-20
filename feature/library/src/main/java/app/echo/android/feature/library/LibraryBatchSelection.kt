@@ -174,7 +174,7 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
                     count = selection.selected.size,
                     busy = busy,
                     error = error,
-                    canEditTags = selection.selected.isNotEmpty() && selection.selected.values.all { it.source.isLocalAudioFile },
+                    canEditTags = selection.selected.isNotEmpty() && selection.selected.values.all { it.canEditFileTags() },
                     canDelete = actions.delete != null,
                     deleting = selection.deletingIds.isNotEmpty(),
                     onExit = { selection.exit(); error = false },

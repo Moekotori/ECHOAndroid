@@ -12,6 +12,7 @@ import app.echo.android.model.connect.EchoSyncSelection
 internal fun rememberLibrarySyncActions(viewModel: EchoAndroidViewModel, remoteClient: EchoRemoteClient): LibrarySyncActions =
     remember(viewModel, remoteClient) {
         var session: EchoLibrarySyncSession? = null
+        var personalSession: EchoLibrarySyncSession? = null
         var complete: app.echo.android.LibraryReconcileController? = null
         fun coordinator(): app.echo.android.LibraryReconcileController = complete ?: viewModel.reconcile(remoteClient.librarySyncSession(),checkNotNull(remoteClient.status.value.endpoint).id).also { complete = it }
         LibrarySyncActions(
@@ -24,6 +25,17 @@ internal fun rememberLibrarySyncActions(viewModel: EchoAndroidViewModel, remoteC
             preview = { choices -> viewModel.librarySync.preview(checkNotNull(session), choices) },
             apply = { plan -> viewModel.librarySync.apply(checkNotNull(session), plan) },
             advanced = app.echo.android.feature.connect.LibraryReconcileActions(
-                index = { complete = null; coordinator().index() },preview = { coordinator().preview(it) },apply = { draft,choice -> coordinator().apply(draft,choice) }),
+                index = { complete = null; coordinator().index() },preview = { coordinator().preview(it) },apply = { draft,choice -> coordinator().apply(draft,choice) },
+                personalState = app.echo.android.feature.connect.PersonalStateSyncActions(
+                    preview = {
+                        val target = remoteClient.librarySyncSession()
+                        viewModel.personalStateSync.preview(target).also { personalSession = target }
+                    },
+                    apply = { reviewed, fromPc -> viewModel.personalStateSync.apply(checkNotNull(personalSession), reviewed, fromPc) },
+                    resume = { reviewed ->
+                        val (track, position) = viewModel.personalStateSync.resumeTrack(checkNotNull(personalSession), reviewed)
+                        viewModel.resumePersonalTrack(track, position)
+                    },
+                )),
         )
     }

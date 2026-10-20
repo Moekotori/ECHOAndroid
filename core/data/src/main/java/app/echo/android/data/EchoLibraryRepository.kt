@@ -868,10 +868,19 @@ class EchoLibraryRepository(
         trackId: String,
         lyricsText: String? = null,
         artworkUri: String? = null,
+        composerModified: Boolean = false,
+        genreModified: Boolean = false,
     ): EmbeddedTagWriteResult {
         val dao = database.trackDao()
         val current = dao.getTrackById(trackId) ?: return EmbeddedTagWriteResult.Failed
-        val fields = fieldsForWrite(current, lyricsText = lyricsText, artworkUri = artworkUri)
+        val fields = try {
+            fieldsForWrite(current, lyricsText = lyricsText, artworkUri = artworkUri).copy(
+                composerModified = composerModified,
+                genreModified = genreModified,
+            )
+        } catch (_: EmbeddedArtworkEncodingException) {
+            return EmbeddedTagWriteResult.Failed
+        }
         val fileWrite = writeEmbeddedTags(current, fields)
         persistWrittenFileStats(dao, current, fileWrite)
         return fileWrite
@@ -915,11 +924,15 @@ class EchoLibraryRepository(
             artworkUri = trimmed,
             metadataEditedAtEpochMs = System.currentTimeMillis(),
         ).withFingerprint()
+        val fields = try {
+            fieldsForWrite(updated, artworkUri = trimmed)
+        } catch (_: EmbeddedArtworkEncodingException) {
+            return TrackMetadataUpdateResult(false, EmbeddedTagWriteResult.Failed)
+        }
         if (!current.hasSameUserMetadata(updated)) {
             dao.upsertBatchWithFts(listOf(updated))
             rebuildSummariesIfNeeded(dao, current.toSummaryKeySet() + updated.toSummaryKeySet())
         }
-        val fields = fieldsForWrite(updated, artworkUri = trimmed)
         val fileWrite = writeEmbeddedTags(updated, fields)
         persistWrittenFileStats(dao, updated, fileWrite)
         return TrackMetadataUpdateResult(indexUpdated = true, fileWrite = fileWrite)

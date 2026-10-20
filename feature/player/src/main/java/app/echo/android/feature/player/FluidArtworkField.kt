@@ -13,7 +13,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** Soft, overlapping elliptical fields. Shaders, paints and matrices are reused on every frame. */
-internal class FluidArtworkField(palette: ArtworkPalette) {
+internal class FluidArtworkField(palette: ArtworkPalette) : BackdropField {
     private val base = Paint().apply { color = palette.deep.toArgb() }
     private val fields = arrayOf(
         Field(palette.vibrant, 0.22f, 0.20f, 0.0),
@@ -22,7 +22,7 @@ internal class FluidArtworkField(palette: ArtworkPalette) {
         Field(palette.deep, 0.80f, 0.90f, 5.4),
     )
 
-    fun draw(canvas: Canvas, width: Float, height: Float, elapsedMs: Long, opacity: Float) {
+    override fun draw(canvas: Canvas, width: Float, height: Float, elapsedMs: Long, opacity: Float) {
         if (width <= 0f || height <= 0f || opacity <= 0f) return
         val alpha = (opacity.coerceIn(0f, 1f) * 255f).toInt()
         base.alpha = alpha

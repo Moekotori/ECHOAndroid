@@ -80,7 +80,27 @@ class LocalAudioFileTypesTest {
         assertTrue("%.ac3" in args)
         assertTrue("%.dts" in args)
         assertTrue("%.amr" in args)
-        assertFalse("%.mp3" in args)
+        assertTrue("%.mp3" in args)
+        assertTrue(listOf("%.wav", "%.wave", "%.mka", "%.adts", "%.flac").all { it in args })
+    }
+
+    @Test
+    fun fallbackExtensionsStayInSyncWithRecognizedFormats() {
+        val extensions = listOf("flac", "ape", "wv", "wma", "asf", "mp3", "mp2", "m4a", "m4b",
+            "aac", "ogg", "oga", "opus", "wav", "wave", "adts", "aiff", "aif", "aifc", "dsf",
+            "dff", "mka", "ac3", "eac3", "ec3", "dts", "amr")
+        assertEquals(extensions.toSet(), MediaStoreFallbackExtensions.toSet())
+        assertTrue(extensions.all { LocalAudioFileTypes.mimeTypeForFileName("song.$it") != null })
+        assertFalse("wvc" in MediaStoreFallbackExtensions)
+    }
+
+    @Test
+    fun parameterizedAndPaddedMimeTypesAreNormalized() {
+        assertEquals("audio/wav", LocalAudioFileTypes.resolvedMimeType("track", " Audio/WAV; codecs=1 "))
+        assertTrue(LocalAudioFileTypes.isSupported("track", " Application/Ogg; codecs=opus "))
+        assertFalse(LocalAudioFileTypes.isSupported("movie.m4a", " video/mp4; codecs=avc1 "))
+        assertTrue(LibraryWavTagPolicy.isWavContainer(" Audio/X-WAV; codecs=1 "))
+        assertTrue(LibraryWavTagPolicy.isWavContainer(null, "album.WAVE"))
     }
 
     @Test

@@ -189,8 +189,10 @@ internal object WavTagRewriter {
         values["IART"] = utf8Z(fields.artist)
         fields.album?.let { values["IPRD"] = utf8Z(it) }
         fields.genre?.let { values["IGNR"] = utf8Z(it) }
-        fields.trackNumber?.let { values["ITRK"] = utf8Z(it.toString()) }
-        fields.year?.let { values["ICRD"] = utf8Z(it.toString()) }
+        val originalValues = existing?.let(::parseInfoItems).orEmpty().toMap()
+        fun original(key: String): String? = originalValues[key]?.let(::decodeLegacyTagText)
+        tagNumberWithTotal(fields.trackNumber, original("ITRK") ?: original("IPRT"))?.let { values["ITRK"] = utf8Z(it) }
+        tagDateWithYear(fields.year, original("ICRD"))?.let { values["ICRD"] = utf8Z(it) }
         val payload = ArrayList<Byte>()
         "INFO".toByteArray(StandardCharsets.US_ASCII).forEach { payload += it }
         values.forEach { (id, value) ->

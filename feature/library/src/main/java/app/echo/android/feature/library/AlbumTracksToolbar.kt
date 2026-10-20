@@ -29,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
-import app.echo.android.model.library.LibraryOfflinePin
 
 /** Album playback actions stay beside the tracks rather than occupying a separate row. */
 @Composable
@@ -38,8 +37,6 @@ internal fun AlbumTracksToolbar(
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
     onPlayOnPc: (() -> Unit)? = null,
-    offlinePin: LibraryOfflinePin? = null,
-    onToggleOffline: (() -> Unit)? = null,
     onPinShortcut: ((Boolean) -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -77,7 +74,7 @@ internal fun AlbumTracksToolbar(
                 onClick = onShuffle,
             )
         }
-        if (onPlayOnPc != null || onToggleOffline != null || onPinShortcut != null) {
+        if (onPlayOnPc != null || onPinShortcut != null) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (onPinShortcut != null) LibraryDesktopShortcutButton(onPinShortcut)
                 if (onPlayOnPc != null) {
@@ -85,13 +82,6 @@ internal fun AlbumTracksToolbar(
                         icon = Icons.Rounded.PlayArrow,
                         label = stringResource(R.string.feature_library_play_on_pc_7c21a4),
                         onClick = onPlayOnPc,
-                    )
-                }
-                if (onToggleOffline != null) {
-                    AlbumSecondaryAction(
-                        icon = libraryOfflinePinIcon(offlinePin),
-                        label = libraryOfflinePinLabel(offlinePin),
-                        onClick = onToggleOffline,
                     )
                 }
             }

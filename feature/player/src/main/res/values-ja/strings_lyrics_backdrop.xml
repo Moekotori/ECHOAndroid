@@ -1,0 +1,6 @@
+<resources>
+    <string name="lyrics_backdrop_title">背景スタイル</string>
+    <string name="lyrics_backdrop_fluid">フルイド</string>
+    <string name="lyrics_backdrop_mesh">グロー</string>
+    <string name="lyrics_backdrop_halftone">ハーフトーン</string>
+</resources>

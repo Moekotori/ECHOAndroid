@@ -399,6 +399,7 @@ internal fun TrackContextMenu(
 ) {
     val selection = LocalLibraryBatchSelection.current
     val requestTrackDeletion = LocalLibraryDeleteTrack.current
+    val openTrackVersions = LocalTrackVersionsAction.current
     val selecting = selection?.active == true
     val selected = selecting && track.id in selection.selected
     val canSelect = selection?.locked != true && (!selecting || selected || selection.selected.size < LibraryBatchSelection.Limit)
@@ -417,7 +418,7 @@ internal fun TrackContextMenu(
             !editorSaving || value != SheetValue.Hidden
         },
     )
-    val canEditMetadata = onUpdateTrackMetadata != null && track.source.isLocalAudioFile
+    val canEditMetadata = onUpdateTrackMetadata != null && track.canEditFileTags()
 
     Box(modifier = modifier
         .libraryDeletionFeedback(track.id in selection?.deletingIds.orEmpty())
@@ -497,6 +498,12 @@ internal fun TrackContextMenu(
                     },
                 )
             }
+            if (openTrackVersions != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(L10nR.string.track_versions_title)) },
+                    onClick = { expanded = false; openTrackVersions(track) },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(L10nR.string.feature_library_track_info_36a07b)) },
                 leadingIcon = {
@@ -559,6 +566,7 @@ internal fun TrackContextMenu(
                         onOpenAlbum?.invoke()
                     },
                     onEdit = { sheetMode = TrackSheetMode.Editor },
+                    onVersions = openTrackVersions?.let { open -> { sheetMode = null; open(track) } },
                     onDelete = requestTrackDeletion?.let { request ->
                         {
                             sheetMode = null
@@ -626,7 +634,6 @@ internal fun TrackContextMenu(
                         onSavingChange = { editorSaving = it },
                         onPickArtwork = onPickArtwork?.let { pick ->
                             {
-                                sheetMode = null
                                 pick(track)
                             }
                         },
@@ -657,7 +664,6 @@ internal fun TrackContextMenu(
             onSavingChange = { editorSaving = it },
             onPickArtwork = onPickArtwork?.let { pick ->
                 {
-                    showEditor = false
                     pick(track)
                 }
             },

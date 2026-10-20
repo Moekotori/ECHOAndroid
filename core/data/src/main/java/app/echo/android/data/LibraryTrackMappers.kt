@@ -141,6 +141,7 @@ internal fun LibraryTrackEntity.withPreservedUserMetadata(
         discNumber = editedTrack.discNumber,
         year = editedTrack.year,
         composer = editedTrack.composer,
+        genre = editedTrack.genre,
         metadataEditedAtEpochMs = editedTrack.metadataEditedAtEpochMs,
     )
 }

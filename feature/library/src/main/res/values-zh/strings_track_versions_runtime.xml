@@ -1,0 +1,4 @@
+<resources>
+    <string name="track_versions_error">无法读取或保存歌曲版本，请重试。</string>
+    <string name="track_versions_play_error">无法准备首选歌曲版本，请重试。</string>
+</resources>

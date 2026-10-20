@@ -62,12 +62,14 @@ internal fun LocalPlaylistPanel(
     onPlayPlaylist: (EchoPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     experienceActions: LibraryExperienceActions? = null,
+    remoteManagement: RemoteLibraryWritebackActions? = null,
     onRenamePlaylist: (EchoPlaylist, String) -> Unit,
     onDeletePlaylist: (EchoPlaylist) -> Unit,
     onImportM3uPlaylist: () -> Unit = {},
     onExportM3uPlaylist: (EchoPlaylist) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    var remoteVisible by remember { mutableStateOf(false) }
     var createVisible by remember { mutableStateOf(false) }
     var smartEditorVisible by remember { mutableStateOf(false) }
     var editingSmart by remember { mutableStateOf<EchoPlaylist?>(null) }
@@ -93,6 +95,9 @@ internal fun LocalPlaylistPanel(
                 onImportM3uPlaylist = onImportM3uPlaylist,
                 onCreateSmartPlaylist = experienceActions?.let { { editingSmart = null; smartEditorVisible = true } },
             )
+            if (remoteManagement != null) TextButton(onClick = { remoteVisible = true }) {
+                Text(stringResource(L10nR.string.remote_playlist_manage))
+            }
             if (toolsError) Text(stringResource(L10nR.string.smart_pin_error), color = MaterialTheme.colorScheme.error)
         }
         if (sections.isEmpty() && query.isNotBlank()) {
@@ -132,6 +137,7 @@ internal fun LocalPlaylistPanel(
         }
     }
 
+    if (remoteVisible && remoteManagement != null) RemotePlaylistManager(remoteManagement) { remoteVisible = false }
     if (smartEditorVisible && experienceActions != null) SmartPlaylistEditor(editingSmart, experienceActions) { smartEditorVisible = false }
     if (createVisible) {
         PlaylistNameDialog(

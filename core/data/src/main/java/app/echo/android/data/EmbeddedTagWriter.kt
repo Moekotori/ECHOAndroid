@@ -39,7 +39,13 @@ class EmbeddedTagWriter(
         artworkUri: String? = null,
     ): AudioTagFields {
         val encoded = artworkUri?.takeIf { it.isNotBlank() }?.let { uri ->
-            runCatching { EmbeddedArtworkEncoder.encode(resolver, Uri.parse(uri)) }.getOrNull()
+            try {
+                EmbeddedArtworkEncoder.encode(resolver, Uri.parse(uri))
+                    ?: throw EmbeddedArtworkEncodingException()
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                throw EmbeddedArtworkEncodingException(error)
+            }
         }
         return track.toAudioTagFields().copy(
             lyrics = lyricsText,
@@ -62,9 +68,7 @@ class EmbeddedTagWriter(
         track: LibraryTrackEntity,
         fields: AudioTagFields,
     ): EmbeddedTagWriteResult {
-        if (!LibraryScanPolicy.isLocalLibrarySource(track.source) &&
-            !LibrarySource(track.source).isLocalAudioFile
-        ) {
+        if (!track.canWriteEmbeddedTags()) {
             return EmbeddedTagWriteResult.NotLocal
         }
         val uri = track.contentUri.takeIf { it.isNotBlank() }?.let(Uri::parse)
@@ -103,15 +107,21 @@ class EmbeddedTagWriter(
                     if (!fileFieldsMatch(tagged, fields)) {
                         EmbeddedTagWriteResult.Failed
                     } else {
+                        // Once replacement starts, every exceptional exit must retain the original.
+                        keepBackup = true
                         when (replaceWithRestore(uri, tagged, original, fields)) {
                             EmbeddedTagReplaceStatus.Replaced -> {
+                                keepBackup = false
                                 notifyMediaStore(uri, tagged, fields, track)
                                 EmbeddedTagWriteResult.Written(
                                     sizeBytes = tagged.length(),
                                     dateModifiedSeconds = System.currentTimeMillis() / 1000L,
                                 )
                             }
-                            EmbeddedTagReplaceStatus.Restored -> EmbeddedTagWriteResult.Failed
+                            EmbeddedTagReplaceStatus.Restored -> {
+                                keepBackup = false
+                                EmbeddedTagWriteResult.Failed
+                            }
                             EmbeddedTagReplaceStatus.BackupKept -> {
                                 keepBackup = true
                                 EmbeddedTagWriteResult.Failed
@@ -171,7 +181,12 @@ class EmbeddedTagWriter(
     }
 
     private fun writeAccess(uri: Uri, source: String): EmbeddedTagWriteResult? {
-        if (canOpenReadWrite(uri) || hasPersistedWriteAccess(uri)) return null
+        val canWrite = try {
+            canOpenReadWrite(uri)
+        } catch (error: SecurityException) {
+            return mediaStoreConsentOrFailed(uri, source, error)
+        }
+        if (canWrite || hasPersistedWriteAccess(uri)) return null
         val isMediaStore = source == LibrarySource.MediaStore.id ||
             uri.authority?.contains("media") == true
         return when {
@@ -211,7 +226,11 @@ class EmbeddedTagWriter(
     private fun canOpenReadWrite(uri: Uri): Boolean =
         runCatching {
             resolver.openFileDescriptor(uri, "rw")?.close() ?: return false
-        }.isSuccess
+            true
+        }.getOrElse { error ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && error is RecoverableSecurityException) throw error
+            false
+        }
 
     private fun hasPersistedWriteAccess(uri: Uri): Boolean {
         if (appContext.checkUriPermission(
@@ -253,40 +272,17 @@ class EmbeddedTagWriter(
         fields: AudioTagFields,
     ): EmbeddedTagReplaceStatus {
         val fileTarget = writableLocalFile(uri)
-        try {
-            if (fileTarget != null) {
-                EmbeddedTagFileReplace.replace(fileTarget, tagged)
-            } else {
-                replaceUriContents(uri, tagged)
-            }
-            if (liveFieldsMatch(uri, fields)) return EmbeddedTagReplaceStatus.Replaced
-            Log.w(TAG, "Embedded tag verify failed for $uri, restoring original.")
-        } catch (error: SecurityException) {
-            throw error
-        } catch (error: Exception) {
-            Log.w(TAG, "Unable to replace $uri, restoring original.", error)
-        }
-        return restoreOriginal(uri, fileTarget, original)
-    }
-
-    private fun restoreOriginal(
-        uri: Uri,
-        fileTarget: File?,
-        original: File,
-    ): EmbeddedTagReplaceStatus {
-        return try {
-            if (fileTarget != null) {
-                EmbeddedTagFileReplace.replace(fileTarget, original)
-            } else {
-                replaceUriContents(uri, original)
-            }
-            EmbeddedTagReplaceStatus.Restored
-        } catch (error: SecurityException) {
-            throw error
-        } catch (error: Exception) {
-            Log.e(TAG, "Unable to restore $uri. Backup kept at ${original.absolutePath}.", error)
-            EmbeddedTagReplaceStatus.BackupKept
-        }
+        return replaceEmbeddedTagsWithRestore(
+            replace = {
+                if (fileTarget != null) EmbeddedTagFileReplace.replace(fileTarget, tagged)
+                else replaceUriContents(uri, tagged)
+            },
+            verify = { liveFieldsMatch(uri, fields) },
+            restore = {
+                if (fileTarget != null) EmbeddedTagFileReplace.replace(fileTarget, original)
+                else replaceUriContents(uri, original)
+            },
+        )
     }
 
     private fun fileFieldsMatch(file: File, fields: AudioTagFields): Boolean {

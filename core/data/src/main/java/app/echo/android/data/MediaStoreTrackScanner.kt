@@ -734,7 +734,7 @@ class MediaStoreTrackScanner(
                 sampleRateHz = ape.sampleRateHz,
             ).withFingerprint()
         }
-        if (EchoDsdMetadata.isDsd(mimeType, relativePath) || EchoDsdMetadata.isDsd(mimeType, contentUri)) {
+        if (EchoDsdMetadata.isDsd(mimeType, fileName) || EchoDsdMetadata.isDsd(mimeType, contentUri)) {
             val dsd = runCatching {
                 contentResolver.openInputStream(Uri.parse(contentUri))?.use(EchoDsdMetadata::read)
             }.onFailure { error ->

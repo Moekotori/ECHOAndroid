@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scrobble_pending">%1$s escuchas guardadas pendientes de envío</string>
+</resources>

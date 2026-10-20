@@ -78,6 +78,7 @@ internal fun TrackActionSheet(
     onInfo: () -> Unit,
     onSelectForBatch: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
+    onVersions: (() -> Unit)? = null,
 ) {
     // Constrain content, not the ModalBottomSheet: its anchors need the full window height.
     // Leave room for the drag handle and navigation inset, keeping the panel near 2/3 height.
@@ -177,6 +178,9 @@ internal fun TrackActionSheet(
                 enabled = canPickArtwork,
                 onClick = onPickArtwork,
             )
+            if (onVersions != null) {
+                TrackActionRow(stringResource(L10nR.string.track_versions_title), Icons.Rounded.Album, enabled = true, onClick = onVersions)
+            }
             TrackActionRow(stringResource(L10nR.string.feature_library_track_info_36a07b), Icons.Rounded.Info, enabled = true, onClick = onInfo)
         }
     }

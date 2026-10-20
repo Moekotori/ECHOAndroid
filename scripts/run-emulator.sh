@@ -171,11 +171,23 @@ install_apk() {
 gradlew_install_debug() {
   local serial="$1"
   log "Building and installing debug via Gradle..."
-  ANDROID_SERIAL="$serial" ./gradlew :app:installDebug --quiet
+  ./gradlew :app:assembleDebug --console=plain
+  resolve_debug_apk
+  install_apk "$serial" "$DEBUG_APK"
+}
+
+resolve_debug_apk() {
+  local metadata="$ROOT/app/build/outputs/apk/debug/output-metadata.json"
+  if [[ -f "$metadata" ]] && command -v python3 >/dev/null; then
+    local filename
+    filename="$(python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); assert len(data["elements"]) == 1, "Expected one debug APK"; print(data["elements"][0]["outputFile"])' "$metadata")"
+    DEBUG_APK="$ROOT/app/build/outputs/apk/debug/$filename"
+  fi
 }
 
 ensure_app_installed() {
   local serial="$1"
+  resolve_debug_apk
 
   if [[ "$LAUNCH_ONLY" -eq 1 ]]; then
     package_installed "$serial" || die "$PACKAGE is not installed. Re-run without --launch-only."

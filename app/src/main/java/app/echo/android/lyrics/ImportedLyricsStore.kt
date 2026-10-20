@@ -47,6 +47,26 @@ class ImportedLyricsStore(
             }
             .first()
 
+    suspend fun offsetsForSync(): Map<String, Long> {
+        val raw = context.echoImportedLyrics.data.first()[Keys.OFFSETS] ?: return emptyMap()
+        require(raw.length <= MAX_BYTES)
+        val offsets = JSONObject(raw)
+        require(offsets.length() <= 10_000)
+        return offsets.keys().asSequence().sorted().take(app.echo.android.model.connect.EchoPersonalStateLimits.Offsets)
+            .associateWith { offsets.optLong(it, 0L).coerceIn(-30000L, 30000L) }
+    }
+
+    /** Sync must not overwrite an offset edited after the user reviewed the preview. */
+    suspend fun setLyricsOffsetIfUnchanged(trackId: String, expectedMs: Long, offsetMs: Long) {
+        require(offsetMs in -30000L..30000L)
+        context.echoImportedLyrics.edit { preferences ->
+            val offsets = preferences[Keys.OFFSETS]?.let(::parseBindings) ?: JSONObject()
+            check(offsets.optLong(trackId, 0L) == expectedMs) { "Lyrics offset changed after preview" }
+            if (offsetMs == 0L) offsets.remove(trackId) else offsets.put(trackId, offsetMs)
+            preferences[Keys.OFFSETS] = offsets.toString()
+        }
+    }
+
     suspend fun setLyricsOffset(trackId: String, offsetMs: Long) {
         context.echoImportedLyrics.edit { preferences ->
             val offsets = preferences[Keys.OFFSETS]?.let(::parseBindings) ?: JSONObject()

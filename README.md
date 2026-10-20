@@ -34,13 +34,13 @@ Android 版可以独立使用；电脑联动需要运行支持 Echo Link 的 PC 
 
 | 场景 | 功能 |
 | --- | --- |
-| 整理自己的音乐 | 本地目录扫描，歌曲、专辑、艺术家与歌单浏览，多选与批量标签编辑，进阶智能歌单与首页固定，失效文件修复，封面与元数据管理 |
-| 专心听歌 | 播放队列、随机与循环、A–B 片段循环、片段收藏中心、后台播放、动态歌词、歌词编辑与逐句打轴、悬浮歌词、歌词卡片分享和睡眠定时，以及听歌统计 |
-| 连接远程曲库 | Subsonic、WebDAV、SMB 共享、Jellyfin / Emby 音乐来源 |
+| 整理自己的音乐 | 本地目录扫描，歌曲、专辑、艺术家与歌单浏览，多选与批量标签编辑，进阶智能歌单与首页固定，失效文件修复，封面与元数据管理，同曲多来源版本关联及首选版本 |
+| 专心听歌 | 播放队列、随机与循环、A–B 片段循环、片段收藏中心、后台播放、动态歌词、歌词编辑与逐句打轴、悬浮歌词、歌词卡片分享和睡眠定时，以及听歌统计，Last.fm / ListenBrainz 断网记录补报 |
+| 连接远程曲库 | Subsonic、WebDAV、SMB 共享、Jellyfin / Emby 音乐来源；Subsonic / Navidrome 支持服务器歌单编辑与收藏写回 |
 | 调整声音 | 均衡器、OPRA 耳机校正、ReplayGain，以及可选的播放过渡设置 |
 | 使用外置设备 | USB 独占输出与严格整数直通模式，具体支持取决于音源格式和 DAC 能力 |
 | 按喜好布置界面 | 主题、背景、外观设置与多语言界面 |
-| 连接电脑 | Echo Link 配对、PC 曲库浏览、播放遥控与串流，以及收藏和普通歌单的双向合并同步 |
+| 连接电脑 | Echo Link 配对、PC 曲库浏览、播放遥控与串流，以及收藏和普通歌单的双向合并同步；支持个人听歌状态预览同步和主动续听，需对应 PC 版本 |
 | 查找与迁移 | 统一搜索曲库、歌单、片段与已连接 PC；迁移包包含历史、歌词选择与偏移、首页及播放器设置和外观素材，恢复前展示预览 |
 
 声音功能的适用范围见 [均衡器与 OPRA](./docs/eq-opra.md)、[播放过渡](./docs/playback-transitions.md) 和 [USB 输出说明](./docs/usb-bit-perfect.md)。
@@ -99,6 +99,19 @@ git config core.autocrlf false
 ```
 
 Linux / macOS 使用 `./gradlew assembleDebug`。APK 输出到 `app/build/outputs/apk/debug/`。首次构建需要下载依赖和构建原生音频库。
+
+macOS 开发时，双击项目根目录的 `打开Echo.command`，或执行：
+
+```bash
+./scripts/hot-reload.sh
+# 指定模拟器，或只启动一次：
+./scripts/hot-reload.sh --avd ECHO_API_36
+./scripts/hot-reload.sh --once
+```
+
+需要 Python 3、Android SDK、JDK 21 和一个已创建的 AVD。脚本自动启动模拟器、构建并安装当前代码，随后监听 `app`、`core`、`feature` 的源码/资源及 Gradle 配置；连续保存会合并，构建期间的改动会在下一轮更新。构建失败后修复并保存即可重试，Ctrl+C 停止监听。
+
+这里的自动刷新采用增量构建、覆盖安装再重启，保留应用数据，但会中断播放且不保留临时页面状态。不重启的 Compose UI 热更新请使用 [Android Studio Live Edit](https://developer.android.com/develop/ui/compose/tooling/iterative-development)。原有 Windows 入口为 `scripts/hot-reload.cmd`。
 
 提交前按改动范围运行检查，完整 CI 使用：
 

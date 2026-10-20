@@ -23,4 +23,13 @@ class EchoAdaptiveLayoutTest {
         assertTrue(EchoLayoutInfo(1200f, 800f, 1.3f).supportsTwoPanes())
         assertTrue(EchoLayoutInfo(760f, 1000f).supportsTwoPanes(760f))
     }
+    @Test fun phoneLandscapeUsesReadablePanesAfterNavigationInsets() {
+        assertTrue(EchoLayoutInfo(760f, 360f).supportsTwoPanes())
+        assertTrue(EchoLayoutInfo(720f, 320f).supportsTwoPanes(760f))
+        assertFalse(EchoLayoutInfo(684f, 360f).supportsTwoPanes())
+        assertFalse(EchoLayoutInfo(760f, 290f).supportsTwoPanes())
+        assertFalse(EchoLayoutInfo(760f, 360f, 1.3f).supportsTwoPanes())
+        assertFalse(EchoLayoutInfo(760f, 1000f).supportsTwoPanes())
+    }
+
 }

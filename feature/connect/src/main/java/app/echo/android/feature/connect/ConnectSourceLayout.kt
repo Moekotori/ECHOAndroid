@@ -17,7 +17,7 @@ internal fun ConnectSourceLayout(content: @Composable FlowRowScope.() -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            maxItemsInEachRow = if (maxWidth >= 760.dp * fontScale) 2 else 1,
+            maxItemsInEachRow = if (maxWidth >= 680.dp * fontScale) 2 else 1,
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp), content = content,
         )

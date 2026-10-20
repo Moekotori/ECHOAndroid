@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_versions_title">楽曲のバージョン</string>
+    <string name="track_versions_explanation">曲名、アーティスト、アルバム、長さで関連付けます。元の曲とプレイリストは保持されます。優先ソースを利用できない場合は再生開始時に別のバージョンを使用します。</string>
+    <string name="track_versions_auto">自動 · ローカル優先</string>
+    <string name="track_versions_empty">インデックス済みライブラリに一致する別のバージョンはありません。</string>
+    <string name="track_versions_close">閉じる</string>
+</resources>

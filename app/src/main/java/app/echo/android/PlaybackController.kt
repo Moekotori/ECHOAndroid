@@ -432,10 +432,29 @@ internal class PlaybackController(
         withController(playWhenReady = false) { pause() }
     }
 
+    private var fileWriteResume: (() -> Unit)? = null
+    private var controllerActionRevision = 0L
+
     fun releaseCurrentItemForFileWrite(trackId: String): Boolean {
         if (currentTrackId != trackId) return false
         val mediaController = controller ?: return false
         if (shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands)) return false
+        val itemIndex = mediaController.currentMediaItemIndex
+        val item = mediaController.currentMediaItem
+        val positionMs = mediaController.currentPosition.coerceAtLeast(0L)
+        val resumePlayback = mediaController.playWhenReady
+        val revision = controllerActionRevision
+        fileWriteResume = {
+            if (controller === mediaController && currentTrackId == trackId &&
+                mediaController.currentMediaItemIndex == itemIndex && mediaController.currentMediaItem == item &&
+                mediaController.playbackState == Player.STATE_IDLE && controllerActionRevision == revision
+            ) {
+                mediaController.seekTo(positionMs)
+                mediaController.prepare()
+                mediaController.playWhenReady = resumePlayback
+                updatePlaybackCore(mediaController)
+            }
+        }
         mediaController.pause()
         mediaController.stop()
         updatePlaybackCore(mediaController)
@@ -443,16 +462,9 @@ internal class PlaybackController(
     }
 
     fun prepareAfterFileWrite(trackId: String) {
-        if (currentTrackId != trackId) return
-        val mediaController = controller ?: return
-        if (shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands)) return
-        if (
-            mediaController.playbackState == Player.STATE_IDLE &&
-            mediaController.mediaItemCount > 0
-        ) {
-            mediaController.prepare()
-        }
-        updatePlaybackCore(mediaController)
+        val resume = fileWriteResume
+        fileWriteResume = null
+        if (currentTrackId == trackId) resume?.invoke()
     }
 
     fun playPause() {
@@ -472,7 +484,7 @@ internal class PlaybackController(
     }
 
     fun seekTo(positionMs: Long) {
-        withController {
+        withController(changesPlaybackIntent = true) {
             if (EchoRadioStation.isRadio(currentMediaItem?.mediaId)) return@withController
             val recover = PlaybackSessionPolicy.shouldPrepareBeforePlay(
                 hasPlayerError = playerError != null,
@@ -522,7 +534,7 @@ internal class PlaybackController(
 
     fun skipNext() {
         resetStickyPlaybackError()
-        withController {
+        withController(changesPlaybackIntent = true) {
             seekToNextMediaItem()
             recoverAfterSkip()
         }
@@ -530,7 +542,7 @@ internal class PlaybackController(
 
     fun skipPrevious() {
         resetStickyPlaybackError()
-        withController {
+        withController(changesPlaybackIntent = true) {
             seekToPrevious()
             recoverAfterSkip()
         }
@@ -546,7 +558,7 @@ internal class PlaybackController(
         val entry = _playbackQueue.value.items.getOrNull(index)?.queueContext?.entryId ?: return
         val target = targetIndex?.let { _playbackQueue.value.items.getOrNull(it)?.queueContext?.entryId }
         resetStickyPlaybackError()
-        withController {
+        withController(changesPlaybackIntent = true) {
             sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
                 putString("action", action)
                 putString("entry", entry)
@@ -557,7 +569,7 @@ internal class PlaybackController(
 
     fun clearQueue() {
         resetStickyPlaybackError()
-        withController {
+        withController(changesPlaybackIntent = true) {
             if (mediaItemCount <= 0) return@withController
             removeMediaItems(0, mediaItemCount)
             replaceQueueLookups(emptyList())
@@ -569,7 +581,7 @@ internal class PlaybackController(
         if (uris.isEmpty()) return
         require(uris.size <= 200)
         // Queue the receipt behind saved-session restoration when reconnecting to the service.
-        withController {
+        withController(changesPlaybackIntent = true) {
             sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
                 putString("action", EchoPlaybackSessionCommands.EDIT_REMOVE_DELETED_FILES)
                 putStringArrayList("uris", ArrayList(uris))
@@ -680,7 +692,7 @@ internal class PlaybackController(
         }
         pendingRestorePlayUntilWebDavAuth = false
         pendingRestoreQueueUris = emptyList()
-        withController { recoverAndPlay() }
+        withController(playWhenReady = true) { recoverAndPlay() }
     }
 
     fun cyclePlayMode() {
@@ -704,6 +716,7 @@ internal class PlaybackController(
 
     fun clear() {
         if (cleared) return
+        fileWriteResume = null
         persistPlaybackSession(force = true)
         cleared = true
         controllerGeneration += 1
@@ -1035,9 +1048,11 @@ internal class PlaybackController(
     private fun withController(
         replacesQueue: Boolean = false,
         playWhenReady: Boolean? = if (replacesQueue) true else null,
+        changesPlaybackIntent: Boolean = replacesQueue || playWhenReady != null,
         action: MediaController.() -> Unit,
     ) {
         if (cleared) return
+        if (changesPlaybackIntent) controllerActionRevision++
         val mediaController = controller
         if (
             mediaController != null && mediaController.isConnected &&

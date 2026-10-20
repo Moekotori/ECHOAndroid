@@ -49,6 +49,9 @@ data class TrackIdPathRow(
 
 @Dao
 interface LibraryTrackDao {
+    @Query("SELECT * FROM library_tracks WHERE source = :source AND (:query = '' OR title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE, id")
+    fun pageRemoteWritebackCandidates(source: String, query: String): PagingSource<Int, LibraryTrackEntity>
+
     @Query(LibraryAudioProfileQuery)
     suspend fun localAudioProfile(): List<LibraryAudioProfileBucket>
 

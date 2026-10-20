@@ -9,6 +9,18 @@ import org.junit.Test
 
 class LibraryMetadataPreserveTest {
     @Test
+    fun explicitComposerClearAndEditedGenreSurviveRescan() {
+        val current = compilationTracks().first().copy(composer = "Composer", genre = "Old genre")
+        val update = EchoTrackMetadataUpdate(current.id, current.title, current.artist, current.album,
+            current.albumArtist, current.trackNumber, current.discNumber, current.year, composer = "", genre = "New genre")
+        val edited = current.withUserMetadata(update, 99L)
+        assertEquals(null, edited.composer)
+        val rescanned = current.withPreservedUserMetadata(edited)
+        assertEquals(null, rescanned.composer)
+        assertEquals("New genre", rescanned.genre)
+    }
+
+    @Test
     fun titleOrderArtworkAndFileStatsEditsKeepCompilationThroughRescan() {
         val tracks = compilationTracks()
         val current = tracks.first()

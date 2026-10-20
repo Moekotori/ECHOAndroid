@@ -5,6 +5,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 interface EchoLibrarySyncSession {
+    suspend fun personalState(): EchoPersonalState = throw EchoSyncUnsupportedException()
+    suspend fun importPersonalState(expectedRevision: String, state: EchoPersonalState): EchoPersonalStateResult = throw EchoSyncUnsupportedException()
     suspend fun snapshot(key: String): EchoSyncState = throw EchoSyncUnsupportedException()
     suspend fun replace(expected: String,desired: EchoSyncState): EchoSyncApplyResult = throw EchoSyncUnsupportedException()
     suspend fun collections(): List<EchoSyncCollection>

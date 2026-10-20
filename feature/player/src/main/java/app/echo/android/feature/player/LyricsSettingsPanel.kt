@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoTheme
+import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
 import kotlin.math.roundToInt
 import app.echo.android.feature.player.R as L10nR
@@ -44,6 +45,8 @@ internal fun LyricsSettingsPanel(
     lyricsPageStyle: EchoLyricsPageStyle,
     playerPageStyle: String,
     onLyricsPageStyleChange: (String) -> Unit,
+    lyricsBackdrop: String,
+    onLyricsBackdropChange: (String) -> Unit,
     lyricsFontMode: String,
     importedFontUri: String?,
     lyricsFontScale: Float,
@@ -140,6 +143,9 @@ internal fun LyricsSettingsPanel(
                         )
                         if (category == LyricsSettingsCategory.Appearance) {
                             PlayerPageStyleSelector(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle), onLyricsPageStyleChange)
+                            Text(stringResource(L10nR.string.lyrics_backdrop_title), style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                            LyricsSettingChoices(options = lyricsBackdropOptions(), selected = lyricsBackdrop, onSelect = onLyricsBackdropChange)
                         }
                         if (category == LyricsSettingsCategory.Typography) {
                             LyricsSettingChoices(options = lyricsFontOptions(), selected = lyricsFontMode, onSelect = { value ->
@@ -264,6 +270,13 @@ private fun lyricsColorLabel(mode: String): String = when (mode) {
     "mint" -> stringResource(L10nR.string.feature_player_green_d7b519)
     else -> stringResource(L10nR.string.feature_player_white_cc6c04)
 }
+
+@Composable
+private fun lyricsBackdropOptions(): List<Pair<String, String>> = listOf(
+    EchoLyricsBackdrop.Fluid.id to stringResource(L10nR.string.lyrics_backdrop_fluid),
+    EchoLyricsBackdrop.Mesh.id to stringResource(L10nR.string.lyrics_backdrop_mesh),
+    EchoLyricsBackdrop.Halftone.id to stringResource(L10nR.string.lyrics_backdrop_halftone),
+)
 
 @Composable
 private fun lyricsAlignmentLabel(mode: String): String = when (mode) {

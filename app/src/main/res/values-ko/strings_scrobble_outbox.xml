@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scrobble_pending">듣기 기록 %1$s개 제출 대기 중</string>
+</resources>

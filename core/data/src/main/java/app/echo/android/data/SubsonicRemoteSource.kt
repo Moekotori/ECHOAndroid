@@ -82,6 +82,7 @@ internal class SubsonicClient(
     private val appContext: Context? = null,
 ) {
     private val httpGet: (String) -> String? = httpGet ?: { defaultHttpGet(it, appContext) }
+    private val httpMutation: (String) -> String? = httpGet ?: { mutationHttpGet(it, appContext) }
     fun ping() {
         request("ping.view")
     }
@@ -227,6 +228,44 @@ internal class SubsonicClient(
             .filter { it.id.isNotBlank() }
     }
 
+    internal fun createPlaylist(name: String): String {
+        require(name.isNotBlank())
+        val root = request("createPlaylist.view", listOf("name" to name.trim()), mutation = true)
+        return root.optJSONObject("playlist")?.optJsonString("id")?.takeIf { it.isNotBlank() }
+            ?: error("The server did not return the created playlist ID")
+    }
+
+    internal fun renamePlaylist(id: String, name: String) {
+        require(id.isNotBlank() && name.isNotBlank())
+        request("updatePlaylist.view", listOf("playlistId" to id, "name" to name.trim()), mutation = true)
+    }
+
+    internal fun deletePlaylist(id: String) {
+        require(id.isNotBlank())
+        request("deletePlaylist.view", listOf("id" to id), mutation = true)
+    }
+
+    internal fun addPlaylistSongs(id: String, songIds: List<String>) {
+        require(id.isNotBlank() && songIds.isNotEmpty() && songIds.all(String::isNotBlank))
+        request("updatePlaylist.view", listOf("playlistId" to id) + songIds.map { "songIdToAdd" to it }, mutation = true)
+    }
+
+    internal fun removePlaylistSong(id: String, songId: String) {
+        // Removal uses live server indices, never the locally sorted or partially synced list.
+        require(id.isNotBlank() && songId.isNotBlank())
+        val playlist = request("getPlaylist.view", listOf("id" to id)).optJSONObject("playlist")
+            ?: error("The server did not return playlist entries")
+        val entries = playlist.jsonObjects("entry").ifEmpty { playlist.jsonObjects("song") }
+        val indices = entries.mapIndexedNotNull { index, song -> index.takeIf { song.optJsonString("id") == songId } }
+        if (indices.isNotEmpty()) request("updatePlaylist.view", listOf("playlistId" to id) +
+            indices.sortedDescending().map { "songIndexToRemove" to it.toString() }, mutation = true)
+    }
+
+    internal fun setStarred(songId: String, starred: Boolean) {
+        require(songId.isNotBlank())
+        request(if (starred) "star.view" else "unstar.view", listOf("id" to songId), mutation = true)
+    }
+
     fun fetchLyricsText(songId: String, artist: String, title: String): String? {
         if (songId.isNotBlank()) {
             val byId = runCatching { lyricsBySongId(songId) }.getOrNull()
@@ -282,10 +321,10 @@ internal class SubsonicClient(
             ?.takeIf { it.isNotBlank() }
     }
 
-    private fun request(path: String, params: List<Pair<String, String>> = emptyList()): JSONObject {
+    private fun request(path: String, params: List<Pair<String, String>> = emptyList(), mutation: Boolean = false): JSONObject {
         val url = buildUrl(path, params)
         val body = try {
-            httpGet(url)
+            (if (mutation) httpMutation else httpGet)(url)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: IllegalStateException) {
@@ -472,6 +511,13 @@ private val SharedSubsonicHttpClient: OkHttpClient =
             },
         )
         .build()
+
+// Mutating Subsonic GET requests must not be transparently replayed after a connection failure.
+private val MutationSubsonicHttpClient: OkHttpClient =
+    SharedSubsonicHttpClient.newBuilder().retryOnConnectionFailure(false).build()
+
+private fun mutationHttpGet(url: String, context: Context?): String =
+    httpGetWithClient(MutationSubsonicHttpClient, url, context)
 
 private val ProbeSubsonicHttpClient: OkHttpClient =
     SharedSubsonicHttpClient.newBuilder()

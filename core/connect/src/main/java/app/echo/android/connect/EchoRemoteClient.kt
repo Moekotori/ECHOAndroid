@@ -138,6 +138,12 @@ class EchoRemoteClient internal constructor(
                 status.value.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected)
         }
         return object : EchoLibrarySyncSession {
+            override suspend fun personalState(): app.echo.android.model.connect.EchoPersonalState {
+                assertCurrent(); return transport.personalState(target).also { assertCurrent() }
+            }
+            override suspend fun importPersonalState(expectedRevision: String, state: app.echo.android.model.connect.EchoPersonalState): app.echo.android.model.connect.EchoPersonalStateResult {
+                assertCurrent(); return transport.importPersonalState(target, expectedRevision, state).also { assertCurrent() }
+            }
             override suspend fun snapshot(key: String): app.echo.android.model.connect.EchoSyncState { assertCurrent(); return transport.syncSnapshot(target,key) }
             override suspend fun replace(expected: String,desired: app.echo.android.model.connect.EchoSyncState): app.echo.android.model.connect.EchoSyncApplyResult { assertCurrent(); return transport.syncReplace(target,expected,desired) }
             override suspend fun collections(): List<app.echo.android.model.connect.EchoSyncCollection> {

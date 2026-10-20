@@ -40,6 +40,8 @@ import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.OpraHeadphoneCorrectionRepository
 import app.echo.android.data.JellyfinEndpoint
 import app.echo.android.data.SubsonicEndpoint
+import app.echo.android.data.trackVersions
+import app.echo.android.data.setPreferredTrackVersion
 import app.echo.android.lyrics.EchoLrcFormatter
 import android.content.IntentSender
 import java.util.concurrent.atomic.AtomicLong
@@ -55,7 +57,6 @@ import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.LibraryPlaybackOrigin
 import app.echo.android.model.library.FolderSummary
-import app.echo.android.model.library.LibraryOfflinePin
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.library.LibraryStats
@@ -123,10 +124,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         appContext = application,
     )
     private val errorLog = EchoErrorLogRepository.create(application)
-    internal val libraryExperience = LibraryExperienceController(repository, application)
-    internal val playlistTools = PlaylistManagementController(application, repository, viewModelScope)
+    internal val remoteLibraryTools = RemoteLibraryWritebackController(repository) { EchoSubsonicEndpointRef.get() }
+    internal val libraryExperience = LibraryExperienceController(repository, application, remoteLibraryTools::setFavorite)
+    internal val playlistTools = PlaylistManagementController(application, repository, viewModelScope, remoteLibraryTools::setFavorite)
     internal val unifiedSearch = UnifiedSearchController(repository)
     internal val librarySync = LibrarySyncController(repository)
+    internal val personalStateSync = PersonalStateSyncController(application, repository)
+    internal fun resumePersonalTrack(track: EchoTrack, positionMs: Long) {
+        preferredPlayback.launch { playbackController.playAt(preferredPlayback.resolve(listOf(track)).single(), positionMs) }
+    }
     internal fun reconcile(session: app.echo.android.connect.EchoLibrarySyncSession,peerId: String) = LibraryReconcileController(getApplication<Application>(),repository,session,peerId)
     private val settingsStore = EchoSettingsStore(application)
     private val echoLinkLanBrowser = EchoLinkLanBrowser(application)
@@ -153,6 +159,32 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         onTrackChanged = lyricsController::updateLyricsForTrack,
         onTrackActivated = ::recordRecentPlayback,
     )
+    private val preferredPlayback = PreferredPlaybackSelection(viewModelScope, repository,
+        readiness = {
+            val settings = settingsStore.appSettings.first()
+            trackVersionSourceReadiness(settings, (getApplication<Application>() as EchoApplication)
+                .echoLinkSession.client.status.value.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected)
+        },
+        onFailure = { error ->
+            EchoErrorLog.record(EchoErrorSource.Library, "Song version selection failed", throwable = error)
+            viewModelScope.launch {
+                android.widget.Toast.makeText(application, app.echo.android.feature.library.R.string.track_versions_play_error,
+                    android.widget.Toast.LENGTH_LONG).show()
+            }
+        })
+    internal fun cancelPendingPlaybackSelection() = preferredPlayback.invalidate()
+    internal suspend fun trackVersions(track: EchoTrack) = repository.trackVersions(track)
+    internal suspend fun setPreferredTrackVersion(track: EchoTrack, id: String?) = repository.setPreferredTrackVersion(track, id)
+    private suspend fun playPreferredQueue(
+        queue: List<EchoTrack>, startIndex: Int,
+        intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
+        source: String? = queue.firstOrNull()?.album?.takeIf { album -> queue.all { it.album == album } },
+    ) = playbackController.playQueue(preferredPlayback.resolve(queue), startIndex, intent, source)
+    private suspend fun playPreferredAlbumQueue(
+        queue: List<EchoTrack>, startIndex: Int,
+        intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
+    ) = playbackController.playAlbumQueue(preferredPlayback.resolve(queue), startIndex, intent)
+
     init {
         libraryController.setPlaybackOccupiesStorage {
             playbackController.playbackControls.value.isPlaying
@@ -460,68 +492,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun play(track: EchoTrack) {
-        playbackController.play(track)
-    }
-
-    private val offlineDownloads get() = (getApplication() as EchoApplication).offlineDownloads
-
-    fun observeOfflinePin(pinId: String): Flow<LibraryOfflinePin?> = offlineDownloads.observePin(pinId)
-
-    fun observeOfflineUsedBytes(): Flow<Long> = offlineDownloads.observeUsedBytes()
-
-    fun pinAlbumOffline(albumKey: String, title: String) {
-        viewModelScope.launch {
-            offlineDownloads.pinAlbum(albumKey, title)
-        }
-    }
-
-    fun pinPlaylistOffline(playlistId: String, title: String) {
-        viewModelScope.launch {
-            offlineDownloads.pinPlaylist(playlistId, title)
-        }
-    }
-
-    fun unpinOffline(pinId: String) {
-        viewModelScope.launch {
-            offlineDownloads.unpin(pinId)
-        }
-    }
-
-    fun setOfflineWifiOnly(enabled: Boolean) {
-        updateSettings { setOfflineWifiOnly(enabled) }
-    }
-
-    fun pinCurrentQueueOffline() {
-        viewModelScope.launch {
-            val items = playbackController.playbackQueue.value.items
-            val pinnable = items.filter {
-                app.echo.android.model.playback.EchoRemotePinPolicy.canPin(it.sourceId, it.id, it.uri)
-            }
-            if (pinnable.isEmpty()) return@launch
-            val store = app.echo.android.data.EchoRemotePinStore(getApplication())
-            val ids = app.echo.android.model.playback.EchoRemotePinPolicy.merge(
-                store.load(),
-                pinnable.map { it.id },
-            )
-            store.save(ids)
-            app.echo.android.playback.pinRemotePlaybackKeys(
-                app.echo.android.model.playback.EchoRemotePinPolicy.pinTokens(
-                    ids,
-                    pinnable.associate { it.id to it.uri },
-                ),
-            )
-            pinnable.forEach { item ->
-                runCatching {
-                    app.echo.android.playback.prefetchRemotePlayback(getApplication(), item.uri, item.id)
-                }
-            }
-        }
+        if (track.source.id == "radio") {
+            preferredPlayback.invalidate()
+            playbackController.play(track)
+        } else preferredPlayback.launch { playbackController.play(preferredPlayback.resolve(listOf(track)).single()) }
     }
 
     fun playIncomingAudio(uris: List<String>) {
         val parsed = uris.mapNotNull { raw -> raw.trim().takeIf { it.isNotBlank() }?.let(Uri::parse) }
         if (parsed.isEmpty()) return
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val tracks = withContext(Dispatchers.IO) {
                 parsed.mapNotNull { uri ->
                     tryTakePersistableReadPermission(getApplication(), uri)
@@ -529,18 +509,18 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }
             when {
-                tracks.size == 1 -> playbackController.play(tracks.single())
-                tracks.isNotEmpty() -> playbackController.playQueue(tracks, 0)
+                tracks.size == 1 -> playbackController.play(preferredPlayback.resolve(tracks).single())
+                tracks.isNotEmpty() -> playPreferredQueue(tracks, 0)
             }
         }
     }
 
     fun playQueue(queue: List<EchoTrack>, startIndex: Int) {
-        playbackController.playQueue(queue, startIndex)
+        preferredPlayback.launch { playPreferredQueue(queue, startIndex) }
     }
 
     fun playFromLibrary(track: EchoTrack, origin: LibraryPlaybackOrigin) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val source = selectedLibrarySource.ifBlank { EchoLibrarySelectedSource.Local }
             if (LibraryPlaybackQueuePolicy.usesCollectionQueue(origin)) {
                 val queue = libraryController.collectionTracksForPlayback(origin, track.id)
@@ -548,10 +528,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id)
                 if (startIndex < 0) return@launch
                 if (origin is LibraryPlaybackOrigin.Album) {
-                    playbackController.playAlbumQueue(queue, startIndex)
+                    playPreferredAlbumQueue(queue, startIndex)
                     return@launch
                 }
-                playbackController.playQueue(queue, startIndex, source = when (origin) {
+                playPreferredQueue(queue, startIndex, source = when (origin) {
                     is LibraryPlaybackOrigin.Album -> track.album
                     is LibraryPlaybackOrigin.Artist -> track.artist
                     is LibraryPlaybackOrigin.Playlist -> libraryController.localPlaylists.value.firstOrNull { it.id == origin.playlistId }?.name
@@ -563,16 +543,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             val queue = libraryController.queueAroundTrack(track.id, source)
             if (queue.isEmpty()) return@launch
             val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id)
-            if (startIndex >= 0) playQueue(queue, startIndex)
+            if (startIndex >= 0) playPreferredQueue(queue, startIndex)
         }
     }
 
     fun playTrackFromLibrary(trackId: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val source = selectedLibrarySource.ifBlank { EchoLibrarySelectedSource.Local }
             val queue = libraryController.queueAroundTrack(trackId, source)
             val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, trackId)
-            if (queue.isNotEmpty() && startIndex >= 0) playQueue(queue, startIndex)
+            if (queue.isNotEmpty() && startIndex >= 0) playPreferredQueue(queue, startIndex)
         }
     }
 
@@ -586,6 +566,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 result = libraryController.updateTrackMetadata(update).fileWrite,
                 lyricsText = update.lyrics,
                 syncLyricsSelection = true,
+                composerModified = update.composer != null,
+                genreModified = update.genre != null,
             )
         }
     }
@@ -593,15 +575,44 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     internal suspend fun batchTags(ids: List<String>, patch: app.echo.android.model.library.EchoBatchTagPatch, progress: (Int) -> Unit) =
         repository.batchTags(ids, patch, progress) { update ->
             withContext(Dispatchers.Main.immediate) {
-                var result: app.echo.android.data.TrackMetadataUpdateResult? = null
-                withReleasedPlaybackFile(update.trackId) { result = libraryController.updateTrackMetadata(update) }
-                checkNotNull(result)
+                writeTagsWithAuthorization(
+                    write = {
+                        var result: app.echo.android.data.TrackMetadataUpdateResult? = null
+                        withReleasedPlaybackFile(update.trackId) { result = libraryController.updateTrackMetadata(update) }
+                        checkNotNull(result)
+                    },
+                    authorize = { result -> authorizeBatchTagWrite(update.trackId, result) },
+                )
             }
         }
 
+    private suspend fun authorizeBatchTagWrite(trackId: String, result: EmbeddedTagWriteResult): Boolean {
+        val response = kotlinx.coroutines.CompletableDeferred<Boolean>()
+        val requestId = tagWriteRequestIds.getAndIncrement()
+        val request = when (result) {
+            is EmbeddedTagWriteResult.NeedsMediaStoreConsent -> PendingEmbeddedTagWrite(
+                requestId, trackId, result.uriString, intentSender = result.intentSender, completion = response,
+            )
+            EmbeddedTagWriteResult.NeedsStoragePermission -> PendingEmbeddedTagWrite(
+                requestId, trackId, "", needsStoragePermission = true, completion = response,
+            )
+            else -> return false
+        }
+        if (!enqueueTagWriteAuthorization(request)) return false
+        return try {
+            response.await()
+        } finally {
+            tagWriteAuthorizations.remove(requestId)
+            response.cancel()
+        }
+    }
+
     internal suspend fun batchQueue(tracks: List<EchoTrack>, mode: Int) {
         require(tracks.size <= 200)
-        val ordered = if (mode == 1) tracks.asReversed() else tracks
+        val token = preferredPlayback.generationToken()
+        val resolved = preferredPlayback.resolve(tracks)
+        if (!preferredPlayback.isCurrent(token)) return
+        val ordered = if (mode == 1) resolved.asReversed() else resolved
         for (track in ordered) {
             when (mode) { 1 -> playbackController.playNext(track); 2 -> playbackController.addNextUp(track); else -> playbackController.enqueue(track) }
             kotlinx.coroutines.yield()
@@ -618,11 +629,17 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     internal fun playMoment(moment: app.echo.android.model.library.EchoSavedMoment) {
-        playbackController.playAt(moment.track, moment.bookmark.positionMs)
+        preferredPlayback.launch {
+            playbackController.playAt(preferredPlayback.resolve(listOf(moment.track)).single(), moment.bookmark.positionMs)
+        }
     }
 
     fun onEmbeddedTagWriteAccessResult(requestId: Long, granted: Boolean) {
         val pending = tagWriteAuthorizations.take(requestId) ?: return
+        pending.completion?.let { response ->
+            response.complete(granted)
+            return
+        }
         if (!granted) {
             _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.IndexOnly
             return
@@ -635,10 +652,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                         trackId = pending.trackId,
                         lyricsText = pending.lyricsText,
                         artworkUri = pending.artworkUri,
+                        composerModified = pending.composerModified,
+                        genreModified = pending.genreModified,
                     ),
                     lyricsText = pending.lyricsText,
                     artworkUri = pending.artworkUri,
                     syncLyricsSelection = pending.syncLyricsSelection,
+                    composerModified = pending.composerModified,
+                    genreModified = pending.genreModified,
                 )
             }
         }
@@ -663,6 +684,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         lyricsText: String? = null,
         artworkUri: String? = null,
         syncLyricsSelection: Boolean = false,
+        composerModified: Boolean = false,
+        genreModified: Boolean = false,
     ) {
         when (result) {
             is EmbeddedTagWriteResult.Written -> {
@@ -712,6 +735,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     lyricsText = lyricsText,
                     artworkUri = artworkUri,
                     syncLyricsSelection = syncLyricsSelection,
+                    composerModified = composerModified,
+                    genreModified = genreModified,
                 ))
             EmbeddedTagWriteResult.NeedsStoragePermission ->
                 enqueueTagWriteAuthorization(PendingEmbeddedTagWrite(
@@ -722,15 +747,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     lyricsText = lyricsText,
                     artworkUri = artworkUri,
                     syncLyricsSelection = syncLyricsSelection,
+                    composerModified = composerModified,
+                    genreModified = genreModified,
                 ))
         }
     }
 
-    private fun enqueueTagWriteAuthorization(request: PendingEmbeddedTagWrite) {
-        if (!tagWriteAuthorizations.enqueue(request)) {
+    private fun enqueueTagWriteAuthorization(request: PendingEmbeddedTagWrite): Boolean {
+        val queued = tagWriteAuthorizations.enqueue(request)
+        if (!queued) {
             _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.Failed
             EchoErrorLog.record(EchoErrorSource.Library, "Too many pending audio tag write authorizations.")
         }
+        return queued
     }
 
     fun updateTrackArtwork(trackId: String, artworkUri: Uri) {
@@ -748,11 +777,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private var voiceSearchJob: Job? = null
     fun playVoiceSearch(request: app.echo.android.model.playback.EchoMediaSearchRequest) {
         voiceSearchJob?.cancel()
-        voiceSearchJob = viewModelScope.launch {
+        voiceSearchJob = preferredPlayback.launch {
             val (queue, start) = app.echo.android.library.resolveVoiceLaunchTracks(database, request)
             if (queue.isEmpty()) android.widget.Toast.makeText(getApplication(),
                 app.echo.android.playback.R.string.voice_search_no_result, android.widget.Toast.LENGTH_SHORT).show()
-            else playbackController.playQueue(queue, start)
+            else playPreferredQueue(queue, start)
         }
     }
 
@@ -768,10 +797,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun playAlbum(albumKey: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.albumTracksForPlayback(albumKey)
             if (queue.isNotEmpty()) {
-                playbackController.playAlbumQueue(queue, 0)
+                playPreferredAlbumQueue(queue, 0)
                 app.echo.android.library.EchoLibraryShortcuts.rememberCollection(getApplication(),
                     app.echo.android.playback.EchoPlaybackLibraryIds.album(albumKey))
             }
@@ -779,10 +808,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun shuffleAlbum(albumKey: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.albumTracksForPlayback(albumKey)
             if (queue.isNotEmpty()) {
-                playbackController.playAlbumQueue(
+                playPreferredAlbumQueue(
                     queue = queue,
                     startIndex = queue.indices.random(),
                     intent = PlaybackQueueReplaceIntent.Shuffle,
@@ -792,23 +821,23 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun playArtist(artistKey: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.artistTracksForPlayback(artistKey)
-            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0, source = queue.firstOrNull()?.artist)
+            if (queue.isNotEmpty()) playPreferredQueue(queue, 0, source = queue.firstOrNull()?.artist)
         }
     }
 
     fun playGenre(genreKey: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.genreTracksForPlayback(genreKey)
-            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+            if (queue.isNotEmpty()) playPreferredQueue(queue, 0)
         }
     }
 
     fun playComposer(composerKey: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.composerTracksForPlayback(composerKey)
-            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0)
+            if (queue.isNotEmpty()) playPreferredQueue(queue, 0)
         }
     }
 
@@ -816,17 +845,17 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         libraryController.composerTrackPaging(composerKey)
 
     fun playFolder(folderKey: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.folderTracksForPlayback(folderKey)
-            if (queue.isNotEmpty()) playbackController.playQueue(queue, 0, source = folderKey.substringAfterLast('/'))
+            if (queue.isNotEmpty()) playPreferredQueue(queue, 0, source = folderKey.substringAfterLast('/'))
         }
     }
 
     fun shuffleFolder(folderKey: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.folderTracksForPlayback(folderKey)
             if (queue.isNotEmpty()) {
-                playbackController.playQueue(
+                playPreferredQueue(
                     queue = queue,
                     startIndex = queue.indices.random(),
                     intent = PlaybackQueueReplaceIntent.Shuffle,
@@ -836,10 +865,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun playPlaylist(playlistId: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.playlistTracksForPlayback(playlistId)
             if (queue.isNotEmpty()) {
-                playbackController.playQueue(queue, 0, source = libraryController.localPlaylists.value.firstOrNull { it.id == playlistId }?.name)
+                playPreferredQueue(queue, 0, source = libraryController.localPlaylists.value.firstOrNull { it.id == playlistId }?.name)
                 app.echo.android.library.EchoLibraryShortcuts.rememberCollection(getApplication(),
                     app.echo.android.playback.EchoPlaybackLibraryIds.playlist(playlistId))
             }
@@ -847,10 +876,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun shufflePlaylist(playlistId: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.playlistTracksForPlayback(playlistId)
             if (queue.isNotEmpty()) {
-                playbackController.playQueue(
+                playPreferredQueue(
                     queue = queue,
                     startIndex = queue.indices.random(),
                     intent = PlaybackQueueReplaceIntent.Shuffle,
@@ -863,7 +892,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun toggleFavorite(trackId: String? = playbackController.currentTrackId) {
         val id = trackId?.takeIf { it.isNotBlank() } ?: return
         viewModelScope.launch {
-            libraryController.toggleFavorite(id)
+            if (id.startsWith("subsonic:")) remoteLibraryTools.toggleFavorite(id)
+            else libraryController.toggleFavorite(id)
         }
     }
 
@@ -889,13 +919,17 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun addTrackToLocalPlaylist(playlistId: String, trackId: String) {
         viewModelScope.launch {
-            libraryController.addTrackToLocalPlaylist(playlistId, trackId)
+            if (playlistId == EchoPlaylist.LikedSongsId && trackId.startsWith("subsonic:"))
+                remoteLibraryTools.setFavorite(trackId, true)
+            else libraryController.addTrackToLocalPlaylist(playlistId, trackId)
         }
     }
 
     fun removeTrackFromLocalPlaylist(playlistId: String, trackId: String) {
         viewModelScope.launch {
-            libraryController.removeTrackFromLocalPlaylist(playlistId, trackId)
+            if (playlistId == EchoPlaylist.LikedSongsId && trackId.startsWith("subsonic:"))
+                remoteLibraryTools.setFavorite(trackId, false)
+            else libraryController.removeTrackFromLocalPlaylist(playlistId, trackId)
         }
     }
 
@@ -943,10 +977,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun shuffleArtist(artistKey: String) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val queue = libraryController.artistTracksForPlayback(artistKey)
             if (queue.isNotEmpty()) {
-                playbackController.playQueue(
+                playPreferredQueue(
                     queue = queue,
                     startIndex = queue.indices.random(),
                     intent = PlaybackQueueReplaceIntent.Shuffle,
@@ -956,16 +990,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun pause() {
+        preferredPlayback.invalidate()
         playbackController.pause()
     }
 
     fun usbExclusiveOutputActive(): Boolean = playbackController.isUsbExclusiveEnabled()
 
     fun playPause() {
+        preferredPlayback.invalidate()
         playbackController.playPause()
     }
 
     fun playLastSavedSession() {
+        preferredPlayback.invalidate()
         playbackController.playWhenReadyAfterRestore()
     }
 
@@ -982,14 +1019,17 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun skipNext() {
+        preferredPlayback.invalidate()
         playbackController.skipNext()
     }
 
     fun skipPrevious() {
+        preferredPlayback.invalidate()
         playbackController.skipPrevious()
     }
 
     fun playQueueItem(index: Int) {
+        preferredPlayback.invalidate()
         playbackController.playQueueItem(index)
     }
 
@@ -1002,6 +1042,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun clearQueue() {
+        preferredPlayback.invalidate()
         playbackController.clearQueue()
     }
 
@@ -1034,35 +1075,29 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun playNext(track: EchoTrack) {
-        playbackController.playNext(track)
+        preferredPlayback.append({ listOf(track) }) { it.forEach(playbackController::playNext) }
     }
 
-    fun addNextUp(track: EchoTrack) = playbackController.addNextUp(track)
+    fun addNextUp(track: EchoTrack) {
+        preferredPlayback.append({ listOf(track) }) { tracks -> tracks.forEach { playbackController.addNextUp(it) } }
+    }
 
     fun clearNextUp() = playbackController.clearNextUp()
 
     fun addNextUpByTrackId(trackId: String) {
-        viewModelScope.launch {
-            libraryController.trackById(trackId)?.let { playbackController.addNextUp(it) }
-        }
+        preferredPlayback.append({ listOfNotNull(libraryController.trackById(trackId)) }) { tracks -> tracks.forEach { playbackController.addNextUp(it) } }
     }
 
     fun enqueue(track: EchoTrack) {
-        playbackController.enqueue(track)
+        preferredPlayback.append({ listOf(track) }) { it.forEach(playbackController::enqueue) }
     }
 
     fun playNextByTrackId(trackId: String) {
-        viewModelScope.launch {
-            val track = libraryController.trackById(trackId) ?: return@launch
-            playbackController.playNext(track)
-        }
+        preferredPlayback.append({ listOfNotNull(libraryController.trackById(trackId)) }) { it.forEach(playbackController::playNext) }
     }
 
     fun enqueueByTrackId(trackId: String) {
-        viewModelScope.launch {
-            val track = libraryController.trackById(trackId) ?: return@launch
-            playbackController.enqueue(track)
-        }
+        preferredPlayback.append({ listOfNotNull(libraryController.trackById(trackId)) }) { it.forEach(playbackController::enqueue) }
     }
 
     fun refreshHomeRecommendations() {
@@ -1292,9 +1327,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         libraryController.matchSetlist(setlist)
 
     fun playSetlistTracks(trackIds: List<String>) {
-        viewModelScope.launch {
+        preferredPlayback.launch {
             val tracks = libraryController.tracksByIds(trackIds)
-            if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0)
+            if (tracks.isNotEmpty()) playPreferredQueue(tracks, 0)
         }
     }
 
@@ -1670,6 +1705,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setLyricsFontScale(value: Float) {
         updateSettings {
             setLyricsFontScale(value)
+        }
+    }
+
+    fun setLyricsBackdrop(value: String) {
+        updateSettings {
+            setLyricsBackdrop(value)
         }
     }
 
@@ -2253,6 +2294,9 @@ data class PendingEmbeddedTagWrite(
     val lyricsText: String? = null,
     val artworkUri: String? = null,
     val syncLyricsSelection: Boolean = false,
+    val composerModified: Boolean = false,
+    val genreModified: Boolean = false,
+    val completion: kotlinx.coroutines.CompletableDeferred<Boolean>? = null,
 )
 
 enum class EmbeddedTagWriteUserMessage {

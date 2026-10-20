@@ -81,6 +81,7 @@ suspend fun EchoLibraryRepository.saveBookmark(trackId: String, positionMs: Long
     val position = if (track != null && track.durationMs > 0) positionMs.coerceAtMost(track.durationMs - 1) else positionMs
     // A repeated save at the same point edits the existing bookmark rather than duplicating it.
     database.experienceDao().saveBookmark(LibraryBookmarkEntity("$trackId:$position", trackId, position, label.trim()))
+    PersonalBookmarkRangeStore(appContext).set(trackId, position, null)
 }
 
 suspend fun EchoLibraryRepository.saveBookmark(track: EchoTrack, positionMs: Long, label: String) = withContext(Dispatchers.IO) {
@@ -88,6 +89,7 @@ suspend fun EchoLibraryRepository.saveBookmark(track: EchoTrack, positionMs: Lon
     val position = if (track.durationMs > 0) positionMs.coerceAtMost(track.durationMs - 1) else positionMs
     database.experienceDao().saveBookmark(LibraryBookmarkEntity("${track.id}:$position", track.id, position, label.trim(),
         track.title, track.artist, track.uri, track.durationMs))
+    PersonalBookmarkRangeStore(appContext).set(track.id, position, null)
 }
 
 suspend fun EchoLibraryRepository.deleteBookmark(id: String) = withContext(Dispatchers.IO) {
