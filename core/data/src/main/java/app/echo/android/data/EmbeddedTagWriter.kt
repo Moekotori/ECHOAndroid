@@ -88,8 +88,9 @@ class EmbeddedTagWriter(
         if (access != null) return access
 
         val cacheDir = File(appContext.cacheDir, TAG_CACHE_DIR).apply { mkdirs() }
-        val original = File(cacheDir, "original-${track.id.hashCode()}")
-        val tagged = File(cacheDir, "tagged-${track.id.hashCode()}")
+        val trackKey = EmbeddedTagBackup.keyForTrack(track.id)
+        val original = File(cacheDir, "original-$trackKey")
+        val tagged = File(cacheDir, "tagged-$trackKey")
         var keepBackup = false
         return try {
             copyUriToFile(uri, original)
@@ -112,7 +113,12 @@ class EmbeddedTagWriter(
                         when (replaceWithRestore(uri, tagged, original, fields)) {
                             EmbeddedTagReplaceStatus.Replaced -> {
                                 keepBackup = false
-                                notifyMediaStore(uri, tagged, fields, track)
+                                try {
+                                    notifyMediaStore(uri, tagged, fields, track)
+                                } catch (error: Exception) {
+                                    // The verified file is already committed; indexing is best effort.
+                                    Log.w(TAG, "Tags saved but media notification failed for ${track.id}.", error)
+                                }
                                 EmbeddedTagWriteResult.Written(
                                     sizeBytes = tagged.length(),
                                     dateModifiedSeconds = System.currentTimeMillis() / 1000L,
@@ -141,7 +147,7 @@ class EmbeddedTagWriter(
                 EmbeddedTagBackup.preserveOriginal(
                     original = original,
                     cacheDir = cacheDir,
-                    trackKey = track.id.hashCode().toString(),
+                    trackKey = trackKey,
                 )
             } else {
                 original.delete()

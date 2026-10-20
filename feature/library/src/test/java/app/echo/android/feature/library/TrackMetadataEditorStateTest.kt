@@ -9,6 +9,17 @@ class TrackMetadataEditorStateTest {
     private val track = EchoTrack("track", "content://audio/1", "Title", "Artist")
 
     @Test
+    fun artworkIsAnExplicitDraftAndDoesNotCarryStaleTrackArtwork() {
+        val original = track.copy(artworkUri = "content://cover/old")
+        val state = TrackMetadataEditorState()
+        assertNull(state.toUpdate(original).artworkUri)
+        state.editArtwork("content://cover/new")
+        assertEquals("content://cover/new", state.toUpdate(original).artworkUri)
+        assertEquals("content://cover/old", original.artworkUri)
+        assertNull(TrackMetadataEditorState().toUpdate(original).artworkUri)
+    }
+
+    @Test
     fun clearingComposerSendsExplicitEmptyValue() {
         val state = TrackMetadataEditorState()
         state.composer = "Composer"

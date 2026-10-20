@@ -20,6 +20,7 @@ class LibraryScanPolicyTest {
         fingerprint = fingerprint,
         sizeBytes = sizeBytes,
         dateModifiedSeconds = dateModifiedSeconds,
+        relativePath = "Music/",
     )
 
     @Test
@@ -154,7 +155,7 @@ class LibraryScanPolicyTest {
         assertEquals(
             MediaStoreProbeAction.RememberSeen,
             LibraryScanPolicy.classifyMediaStoreProbeRow(
-                existing = fingerprint(),
+                existing = fingerprint().copy(fileName = "song.mp3"),
                 relativePath = "Music/",
                 dateModifiedSeconds = 1_700_000_000L,
                 sizeBytes = 1_024L,
@@ -1024,4 +1025,30 @@ class LibraryScanPolicyTest {
             ),
         )
     }
+    @Test
+    fun movedRenamedAndPendingMetadataRowsMustBeReadAgain() {
+        val existing = fingerprint().copy(fileName = "song.mp3")
+        fun action(path: String, name: String, row: TrackFingerprint = existing) =
+            LibraryScanPolicy.classifyMediaStoreProbeRow(row, path, row.dateModifiedSeconds,
+                row.sizeBytes, LibraryScanOptions(), false, name)
+        assertEquals(MediaStoreProbeAction.RememberSeen, action("Music/", "song.mp3"))
+        assertEquals(MediaStoreProbeAction.FetchFull, action("Music/Moved/", "song.mp3"))
+        assertEquals(MediaStoreProbeAction.FetchFull, action("Music/", "renamed.mp3"))
+        assertEquals(MediaStoreProbeAction.FetchFull, action("Music/", "song.mp3",
+            existing.copy(fingerprint = LibraryScanPolicy.PendingDocumentMetadataFingerprint)))
+    }
+
+    @Test
+    fun duplicateReverseLookupDoesNotReturnUnrelatedFiles() {
+        val index = LocalFileDuplicateIndex.builder<String> { it }.apply {
+            add("Music/", 100, 1, "a.mp3", "a")
+            add("Music/", 200, 2, "a.mp3", "a-copy")
+            add("Music/", 100, 1, "b.mp3", "b")
+        }.build()
+        assertEquals(listOf("a-copy"), index.otherCopies("a"))
+        assertEquals(listOf("a"), index.otherCopies("a-copy"))
+        assertTrue(index.otherCopies("b").isEmpty())
+        assertTrue(index.otherCopies("missing").isEmpty())
+    }
+
 }

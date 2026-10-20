@@ -32,9 +32,17 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EchoExtendedFormatsSmokeTest {
     @Test fun newContainersDecodeAndSeekThroughTheExistingBackend() {
+        checkContainers(listOf("tone.aiff", "tone.aifc", "tone.dts", "tone.wv", "tone.wma"))
+    }
+
+    @Test fun ttaTakAndWave64DecodeAndSeek() {
+        checkContainers(listOf("tone.tta", "sample.tak", "tone.w64"))
+    }
+
+    private fun checkContainers(names: List<String>) {
         val assets = InstrumentationRegistry.getInstrumentation().context.assets
         val expected = JSONObject(assets.open("format-smoke/expected.json").bufferedReader().use { it.readText() })
-        for (name in listOf("tone.aiff", "tone.aifc", "tone.dts", "tone.wv", "tone.wma")) {
+        for (name in names) {
             val data = assets.open("format-smoke/$name").use { it.readBytes() }
             val uri = Uri.parse("memory:///$name")
             val extractor = EchoFfmpegExtractor(uri, DataSource.Factory { ByteArrayDataSource(data) })
@@ -45,7 +53,7 @@ class EchoExtendedFormatsSmokeTest {
                 val pcm = decode(capture.format!!, capture.values, 0)
                 assertEquals(name, expected.getJSONObject(name).getInt("pcmBytes"), pcm.size)
                 assertTrue("Silent output: $name", pcm.any { it != 0.toByte() })
-                if (name.endsWith(".aiff") || name.endsWith(".wv")) {
+                if (name.substringAfterLast('.') in listOf("aiff", "wv", "tta", "tak", "w64")) {
                     val hash = MessageDigest.getInstance("SHA-256").digest(pcm).joinToString("") { "%02x".format(it) }
                     assertEquals(name, expected.getJSONObject(name).getString("sha256"), hash)
                 }
@@ -57,6 +65,18 @@ class EchoExtendedFormatsSmokeTest {
                 val afterSeek = decode(capture.format!!, capture.values, 100_000)
                 assertTrue("Empty seek output: $name", afterSeek.isNotEmpty())
                 assertTrue("Seek did not shorten output: $name", afterSeek.size < pcm.size)
+                if (name.endsWith(".tak")) {
+                    // TAK's generic index may be sparse before playback; verify a fresh forward seek too.
+                    val fresh = EchoFfmpegExtractor(uri, DataSource.Factory { ByteArrayDataSource(data) })
+                    val freshCapture = Packets()
+                    fresh.init(freshCapture)
+                    try {
+                        fresh.seek(0, 100_000)
+                        extract(fresh, data, uri, sniff = true)
+                        assertArrayEquals("Fresh TAK seek must select the same PCM", afterSeek,
+                            decode(freshCapture.format!!, freshCapture.values, 100_000))
+                    } finally { fresh.release() }
+                }
             } finally { extractor.release() }
         }
     }

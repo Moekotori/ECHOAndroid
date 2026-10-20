@@ -207,7 +207,7 @@ internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
         genre = track.genre,
         composer = track.composer,
         fileName = track.fileName,
-    )
+    ).let { CueScanState.preserveProvenance(track.fingerprint, it) }
 
 internal fun LibraryTrackEntity.splitByCue(
     sheet: app.echo.android.model.library.CueSheet,
@@ -220,10 +220,11 @@ internal fun LibraryTrackEntity.splitByCue(
     if (ended.size == 1) {
         val cue = ended.single()
         val startsAtZero = cue.startMs <= 0L
-        val endsAtFile = cue.endMs <= 0L || cue.endMs >= durationMs
+        val endsAtFile = cue.endMs <= 0L || (durationMs > 0L && cue.endMs >= durationMs)
         if (startsAtZero && endsAtFile) {
             return listOf(
                 copy(
+                    fingerprint = CueScanState.markWholeFile(fingerprint.orEmpty()),
                     title = cue.title,
                     artist = cue.performer ?: sheet.performer ?: artist,
                     album = sheet.album ?: album,
@@ -241,6 +242,7 @@ internal fun LibraryTrackEntity.splitByCue(
         val end = cue.endMs.takeIf { it > start } ?: 0L
         val length = if (end > start) end - start else (durationMs - start).coerceAtLeast(0L)
         copy(
+            fingerprint = null,
             id = app.echo.android.model.library.CueSheetPolicy.cueTrackId(id, cue.number),
             contentUri = app.echo.android.model.library.CueSheetPolicy.contentUri(contentUri, cue.number),
             title = cue.title,

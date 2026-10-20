@@ -52,6 +52,10 @@ internal object EmbeddedTagFileReplace {
 }
 
 internal object EmbeddedTagBackup {
+    fun keyForTrack(trackId: String): String = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(trackId.toByteArray(Charsets.UTF_8))
+        .joinToString("") { byte -> (byte.toInt() and 255).toString(16).padStart(2, '0') }
+
     fun preserveOriginal(original: File, cacheDir: File, trackKey: String): File {
         val dest = File(cacheDir, "backup-$trackKey")
         if (dest.exists() && dest.length() > 0L) {

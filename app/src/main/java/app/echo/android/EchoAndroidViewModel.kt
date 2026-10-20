@@ -101,6 +101,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -190,6 +191,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             playbackController.playbackControls.value.isPlaying
         }
         libraryController.startWatchingMediaStore(application.contentResolver)
+        viewModelScope.launch {
+            playbackController.playbackControls.map { it.isPlaying }.distinctUntilChanged().collect { playing ->
+                if (!playing) libraryController.onPlaybackStorageIdle()
+            }
+        }
     }
     private val lastFmClient = LastFmClient()
     private val lastFmController = (application as EchoApplication).scrobbleSession.lastFm
@@ -565,6 +571,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 trackId = update.trackId,
                 result = libraryController.updateTrackMetadata(update).fileWrite,
                 lyricsText = update.lyrics,
+                artworkUri = update.artworkUri,
                 syncLyricsSelection = true,
                 composerModified = update.composer != null,
                 genreModified = update.genre != null,
@@ -1184,8 +1191,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun writeImportedLyricsToFile(trackId: String, lyrics: EchoLyrics) {
         viewModelScope.launch {
-            val text = EchoLrcFormatter.format(lyrics)
-            if (text.isBlank()) return@launch
+            // The full imported selection is already durable. Only mirror it to audio tags
+            // when ordinary LRC can retain its timing, auxiliary text and vocal fields.
+            val text = withContext(Dispatchers.Default) {
+                EchoLrcFormatter.formatForEmbeddedWriteOrNull(lyrics)
+            } ?: return@launch
             withReleasedPlaybackFile(trackId) {
                 handleEmbeddedTagWriteResult(
                     trackId = trackId,

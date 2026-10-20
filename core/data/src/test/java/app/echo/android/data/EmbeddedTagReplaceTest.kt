@@ -8,6 +8,20 @@ import org.junit.Test
 
 class EmbeddedTagReplaceTest {
     @Test
+    fun collidingJavaHashesCannotShareRecoveryBackups() {
+        assertEquals("saf:Aa".hashCode(), "saf:BB".hashCode())
+        withTempDir { dir ->
+            val a = File(dir, "original-a").apply { writeText("music A") }
+            val b = File(dir, "original-b").apply { writeText("music B") }
+            val backupA = EmbeddedTagBackup.preserveOriginal(a, dir, EmbeddedTagBackup.keyForTrack("saf:Aa"))
+            val backupB = EmbeddedTagBackup.preserveOriginal(b, dir, EmbeddedTagBackup.keyForTrack("saf:BB"))
+            assertTrue(backupA != backupB)
+            assertEquals("music A", backupA.readText())
+            assertEquals("music B", backupB.readText())
+        }
+    }
+
+    @Test
     fun replaceOverwritesTargetWithSourceBytes() {
         withTempDir { dir ->
             val target = File(dir, "song.mp3").apply { writeBytes(byteArrayOf(1, 2, 3, 4)) }

@@ -3,6 +3,20 @@ package app.echo.android.lyrics
 import app.echo.android.model.lyrics.EchoLyrics
 
 object EchoLrcFormatter {
+    /** Do not overwrite audio tags with a representation that loses imported lyric information. */
+    fun formatForEmbeddedWriteOrNull(lyrics: EchoLyrics): String? {
+        if (lyrics.lines.none { it.text.isNotBlank() }) return null
+        val text = format(lyrics)
+        val restored = runCatching { EchoLyricsParser.parse(text) }.getOrNull() ?: return null
+        if (restored.lines.size != lyrics.lines.size) return null
+        val lossless = lyrics.lines.zip(restored.lines).all { (original, parsed) ->
+            // Missing ends are inferred on read; explicit ends must survive unchanged.
+            original.copy(endMs = null) == parsed.copy(endMs = null) &&
+                (original.endMs == null || original.endMs == parsed.endMs)
+        }
+        return text.takeIf { lossless }
+    }
+
     fun format(lyrics: EchoLyrics): String {
         val lines = lyrics.lines.filter { it.text.isNotBlank() || it.startMs >= 0L }
         if (lines.isEmpty()) return ""

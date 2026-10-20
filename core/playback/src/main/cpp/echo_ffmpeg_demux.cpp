@@ -96,7 +96,8 @@ Java_app_echo_android_playback_EchoFfmpegDemuxer_nativeOpen(
     const char* name = env->GetStringUTFChars(container, nullptr);
     if (!name) return 0;
     const bool allowed = !strcmp(name, "aiff") || !strcmp(name, "dts") ||
-                         !strcmp(name, "wv") || !strcmp(name, "asf");
+                         !strcmp(name, "wv") || !strcmp(name, "asf") ||
+                         !strcmp(name, "tta") || !strcmp(name, "tak") || !strcmp(name, "w64");
     const AVInputFormat* input_format = allowed ? av_find_input_format(name) : nullptr;
     env->ReleaseStringUTFChars(container, name);
     if (!input_format) { fail(env, "Unsupported audio container", AVERROR(EINVAL)); return 0; }

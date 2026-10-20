@@ -64,6 +64,13 @@ internal object AudioFileTagRewriter {
         val peek = ByteArray(10)
         val peeked = readFully(input, peek)
         if (peeked <= 0) return null
+        if (peeked >= 4 && peek.decodeToString(0, 4) in setOf("MAC ", "wvpk", "TTA1", "tBaK")) {
+            val ape = try { ApeTagReader.read(input) } catch (_: java.io.IOException) { null }
+            return mergeAudioTags(ape, readId3v1(input, peek.copyOf(peeked)))
+        }
+        if (peeked >= 4 && peek.copyOfRange(0, 4).contentEquals(LocalAudioContainerMetadata.AsfHeader.copyOfRange(0, 4))) {
+            return AsfMetadataReader.read(PrefixInputStream(peek.copyOf(peeked), input))?.tags
+        }
         if (isFlac(peek, peeked)) return readFlacFields(peek, peeked, input)
         if (looksLikeWaveContainer(peek, peeked)) return readWavFields(PrefixInputStream(peek.copyOf(peeked), input))
         if (looksLikeMp4(peek, peeked)) return Mp4TagReader.read(PrefixInputStream(peek.copyOf(peeked), input))
@@ -180,8 +187,9 @@ internal object AudioFileTagRewriter {
         val rest = PrefixInputStream(peek.copyOfRange(4, peeked), input)
         val blocks = readFlacBlocks(rest) ?: return AudioTagRewriteStatus.InvalidSource
         if (blocks.none { it.type == FLAC_STREAMINFO }) return AudioTagRewriteStatus.InvalidSource
+        val rewritten = replaceFlacVorbis(blocks, fields) ?: return AudioTagRewriteStatus.InvalidSource
         output.write(peek, 0, 4)
-        writeFlacBlocks(output, replaceFlacVorbis(blocks, fields))
+        writeFlacBlocks(output, rewritten)
         rest.copyTo(output, COPY_BUFFER)
         return AudioTagRewriteStatus.Written
     }
@@ -195,6 +203,10 @@ internal object AudioFileTagRewriter {
         val id3 = readId3Fields(header, input)
         val next = ByteArray(12)
         val read = try { readFully(input, next) } catch (_: java.io.IOException) { return id3?.takeUnless { it.isBlank() } }
+        if (read >= 4 && next.decodeToString(0, 4) in setOf("MAC ", "wvpk", "TTA1", "tBaK")) {
+            val ape = try { ApeTagReader.read(input) } catch (_: java.io.IOException) { null }
+            return mergeAudioTags(id3, ape)
+        }
         if (!looksLikeWaveContainer(next, read)) return id3?.takeUnless { it.isBlank() }
         val wav = readWavFields(PrefixInputStream(next.copyOf(read), input))
         return mergeAudioTags(preferred = id3, fallback = wav)
@@ -469,15 +481,16 @@ internal object AudioFileTagRewriter {
     }
 
     internal fun encodeId3Tag(existingTag: ByteArray?, fields: AudioTagFields): ByteArray {
-        val frames = if (existingTag != null && existingTag.size >= 10 && isId3(existingTag, existingTag.size)) {
+        val parsed = if (existingTag != null && existingTag.size >= 10 && isId3(existingTag, existingTag.size)) {
             parseId3(
                 existingTag.copyOfRange(0, 10),
                 existingTag.inputStream(offset = 10, length = existingTag.size - 10),
-            )?.frames ?: error("Cannot safely preserve existing ID3 frames")
+            ) ?: error("Cannot safely preserve existing ID3 frames")
         } else {
-            emptyList()
+            null
         }
-        return buildId3Tag(4, frames.orEmpty(), fields)
+        // Retained v2.3 frames keep their version-specific flags and payload prefixes.
+        return buildId3Tag(parsed?.majorVersion ?: 4, parsed?.frames.orEmpty(), fields)
     }
 
     private fun replaceId3TextFrames(
@@ -491,8 +504,10 @@ internal object AudioFileTagRewriter {
         val preserveDate = fields.year != null && originalDate?.take(4)?.toIntOrNull() == fields.year
         val managed = HashSet(if (version == 4) ManagedId3v24 else ManagedId3v23)
         if (preserveDate) managed.removeAll(setOf("TDRC", "TYER"))
-        if (fields.composer != null || fields.composerModified) managed += "TCOM"
-        if (fields.genre != null || fields.genreModified) managed += "TCON"
+        val replaceComposer = shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, originalText("TCOM"))
+        val replaceGenre = shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, originalText("TCON"))
+        if (replaceComposer) managed += "TCOM"
+        if (replaceGenre) managed += "TCON"
         if (fields.lyrics != null) managed += setOf("USLT", "SYLT")
         if (fields.artworkBytes != null) managed += "APIC"
         val kept = frames.filterNot { frame ->
@@ -506,8 +521,8 @@ internal object AudioFileTagRewriter {
         next += textFrame(version, "TPE1", fields.artist)
         fields.album?.let { next += textFrame(version, "TALB", it) }
         fields.albumArtist?.let { next += textFrame(version, "TPE2", it) }
-        fields.composer?.let { next += textFrame(version, "TCOM", it) }
-        fields.genre?.let { next += textFrame(version, "TCON", it) }
+        if (replaceComposer) fields.composer?.takeIf { it.isNotBlank() }?.let { next += textFrame(version, "TCOM", it) }
+        if (replaceGenre) fields.genre?.takeIf { it.isNotBlank() }?.let { next += textFrame(version, "TCON", it) }
         tagNumberWithTotal(fields.trackNumber, originalText("TRCK"))?.let { next += textFrame(version, "TRCK", it) }
         tagNumberWithTotal(fields.discNumber, originalText("TPOS"))?.let { next += textFrame(version, "TPOS", it) }
         if (!preserveDate) fields.year?.let { year ->
@@ -763,17 +778,21 @@ internal object AudioFileTagRewriter {
         return null
     }
 
-    private fun replaceFlacVorbis(blocks: List<FlacBlock>, fields: AudioTagFields): List<FlacBlock> {
-        val existing = blocks.firstOrNull { it.type == FLAC_VORBIS_COMMENT }?.payload
+    private fun replaceFlacVorbis(blocks: List<FlacBlock>, fields: AudioTagFields): List<FlacBlock>? {
+        val commentBlocks = blocks.filter { it.type == FLAC_VORBIS_COMMENT }
+        if (commentBlocks.size > 1) return null
+        val existing = commentBlocks.singleOrNull()?.payload
         val vendor = existing?.let(::vorbisVendor).orEmpty().ifBlank { DEFAULT_VENDOR }
-        val originalComments = existing?.let(::parseVorbisComments).orEmpty()
+        val originalComments = existing?.let { VorbisTagReader.commentsForRewrite(it) ?: return null }.orEmpty()
         fun original(vararg keys: String): String? = keys.firstNotNullOfOrNull { key ->
             originalComments.firstOrNull { it.first.equals(key, ignoreCase = true) && it.second.isNotBlank() }?.second
         }
+        val replaceComposer = shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, original("COMPOSER"))
+        val replaceGenre = shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, original("GENRE"))
         val comments = mutableListOf<Pair<String, String>>()
         originalComments.forEach { (key, value) ->
             val upper = key.uppercase(java.util.Locale.ROOT)
-            if (upper in ManagedVorbisKeys || (upper == "GENRE" && (fields.genre != null || fields.genreModified)) || (upper == "COMPOSER" && (fields.composer != null || fields.composerModified))) return@forEach
+            if (upper in ManagedVorbisKeys || (upper == "GENRE" && replaceGenre) || (upper == "COMPOSER" && replaceComposer)) return@forEach
             if (fields.lyrics != null && upper in VorbisLyricsKeys) return@forEach
             if (fields.replayGainTrackGainDb != null && upper == "REPLAYGAIN_TRACK_GAIN") return@forEach
             comments += key to value
@@ -782,8 +801,8 @@ internal object AudioFileTagRewriter {
         comments += "ARTIST" to fields.artist
         fields.album?.let { comments += "ALBUM" to it }
         fields.albumArtist?.let { comments += "ALBUMARTIST" to it }
-        fields.composer?.let { comments += "COMPOSER" to it }
-        fields.genre?.let { comments += "GENRE" to it }
+        if (replaceComposer) fields.composer?.takeIf { it.isNotBlank() }?.let { comments += "COMPOSER" to it }
+        if (replaceGenre) fields.genre?.takeIf { it.isNotBlank() }?.let { comments += "GENRE" to it }
         tagNumberWithTotal(fields.trackNumber, original("TRACKNUMBER", "TRACK"))?.let { comments += "TRACKNUMBER" to it }
         tagNumberWithTotal(fields.discNumber, original("DISCNUMBER", "DISC"))?.let { comments += "DISCNUMBER" to it }
         tagDateWithYear(fields.year, original("DATE", "YEAR"))?.let { comments += "DATE" to it }
@@ -864,10 +883,6 @@ internal object AudioFileTagRewriter {
         val vendorLength = littleEndianInt32(payload, 0) ?: return null
         if (vendorLength < 0 || vendorLength > payload.size - 4) return null
         return payload.copyOfRange(4, 4 + vendorLength).toString(StandardCharsets.UTF_8)
-    }
-
-    private fun parseVorbisComments(payload: ByteArray): List<Pair<String, String>> {
-        return VorbisTagReader.comments(payload)
     }
 
     private fun fieldsFromVorbis(payload: ByteArray): AudioTagFields {

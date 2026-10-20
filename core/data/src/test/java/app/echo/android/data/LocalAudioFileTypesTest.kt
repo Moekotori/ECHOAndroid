@@ -88,7 +88,7 @@ class LocalAudioFileTypesTest {
     fun fallbackExtensionsStayInSyncWithRecognizedFormats() {
         val extensions = listOf("flac", "ape", "wv", "wma", "asf", "mp3", "mp2", "m4a", "m4b",
             "aac", "ogg", "oga", "opus", "wav", "wave", "adts", "aiff", "aif", "aifc", "dsf",
-            "dff", "mka", "ac3", "eac3", "ec3", "dts", "amr")
+            "dff", "mka", "ac3", "eac3", "ec3", "dts", "amr", "fla", "alac", "bwf", "tta", "tak", "w64")
         assertEquals(extensions.toSet(), MediaStoreFallbackExtensions.toSet())
         assertTrue(extensions.all { LocalAudioFileTypes.mimeTypeForFileName("song.$it") != null })
         assertFalse("wvc" in MediaStoreFallbackExtensions)
@@ -101,6 +101,13 @@ class LocalAudioFileTypesTest {
         assertFalse(LocalAudioFileTypes.isSupported("movie.m4a", " video/mp4; codecs=avc1 "))
         assertTrue(LibraryWavTagPolicy.isWavContainer(" Audio/X-WAV; codecs=1 "))
         assertTrue(LibraryWavTagPolicy.isWavContainer(null, "album.WAVE"))
+        assertEquals("audio/flac", LocalAudioFileTypes.mimeTypeForFileName("track.FLA"))
+        assertEquals("audio/mp4", LocalAudioFileTypes.mimeTypeForFileName("track.ALAC"))
+        assertEquals("audio/wav", LocalAudioFileTypes.mimeTypeForFileName("track.BWF"))
+        assertTrue(LibraryWavTagPolicy.isWavContainer(null, "track.bwf"))
+        assertEquals("audio/x-tta", LocalAudioFileTypes.mimeTypeForFileName("track.TTA"))
+        assertEquals("audio/x-tak", LocalAudioFileTypes.mimeTypeForFileName("track.TAK"))
+        assertEquals("audio/x-w64", LocalAudioFileTypes.mimeTypeForFileName("track.W64"))
     }
 
     @Test

@@ -5,7 +5,7 @@ import androidx.media3.decoder.ffmpeg.FfmpegLibrary
 import java.io.IOException
 import java.nio.ByteBuffer
 
-/** Private JNI contract for the four explicitly enabled audio containers. */
+/** Private JNI contract for the explicitly enabled audio containers. */
 @UnstableApi
 internal class EchoFfmpegDemuxer : AutoCloseable {
     private var handle = 0L

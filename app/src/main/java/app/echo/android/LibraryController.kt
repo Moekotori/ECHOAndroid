@@ -339,16 +339,23 @@ internal class LibraryController(
             scope = scope,
             onChanged = {
                 when {
-                    clearingLocalIndex || playbackOccupiesStorage() -> Unit
-                    scanJob?.isActive == true -> pendingMediaStoreRefresh = true
-                    else -> refreshLibrary(relativePathPrefix = null, options = null, auto = true)
+                    clearingLocalIndex -> Unit
+                    else -> {
+                        pendingMediaStoreRefresh = true
+                        drainPendingScans()
+                    }
                 }
             },
         ).also { it.start() }
         refreshLibraryIfEmpty()
     }
 
+    fun onPlaybackStorageIdle() {
+        drainPendingScans()
+    }
+
     fun onForeground() {
+        drainPendingScans()
         foregroundWatchJob?.cancel()
         foregroundWatchJob = scope.launch {
             delay(LibraryFolderWatchPolicy.ForegroundDebounceMs)
@@ -466,14 +473,14 @@ internal class LibraryController(
             startScanJob(auto = false, manual)
             return
         }
-        if (pendingAutoWatch) {
+        if (pendingAutoWatch && !playbackOccupiesStorage()) {
             pendingAutoWatch = false
             refreshWatchedTreesIfDue()
             return
         }
-        if (pendingMediaStoreRefresh) {
+        if (pendingMediaStoreRefresh && !playbackOccupiesStorage()) {
             pendingMediaStoreRefresh = false
-            if (!playbackOccupiesStorage()) refreshLibrary(relativePathPrefix = null, options = null, auto = true)
+            refreshLibrary(relativePathPrefix = null, options = null, auto = true)
         }
     }
 
@@ -588,6 +595,7 @@ internal class LibraryController(
     }
 
     fun cancelScan() {
+        pendingMediaStoreRefresh = false
         foregroundWatchJob?.cancel()
         pendingAutoWatch = false
         pendingManualScan = null

@@ -311,17 +311,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val migrationBusy by viewModel.libraryMigration.busy.collectAsStateWithLifecycle()
     migrationPreview?.let { preview -> app.echo.android.feature.settings.BackupMigrationPreview(preview, migrationBusy,
         onApply = viewModel::applyMigrationBackup, onDismiss = viewModel.libraryMigration::dismiss) }
-    var lyricsImportTrackId by remember { mutableStateOf<String?>(null) }
+    var lyricsImportTrackId by rememberSaveable { mutableStateOf<String?>(null) }
     val lyricsImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { lyricsUri ->
             persistReadPermission(lyricsUri)
             lyricsImportTrackId?.let { trackId ->
                 viewModel.importLyricsForTrack(trackId, lyricsUri)
-            } ?: viewModel.importLyrics(lyricsUri)
+            }
         }
         lyricsImportTrackId = null
     }
-    var artworkImportTrackId by remember { mutableStateOf<String?>(null) }
+    var artworkImportTrackId by rememberSaveable { mutableStateOf<String?>(null) }
     val artworkImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { artworkUri ->
             persistReadPermission(artworkUri)

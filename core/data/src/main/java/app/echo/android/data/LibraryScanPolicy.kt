@@ -178,7 +178,7 @@ object LibraryScanPolicy {
     fun shouldStampLastSeenOnUnchangedRow(): Boolean = false
 
     /**
-     * 增量扫描的轻量比对:MediaStore 行的 (DATE_MODIFIED, SIZE) 与库内快照一致即视为未变,
+     * 增量扫描的轻量比对:MediaStore 行的时间、大小、目录和文件名与库内快照一致才视为未变,
      * 跳过全列拉取与指纹重算。文件内容/元数据变更都会改 mtime 或 size;
      * 例外是 MediaStore 重新归组 albumId(artworkUri 变化)不改文件,该情况在文件下次被触碰时补上。
      * 两个字段都为 0 视为快照不可信,退回全量路径。
@@ -187,11 +187,16 @@ object LibraryScanPolicy {
         existing: TrackFingerprint?,
         dateModifiedSeconds: Long,
         sizeBytes: Long,
+        relativePath: String? = existing?.relativePath,
+        fileName: String? = existing?.fileName,
     ): Boolean =
         existing?.fingerprint != null &&
+            existing.fingerprint != PendingDocumentMetadataFingerprint &&
             (dateModifiedSeconds > 0L || sizeBytes > 0L) &&
             existing.dateModifiedSeconds == dateModifiedSeconds &&
-            existing.sizeBytes == sizeBytes
+            existing.sizeBytes == sizeBytes &&
+            existing.relativePath == relativePath &&
+            existing.fileName == fileName
 
     /**
      * 增量探针行的下一步:排除目录不拉全列。
@@ -219,7 +224,7 @@ object LibraryScanPolicy {
             return MediaStoreProbeAction.SkipRejected
         }
         if (existing == null && rejectedByCache) return MediaStoreProbeAction.SkipRejected
-        if (isMediaStoreRowUnchanged(existing, dateModifiedSeconds, sizeBytes)) {
+        if (isMediaStoreRowUnchanged(existing, dateModifiedSeconds, sizeBytes, relativePath, fileName)) {
             return MediaStoreProbeAction.RememberSeen
         }
         return MediaStoreProbeAction.FetchFull

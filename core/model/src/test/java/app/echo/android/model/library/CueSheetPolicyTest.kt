@@ -76,4 +76,23 @@ class CueSheetPolicyTest {
         assertFalse(CueSheetPolicy.isMatchedToAudio(sheet, "Album.cue", listOf("Other.flac", "B.wav")))
         assertFalse(CueSheetPolicy.isMatchedToAudio(sheet, "Album.cue", emptyList()))
     }
+    @Test
+    fun resolvesOnlyUniqueLosslessReplacementsAndPortableLocalPaths() {
+        val names = listOf("Album.flac", "bonus.mp3")
+        assertEquals("Album.flac", CueSheetPolicy.matchAudioName(".\\Album.wav", names))
+        assertNull(CueSheetPolicy.matchAudioName("Album.wav", names + "Album.ape"))
+        assertNull(CueSheetPolicy.matchAudioName("../Album.flac", names))
+        assertNull(CueSheetPolicy.matchAudioName("C:\\Album.flac", names))
+        assertNull(CueSheetPolicy.matchAudioName("sub/Album.flac", names))
+    }
+
+    @Test
+    fun rejectsOverlapsAndOutOfBoundsAndPreservesExplicitEnd() {
+        val tracks = listOf(CueSheetTrack(1, "A", startMs = 0L, endMs = 30_000L), CueSheetTrack(2, "B", startMs = 60_000L))
+        assertEquals(30_000L, CueSheetPolicy.withEndTimes(tracks, 180_000L).first().endMs)
+        assertTrue(CueSheetPolicy.withEndTimes(tracks.reversed(), 180_000L).isEmpty())
+        assertTrue(CueSheetPolicy.withEndTimes(tracks, 60_000L).isEmpty())
+        assertTrue(CueSheetPolicy.withEndTimes(tracks + tracks.first(), 180_000L).isEmpty())
+    }
+
 }

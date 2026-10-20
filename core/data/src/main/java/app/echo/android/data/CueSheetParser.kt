@@ -38,7 +38,7 @@ object CueSheetParser {
         fun bound(time: Long) {
             val previous = lastBySource[sourceKey()] ?: return
             val track = tracks[previous]
-            if (time <= track.startMs) { failed = true; return }
+            if (time <= track.startMs || (track.endMs > 0L && time < track.endMs)) { failed = true; return }
             if (track.endMs == 0L) tracks[previous] = track.copy(endMs = time)
         }
         fun commit() {
@@ -49,7 +49,7 @@ object CueSheetParser {
                 else {
                     bound(offset)
                     lastBySource[sourceKey()] = tracks.size
-                    tracks += CueSheetTrack(n, title ?: "Track $n", artist, offset, fileName = file)
+                    tracks += CueSheetTrack(n, title?.takeIf { it.isNotBlank() } ?: "Track $n", artist, offset, fileName = file)
                 }
             }
             // Always clear, even for incomplete or non-audio tracks.
@@ -63,7 +63,7 @@ object CueSheetParser {
                     val match = FileValue.matchEntire(argument) ?: return null
                     val next = match.groups[1]?.value?.replace("\\\"", "\"")
                         ?: match.groups[2]?.value?.replace("\\'", "'") ?: match.groupValues[3].trim()
-                    if (next.isBlank()) return null
+                    if (next.isBlank() || next.length > 4096) return null
                     // FILE may appear inside TRACK before INDEX 01 (e.g. pregap in another file).
                     if (number != null && start == null) {
                         if (file != next) pregap = null
@@ -82,7 +82,7 @@ object CueSheetParser {
                     number = n
                 }
                 "TITLE", "PERFORMER" -> {
-                    val value = unquote(argument) ?: return null
+                    val value = (unquote(argument) ?: return null).take(200)
                     if (number != null) {
                         if (!data) { if (command == "TITLE") title = value else artist = value }
                     } else if (command == "TITLE") album = value else performer = value
@@ -90,7 +90,7 @@ object CueSheetParser {
                 "REM" -> {
                     val rem = splitCommand(argument) ?: continue
                     when (rem.first) {
-                        "GENRE" -> genre = unquote(rem.second)
+                        "GENRE" -> genre = unquote(rem.second)?.take(200)
                         "DATE" -> year = unquote(rem.second)?.take(4)?.toIntOrNull()?.takeIf { it in 1000..9999 }
                     }
                 }

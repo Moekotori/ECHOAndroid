@@ -50,7 +50,7 @@ class LocalLyricsResolver(
                 )
             }
         return lyrics
-            .takeIf { it.lines.isNotEmpty() }
+            .takeIf { it.lines.any { line -> line.text.isNotBlank() } }
             ?: throw IllegalArgumentException(context.getString(R.string.lyrics_file_empty))
     }
 

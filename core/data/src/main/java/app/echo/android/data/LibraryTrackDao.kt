@@ -24,6 +24,7 @@ data class TrackFingerprint(
     val dateModifiedSeconds: Long = 0L,
     val relativePath: String? = null,
     val durationMs: Long = 0L,
+    val fileName: String? = null,
 )
 
 data class TrackAlbumKeyRow(
@@ -1007,7 +1008,7 @@ interface LibraryTrackDao {
     @Query("SELECT COUNT(*) FROM library_tracks WHERE source = :source")
     suspend fun countTracksFromSource(source: String): Int
 
-    @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
+    @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
     suspend fun getDocumentFingerprints(): List<TrackFingerprint>
 
     @Query("SELECT DISTINCT artworkUri FROM library_tracks WHERE artworkUri LIKE 'file:%'")
@@ -1015,7 +1016,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName
         FROM library_tracks
         WHERE source = :source
         """,
@@ -1024,7 +1025,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName
         FROM library_tracks
         WHERE source = :source
           AND relativePath LIKE :relativePathLike ESCAPE '\'
@@ -1080,6 +1081,31 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getLocalFileTagBackfillTrackIds(): List<String>
+
+    @Query("""
+        SELECT * FROM library_tracks WHERE id > :afterId
+          AND source IN ('mediastore', 'saf') AND metadataEditedAtEpochMs IS NULL
+          AND id NOT LIKE '%#cue:%' AND clipStartMs = 0 AND clipEndMs = 0
+          AND (
+            lower(ifnull(mimeType, '')) IN (
+              'audio/ape', 'audio/x-ape', 'audio/x-monkeys-audio', 'audio/x-wavpack', 'audio/wavpack',
+              'audio/aiff', 'audio/x-aiff', 'audio/x-ms-wma', 'audio/x-ms-asf',
+              'audio/x-tta', 'audio/tta', 'audio/x-tak', 'audio/tak', 'audio/x-w64', 'audio/w64'
+            )
+            OR lower(ifnull(fileName, '')) GLOB '*.ape'
+            OR lower(ifnull(fileName, '')) GLOB '*.wv'
+            OR lower(ifnull(fileName, '')) GLOB '*.aif'
+            OR lower(ifnull(fileName, '')) GLOB '*.aiff'
+            OR lower(ifnull(fileName, '')) GLOB '*.aifc'
+            OR lower(ifnull(fileName, '')) GLOB '*.wma'
+            OR lower(ifnull(fileName, '')) GLOB '*.asf'
+            OR lower(ifnull(fileName, '')) GLOB '*.tta'
+            OR lower(ifnull(fileName, '')) GLOB '*.tak'
+            OR lower(ifnull(fileName, '')) GLOB '*.w64'
+            OR (durationMs = 0 AND lower(ifnull(mimeType, '')) IN ('audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'))
+          ) ORDER BY id LIMIT :limit
+    """)
+    suspend fun getExtendedAudioBackfillPage(afterId: String, limit: Int): List<LibraryTrackEntity>
 
     @Query("SELECT * FROM library_tracks WHERE id IN (:ids)")
     suspend fun getTracksByIds(ids: List<String>): List<LibraryTrackEntity>

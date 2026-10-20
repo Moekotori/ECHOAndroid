@@ -35,8 +35,17 @@ internal class EchoFfmpegExtractor(uri: Uri?, sources: DataSource.Factory?) : Ex
 
     override fun sniff(input: ExtractorInput): Boolean = try {
         val header = ByteArray(16)
-        input.peekFully(header, 0, header.size, true) &&
-            (echoFfmpegContainer(header).also { container = it } != null)
+        if (!input.peekFully(header, 0, header.size, true)) false else {
+            if (fourcc(header, 0).startsWith("ID3")) {
+                if ((6..9).any { header[it].toInt() and 128 != 0 }) return false
+                val size = (6..9).fold(0) { n, i -> (n shl 7) or (header[i].toInt() and 127) }
+                if (size > 2 * 1024 * 1024) return false
+                input.resetPeekPosition()
+                input.advancePeekPosition(10 + size + if (header[3].toInt() == 4 && header[5].toInt() and 16 != 0) 10 else 0)
+                input.peekFully(header, 0, header.size)
+            }
+            echoFfmpegContainer(header).also { container = it } != null
+        }
     } catch (_: EOFException) { false }
 
     override fun init(output: ExtractorOutput) {
@@ -125,6 +134,9 @@ internal fun echoFfmpegContainer(bytes: ByteArray): String? {
     return when {
         fourcc(bytes, 0) == "FORM" && fourcc(bytes, 8) in listOf("AIFF", "AIFC") -> "aiff"
         fourcc(bytes, 0) == "wvpk" -> "wv"
+        fourcc(bytes, 0) == "TTA1" -> "tta"
+        fourcc(bytes, 0) == "tBaK" -> "tak"
+        bytes.copyOfRange(0, 16).contentEquals(Wave64Signature) -> "w64"
         bytes.copyOfRange(0, 16).contentEquals(AsfSignature) -> "asf"
         u32be(bytes, 0) in DtsSignatures -> "dts"
         else -> null
@@ -132,5 +144,7 @@ internal fun echoFfmpegContainer(bytes: ByteArray): String? {
 }
 
 private val DtsSignatures = setOf(0x7ffe8001L, 0xfe7f0180L, 0x1fffe800L, 0xff1f00e8L)
+private val Wave64Signature = byteArrayOf(0x72, 0x69, 0x66, 0x66, 0x2e, -0x6f, -0x31, 0x11,
+    -0x5b, -0x2a, 0x28, -0x25, 0x04, -0x3f, 0, 0)
 private val AsfSignature = byteArrayOf(0x30, 0x26, 0xb2.toByte(), 0x75, 0x8e.toByte(), 0x66,
     0xcf.toByte(), 0x11, 0xa6.toByte(), 0xd9.toByte(), 0, 0xaa.toByte(), 0, 0x62, 0xce.toByte(), 0x6c)

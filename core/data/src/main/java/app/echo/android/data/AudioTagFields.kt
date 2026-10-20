@@ -126,6 +126,6 @@ internal object LibraryWavTagPolicy {
             return true
         }
         val name = fileNameOrUri.orEmpty().lowercase(java.util.Locale.ROOT).substringBefore('?')
-        return listOf("wav", "wave").any { name.endsWith(".$it") || name.contains(".$it%") }
+        return listOf("wav", "wave", "bwf").any { name.endsWith(".$it") || name.contains(".$it%") }
     }
 }

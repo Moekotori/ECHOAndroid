@@ -29,4 +29,5 @@
     <string name="subsonic_zspace_remote_access">This Zspace remote-access URL isn\'t a Subsonic server. Use the Navidrome address on the NAS (port %1$d), e.g. http://192.168.1.x:%1$d. In the Android emulator, try http://10.0.2.2:10000 while the Zspace remote-access window is open.</string>
     <string name="subsonic_redirected_unknown">The server redirected to a different site. This address isn\'t serving Navidrome/Subsonic. If you use NAS remote access, make sure the NAS is online.</string>
     <string name="subsonic_request_failed">Subsonic authentication or request failed.</string>
+    <string name="library_remote_scan_partial">Scan partially completed. A scan limit or unreadable remote entries prevented a complete sync. Existing songs were kept; check the source and retry.</string>
 </resources>

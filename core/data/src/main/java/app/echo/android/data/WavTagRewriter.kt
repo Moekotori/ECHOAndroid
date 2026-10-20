@@ -67,11 +67,16 @@ internal object WavTagRewriter {
     private fun parse(file: File): ParsedWav? =
         RandomAccessFile(file, "r").use { raf ->
             var position = 0L
+            var leadingId3: ByteArray? = null
             val id3Header = ByteArray(10)
             if (raf.read(id3Header) == 10 && isId3(id3Header)) {
                 val tagSize = syncSafeInt(id3Header, 6)
                 if (tagSize !in 1..MAX_TAG_BYTES) return@use null
                 position = 10L + tagSize
+                if (position > raf.length()) return@use null
+                leadingId3 = ByteArray(position.toInt())
+                raf.seek(0L)
+                raf.readFully(leadingId3)
                 raf.seek(position)
             } else {
                 raf.seek(0)
@@ -82,8 +87,10 @@ internal object WavTagRewriter {
             position += 12
             val declaredSize = u32le(header, 4)
             val rf64 = declaredSize == 0xFFFFFFFFL
+            if (rf64) return@use ParsedWav(emptyList(), rf64 = true)
+            if (declaredSize < 4L || position - 4L + declaredSize != raf.length()) return@use null
             val chunks = ArrayList<WavChunk>()
-            var remaining = if (rf64) Long.MAX_VALUE else declaredSize - 4L
+            var remaining = declaredSize - 4L
             var count = 0
             while (remaining >= 8L && count < MAX_CHUNKS && position + 8 <= raf.length()) {
                 raf.seek(position)
@@ -93,6 +100,9 @@ internal object WavTagRewriter {
                 val size = u32le(chunkHeader, 4)
                 if (size == 0xFFFFFFFFL) return@use ParsedWav(chunks, rf64 = true)
                 val dataOffset = position + 8
+                val padded = size + (size and 1L)
+                if (8L + padded > remaining || dataOffset + padded > raf.length()) return@use null
+                if ((id == "id3 " || id == "ID3 " || id == "ID3\u0000") && size > MAX_TAG_BYTES) return@use null
                 val listType = if (id == "LIST" && size >= 4L) {
                     raf.seek(dataOffset)
                     val marker = ByteArray(4)
@@ -100,13 +110,17 @@ internal object WavTagRewriter {
                 } else {
                     null
                 }
-                val padded = size + (size and 1L)
+                if (listType == "INFO" && size > MAX_TAG_BYTES) return@use null
                 chunks += WavChunk(id, dataOffset, size, listType)
                 position = dataOffset + padded
                 remaining -= 8 + padded
                 count += 1
             }
-            ParsedWav(chunks, rf64 = rf64)
+            // Never treat a partial parse (including the chunk limit) as a complete file.
+            if (remaining != 0L || position != raf.length()) return@use null
+            if (chunks.count { it.isId3Chunk } + (if (leadingId3 != null) 1 else 0) > 1) return@use null
+            if (chunks.count { it.isInfoList } > 1) return@use null
+            ParsedWav(chunks, rf64 = rf64, leadingId3 = leadingId3)
         }
 
     private fun writeParsed(
@@ -116,10 +130,10 @@ internal object WavTagRewriter {
         fields: AudioTagFields,
     ) {
         val existingInfo = parsed.chunks.firstOrNull { it.isInfoList }?.let { chunk ->
-            readExactly(source, chunk.dataOffset, chunk.size.toInt())
+            requireNotNull(readExactly(source, chunk.dataOffset, chunk.size.toInt()))
         }
-        val existingId3 = parsed.chunks.firstOrNull { it.isId3Chunk }?.let { chunk ->
-            readExactly(source, chunk.dataOffset, chunk.size.toInt())
+        val existingId3 = parsed.leadingId3 ?: parsed.chunks.firstOrNull { it.isId3Chunk }?.let { chunk ->
+            requireNotNull(readExactly(source, chunk.dataOffset, chunk.size.toInt()))
         }
         val infoPayload = encodeInfoList(existingInfo, fields)
         val id3Payload = AudioFileTagRewriter.encodeId3Tag(existingId3, fields)
@@ -173,7 +187,7 @@ internal object WavTagRewriter {
         val buffer = ByteArray(COPY_BUFFER)
         while (left > 0L) {
             val n = raf.read(buffer, 0, minOf(buffer.size.toLong(), left).toInt())
-            if (n <= 0) break
+            if (n <= 0) error("WAV source ended before the declared chunk boundary")
             output.write(buffer, 0, n)
             left -= n
         }
@@ -296,6 +310,7 @@ internal object WavTagRewriter {
     private data class ParsedWav(
         val chunks: List<WavChunk>,
         val rf64: Boolean,
+        val leadingId3: ByteArray? = null,
     )
 
     private sealed class WavBodyPart {

@@ -54,7 +54,7 @@ object CueSheetPolicy {
         if (audioNames.isEmpty()) return false
         val names = audioNames.map { it.substringAfterLast('/') }
         val wanted = buildList {
-            cueFileName?.let(::add)
+            if (sheet.fileName == null && sheet.tracks.all { it.fileName == null }) cueFileName?.let(::add)
             sheet.fileName?.let(::add)
             sheet.tracks.forEach { track -> track.fileName?.let(::add) }
         }
@@ -63,7 +63,9 @@ object CueSheetPolicy {
 
     fun matchAudioName(fileName: String?, audioNames: Collection<String>): String? {
         val wanted = localAudioName(fileName) ?: return null
-        audioNames.firstOrNull { it.equals(wanted, ignoreCase = true) }?.let { return it }
+        audioNames.firstOrNull { it == wanted }?.let { return it }
+        val sameCaseFold = audioNames.filter { it.equals(wanted, ignoreCase = true) }
+        if (sameCaseFold.isNotEmpty()) return sameCaseFold.singleOrNull()
         // Only the known lossless replacement is safe; unrelated files do not disable it.
         if (wanted.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) !in setOf("wav", "wave", "cue")) return null
         val stem = wanted.substringBeforeLast('.')

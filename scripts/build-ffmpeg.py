@@ -13,7 +13,8 @@ import urllib.request
 VERSION = "6.1.6"
 SHA256 = "d4fcb164028dd3beee5d92c0ac72e46aac6973c75ea12dc14de07bf8f407370a"
 DECODERS = "aac,mp3,ac3,eac3,truehd,dca,vorbis,opus,amrnb,amrwb,flac,alac,ape,pcm_mulaw,pcm_alaw,dsd_lsbf,dsd_msbf,dsd_lsbf_planar,dsd_msbf_planar,wavpack,wmav1,wmav2,wmapro,wmalossless,pcm_s8,pcm_u8,pcm_s16be,pcm_s16le,pcm_s24be,pcm_s24le,pcm_s32be,pcm_s32le,pcm_f32be,pcm_f32le,pcm_f64be,pcm_f64le,adpcm_ima_qt"
-DEMUXERS = "aiff,dts,wv,asf"
+DECODERS += ",tta,tak"
+DEMUXERS = "aiff,dts,wv,asf,tta,tak,w64"
 TARGETS = {
     "armeabi-v7a": ("arm", "armv7a-linux-androideabi", ["--cpu=armv7-a", "--extra-cflags=-march=armv7-a -mfloat-abi=softfp"]),
     "arm64-v8a": ("aarch64", "aarch64-linux-android", ["--cpu=armv8-a"]),
@@ -93,7 +94,7 @@ def main():
             "--disable-swscale", "--disable-postproc", "--disable-network",
             "--disable-gpl", "--disable-nonfree", "--disable-version3",
             "--enable-swresample", f"--enable-decoder={DECODERS}",
-            f"--enable-demuxer={DEMUXERS}", "--enable-parser=dca", *extra]
+            f"--enable-demuxer={DEMUXERS}", "--enable-parser=dca,tak", *extra]
         run(configure, build, log)
         run(["make", f"-j{jobs}"], build, log)
         run(["make", "install-libs", "install-headers"], build, log)

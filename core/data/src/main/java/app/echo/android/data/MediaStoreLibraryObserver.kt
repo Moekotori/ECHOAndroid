@@ -32,6 +32,7 @@ class MediaStoreLibraryObserver(
             true,
             observer,
         )
+        resolver.registerContentObserver(MediaStore.Files.getContentUri("external"), true, observer)
         registered = true
     }
 

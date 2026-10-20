@@ -77,6 +77,10 @@ class EchoLibraryRepository(
         delay(PINYIN_BACKFILL_START_DELAY_MS)
         refreshLegacyLibrarySearchIndex()
         backfillLocalFileTags()
+        withContext(LibraryScanDispatchers.Limited) {
+            backfillExtendedAudioMetadata(database, appContext.filesDir,
+                scanner::readExtendedScanMetadata, scanner::persistLocalArtwork)
+        }
         backfillAggregationKeys()
     }
 
@@ -831,6 +835,15 @@ class EchoLibraryRepository(
             update = update,
             editedAtEpochMs = System.currentTimeMillis(),
         )
+        // Prepare a requested cover before changing the index, so an invalid image saves nothing.
+        val fields = try {
+            fieldsForWrite(updated, lyricsText = update.lyrics, artworkUri = update.artworkUri).copy(
+                genreModified = update.genre != null,
+                composerModified = update.composer != null,
+            )
+        } catch (_: EmbeddedArtworkEncodingException) {
+            return TrackMetadataUpdateResult(false, EmbeddedTagWriteResult.Failed)
+        }
         val indexChanged = !current.hasSameUserMetadata(updated)
         if (indexChanged) {
             dao.upsertBatchWithFts(listOf(updated))
@@ -848,8 +861,7 @@ class EchoLibraryRepository(
             rebuildSummariesIfNeeded(dao, summaryKeys)
         }
         val target = if (indexChanged) dao.getTrackById(updated.id) ?: updated else current
-        val fileWrite = writeEmbeddedTags(target, update.toAudioTagFields().copy(genre = target.genre, composer = target.composer,
-            genreModified = update.genre != null, composerModified = update.composer != null))
+        val fileWrite = writeEmbeddedTags(target, fields)
         persistWrittenFileStats(dao, target, fileWrite)
         return TrackMetadataUpdateResult(indexUpdated = true, fileWrite = fileWrite)
     }
@@ -1057,6 +1069,8 @@ class EchoLibraryRepository(
         val source = LibrarySource.MediaStore.id
         val normalizedRelativePath = normalizeRelativePathPrefix(relativePathPrefix)
         val relativePathLike = normalizedRelativePath?.let { "${escapeSqlLikeArgument(it)}%" }
+        val cueScanMarker = EmbeddedCueScanMarker(appContext.filesDir, "$source:$normalizedRelativePath:$options")
+        val refreshCueMetadata = !cueScanMarker.isComplete()
         val scanRunId = System.currentTimeMillis()
         var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
         var insertedCount = 0
@@ -1118,6 +1132,7 @@ class EchoLibraryRepository(
                 relativePathPrefix = normalizedRelativePath,
                 existingTracks = existingFingerprints,
                 readSampleRate = !skipSampleRateRead,
+                refreshCueMetadata = refreshCueMetadata,
                 options = options,
                 rejectedFiles = rejectedFiles,
                 removeExcludedFromLibrary = removeExcludedFromLibrary,
@@ -1149,7 +1164,8 @@ class EchoLibraryRepository(
                 onBatch = { batch ->
                     coroutineContext.ensureActive()
                     seenIds.addAll(batch.map { it.id })
-                    val accepted = filterLocalScanBatch(batch, existingFingerprints.keys, options)
+                    val recovered = retainMetadataOnFailedReads(dao, batch)
+                    val accepted = filterLocalScanBatch(recovered, existingFingerprints.keys, options)
                     skippedCount += batch.size - accepted.size
                     val classified = classifyScanBatch(
                         batch = accepted,
@@ -1162,7 +1178,7 @@ class EchoLibraryRepository(
                     writeClassifiedScanBatch(dao, classified)
                     if (documentFingerprints.isNotEmpty()) (classified.inserts + classified.updates).forEach { track ->
                         changedFingerprints[track.id] = TrackFingerprint(track.id, track.contentUri, track.sampleRateHz,
-                            track.fingerprint, track.sizeBytes, track.dateModifiedSeconds, track.relativePath, track.durationMs)
+                            track.fingerprint, track.sizeBytes, track.dateModifiedSeconds, track.relativePath, track.durationMs, track.fileName)
                     }
                     insertedCount += classified.inserts.size
                     updatedCount += classified.updates.size
@@ -1250,6 +1266,7 @@ class EchoLibraryRepository(
                 albumGroupingMaintenance.reconcileFolders(changedGroupingFolders)
             }
             scanner.pruneLocalArtwork(dao)
+            if (scanOutcome.querySucceeded && scanOutcome.failedReadCount == 0) cueScanMarker.complete()
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
                 error = if (scanOutcome.failedReadCount > 0 || !scanOutcome.querySucceeded) {
@@ -1295,6 +1312,8 @@ class EchoLibraryRepository(
         val normalizedRelativePath = normalizeRelativePathPrefix(relativePathPrefix)
             ?: error("Document tree scan requires a relative path")
         val relativePathLike = "${escapeSqlLikeArgument(normalizedRelativePath)}%"
+        val cueScanMarker = EmbeddedCueScanMarker(appContext.filesDir, "$source:$treeUri:$normalizedRelativePath:$options")
+        val refreshCueMetadata = !cueScanMarker.isComplete()
         val scanRunId = System.currentTimeMillis()
         var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
         var insertedCount = 0
@@ -1369,6 +1388,7 @@ class EchoLibraryRepository(
                 existingTracks = existingFingerprints,
                 mediaStoreDuplicateKeys = mediaStoreDuplicateKeys,
                 readSampleRate = !skipSampleRateRead,
+                refreshCueMetadata = refreshCueMetadata,
                 options = options,
                 rejectedFiles = rejectedFiles,
                 onSkipped = { skippedCount++ },
@@ -1473,6 +1493,7 @@ class EchoLibraryRepository(
                 albumGroupingMaintenance.reconcileFolders(changedGroupingFolders)
             }
             scanner.pruneLocalArtwork(dao)
+            if (scanOutcome.querySucceeded && scanOutcome.failedReadCount == 0) cueScanMarker.complete()
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
                 error = when {
@@ -1881,7 +1902,12 @@ class EchoLibraryRepository(
                 tagScan.complete()
                 scanner.pruneLocalArtwork(dao)
             }
-            emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
+            emitProgress(
+                phase = if (visit.incomplete) LibraryScanPhase.Error else LibraryScanPhase.Completed,
+                error = if (visit.incomplete) text(R.string.library_remote_scan_partial) else null,
+                currentTitle = null,
+                isCompleted = true,
+            )
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
             throw error
@@ -2277,11 +2303,7 @@ class EchoLibraryRepository(
     private suspend fun retainMetadataOnFailedReads(dao: LibraryTrackDao, batch: List<LibraryTrackEntity>): List<LibraryTrackEntity> =
         batch.map { incoming ->
             if (incoming.fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint) incoming
-            else dao.getTrackById(incoming.id)?.copy(
-                contentUri = incoming.contentUri, relativePath = incoming.relativePath,
-                sizeBytes = incoming.sizeBytes, dateModifiedSeconds = incoming.dateModifiedSeconds,
-                fingerprint = LibraryScanPolicy.PendingDocumentMetadataFingerprint,
-            ) ?: incoming
+            else retainFailedScanMetadata(incoming, dao.getTrackById(incoming.id))
         }
 
     private suspend fun mergeDuplicateAliases(

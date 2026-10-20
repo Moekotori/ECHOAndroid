@@ -61,6 +61,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -408,9 +409,9 @@ internal fun TrackContextMenu(
     val onSelectForBatch = selection?.let { { it.start(track) } }
     val actionScope = rememberCoroutineScope()
     var expanded by remember(track.id) { mutableStateOf(false) }
-    var sheetMode by remember(track.id) { mutableStateOf<TrackSheetMode?>(null) }
+    var sheetMode by rememberSaveable(track.id) { mutableStateOf<TrackSheetMode?>(null) }
     var showInfo by remember(track.id) { mutableStateOf(false) }
-    var showEditor by remember(track.id) { mutableStateOf(false) }
+    var showEditor by rememberSaveable(track.id) { mutableStateOf(false) }
     var editorSaving by remember(track.id) { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
@@ -632,11 +633,7 @@ internal fun TrackContextMenu(
                         onDismiss = { sheetMode = null },
                         onSave = onUpdateTrackMetadata,
                         onSavingChange = { editorSaving = it },
-                        onPickArtwork = onPickArtwork?.let { pick ->
-                            {
-                                pick(track)
-                            }
-                        },
+                        canPickArtwork = onPickArtwork != null,
                     )
                 }
             }
@@ -662,11 +659,7 @@ internal fun TrackContextMenu(
             onDismiss = { showEditor = false },
             onSave = onUpdateTrackMetadata,
             onSavingChange = { editorSaving = it },
-            onPickArtwork = onPickArtwork?.let { pick ->
-                {
-                    pick(track)
-                }
-            },
+            canPickArtwork = onPickArtwork != null,
         )
     }
 }
@@ -713,9 +706,10 @@ private fun TrackMetadataEditorSheet(
     onDismiss: () -> Unit,
     onSave: suspend (EchoTrackMetadataUpdate) -> Unit,
     onSavingChange: (Boolean) -> Unit,
-    onPickArtwork: (() -> Unit)? = null,
+    canPickArtwork: Boolean = false,
 ) {
     val editor = rememberTrackMetadataEditorState(track)
+    val pickArtwork = rememberTrackMetadataArtworkPicker(editor)
     val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier
@@ -727,7 +721,7 @@ private fun TrackMetadataEditorSheet(
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TrackSheetHeader(track)
+        TrackSheetHeader(track.copy(artworkUri = editor.artworkUri ?: track.artworkUri))
         Spacer(Modifier.height(2.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -749,7 +743,7 @@ private fun TrackMetadataEditorSheet(
         TrackMetadataEditorFields(
             state = editor,
             saving = saving,
-            onPickArtwork = onPickArtwork,
+            onPickArtwork = if (canPickArtwork) pickArtwork else null,
         )
         Button(
             enabled = editor.canSave || saving,
@@ -853,6 +847,9 @@ private fun TrackMetadataEditorFields(
         modifier = Modifier.fillMaxWidth(),
     )
     if (onPickArtwork != null) {
+        state.artworkUri?.let { uri ->
+            ArtworkTile(uri, Modifier.size(64.dp), accent = rememberLibraryArtworkAccent())
+        }
         TextButton(onClick = onPickArtwork, enabled = !saving) {
             Text(stringResource(L10nR.string.metadata_choose_artwork))
         }
@@ -871,9 +868,10 @@ private fun TrackMetadataEditorDialog(
     onDismiss: () -> Unit,
     onSave: suspend (EchoTrackMetadataUpdate) -> Unit,
     onSavingChange: (Boolean) -> Unit,
-    onPickArtwork: (() -> Unit)? = null,
+    canPickArtwork: Boolean = false,
 ) {
     val editor = rememberTrackMetadataEditorState(track)
+    val pickArtwork = rememberTrackMetadataArtworkPicker(editor)
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = { if (!saving) onDismiss() },
@@ -894,7 +892,7 @@ private fun TrackMetadataEditorDialog(
                 TrackMetadataEditorFields(
                     state = editor,
                     saving = saving,
-                    onPickArtwork = onPickArtwork,
+                    onPickArtwork = if (canPickArtwork) pickArtwork else null,
                 )
             }
         },

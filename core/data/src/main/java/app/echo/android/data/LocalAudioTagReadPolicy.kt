@@ -17,6 +17,8 @@ internal object LocalAudioTagReadPolicy {
         "audio/mpeg", "audio/mp3", "audio/x-mp3", "audio/mp2", "audio/aac", "audio/aac-adts",
         "audio/mp4", "audio/x-m4a", "audio/m4a", "video/mp4", "application/mp4",
         "audio/ogg", "application/ogg", "audio/vorbis", "audio/opus",
+        "audio/ape", "audio/x-ape", "audio/x-monkeys-audio", "audio/x-wavpack", "audio/wavpack",
+        "audio/x-tta", "audio/tta", "audio/x-tak", "audio/tak",
     )
-    private val FileTagExtensions = listOf("flac", "mp3", "mp2", "aac", "adts", "wave", "m4a", "m4b", "mp4", "ogg", "oga", "opus")
+    private val FileTagExtensions = listOf("flac", "fla", "alac", "ape", "wv", "tta", "tak", "mp3", "mp2", "aac", "adts", "wave", "m4a", "m4b", "mp4", "ogg", "oga", "opus")
 }

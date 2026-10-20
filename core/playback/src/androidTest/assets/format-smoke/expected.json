@@ -23,5 +23,20 @@
     "codec": "pcm_f32be",
     "pcmBytes": 48000,
     "sha256": "975f077b8e05ed69c8daa4e5f3f9b2e12cd178aaf7d395e1a81dd833ca7dea2f"
+  },
+  "tone.tta": {
+    "codec": "tta",
+    "pcmBytes": 48000,
+    "sha256": "7ed2e21149cd83ebee5920b8b9cd0817fc8c2eb556ffe35fd32ede49882eed58"
+  },
+  "tone.w64": {
+    "codec": "pcm_s24le",
+    "pcmBytes": 48000,
+    "sha256": "671709386a19b7da7caec16e28210649c552158ac1bd355bc03813b5305f59d5"
+  },
+  "sample.tak": {
+    "codec": "tak",
+    "pcmBytes": 1675800,
+    "sha256": "bc82d24d89737f9cdf8ca2fa6c3721b8a7db63636020350a43f8c0cdb773a55a"
   }
 }
