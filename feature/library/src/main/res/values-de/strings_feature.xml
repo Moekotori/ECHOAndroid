@@ -44,8 +44,8 @@
     <string name="feature_library_count_tracks_local_playlist_352a0d">"%1$s Titel · Lokale Playlist"</string>
     <string name="feature_library_count_tracks_navidrome_294a65">"%1$s Titel · Navidrome"</string>
     <string name="feature_library_create_7b4bc9">"Erstellen"</string>
-    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"Schreibt MP3-, FLAC- und WAV-Tags in die Audiodatei, wenn Android es erlaubt. Andernfalls bleibt dies im ECHOAndroid-Bibliotheksindex."</string>
-    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"Schreibt MP3-, FLAC- und WAV-Tags einschließlich importierter Liedtexte und Cover in die Audiodatei, wenn Android es erlaubt."</string>
+    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"Schreibt Tags unterstützter Formate in die Audiodatei, wenn Android es erlaubt. Andernfalls bleibt dies im ECHOAndroid-Bibliotheksindex."</string>
+    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"Schreibt Tags unterstützter Formate einschließlich importierter Liedtexte und Cover in die Audiodatei, wenn Android es erlaubt."</string>
     <string name="feature_library_custom_artwork_c8c999">"Eigenes Cover"</string>
     <string name="feature_library_delete_138ccf">"Löschen"</string>
     <string name="feature_library_delete_playlist_4d9753">"Playlist löschen"</string>

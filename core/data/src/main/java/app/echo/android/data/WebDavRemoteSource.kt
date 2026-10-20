@@ -219,7 +219,10 @@ internal fun parseWebDavListing(base: URI, xml: String): WebDavListingParse {
     for (index in 0 until responses.length) {
         val response = responses.item(index) as? Element ?: continue
         val hrefText = response.childText("href")?.takeIf { it.isNotBlank() }
-        if (hrefText == null || !response.childText("status").isSuccessfulWebDavStatus()) {
+        val responseStatus = (0 until response.childNodes.length).asSequence()
+            .mapNotNull { response.childNodes.item(it) as? Element }
+            .firstOrNull { it.localName == "status" }?.textContent
+        if (hrefText == null || !responseStatus.isSuccessfulWebDavStatus()) {
             hrefParseFailed = true
             continue
         }

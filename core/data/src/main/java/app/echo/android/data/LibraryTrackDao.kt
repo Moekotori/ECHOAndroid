@@ -285,49 +285,17 @@ interface LibraryTrackDao {
     )
     fun observeLibraryStats(): Flow<LibraryStats>
 
-    @Query(
-        """
-        SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds
-        FROM library_album_summaries
-        WHERE isRemote = 0
-          AND (:query IS NULL OR
-               title LIKE '%' || :query || '%' OR
-               albumArtist LIKE '%' || :query || '%' OR
-               artist LIKE '%' || :query || '%' OR
-               pinyinTitle LIKE '%' || lower(:query) || '%' OR
-               pinyinArtist LIKE '%' || lower(:query) || '%')
-        ORDER BY
-            CASE WHEN :sort = 'Artist' THEN albumArtist END COLLATE NOCASE ASC,
-            CASE WHEN :sort = 'Year' THEN year END DESC,
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            CASE WHEN :sort = 'RecentlyAdded' THEN addedAtSeconds END DESC,
-            title COLLATE NOCASE ASC
-        """,
-    )
-    fun pageAlbums(query: String?, sort: String): PagingSource<Int, AlbumSummary>
+    fun pageAlbums(query: String?, sort: String): PagingSource<Int, AlbumSummary> =
+        pageAlbumsSorted(LibrarySummaryPagingQuery.albums(query, sort, remote = false))
 
-    @Query(
-        """
-        SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds
-        FROM library_album_summaries
-        WHERE isRemote = 1
-          AND (:query IS NULL OR
-               title LIKE '%' || :query || '%' OR
-               albumArtist LIKE '%' || :query || '%' OR
-               artist LIKE '%' || :query || '%' OR
-               pinyinTitle LIKE '%' || lower(:query) || '%' OR
-               pinyinArtist LIKE '%' || lower(:query) || '%')
-        ORDER BY
-            CASE WHEN :sort = 'Artist' THEN albumArtist END COLLATE NOCASE ASC,
-            CASE WHEN :sort = 'Year' THEN year END DESC,
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            CASE WHEN :sort = 'RecentlyAdded' THEN addedAtSeconds END DESC,
-            title COLLATE NOCASE ASC
-        """,
-    )
-    fun pageRemoteAlbums(query: String?, sort: String): PagingSource<Int, AlbumSummary>
+    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class])
+    fun pageAlbumsSorted(query: SupportSQLiteQuery): PagingSource<Int, AlbumSummary>
+
+    fun pageRemoteAlbums(query: String?, sort: String): PagingSource<Int, AlbumSummary> =
+        pageRemoteAlbumsSorted(LibrarySummaryPagingQuery.albums(query, sort, remote = true))
+
+    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class])
+    fun pageRemoteAlbumsSorted(query: SupportSQLiteQuery): PagingSource<Int, AlbumSummary>
 
     @Query(
         """
@@ -371,37 +339,17 @@ interface LibraryTrackDao {
     )
     fun observeAlbumListenStats(limit: Int): Flow<List<LibraryAlbumListenStatsRow>>
 
-    @Query(
-        """
-        SELECT artistKey, name, artworkUri, albumCount, trackCount, durationMs
-        FROM library_artist_summaries
-        WHERE (:query IS NULL OR
-               name LIKE '%' || :query || '%' OR
-               pinyinName LIKE '%' || lower(:query) || '%')
-        ORDER BY
-            CASE WHEN :sort = 'AlbumCount' THEN albumCount END DESC,
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            name COLLATE NOCASE ASC
-        """,
-    )
-    fun pageArtists(query: String?, sort: String): PagingSource<Int, ArtistSummary>
+    fun pageArtists(query: String?, sort: String): PagingSource<Int, ArtistSummary> =
+        pageArtistsSorted(LibrarySummaryPagingQuery.artists(query, sort))
 
-    @Query(
-        """
-        SELECT genreKey, name, artworkUri, albumCount, trackCount, durationMs
-        FROM library_genre_summaries
-        WHERE (:query IS NULL OR
-               name LIKE '%' || :query || '%' OR
-               pinyinName LIKE '%' || lower(:query) || '%')
-        ORDER BY
-            CASE WHEN :sort = 'AlbumCount' THEN albumCount END DESC,
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            name COLLATE NOCASE ASC
-        """,
-    )
-    fun pageGenres(query: String?, sort: String): PagingSource<Int, app.echo.android.model.library.GenreSummary>
+    @RawQuery(observedEntities = [LibraryArtistSummaryEntity::class])
+    fun pageArtistsSorted(query: SupportSQLiteQuery): PagingSource<Int, ArtistSummary>
+
+    fun pageGenres(query: String?, sort: String): PagingSource<Int, app.echo.android.model.library.GenreSummary> =
+        pageGenresSorted(LibrarySummaryPagingQuery.genres(query, sort))
+
+    @RawQuery(observedEntities = [LibraryGenreSummaryEntity::class])
+    fun pageGenresSorted(query: SupportSQLiteQuery): PagingSource<Int, app.echo.android.model.library.GenreSummary>
 
     @Query(
         """
@@ -430,25 +378,11 @@ interface LibraryTrackDao {
     )
     fun pageTracksByComposer(composerKey: String): PagingSource<Int, LibraryTrackEntity>
 
-    @Query(
-        """
-        SELECT folderKey, path, artworkUri, trackCount, albumCount, artistCount,
-               durationMs, totalSizeBytes, latestModifiedSeconds
-        FROM library_folder_summaries
-        WHERE (:query IS NULL OR
-               path LIKE '%' || :query || '%' OR
-               folderKey LIKE '%' || :query || '%')
-        ORDER BY
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'AlbumCount' THEN albumCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            CASE WHEN :sort = 'Size' THEN totalSizeBytes END DESC,
-            CASE WHEN :sort = 'RecentlyModified' THEN latestModifiedSeconds END DESC,
-            CASE WHEN folderKey = '' THEN 1 ELSE 0 END,
-            path COLLATE NOCASE ASC
-        """,
-    )
-    fun pageFolders(query: String?, sort: String): PagingSource<Int, FolderSummary>
+    fun pageFolders(query: String?, sort: String): PagingSource<Int, FolderSummary> =
+        pageFoldersSorted(LibrarySummaryPagingQuery.folders(query, sort))
+
+    @RawQuery(observedEntities = [LibraryFolderSummaryEntity::class])
+    fun pageFoldersSorted(query: SupportSQLiteQuery): PagingSource<Int, FolderSummary>
 
     @Query(
         """
@@ -1315,11 +1249,10 @@ interface LibraryTrackDao {
             OR artist LIKE '%' || :query || '%'
             OR pinyinTitle LIKE '%' || lower(:query) || '%'
             OR pinyinArtist LIKE '%' || lower(:query) || '%'
-            OR EXISTS (
-                SELECT 1
+            OR albumKey IN (
+                SELECT matched_track.albumKey
                 FROM library_tracks AS matched_track
                 WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
-                  AND matched_track.albumKey = library_album_summaries.albumKey
                   AND (
                     matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
                     OR matched_track.normalizedArtist LIKE '%' || lower(:query) || '%'
@@ -1351,11 +1284,11 @@ interface LibraryTrackDao {
         FROM library_artist_summaries
         WHERE name LIKE '%' || :query || '%'
            OR pinyinName LIKE '%' || lower(:query) || '%'
-           OR EXISTS (
-                SELECT 1
+           OR artistKey IN (
+                SELECT credits.artistKey
                 FROM library_tracks AS matched_track
+                JOIN library_track_artists AS credits ON credits.trackId = matched_track.id
                 WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
-                  AND matched_track.id IN (SELECT trackId FROM library_track_artists WHERE artistKey = library_artist_summaries.artistKey)
                   AND (
                     matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
                     OR matched_track.normalizedArtist LIKE '%' || lower(:query) || '%'

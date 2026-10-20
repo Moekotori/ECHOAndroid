@@ -24,6 +24,7 @@ internal object EchoJsonLyricsParser {
             require(!raw.trimStart().startsWith('{')) { "Nested JSON lyric envelopes are not supported" }
             return EchoLyricsParser.parse(raw, sourceLabel = when (key) {
                 "yrc" -> "lyrics.yrc"
+                "plainLyrics" -> "lyrics.txt"
                 else -> "lyrics.lrc"
             }).takeIf { it.lines.any { line -> line.text.isNotBlank() } }
         }
@@ -32,7 +33,10 @@ internal object EchoJsonLyricsParser {
         val translated = embedded("ytlrc") ?: embedded("tlyric")
         val romanized = embedded("yromalrc") ?: embedded("romalrc")
         return primary.copy(sourceLabel = source, lines = primary.lines.map { line ->
-            line.copy(translation = matching(translated, line.startMs), romanization = matching(romanized, line.startMs))
+            line.copy(
+                translation = matching(translated, line.startMs) ?: line.translation,
+                romanization = matching(romanized, line.startMs) ?: line.romanization,
+            )
         })
     }
 

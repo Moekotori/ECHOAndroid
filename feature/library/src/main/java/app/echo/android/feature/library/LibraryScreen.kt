@@ -297,7 +297,7 @@ fun LibraryScreen(
     onPlayNext: (EchoTrack) -> Unit = {},
     onAddNextUp: (EchoTrack) -> Unit = {},
     onEnqueueTrack: (EchoTrack) -> Unit = {},
-    onUpdateTrackMetadata: suspend (EchoTrackMetadataUpdate) -> Unit,
+    onUpdateTrackMetadata: suspend (EchoTrackMetadataUpdate) -> Boolean,
     onImportLyricsForTrack: (EchoTrack) -> Unit,
     onPickTrackArtwork: (EchoTrack) -> Unit,
     onPlayAlbum: (AlbumSummary) -> Unit,
@@ -1173,6 +1173,7 @@ private fun LinkedEchoLibraryPage(
     val includeAlbums = selectedMode == LinkedLibraryMode.Albums
     val includeArtists = selectedMode == LinkedLibraryMode.Artists
     val includePlaylists = selectedMode == LinkedLibraryMode.Playlists
+    val searchText = remember { LinkedLibrarySearchTextCache() }
     val catalog by produceState(
         initialValue = LinkedLibraryCatalog.Empty,
         tracks,
@@ -1192,6 +1193,7 @@ private fun LinkedEchoLibraryPage(
         if (normalizedQuery.isNotEmpty()) delay(200)
         value = withContext(Dispatchers.Default) {
             LinkedLibraryCatalog.build(
+                searchText = searchText,
                 tracks = tracks,
                 playlists = playlists,
                 query = normalizedQuery,

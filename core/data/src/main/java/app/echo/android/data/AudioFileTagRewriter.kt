@@ -24,6 +24,8 @@ internal object AudioFileTagRewriter {
         fields: AudioTagFields,
         mimeType: String? = null,
     ): AudioTagRewriteStatus {
+        if (fields.title.isBlank() || fields.artist.isBlank()) return AudioTagRewriteStatus.InvalidSource
+        ContainerTagRewrite.rewriteFile(source, destination, fields)?.let { return it }
         if (WavTagRewriter.isWavFile(source, mimeType)) {
             return WavTagRewriter.rewriteFile(source, destination, fields)
         }
@@ -50,7 +52,7 @@ internal object AudioFileTagRewriter {
             looksLikeRiff(peek, peeked) || LibraryWavTagPolicy.isWavContainer(mimeType) ->
                 WavTagRewriter.rewrite(PrefixInputStream(peek.copyOf(peeked), input), output, fields)
             looksLikeMp4(peek, peeked) || looksLikeOgg(peek, peeked) ->
-                AudioTagRewriteStatus.UnsupportedFormat
+                ContainerTagRewrite.rewrite(PrefixInputStream(peek.copyOf(peeked), input), output, fields)
             looksLikeMp3Frame(peek, peeked) || mimeLooksLikeMp3(mimeType) -> {
                 output.write(buildId3Tag(majorVersion = 4, frames = emptyList(), fields = fields))
                 copyMp3WithUpdatedLegacyTags(PrefixInputStream(peek.copyOf(peeked), input), output, fields)
@@ -509,12 +511,13 @@ internal object AudioFileTagRewriter {
         if (replaceComposer) managed += "TCOM"
         if (replaceGenre) managed += "TCON"
         if (fields.lyrics != null) managed += setOf("USLT", "SYLT")
-        if (fields.artworkBytes != null) managed += "APIC"
         val kept = frames.filterNot { frame ->
             frame.id in managed ||
+                (fields.artworkBytes != null && frame.id == "APIC" && readableId3Payload(frame, version)
+                    ?.let { EmbeddedTagArtwork.id3PictureType(it) } == 3) ||
                 (fields.lyrics != null && frame.id == "TXXX" && readableId3Payload(frame, version)
                     ?.let(::decodeReadTxxx)?.first?.uppercase(java.util.Locale.ROOT) in Id3LyricsKeys) ||
-                (fields.replayGainTrackGainDb != null && isReplayGainTrackTxxx(frame))
+                (fields.replayGainTrackGainDb != null && isReplayGainTrackTxxx(frame, version))
         }
         val next = ArrayList<Id3Frame>(kept.size + 10)
         next += textFrame(version, "TIT2", fields.title)
@@ -583,35 +586,9 @@ internal object AudioFileTagRewriter {
         return Id3Frame("TXXX", byteArrayOf(0, 0), payload)
     }
 
-    private fun isReplayGainTrackTxxx(frame: Id3Frame): Boolean {
-        if (frame.id != "TXXX") return false
-        return txxxDescription(frame.payload).equals("REPLAYGAIN_TRACK_GAIN", ignoreCase = true)
-    }
-
-    private fun txxxDescription(payload: ByteArray): String {
-        if (payload.isEmpty()) return ""
-        val encoding = when (payload[0].toInt() and 0xFF) {
-            1, 2 -> Charsets.UTF_16
-            3 -> StandardCharsets.UTF_8
-            else -> StandardCharsets.ISO_8859_1
-        }
-        val terminator = if (encoding == Charsets.UTF_16 || encoding == Charsets.UTF_16BE) 2 else 1
-        var end = 1
-        while (end + terminator <= payload.size) {
-            val zero = if (terminator == 2) {
-                payload[end] == 0.toByte() && payload[end + 1] == 0.toByte()
-            } else {
-                payload[end] == 0.toByte()
-            }
-            if (zero) break
-            end++
-        }
-        return if (end > 1) {
-            String(payload, 1, end - 1, encoding).trim('\u0000', ' ')
-        } else {
-            ""
-        }
-    }
+    private fun isReplayGainTrackTxxx(frame: Id3Frame, version: Int): Boolean =
+        frame.id == "TXXX" && readableId3Payload(frame, version)?.let(::decodeReadTxxx)
+            ?.first.equals("REPLAYGAIN_TRACK_GAIN", ignoreCase = true)
 
     private fun formatReplayGainTag(gainDb: Float): String {
         val hundredths = (gainDb * 100f).toInt() / 100.0
@@ -813,7 +790,7 @@ internal object AudioFileTagRewriter {
         val kept = blocks.filterNot { block ->
             block.type == FLAC_VORBIS_COMMENT ||
                 block.type == FLAC_PADDING ||
-                (dropPicture && block.type == FLAC_PICTURE)
+                (dropPicture && block.type == FLAC_PICTURE && block.payload.size >= 4 && int32be(block.payload, 0) == 3)
         }
         val streamInfo = kept.filter { it.type == FLAC_STREAMINFO }
         val others = kept.filterNot { it.type == FLAC_STREAMINFO }.toMutableList()

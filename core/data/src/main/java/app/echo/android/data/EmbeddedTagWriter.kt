@@ -64,10 +64,17 @@ class EmbeddedTagWriter(
             }
         }
 
-    private fun writeLocked(
-        track: LibraryTrackEntity,
-        fields: AudioTagFields,
-    ): EmbeddedTagWriteResult {
+    /** Null means rewriting may proceed; this check never replaces audio bytes. */
+    internal suspend fun preflight(track: LibraryTrackEntity): EmbeddedTagWriteResult? =
+        withContext(Dispatchers.IO) {
+            try { preflightLocked(track) }
+            catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                EmbeddedTagWriteResult.Failed
+            }
+        }
+
+    private fun preflightLocked(track: LibraryTrackEntity): EmbeddedTagWriteResult? {
         if (!track.canWriteEmbeddedTags()) {
             return EmbeddedTagWriteResult.NotLocal
         }
@@ -84,8 +91,15 @@ class EmbeddedTagWriter(
         if (format == PeekFormat.Unsupported) return EmbeddedTagWriteResult.UnsupportedFormat
         if (format == PeekFormat.Unreadable) return EmbeddedTagWriteResult.Failed
 
-        val access = writeAccess(uri, track.source)
-        if (access != null) return access
+        return writeAccess(uri, track.source)
+    }
+
+    private fun writeLocked(
+        track: LibraryTrackEntity,
+        fields: AudioTagFields,
+    ): EmbeddedTagWriteResult {
+        preflightLocked(track)?.let { return it }
+        val uri = Uri.parse(track.contentUri)
 
         val cacheDir = File(appContext.cacheDir, TAG_CACHE_DIR).apply { mkdirs() }
         val trackKey = EmbeddedTagBackup.keyForTrack(track.id)
@@ -178,7 +192,7 @@ class EmbeddedTagWriter(
                 PeekFormat.Supported
             looksLikeMp3(probe, read, mimeType) -> PeekFormat.Supported
             looksLikeRiff(probe, read) || LibraryWavTagPolicy.isWavContainer(mimeType) -> PeekFormat.Supported
-            looksLikeUnsupportedContainer(probe, read) -> PeekFormat.Unsupported
+            looksLikeMetadataContainer(probe, read) -> PeekFormat.Supported
             mimeType.orEmpty().lowercase().let {
                 it.contains("mpeg") || it.contains("flac") || it.contains("mp3") || it.contains("wav")
             } -> PeekFormat.Supported
@@ -264,9 +278,13 @@ class EmbeddedTagWriter(
     }
 
     private fun copyUriToFile(uri: Uri, destination: File) {
+        // Reserve space for both cached copies even when the provider cannot report a size.
+        val cacheBudget = ((appContext.cacheDir.usableSpace - MIN_FREE_CACHE_BYTES).coerceAtLeast(0L) / 2L)
+        val maxBytes = minOf(MAX_REWRITE_BYTES, cacheBudget)
+        check(maxBytes > 0L) { "Insufficient space for audio tag rewrite" }
         resolver.openInputStream(uri)?.use { input ->
             FileOutputStream(destination).use { output ->
-                input.copyTo(output, COPY_BUFFER)
+                copyEmbeddedTagSource(input, output, maxBytes)
             }
         } ?: error("Unable to open $uri")
     }
@@ -397,7 +415,7 @@ class EmbeddedTagWriter(
         return mime.contains("mpeg") || mime.contains("mp3")
     }
 
-    private fun looksLikeUnsupportedContainer(bytes: ByteArray, n: Int): Boolean {
+    private fun looksLikeMetadataContainer(bytes: ByteArray, n: Int): Boolean {
         if (n >= 8 &&
             bytes[4] == 'f'.code.toByte() &&
             bytes[5] == 't'.code.toByte() &&

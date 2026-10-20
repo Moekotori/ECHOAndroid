@@ -765,29 +765,25 @@ class MediaStoreTrackScanner(
             if (LocalAudioContainerMetadata.supports(mimeType, fileName)) {
                 val container = readScanMetadata(openMetadataInput(contentUri), LocalAudioContainerMetadata::read)
                     ?: throw IOException("Cannot read audio container metadata")
-                if (container != null) {
-                    val tags = mergeAudioTags(container.tags, if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, fileName)) {
-                        readAudioTagsFromUriChecked(contentUri, mimeType)
-                    } else null)
-                    return entity.copy(
-                        durationMs = container.durationMs.takeIf { it > 0 } ?: durationMs,
-                        sampleRateHz = container.sampleRateHz.takeIf { readSampleRate } ?: entity.sampleRateHz,
-                    ).withAudioTags(tags).copy(
-                        artworkUri = persistLocalArtwork(tags?.artworkBytes) ?: entity.artworkUri,
-                    ).withFingerprint().withFastPathSampleRate(existingTrack, readSampleRate, ::readSampleRateHz)
-                }
+                val tags = mergeAudioTags(container.tags, if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, fileName)) {
+                    readAudioTagsFromUriChecked(contentUri, mimeType)
+                } else null)
+                return entity.copy(
+                    durationMs = container.durationMs.takeIf { it > 0 } ?: durationMs,
+                    sampleRateHz = container.sampleRateHz.takeIf { readSampleRate } ?: entity.sampleRateHz,
+                ).withAudioTags(tags).copy(
+                    artworkUri = persistLocalArtwork(tags?.artworkBytes) ?: entity.artworkUri,
+                ).withFingerprint().withFastPathSampleRate(existingTrack, readSampleRate, ::readSampleRateHz)
             }
             if (EchoDsdMetadata.isDsd(mimeType, fileName) || EchoDsdMetadata.isDsd(mimeType, contentUri)) {
                 val dsd = readScanMetadata(openMetadataInput(contentUri), EchoDsdMetadata::read)
                     ?: throw IOException("Cannot read DSD metadata")
-                if (dsd != null) {
-                    return entity.copy(
-                        durationMs = dsd.durationMs.takeIf { it > 0L } ?: durationMs,
-                        sampleRateHz = dsd.sampleRateHz.takeIf { it > 0 } ?: sampleRateHz,
-                    ).withAudioTags(dsd.tags).copy(
-                        artworkUri = persistLocalArtwork(dsd.tags?.artworkBytes) ?: entity.artworkUri,
-                    ).withFingerprint()
-                }
+                return entity.copy(
+                    durationMs = dsd.durationMs.takeIf { it > 0L } ?: durationMs,
+                    sampleRateHz = dsd.sampleRateHz.takeIf { it > 0 } ?: sampleRateHz,
+                ).withAudioTags(dsd.tags).copy(
+                    artworkUri = persistLocalArtwork(dsd.tags?.artworkBytes) ?: entity.artworkUri,
+                ).withFingerprint()
             }
             val tagged = if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, fileName ?: contentUri)) {
                 val tags = readAudioTagsFromUriChecked(contentUri, mimeType)

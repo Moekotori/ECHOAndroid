@@ -4,7 +4,7 @@
     <string name="scan_rules_presets">Scan preset</string>
     <string name="scan_rules_recommended_hint">At least 30 sec and 100 KB; skip hidden and non-music folders</string>
     <string name="scan_rules_all_hint">All supported audio, with no duration, size or automatic folder filters</string>
-    <string name="scan_rules_lossless_hint">Recommended filters, limited to FLAC, WAV, AIFF and DSD</string>
+    <string name="scan_rules_lossless_hint">Recommended filters, limited to supported lossless formats</string>
     <string name="scan_rules_file_filters">File filters</string>
     <string name="scan_rules_file_filters_hint">Files below either limit are skipped. Unknown duration or size is kept. These limits and format choices do not remove imported songs.</string>
     <string name="scan_rules_folder_filters">Keep non-music audio out</string>

@@ -44,8 +44,8 @@
     <string name="feature_library_count_tracks_local_playlist_352a0d">"%1$s titres · Playlist locale"</string>
     <string name="feature_library_count_tracks_navidrome_294a65">"%1$s titres · Navidrome"</string>
     <string name="feature_library_create_7b4bc9">"Créer"</string>
-    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"Écrit les étiquettes MP3, FLAC et WAV dans le fichier audio lorsque Android le permet. Sinon, cela reste dans l'index de bibliothèque ECHOAndroid."</string>
-    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"Écrit les étiquettes MP3, FLAC et WAV, y compris les paroles et pochettes importées, dans le fichier audio lorsque Android le permet."</string>
+    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"Écrit les étiquettes des formats pris en charge dans le fichier audio lorsque Android le permet. Sinon, cela reste dans l'index de bibliothèque ECHOAndroid."</string>
+    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"Écrit les étiquettes des formats pris en charge, y compris les paroles et pochettes importées, dans le fichier audio lorsque Android le permet."</string>
     <string name="feature_library_custom_artwork_c8c999">"Pochette personnalisée"</string>
     <string name="feature_library_delete_138ccf">"Supprimer"</string>
     <string name="feature_library_delete_playlist_4d9753">"Supprimer la playlist"</string>

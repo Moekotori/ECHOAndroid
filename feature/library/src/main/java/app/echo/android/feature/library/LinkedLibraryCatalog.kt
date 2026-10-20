@@ -26,6 +26,7 @@ internal data class LinkedLibraryCatalog(
         )
 
         fun build(
+            searchText: LinkedLibrarySearchTextCache,
             tracks: List<EchoRemoteTrack>,
             playlists: List<EchoRemotePlaylist>,
             query: String,
@@ -45,16 +46,16 @@ internal data class LinkedLibraryCatalog(
             val filteredTracks = if (!needsTracks) {
                 emptyList()
             } else {
-                tracks.filterLinkedLibraryQuery(normalizedQuery)
+                tracks.filterLinkedLibraryQuery(normalizedQuery, searchText)
             }
             val filteredPlaylists = if (!includePlaylists) {
                 emptyList()
             } else {
-                playlists.filterLinkedPlaylistQuery(normalizedQuery)
+                playlists.filterLinkedPlaylistQuery(normalizedQuery, searchText)
             }
             val catalogAlbums = when {
                 !includeAlbums -> emptyList()
-                remoteAlbums.isNotEmpty() -> remoteAlbums.toAlbumSummaries().filterLinkedAlbumQuery(normalizedQuery)
+                remoteAlbums.isNotEmpty() -> remoteAlbums.toAlbumSummaries().filterLinkedAlbumQuery(normalizedQuery, searchText)
                 else -> filteredTracks.toLinkedAlbums()
             }
             return LinkedLibraryCatalog(
@@ -128,11 +129,11 @@ private fun List<EchoRemoteTrack>.toLinkedArtists(): List<ArtistSummary> =
             )
         }
 
-private fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String): List<EchoRemoteTrack> {
+private fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String, searchText: LinkedLibrarySearchTextCache): List<EchoRemoteTrack> {
     val terms = normalizedSearchTerms(query)
     if (terms.isEmpty()) return this
     return filter { track ->
-        val searchableText = searchableLibraryText(
+        val searchableText = searchText.text(
             track.title,
             track.artist,
             track.album.orEmpty(),
@@ -141,11 +142,11 @@ private fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String): List<
     }
 }
 
-private fun List<AlbumSummary>.filterLinkedAlbumQuery(query: String): List<AlbumSummary> {
+private fun List<AlbumSummary>.filterLinkedAlbumQuery(query: String, searchText: LinkedLibrarySearchTextCache): List<AlbumSummary> {
     val terms = normalizedSearchTerms(query)
     if (terms.isEmpty()) return this
     return filter { album ->
-        val searchableText = searchableLibraryText(
+        val searchableText = searchText.text(
             album.title,
             album.artist.orEmpty(),
             album.albumArtist.orEmpty(),
@@ -154,11 +155,11 @@ private fun List<AlbumSummary>.filterLinkedAlbumQuery(query: String): List<Album
     }
 }
 
-private fun List<EchoRemotePlaylist>.filterLinkedPlaylistQuery(query: String): List<EchoRemotePlaylist> {
+private fun List<EchoRemotePlaylist>.filterLinkedPlaylistQuery(query: String, searchText: LinkedLibrarySearchTextCache): List<EchoRemotePlaylist> {
     val terms = normalizedSearchTerms(query)
     if (terms.isEmpty()) return this
     return filter { playlist ->
-        val searchableText = searchableLibraryText(
+        val searchableText = searchText.text(
             playlist.name,
             playlist.sourceLabel.orEmpty(),
         )
@@ -201,55 +202,3 @@ private fun normalizedSearchTerms(query: String): List<String> =
         .lowercase()
         .split(Regex("\\s+"))
         .filter(String::isNotBlank)
-
-private fun searchableLibraryText(vararg parts: String): String =
-    buildString {
-        parts.filter(String::isNotBlank).forEach { part ->
-            if (isNotEmpty()) append(' ')
-            append(part.lowercase())
-            val pinyin = linkedLibrarySearchPinyin(part)
-            if (pinyin.isNotBlank()) {
-                append(' ')
-                append(pinyin)
-            }
-        }
-    }
-
-private fun linkedLibrarySearchPinyin(text: String): String {
-    if (text.isBlank()) return ""
-    if (text.none(Char::needsPinyin)) return text.lowercase()
-    val full = StringBuilder(text.length * 6)
-    val initials = StringBuilder(text.length)
-    return try {
-        val outputFormat = net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat().apply {
-            caseType = net.sourceforge.pinyin4j.format.HanyuPinyinCaseType.LOWERCASE
-            toneType = net.sourceforge.pinyin4j.format.HanyuPinyinToneType.WITHOUT_TONE
-            vCharType = net.sourceforge.pinyin4j.format.HanyuPinyinVCharType.WITH_V
-        }
-        text.forEach { ch ->
-            val pinyinArray = net.sourceforge.pinyin4j.PinyinHelper.toHanyuPinyinStringArray(ch, outputFormat)
-            if (!pinyinArray.isNullOrEmpty()) {
-                val syllable = pinyinArray[0]
-                full.append(syllable)
-                initials.append(syllable.first())
-            } else if (ch.isLetterOrDigit()) {
-                val normalized = ch.lowercaseChar()
-                full.append(normalized)
-                initials.append(normalized)
-            }
-        }
-        buildList {
-            val fullPinyin = full.toString()
-            val initialsPinyin = initials.toString()
-            if (fullPinyin.isNotBlank()) add(fullPinyin)
-            if (initialsPinyin.isNotBlank() && initialsPinyin != fullPinyin) add(initialsPinyin)
-        }.joinToString(" ")
-    } catch (_: Exception) {
-        text.lowercase()
-    }
-}
-
-private fun Char.needsPinyin(): Boolean =
-    this in '\u3400'..'\u4DBF' ||
-        this in '\u4E00'..'\u9FFF' ||
-        this in '\uF900'..'\uFAFF'

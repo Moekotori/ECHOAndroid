@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import app.echo.android.data.LibraryTrackEntity
@@ -83,13 +84,17 @@ class LocalLyricsResolver(
     }
 
     private fun loadFromMediaStore(track: LibraryTrackEntity, candidates: List<String>): EchoLyrics? {
-        val relativePath = track.relativePath?.takeIf { it.isNotBlank() } ?: return null
+        val location = LyricsSidecarLocation.fromLibraryFolder(track.relativePath) ?: return null
         if (candidates.isEmpty()) return null
-        val collection = MediaStore.Files.getContentUri("external")
+        val modernStorage = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        val collection = MediaStore.Files.getContentUri(if (modernStorage) location.volumeName else "external")
+        @Suppress("DEPRECATION")
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.DISPLAY_NAME,
-        )
+        ) + if (modernStorage) emptyArray() else arrayOf(MediaStore.MediaColumns.DATA)
+        @Suppress("DEPRECATION")
+        val primaryStorageRoot = if (modernStorage) "" else Environment.getExternalStorageDirectory().absolutePath
         val candidateLookup = candidates.mapIndexed { index, name -> name.normalizedLyricsName() to index }.toMap()
         val displayNamePlaceholders = candidates.joinToString(",") { "?" }
         val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -99,7 +104,7 @@ class LocalLyricsResolver(
             "${MediaStore.Files.FileColumns.DISPLAY_NAME} IN ($displayNamePlaceholders)"
         }
         val selectionArgs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            arrayOf(relativePath, "%.%")
+            arrayOf(location.relativePath, "%.%")
         } else {
             candidates.toTypedArray()
         }
@@ -108,8 +113,11 @@ class LocalLyricsResolver(
             ?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
                 val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                @Suppress("DEPRECATION")
+                val dataIndex = if (modernStorage) -1 else cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
                 val matches = linkedMapOf<Int, Uri>()
                 while (cursor.moveToNext()) {
+                    if (!modernStorage && !location.containsLegacyFile(cursor.getString(dataIndex), primaryStorageRoot)) continue
                     val id = cursor.getLong(idIndex)
                     val displayName = cursor.getString(nameIndex)
                     if (displayName.substringAfterLast('.', missingDelimiterValue = "")
@@ -139,7 +147,7 @@ class LocalLyricsResolver(
         }.getOrNull()
 
     private fun openLyricsInputStream(uri: Uri) =
-        contentResolver.openInputStream(uri)
+        runCatching { contentResolver.openInputStream(uri) }.getOrNull()
             ?: runCatching { contentResolver.openTypedAssetFileDescriptor(uri, "text/*", null)?.createInputStream() }
                 .getOrNull()
             ?: runCatching { contentResolver.openTypedAssetFileDescriptor(uri, "*/*", null)?.createInputStream() }

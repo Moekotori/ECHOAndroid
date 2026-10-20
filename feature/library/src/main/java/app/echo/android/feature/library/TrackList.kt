@@ -57,6 +57,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,7 +113,7 @@ internal fun TrackList(
     tracks: LazyPagingItems<EchoTrack>,
     playingTrackId: String? = null,
     onPlayTrack: (EchoTrack) -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -174,7 +176,7 @@ internal fun TrackList(
 internal fun TrackList(
     tracks: List<EchoTrack>,
     onPlayTrack: (EchoTrack) -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -232,7 +234,7 @@ internal fun TrackList(
 internal fun TrackRow(
     track: EchoTrack,
     onClick: () -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -380,7 +382,7 @@ private enum class TrackSheetMode {
 internal fun TrackContextMenu(
     track: EchoTrack,
     onPlay: () -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -412,7 +414,18 @@ internal fun TrackContextMenu(
     var sheetMode by rememberSaveable(track.id) { mutableStateOf<TrackSheetMode?>(null) }
     var showInfo by remember(track.id) { mutableStateOf(false) }
     var showEditor by rememberSaveable(track.id) { mutableStateOf(false) }
-    var editorSaving by remember(track.id) { mutableStateOf(false) }
+    val editorSave = retain(track.id) { TrackMetadataSaveState() }
+    val editorSaving = editorSave.saving
+    LaunchedEffect(editorSave.completed) {
+        if (editorSave.completed) {
+            sheetMode = null
+            showEditor = false
+            editorSave.consumeCompletion()
+        }
+    }
+    suspend fun saveMetadata(update: EchoTrackMetadataUpdate): Boolean = editorSave.save {
+        onUpdateTrackMetadata?.invoke(update) ?: false
+    }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
         confirmValueChange = { value ->
@@ -631,8 +644,7 @@ internal fun TrackContextMenu(
                         track = track,
                         saving = editorSaving,
                         onDismiss = { sheetMode = null },
-                        onSave = onUpdateTrackMetadata,
-                        onSavingChange = { editorSaving = it },
+                        onSave = ::saveMetadata,
                         canPickArtwork = onPickArtwork != null,
                     )
                 }
@@ -657,8 +669,7 @@ internal fun TrackContextMenu(
             track = track,
             saving = editorSaving,
             onDismiss = { showEditor = false },
-            onSave = onUpdateTrackMetadata,
-            onSavingChange = { editorSaving = it },
+            onSave = ::saveMetadata,
             canPickArtwork = onPickArtwork != null,
         )
     }
@@ -704,8 +715,7 @@ private fun TrackMetadataEditorSheet(
     track: EchoTrack,
     saving: Boolean,
     onDismiss: () -> Unit,
-    onSave: suspend (EchoTrackMetadataUpdate) -> Unit,
-    onSavingChange: (Boolean) -> Unit,
+    onSave: suspend (EchoTrackMetadataUpdate) -> Boolean,
     canPickArtwork: Boolean = false,
 ) {
     val editor = rememberTrackMetadataEditorState(track)
@@ -750,16 +760,8 @@ private fun TrackMetadataEditorSheet(
             onClick = {
                 if (saving || !editor.canSave) return@Button
                 val update = editor.toUpdate(track)
-                onSavingChange(true)
                 scope.launch {
-                    try {
-                        withContext(NonCancellable) {
-                            onSave(update)
-                        }
-                    } finally {
-                        onSavingChange(false)
-                        onDismiss()
-                    }
+                    withContext(NonCancellable) { onSave(update) }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -866,8 +868,7 @@ private fun TrackMetadataEditorDialog(
     track: EchoTrack,
     saving: Boolean,
     onDismiss: () -> Unit,
-    onSave: suspend (EchoTrackMetadataUpdate) -> Unit,
-    onSavingChange: (Boolean) -> Unit,
+    onSave: suspend (EchoTrackMetadataUpdate) -> Boolean,
     canPickArtwork: Boolean = false,
 ) {
     val editor = rememberTrackMetadataEditorState(track)
@@ -902,16 +903,8 @@ private fun TrackMetadataEditorDialog(
                 onClick = {
                     if (saving || !editor.canSave) return@TextButton
                     val update = editor.toUpdate(track)
-                    onSavingChange(true)
                     scope.launch {
-                        try {
-                            withContext(NonCancellable) {
-                                onSave(update)
-                            }
-                        } finally {
-                            onSavingChange(false)
-                            onDismiss()
-                        }
+                        withContext(NonCancellable) { onSave(update) }
                     }
                 },
             ) {

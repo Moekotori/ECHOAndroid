@@ -17,7 +17,7 @@ internal class EchoDsdDopDecoder(
 ) {
     val channelCount: Int = format.channelCount
     val outputSampleRateHz: Int = EchoDsdDop.sampleRateHz(format.sampleRate)
-        ?: throw FfmpegDecoderException("Strict USB DoP supports DSD64 and DSD128 only")
+        ?: throw FfmpegDecoderException("Strict USB DoP supports DSD64, DSD128, DSD256 and DSD512 only")
     private val planar: Boolean = EchoDsdDop.isPlanar(format.sampleMimeType)
     private val lsbf: Boolean = EchoDsdDop.isLsbf(format.sampleMimeType)
     private var markerA: Boolean = true
@@ -27,6 +27,12 @@ internal class EchoDsdDopDecoder(
     init {
         if (channelCount !in 1..2) {
             throw FfmpegDecoderException("Strict USB DoP supports mono or stereo DSD")
+        }
+        // Odd planar block sizes would require carrying one byte per channel across
+        // packets. Reject these nonstandard layouts instead of inserting silence mid-track.
+        if (planar && format.maxInputSize > 0 &&
+            format.maxInputSize % (channelCount * EchoDsdDop.DsdBytesPerChannel) != 0) {
+            throw FfmpegDecoderException("DoP requires even DSF channel block sizes")
         }
         setInitialInputBufferSize(format.maxInputSize.takeIf { it > 0 } ?: 8192)
     }
@@ -48,7 +54,8 @@ internal class EchoDsdDopDecoder(
         if (reset) markerA = true
         val data = inputBuffer.data ?: return FfmpegDecoderException("Missing DSD")
         val length = data.remaining()
-        if (length <= 0 || EchoDsdDop.frameCount(length, channelCount) <= 0) {
+        if (length % channelCount != 0) return FfmpegDecoderException("Incomplete DSD channel frame")
+        if (length <= 0) {
             outputBuffer.shouldBeSkipped = true
             outputBuffer.init(inputBuffer.timeUs, 0)
             return null

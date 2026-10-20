@@ -125,6 +125,7 @@ public final class FfmpegLibrary {
         case "dts": // avcodec_get_name(AV_CODEC_ID_DTS)
           return "dca";
         case "wavpack":
+        case "dst":
         case "tta":
         case "tak":
         case "wmav1":

@@ -55,7 +55,7 @@ internal fun PlaylistDetailPage(
     onDeletePlaylist: () -> Unit,
     onRemoveTrack: (EchoTrack) -> Unit,
     onMoveTrack: (fromIndex: Int, toIndex: Int) -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,

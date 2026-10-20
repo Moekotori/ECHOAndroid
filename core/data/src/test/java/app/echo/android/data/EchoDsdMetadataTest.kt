@@ -49,6 +49,7 @@ class EchoDsdMetadataTest {
         val info = EchoDsdMetadata.read(ByteArrayInputStream(dff(compressed = true)))
         assertNotNull(info)
         assertTrue(info!!.compressed)
+        assertEquals(1000L * 64 / 75, info.durationMs)
     }
 
     @Test
@@ -100,7 +101,8 @@ class EchoDsdMetadataTest {
         val chnl = chunk("CHNL", u16be(2) + "SLFT".toByteArray() + "SRGT".toByteArray())
         val cmpr = chunk("CMPR", (if (compressed) "DST " else "DSD ").toByteArray())
         val prop = chunk("PROP", "SND ".toByteArray() + fs + chnl + cmpr)
-        val audio = chunk(if (compressed) "DST " else "DSD ", data)
+        val audio = if (compressed) chunk("DST ", chunk("FRTE", u32be(frames) + u16be(75)) + chunk("DSTF", data))
+            else chunk("DSD ", data)
         val body = "DSD ".toByteArray() + prop + audio
         return "FRM8".toByteArray() + u64be(body.size.toLong()) + body
     }

@@ -81,8 +81,9 @@ internal fun TrackActionSheet(
     onVersions: (() -> Unit)? = null,
 ) {
     // Constrain content, not the ModalBottomSheet: its anchors need the full window height.
-    // Leave room for the drag handle and navigation inset, keeping the panel near 2/3 height.
-    val maxHeight = minOf(500.dp, LocalConfiguration.current.screenHeightDp.dp * 0.58f)
+    // Short windows need more room for actions while retaining the handle and safe insets.
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val maxHeight = minOf(500.dp, screenHeight * if (screenHeight < 600.dp) 0.82f else 0.58f)
     Column(Modifier.fillMaxWidth().heightIn(max = maxHeight).padding(horizontal = 20.dp)) {
         TrackSheetHeader(track, artworkSize = 48.dp)
         Spacer(Modifier.height(12.dp))

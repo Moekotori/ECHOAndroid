@@ -13,7 +13,7 @@ class LocalFileDuplicateIndex<T> private constructor(
     private val groups: Map<LocalFileIdentity, List<LocalFileDuplicateCandidate<T>>>,
 ) {
     private val groupsById = buildMap {
-        groups.values.forEach { group -> group.forEach { put(it.id, group) } }
+        groups.values.forEach { group -> group.forEach { putIfAbsent(it.id, group) } }
     }
     fun isEmpty(): Boolean = groups.isEmpty()
 

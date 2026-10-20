@@ -56,12 +56,14 @@ internal fun LibraryLayoutEditor(
     ) {
         // Keep the anchor stable while the lazy list scrolls or sections are reordered.
         Column(Modifier.fillMaxWidth().height(maxHeight).padding(horizontal = 24.dp)) {
-            Text(stringResource(R.string.library_layout_title), style = MaterialTheme.typography.titleLarge)
-            Text(stringResource(R.string.library_layout_detail),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
             LazyColumn(Modifier.weight(1f)) {
+                item(key = "header") {
+                    Text(stringResource(R.string.library_layout_title), style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.library_layout_detail),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
+                }
                 itemsIndexed(draft.order, key = { _, section -> section.id }) { index, section ->
                     val label = section.viewMode().label()
                     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp),

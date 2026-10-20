@@ -317,7 +317,7 @@ class AudioFileTagRewriterTest {
     }
 
     @Test
-    fun mp4IsUnsupported() {
+    fun truncatedMp4IsRejected() {
         val ftyp = byteArrayOf(0, 0, 0, 24, 'f'.code.toByte(), 't'.code.toByte(), 'y'.code.toByte(), 'p'.code.toByte(), 1, 2, 3, 4)
         val status = AudioFileTagRewriter.rewrite(
             ByteArrayInputStream(ftyp),
@@ -325,7 +325,7 @@ class AudioFileTagRewriterTest {
             SAMPLE_FIELDS,
             "audio/mp4",
         )
-        assertEquals(AudioTagRewriteStatus.UnsupportedFormat, status)
+        assertEquals(AudioTagRewriteStatus.InvalidSource, status)
     }
 
     @Test
@@ -503,6 +503,45 @@ class AudioFileTagRewriterTest {
             AudioFileTagRewriter.rewrite(source.inputStream(), output, SAMPLE_FIELDS, "audio/flac"))
         assertEquals(0, output.size())
         assertTrue(source.asString().contains("COMMENT=must survive"))
+    }
+
+    @Test
+    fun changingFrontCoverPreservesOtherId3AndFlacPictures() {
+        val back = "back-image-must-survive".toByteArray()
+        fun id3Picture(type: Byte, image: ByteArray) = Id3FrameBytes("APIC",
+            byteArrayOf(0) + "image/png".toByteArray() + byteArrayOf(0, type, 0) + image)
+        val mp3 = id3File(4, listOf(id3Picture(3, "old-front".toByteArray()), id3Picture(4, back)), FAKE_MP3)
+        fun be(value: Int) = java.nio.ByteBuffer.allocate(4).putInt(value).array()
+        fun flacPicture(type: Int, image: ByteArray): ByteArray =
+            be(type) + be(9) + "image/png".toByteArray() + be(0) + be(1) + be(1) + be(24) + be(0) + be(image.size) + image
+        val base = flacFile(emptyList(), byteArrayOf(1))
+        val metadata = base.copyOf(base.size - 1).apply { this[42] = 4 }
+        val flac = metadata + flacBlock(6, false, flacPicture(3, "old-front".toByteArray())) +
+            flacBlock(6, true, flacPicture(4, back)) + byteArrayOf(1)
+        val fields = SAMPLE_FIELDS.copy(artworkBytes = TINY_PNG, artworkMime = "image/png")
+        for ((source, mime) in listOf(mp3 to "audio/mpeg", flac to "audio/flac")) {
+            val rewritten = rewrite(source, fields, mime)
+            assertTrue(rewritten.asString().contains("back-image-must-survive"))
+            assertTrue(!rewritten.asString().contains("old-front"))
+            assertTrue(readLocalAudioTags(rewritten.inputStream()).matchesWrittenTags(fields))
+        }
+    }
+
+    @Test
+    fun repeatedV23ReplayGainEditsReplaceTheExistingUtf16Frame() {
+        val payload = byteArrayOf(1, 0xff.toByte(), 0xfe.toByte()) +
+            "REPLAYGAIN_TRACK_GAIN".toByteArray(Charsets.UTF_16LE) +
+            byteArrayOf(0, 0, 0xff.toByte(), 0xfe.toByte()) +
+            "+1.00 dB".toByteArray(Charsets.UTF_16LE) + byteArrayOf(0, 0)
+        val frame = "TXXX".toByteArray() + java.nio.ByteBuffer.allocate(4).putInt(payload.size).array() +
+            byteArrayOf(0, 0) + payload
+        var source = id3File(3, listOf(frame), FAKE_MP3)
+        for (gain in listOf(-5f, -2f)) {
+            val fields = SAMPLE_FIELDS.copy(replayGainTrackGainDb = gain)
+            source = rewrite(source, fields, "audio/mpeg")
+            assertEquals(1, Regex("TXXX").findAll(source.asString()).count())
+            assertTrue(readLocalAudioTags(source.inputStream()).matchesWrittenTags(fields))
+        }
     }
 
     private fun rewrite(source: ByteArray, fields: AudioTagFields, mimeType: String): ByteArray {

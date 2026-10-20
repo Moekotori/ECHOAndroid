@@ -21,6 +21,7 @@ internal class EchoDsfExtractor : Extractor {
     private var layout: EchoDsfLayout? = null
     private var dataFileBytesRead: Long = 0L
     private var audioBytesEmitted: Long = 0L
+    private val packet = ParsableByteArray()
 
     override fun sniff(input: ExtractorInput): Boolean {
         val header = ByteArray(12)
@@ -46,11 +47,12 @@ internal class EchoDsfExtractor : Extractor {
             val toRead = min(current.blockAlign.toLong(), min(remainingAudio, remainingFile)).toInt()
             if (toRead <= 0) return Extractor.RESULT_END_OF_INPUT
             val timeUs = current.timeUs(audioBytesEmitted)
-            val written = track.sampleData(input, toRead, true)
-            if (written == C.RESULT_END_OF_INPUT) return Extractor.RESULT_END_OF_INPUT
-            track.sampleMetadata(timeUs, C.BUFFER_FLAG_KEY_FRAME, written, 0, null)
-            dataFileBytesRead += written
-            audioBytesEmitted += written
+            packet.reset(toRead)
+            if (!input.readFully(packet.data, 0, toRead, true)) return Extractor.RESULT_END_OF_INPUT
+            track.sampleData(packet, toRead)
+            track.sampleMetadata(timeUs, C.BUFFER_FLAG_KEY_FRAME, toRead, 0, null)
+            dataFileBytesRead += toRead
+            audioBytesEmitted += toRead
             Extractor.RESULT_CONTINUE
         }
     }

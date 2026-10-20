@@ -5,6 +5,25 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AdditionalLyricsFormatsTest {
+    @Test fun jsonPlainLyricsRemainReadableWithoutTimestamps() {
+        val lyrics = EchoLyricsParser.parse("""{"plainLyrics":"First line\n第二行"}""", "plain.json")
+        assertEquals(listOf("First line", "第二行"), lyrics.lines.map { it.text })
+        assertFalse(lyrics.isSynced)
+    }
+
+    @Test fun jsonPreservesInlineAuxiliaryLyricsUnlessMatchingOverridesExist() {
+        val lrc = "[00:01.00]Original\n[00:01.00]译文\n[00:01.00]roma"
+        val root = org.json.JSONObject().put("syncedLyrics", lrc)
+        val inline = EchoLyricsParser.parse(root.toString(), "inline.json").lines.single()
+        assertEquals("译文", inline.translation)
+        assertEquals("roma", inline.romanization)
+        root.put("tlyric", org.json.JSONObject().put("lyric", "[00:01.00]New translation"))
+        root.put("romalrc", org.json.JSONObject().put("lyric", "[00:20.00]Unmatched"))
+        val overridden = EchoLyricsParser.parse(root.toString(), "override.json").lines.single()
+        assertEquals("New translation", overridden.translation)
+        assertEquals("roma", overridden.romanization)
+    }
+
     @Test fun readsSbvMultilineCuesAndEntities() {
         val lyrics = EchoLyricsParser.parse("0:00:01.250,0:00:03.500\nHello &amp; world\n第二行\n\n0:00:04.000,0:00:05.000\nNext", "track.sbv")
         assertEquals(EchoLyricsFormat.Sbv, lyrics.format)

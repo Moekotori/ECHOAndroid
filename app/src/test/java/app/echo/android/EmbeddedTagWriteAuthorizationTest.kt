@@ -34,4 +34,17 @@ class EmbeddedTagWriteAuthorizationTest {
         assertEquals(2, writes)
         assertEquals(1, requests)
     }
+    @Test fun grantedMediaConsentThatStillCannotWriteStopsAfterOneRequest() = runBlocking {
+        var writes = 0
+        var requests = 0
+        val result = writeTagsWithAuthorization(
+            write = { writes++; TrackMetadataUpdateResult(true,
+                EmbeddedTagWriteResult.NeedsMediaStoreConsent("content://media/1")) },
+            authorize = { requests++; true },
+        )
+        assertEquals(2, writes)
+        assertEquals(1, requests)
+        assertTrue(result.fileWrite is EmbeddedTagWriteResult.NeedsMediaStoreConsent)
+    }
+
 }

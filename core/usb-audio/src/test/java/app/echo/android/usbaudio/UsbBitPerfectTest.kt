@@ -85,4 +85,22 @@ class UsbBitPerfectTest {
             ),
         )
     }
+    @Test fun highRateDopRequiresExactCarrierAndPreservesMarkersWhenWidened() {
+        val format = UsbAudioStreamingFormat(1, 1, UsbAudioClassVersion.Uac2, formatType = 1,
+            pcmIntegerSupported = true, channelCount = 2, subslotSize = 4, bitResolution = 32,
+            sampleRates = listOf(705_600, 1_411_200), endpointDirection = UsbEndpointDirection.Out,
+            endpointTransferType = UsbEndpointTransferType.Isochronous)
+        val descriptor = UsbAudioDescriptorInfo(streamingFormats = listOf(format))
+        for (rate in listOf(705_600, 1_411_200)) {
+            assertEquals(format, UsbPcmFormatSelector.chooseBitPerfectFormat(descriptor, UsbPcmFormatSpec(rate, 2, 24)))
+        }
+        assertNull(UsbPcmFormatSelector.chooseBitPerfectFormat(descriptor, UsbPcmFormatSpec(352_800, 2, 24)))
+        val input = ByteBuffer.wrap(byteArrayOf(0x33, 0x11, 0x05, 0x44, 0x22, 0x05,
+            0x55, 0x66, 0xFA.toByte(), 0x77, 0x08, 0xFA.toByte()))
+        val output = ByteArray(16)
+        assertEquals(16, UsbBitPerfectPacker.pack(input, 3, 24, false, 32, 4, output, 2))
+        assertArrayEquals(byteArrayOf(0, 0x33, 0x11, 0x05, 0, 0x44, 0x22, 0x05,
+            0, 0x55, 0x66, 0xFA.toByte(), 0, 0x77, 0x08, 0xFA.toByte()), output)
+    }
+
 }

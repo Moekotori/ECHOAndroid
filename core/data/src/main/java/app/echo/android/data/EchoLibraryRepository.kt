@@ -252,10 +252,14 @@ class EchoLibraryRepository(
     suspend fun searchLocalLibrary(
         query: String,
         limitPerType: Int = SEARCH_RESULT_LIMIT_PER_TYPE,
-    ): LocalLibrarySearchResults {
+    ): LocalLibrarySearchResults = coroutineScope {
         val trimmedQuery = query.trim()
-        if (trimmedQuery.isBlank()) return LocalLibrarySearchResults()
+        if (trimmedQuery.isBlank()) return@coroutineScope LocalLibrarySearchResults()
         val dao = database.trackDao()
+        // Independent Room reads can run concurrently; cancellation still belongs to this search.
+        val albums = async { dao.searchAlbums(trimmedQuery, limitPerType) }
+        val remoteAlbums = async { dao.searchRemoteAlbumSummaries(trimmedQuery) }
+        val artists = async { dao.searchArtists(trimmedQuery, limitPerType) }
         val matchQuery = sanitizeFtsQuery(trimmedQuery)
         val rankQuery = ftsRankQuery(trimmedQuery)
         val tracks = if (matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)) {
@@ -263,10 +267,10 @@ class EchoLibraryRepository(
         } else {
             dao.searchTracks(trimmedQuery, limitPerType)
         }
-        return LocalLibrarySearchResults(
+        LocalLibrarySearchResults(
             tracks = tracks,
-            albums = dao.searchAlbums(trimmedQuery, limitPerType) + dao.searchRemoteAlbumSummaries(trimmedQuery),
-            artists = dao.searchArtists(trimmedQuery, limitPerType),
+            albums = albums.await() + remoteAlbums.await(),
+            artists = artists.await(),
         )
     }
 
@@ -896,6 +900,12 @@ class EchoLibraryRepository(
         val fileWrite = writeEmbeddedTags(current, fields)
         persistWrittenFileStats(dao, current, fileWrite)
         return fileWrite
+    }
+
+    suspend fun embeddedTagWritePreflight(trackId: String): EmbeddedTagWriteResult? {
+        val track = database.trackDao().getTrackById(trackId) ?: return EmbeddedTagWriteResult.Failed
+        val writer = tagWriter ?: return EmbeddedTagWriteResult.NotLocal
+        return writer.preflight(track)
     }
 
     private suspend fun writeEmbeddedTags(

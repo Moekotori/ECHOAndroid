@@ -565,18 +565,44 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     suspend fun searchLocalLibrary(query: String): LocalLibrarySearchResults =
         libraryController.searchLocalLibrary(query)
 
-    suspend fun updateTrackMetadata(update: EchoTrackMetadataUpdate) {
-        withReleasedPlaybackFile(update.trackId) {
-            handleEmbeddedTagWriteResult(
-                trackId = update.trackId,
-                result = libraryController.updateTrackMetadata(update).fileWrite,
-                lyricsText = update.lyrics,
-                artworkUri = update.artworkUri,
-                syncLyricsSelection = true,
-                composerModified = update.composer != null,
-                genreModified = update.genre != null,
+    suspend fun updateTrackMetadata(update: EchoTrackMetadataUpdate): Boolean {
+        val version = update.lyrics?.let { lyricsController.beginSelectionChange(update.trackId) }
+        val written = try {
+            writeTagsWithAuthorization(
+                write = {
+                    var result: app.echo.android.data.TrackMetadataUpdateResult? = null
+                    val write: suspend () -> Unit = {
+                        withReleasedPlaybackFile(update.trackId) {
+                            if (version == null || lyricsController.isCurrentSelection(update.trackId, version)) {
+                                result = libraryController.updateTrackMetadata(update)
+                            }
+                        }
+                    }
+                    if (version == null) write() else lyricsController.withCurrentSelection(update.trackId, version, write)
+                    result ?: app.echo.android.data.TrackMetadataUpdateResult(false, EmbeddedTagWriteResult.Failed)
+                },
+                authorize = { authorizeTagWrite(update.trackId, it) },
             )
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.Failed
+            EchoErrorLog.record(EchoErrorSource.Library, "Unable to save audio tag draft.", detail = "${update.trackId}: ${error.message}")
+            return false
         }
+        if (version != null && !lyricsController.isCurrentSelection(update.trackId, version)) return false
+        val applied = handleEmbeddedTagWriteResult(
+            trackId = update.trackId,
+            result = written.fileWrite,
+            lyricsText = update.lyrics,
+            artworkUri = update.artworkUri,
+            syncLyricsSelection = true,
+            lyricsSelectionVersion = version,
+            composerModified = update.composer != null,
+            genreModified = update.genre != null,
+            allowAuthorization = false,
+        )
+        return written.indexUpdated && applied
     }
 
     internal suspend fun batchTags(ids: List<String>, patch: app.echo.android.model.library.EchoBatchTagPatch, progress: (Int) -> Unit) =
@@ -588,12 +614,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                         withReleasedPlaybackFile(update.trackId) { result = libraryController.updateTrackMetadata(update) }
                         checkNotNull(result)
                     },
-                    authorize = { result -> authorizeBatchTagWrite(update.trackId, result) },
+                    authorize = { result -> authorizeTagWrite(update.trackId, result) },
                 )
             }
         }
 
-    private suspend fun authorizeBatchTagWrite(trackId: String, result: EmbeddedTagWriteResult): Boolean {
+    private suspend fun authorizeTagWrite(trackId: String, result: EmbeddedTagWriteResult): Boolean {
         val response = kotlinx.coroutines.CompletableDeferred<Boolean>()
         val requestId = tagWriteRequestIds.getAndIncrement()
         val request = when (result) {
@@ -652,21 +678,34 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             return
         }
         viewModelScope.launch {
-            withReleasedPlaybackFile(pending.trackId) {
+            val version = pending.lyricsSelectionVersion
+            var result: EmbeddedTagWriteResult? = null
+            val write: suspend () -> Unit = {
+                withReleasedPlaybackFile(pending.trackId) {
+                    if (version == null || lyricsController.isCurrentSelection(pending.trackId, version)) {
+                        result = libraryController.writeEmbeddedTagsForTrack(
+                            trackId = pending.trackId,
+                            lyricsText = pending.lyricsText,
+                            artworkUri = pending.artworkUri,
+                            composerModified = pending.composerModified,
+                            genreModified = pending.genreModified,
+                        )
+                    }
+                }
+            }
+            if (version == null) write() else lyricsController.withCurrentSelection(pending.trackId, version, write)
+            val written = result ?: return@launch
+            if (version == null || lyricsController.isCurrentSelection(pending.trackId, version)) {
                 handleEmbeddedTagWriteResult(
                     trackId = pending.trackId,
-                    result = libraryController.writeEmbeddedTagsForTrack(
-                        trackId = pending.trackId,
-                        lyricsText = pending.lyricsText,
-                        artworkUri = pending.artworkUri,
-                        composerModified = pending.composerModified,
-                        genreModified = pending.genreModified,
-                    ),
+                    result = written,
                     lyricsText = pending.lyricsText,
                     artworkUri = pending.artworkUri,
                     syncLyricsSelection = pending.syncLyricsSelection,
+                    lyricsSelectionVersion = version,
                     composerModified = pending.composerModified,
                     genreModified = pending.genreModified,
+                    allowAuthorization = false,
                 )
             }
         }
@@ -677,7 +716,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private suspend fun withReleasedPlaybackFile(trackId: String, block: suspend () -> Unit) = embeddedTagWriteMutex.withLock {
-        val released = playbackController.releaseCurrentItemForFileWrite(trackId)
+        val writable = withContext(Dispatchers.IO) { repository.embeddedTagWritePreflight(trackId) == null }
+        val released = writable && playbackController.releaseCurrentItemForFileWrite(trackId)
         try {
             block()
         } finally {
@@ -691,14 +731,25 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         lyricsText: String? = null,
         artworkUri: String? = null,
         syncLyricsSelection: Boolean = false,
+        lyricsSelectionVersion: Long? = null,
         composerModified: Boolean = false,
         genreModified: Boolean = false,
-    ) {
-        when (result) {
+        allowAuthorization: Boolean = true,
+    ): Boolean {
+        if (lyricsSelectionVersion != null && !lyricsController.isCurrentSelection(trackId, lyricsSelectionVersion)) return false
+        if (!allowAuthorization && (result is EmbeddedTagWriteResult.NeedsMediaStoreConsent ||
+                result == EmbeddedTagWriteResult.NeedsStoragePermission)) {
+            _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.Failed
+            return false
+        }
+        return when (result) {
             is EmbeddedTagWriteResult.Written -> {
                 if (syncLyricsSelection && lyricsText != null) {
                     try {
-                        lyricsController.applyEmbeddedLyricsEdit(trackId, lyricsText)
+                        lyricsController.applyEmbeddedLyricsEdit(
+                            trackId, lyricsText, lyricsSelectionVersion ?: lyricsController.beginSelectionChange(trackId),
+                        )
+                        if (lyricsSelectionVersion != null && !lyricsController.isCurrentSelection(trackId, lyricsSelectionVersion)) return false
                     } catch (cancelled: kotlinx.coroutines.CancellationException) {
                         throw cancelled
                     } catch (error: Exception) {
@@ -708,12 +759,13 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                             "Audio tags were written, but the selected lyrics copy could not be updated.",
                             detail = "$trackId: ${error.message}",
                         )
-                        return
+                        return false
                     }
                 } else if (lyricsController.currentTrackId == trackId) {
                     lyricsController.updateLyricsForTrack(trackId, force = true)
                 }
                 _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.Written
+                true
             }
             EmbeddedTagWriteResult.UnsupportedFormat -> {
                 _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.UnsupportedFormat
@@ -722,6 +774,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     "Embedded tag write is unsupported for this file format.",
                     detail = trackId,
                 )
+                false
             }
             EmbeddedTagWriteResult.Failed -> {
                 _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.Failed
@@ -730,9 +783,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     "Embedded tag write failed.",
                     detail = trackId,
                 )
+                false
             }
-            EmbeddedTagWriteResult.NotLocal ->
+            EmbeddedTagWriteResult.NotLocal -> {
                 _embeddedTagWriteMessage.value = EmbeddedTagWriteUserMessage.IndexOnly
+                true
+            }
             is EmbeddedTagWriteResult.NeedsMediaStoreConsent ->
                 enqueueTagWriteAuthorization(PendingEmbeddedTagWrite(
                     requestId = tagWriteRequestIds.getAndIncrement(),
@@ -742,6 +798,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     lyricsText = lyricsText,
                     artworkUri = artworkUri,
                     syncLyricsSelection = syncLyricsSelection,
+                    lyricsSelectionVersion = lyricsSelectionVersion ?: lyricsText?.let { lyricsController.selectionVersion(trackId) },
                     composerModified = composerModified,
                     genreModified = genreModified,
                 ))
@@ -754,6 +811,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     lyricsText = lyricsText,
                     artworkUri = artworkUri,
                     syncLyricsSelection = syncLyricsSelection,
+                    lyricsSelectionVersion = lyricsSelectionVersion ?: lyricsText?.let { lyricsController.selectionVersion(trackId) },
                     composerModified = composerModified,
                     genreModified = genreModified,
                 ))
@@ -1178,29 +1236,39 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun importLyrics(uri: Uri) {
         val trackId = playbackController.currentTrackId
-        lyricsController.importLyrics(uri, trackId) { lyrics ->
-            trackId?.let { writeImportedLyricsToFile(it, lyrics) }
+        lyricsController.importLyrics(uri, trackId) { lyrics, version ->
+            trackId?.let { writeImportedLyricsToFile(it, lyrics, version) }
         }
     }
 
     fun importLyricsForTrack(trackId: String, uri: Uri) {
-        lyricsController.importLyrics(uri, trackId) { lyrics ->
-            writeImportedLyricsToFile(trackId, lyrics)
+        lyricsController.importLyrics(uri, trackId) { lyrics, version ->
+            writeImportedLyricsToFile(trackId, lyrics, version)
         }
     }
 
-    private fun writeImportedLyricsToFile(trackId: String, lyrics: EchoLyrics) {
+    private fun writeImportedLyricsToFile(trackId: String, lyrics: EchoLyrics, version: Long) {
         viewModelScope.launch {
             // The full imported selection is already durable. Only mirror it to audio tags
             // when ordinary LRC can retain its timing, auxiliary text and vocal fields.
             val text = withContext(Dispatchers.Default) {
                 EchoLrcFormatter.formatForEmbeddedWriteOrNull(lyrics)
             } ?: return@launch
-            withReleasedPlaybackFile(trackId) {
+            var result: EmbeddedTagWriteResult? = null
+            lyricsController.withCurrentSelection(trackId, version) {
+                withReleasedPlaybackFile(trackId) {
+                    if (lyricsController.isCurrentSelection(trackId, version)) {
+                        result = libraryController.writeEmbeddedLyrics(trackId, text).fileWrite
+                    }
+                }
+            }
+            val written = result ?: return@launch
+            if (lyricsController.isCurrentSelection(trackId, version)) {
                 handleEmbeddedTagWriteResult(
                     trackId = trackId,
-                    result = libraryController.writeEmbeddedLyrics(trackId, text).fileWrite,
+                    result = written,
                     lyricsText = text,
+                    lyricsSelectionVersion = version,
                 )
             }
         }
@@ -2304,6 +2372,7 @@ data class PendingEmbeddedTagWrite(
     val lyricsText: String? = null,
     val artworkUri: String? = null,
     val syncLyricsSelection: Boolean = false,
+    val lyricsSelectionVersion: Long? = null,
     val composerModified: Boolean = false,
     val genreModified: Boolean = false,
     val completion: kotlinx.coroutines.CompletableDeferred<Boolean>? = null,

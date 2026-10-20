@@ -5,6 +5,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class LibraryScanFormatFilterTest {
+    @Test fun formatAliasesMatchInBothDirections() {
+        for ((format, alias) in listOf("flac" to "fla", "wav" to "wave", "wav" to "bwf", "aac" to "adts", "eac3" to "ec3")) {
+            assertTrue(LibraryScanOptions(allowedExtensions = setOf(format)).acceptsFileFormat("song.${alias.uppercase()}", false))
+            assertTrue(LibraryScanOptions(allowedExtensions = setOf(alias)).acceptsFileFormat("song.$format", false))
+        }
+        for (format in listOf("tta", "tak", "w64", "alac")) {
+            assertTrue(LibraryScanOptions(allowedExtensions = setOf(format)).acceptsFileFormat("song.$format", false))
+        }
+    }
+
     private val options = LibraryScanOptions(allowedExtensions = setOf("flac", "wav"))
 
     @Test fun selectedExtensionsMatchActualSuffixIgnoringCase() {
