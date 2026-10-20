@@ -8,16 +8,14 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import app.echo.android.design.ArtworkColorGrid
 import kotlin.math.PI
-import kotlin.math.exp
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 
 /**
  * Stacked ridge lines whose height follows the cover's brightness row by row, so the cover's shapes rise as
  * ridges and the line colors come from the cover. Each line only fills a narrow band below itself to hide the
- * line behind it, which keeps overdraw low. A swell runs down the stack on every [pulse].
+ * line behind it, which keeps overdraw low. It ignores the lyric pulse: the stack only drifts.
  * Heights, colors and paints are built once; a frame only does arithmetic and drawPath.
  */
 internal class RidgeBackdropField(deep: Color, grid: ArtworkColorGrid, dark: Boolean) : BackdropField {
@@ -46,13 +44,10 @@ internal class RidgeBackdropField(deep: Color, grid: ArtworkColorGrid, dark: Boo
         areaPaint.alpha = alpha
         strokePaint.strokeWidth = width * 0.005f
         val time = (elapsedMs + BackdropStillOffsetMs) / 1000f
-        val spacing = height * 0.84f / (Lines - 1)
-        val kick = pulse.coerceIn(0f, 1f)
-        var previousAmp = 0f
+        val amp = height * 0.085f
+        val depth = height * 0.84f / (Lines - 1) + 1.7f * amp
         for (i in 0 until Lines) {
             val v = i / (Lines - 1f)
-            val swell = (v - (1f - kick)) / 0.12f
-            val amp = height * 0.085f * (1f + 1.1f * exp(-swell * swell) * min(1f, kick * 3f))
             val baseY = height * (0.10f + 0.84f * v)
             val phase = i * 0.55f
             val phase2 = i * 0.21f
@@ -65,8 +60,6 @@ internal class RidgeBackdropField(deep: Color, grid: ArtworkColorGrid, dark: Boo
                 ys[j] = y
                 if (j == 0) line.moveTo(0f, y) else line.lineTo(width * u, y)
             }
-            val depth = spacing + 1.7f * max(amp, previousAmp)
-            previousAmp = amp
             area.set(line)
             for (j in Points - 1 downTo 0) area.lineTo(width * j / (Points - 1f), ys[j] + depth)
             area.close()

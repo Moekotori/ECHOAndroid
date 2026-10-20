@@ -70,8 +70,8 @@ internal fun VerticalLyricsList(
                     if (list.firstVisibleItemIndex != focus || list.firstVisibleItemScrollOffset != 0) list.scrollToItem(focus)
                     followMotion.reset()
                 } else {
-                    withFrameNanos { }
-                    followLyricsLine(list, focus, followMotion, false, motionMode)
+                    followLyricsLine(list, focus, followMotion, false, motionMode,
+                        listOf(lyrics, width, fontScale, spacing, showTranslation, showRomanization, motionMode))
                 }
             } else followMotion.reset()
         }

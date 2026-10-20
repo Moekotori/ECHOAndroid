@@ -15,13 +15,16 @@ import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Wallpaper
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import app.echo.android.design.EchoStateContent
+import app.echo.android.design.echoPageSection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +45,7 @@ internal enum class LyricsSettingsCategory(val titleRes: Int, val icon: ImageVec
 /** The overview exposes destinations, while only the selected controls are composed. */
 @Composable
 internal fun LyricsSettingsMenu(
+    appearanceSummary: String,
     backdropSummary: String,
     typographySummary: String,
     colorSummary: String,
@@ -49,7 +53,7 @@ internal fun LyricsSettingsMenu(
     onSelect: (LyricsSettingsCategory) -> Unit,
 ) {
     val theme = echoTheme()
-    Column(Modifier.fillMaxWidth()) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         LyricsSettingsCategory.entries.forEachIndexed { index, category ->
             val summary = when (category) {
                 LyricsSettingsCategory.Backdrop -> backdropSummary
@@ -57,26 +61,26 @@ internal fun LyricsSettingsMenu(
                 LyricsSettingsCategory.Color -> colorSummary
                 LyricsSettingsCategory.Motion -> motionSummary
                 LyricsSettingsCategory.Content -> stringResource(R.string.lyrics_setting_content_summary)
-                LyricsSettingsCategory.Appearance -> ""
+                LyricsSettingsCategory.Appearance -> appearanceSummary
             }
             Row(
-                Modifier.fillMaxWidth().echoClickable(onClick = { onSelect(category) })
-                    .heightIn(min = 60.dp).padding(horizontal = 2.dp, vertical = 8.dp),
+                Modifier.echoPageSection(minOf(index, 3)).fillMaxWidth().clip(PlaybackRowShape)
+                    .echoClickable(role = Role.Button, onClick = { onSelect(category) })
+                    .heightIn(min = PlaybackRowMinHeight).padding(horizontal = PlaybackRowInset, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                EchoIcon(category.icon, null, tint = theme.heading, modifier = Modifier.size(20.dp))
+                PlaybackRowBadge(category.icon)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(category.titleRes), style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium, color = theme.heading)
-                    if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall,
-                        color = theme.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (summary.isNotBlank()) EchoStateContent(summary) {
+                        Text(it, style = MaterialTheme.typography.bodySmall,
+                            color = theme.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
                 EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
-                    tint = theme.muted, modifier = Modifier.size(18.dp))
-            }
-            if (index < LyricsSettingsCategory.entries.lastIndex) {
-                HorizontalDivider(color = theme.muted.copy(alpha = 0.12f))
+                    tint = theme.muted, modifier = Modifier.size(20.dp))
             }
         }
     }

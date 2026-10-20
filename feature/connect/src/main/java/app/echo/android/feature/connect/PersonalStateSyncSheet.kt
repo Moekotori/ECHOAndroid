@@ -1,5 +1,6 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -37,10 +38,10 @@ internal fun PersonalStateSyncSheet(actions: PersonalStateSyncActions, onDismiss
         catch (_: Exception) { error = true }
         finally { busy = false }
     }
-    ModalBottomSheet(onDismissRequest = { operation?.cancel(); onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    EchoModalSheet(onDismissRequest = { operation?.cancel(); onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Text(stringResource(R.string.personal_sync_title), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.personal_sync_title), style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                 Text(stringResource(R.string.personal_sync_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }

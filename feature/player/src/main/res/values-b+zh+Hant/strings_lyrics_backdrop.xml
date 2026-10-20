@@ -5,7 +5,8 @@
     <string name="lyrics_backdrop_halftone">半調</string>
     <string name="lyrics_backdrop_ridge">山脊線</string>
     <string name="lyrics_backdrop_vinyl">唱片</string>
-    <string name="lyrics_backdrop_detail">背景由封面的顏色生成。山脊線和唱片還會跟著每一句歌詞和播放、暫停變化。</string>
+    <string name="lyrics_backdrop_iso">等距</string>
+    <string name="lyrics_backdrop_detail">背景由封面的顏色生成。唱片和等距還會跟著每一句歌詞變化。</string>
     <string name="lyrics_backdrop_needs_classic">目前播放頁風格使用純色底，背景樣式只在「經典」風格下顯示。</string>
     <string name="lyrics_backdrop_use_classic">切換到經典</string>
 </resources>

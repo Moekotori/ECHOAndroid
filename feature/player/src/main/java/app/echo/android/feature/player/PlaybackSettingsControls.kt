@@ -63,13 +63,13 @@ import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoExpandIndicator
 import androidx.compose.ui.unit.Dp
 
-private val PlaybackRowShape = RoundedCornerShape(18.dp)
-private val PlaybackRowMinHeight: Dp = 60.dp
-private val PlaybackRowInset: Dp = 6.dp
+internal val PlaybackRowShape = RoundedCornerShape(18.dp)
+internal val PlaybackRowMinHeight: Dp = 60.dp
+internal val PlaybackRowInset: Dp = 6.dp
 
 /** Soft round icon plate for unframed rows; the plate, not a card, carries the visual weight. */
 @Composable
-private fun PlaybackRowBadge(icon: ImageVector, active: Boolean = false) {
+internal fun PlaybackRowBadge(icon: ImageVector, active: Boolean = false) {
     val dark = LocalEchoDarkTheme.current
     val accent = echoAccentColor()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight

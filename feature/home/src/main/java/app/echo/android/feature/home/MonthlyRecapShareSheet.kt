@@ -1,5 +1,6 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoModalSheet
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -71,7 +72,7 @@ internal fun MonthlyRecapShareSheet(report: EchoMonthlyRecap, onDismiss: () -> U
             finally { busy = false }
         }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    EchoModalSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.recap_share), style = MaterialTheme.typography.titleLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

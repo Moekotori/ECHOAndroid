@@ -1,6 +1,10 @@
 package app.echo.android.feature.library
 
-import app.echo.android.design.EchoSwitch
+import app.echo.android.design.EchoModalSheet
+import app.echo.android.design.EchoSheetActionBar
+import app.echo.android.design.EchoSheetHeader
+import app.echo.android.design.EchoSheetOrderRow
+import app.echo.android.design.echoItemMotion
 import app.echo.android.design.EchoIcon
 
 import androidx.compose.foundation.layout.*
@@ -46,7 +50,7 @@ internal fun LibraryLayoutEditor(
     var draft by rememberSaveable(stateSaver = LibraryLayoutDraftSaver) { mutableStateOf(layout.normalized()) }
     val maxHeight = minOf(520.dp, (LocalConfiguration.current.screenHeightDp * 0.85f).dp)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
+    EchoModalSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         // Offset-dependent top padding would resize the sheet and move its expanded anchor.
@@ -55,48 +59,38 @@ internal fun LibraryLayoutEditor(
         },
     ) {
         // Keep the anchor stable while the lazy list scrolls or sections are reordered.
-        Column(Modifier.fillMaxWidth().height(maxHeight).padding(horizontal = 24.dp)) {
-            LazyColumn(Modifier.weight(1f)) {
-                item(key = "header") {
-                    Text(stringResource(R.string.library_layout_title), style = MaterialTheme.typography.titleLarge)
-                    Text(stringResource(R.string.library_layout_detail),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
-                }
+        Column(Modifier.fillMaxWidth().height(maxHeight)) {
+            EchoSheetHeader(
+                title = stringResource(R.string.library_layout_title),
+                subtitle = stringResource(R.string.library_layout_detail),
+            )
+            LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 itemsIndexed(draft.order, key = { _, section -> section.id }) { index, section ->
                     val label = section.viewMode().label()
-                    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Text(label, Modifier.weight(1f).padding(end = 4.dp),
-                            style = MaterialTheme.typography.bodyLarge)
-                        IconButton(onClick = { draft = draft.move(section, -1) }, enabled = index > 0) {
-                            EchoIcon(Icons.Rounded.KeyboardArrowUp,
-                                stringResource(R.string.library_layout_move_up, label))
-                        }
-                        IconButton(onClick = { draft = draft.move(section, 1) }, enabled = index < draft.order.lastIndex) {
-                            EchoIcon(Icons.Rounded.KeyboardArrowDown,
-                                stringResource(R.string.library_layout_move_down, label))
-                        }
-                        EchoSwitch(checked = section !in draft.hidden,
-                            enabled = section in draft.hidden || draft.visibleCategories().size > 1,
-                            onCheckedChange = { draft = draft.withVisibility(section, it) },
-                            modifier = Modifier.semantics { contentDescription = label })
-                    }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                    EchoSheetOrderRow(
+                        position = index + 1,
+                        label = label,
+                        visible = section !in draft.hidden,
+                        canMoveUp = index > 0,
+                        canMoveDown = index < draft.order.lastIndex,
+                        moveUpDescription = stringResource(R.string.library_layout_move_up, label),
+                        moveDownDescription = stringResource(R.string.library_layout_move_down, label),
+                        onMoveUp = { draft = draft.move(section, -1) },
+                        onMoveDown = { draft = draft.move(section, 1) },
+                        onVisibleChange = { draft = draft.withVisibility(section, it) },
+                        switchEnabled = section in draft.hidden || draft.visibleCategories().size > 1,
+                        modifier = echoItemMotion(),
+                    )
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { draft = EchoLibraryLayout() }) {
-                    Text(stringResource(R.string.library_layout_reset))
-                }
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_layout_cancel)) }
-                TextButton(onClick = { onApply(draft); onDismiss() }) {
-                    Text(stringResource(R.string.library_layout_apply))
-                }
-            }
+            EchoSheetActionBar(
+                applyLabel = stringResource(R.string.library_layout_apply),
+                onApply = { onApply(draft); onDismiss() },
+                cancelLabel = stringResource(R.string.library_layout_cancel),
+                onCancel = onDismiss,
+                resetLabel = stringResource(R.string.library_layout_reset),
+                onReset = { draft = EchoLibraryLayout() },
+            )
         }
     }
 }

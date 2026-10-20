@@ -1,5 +1,6 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,10 +42,10 @@ internal fun LibraryReconcileSheet(actions: LibraryReconcileActions,onLegacy: ()
         catch (e: CancellationException) { throw e } catch (_: EchoSyncUnsupportedException) { unsupported = true } catch (_: Exception) { failed = true }
         finally { busy = false }
     }
-    ModalBottomSheet(onDismissRequest = { operation?.cancel(); onDismiss() },sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    EchoModalSheet(onDismissRequest = { operation?.cancel(); onDismiss() },sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         LazyColumn(Modifier.fillMaxWidth(),contentPadding = PaddingValues(24.dp),verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
-                Text(stringResource(R.string.reconcile_title),style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.reconcile_title),style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                 Text(stringResource(R.string.reconcile_hint),color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (failed) { Text(stringResource(R.string.reconcile_error),color = MaterialTheme.colorScheme.error); TextButton(onClick = { drafts = null; refresh++ },enabled = !busy) { Text(stringResource(R.string.sync_retry)) } }

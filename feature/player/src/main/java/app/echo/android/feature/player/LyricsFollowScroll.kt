@@ -12,7 +12,9 @@ import kotlin.math.abs
 internal class LyricsFollowMotion {
     var velocity = 0f
     var anchored = false
-    fun reset() { velocity = 0f; anchored = false }
+    /** Typography/viewport inputs of the last follow; only a change needs a frame to re-measure. */
+    var layoutKey: Any? = null
+    fun reset() { velocity = 0f; anchored = false; layoutKey = null }
 }
 
 internal fun lyricFollowVelocity(distance: Float, previousVelocity: Float): Float {
@@ -28,7 +30,14 @@ internal suspend fun followLyricsLine(
     motion: LyricsFollowMotion,
     lightweight: Boolean,
     motionMode: String,
+    layoutKey: Any,
 ) {
+    if (motion.layoutKey != layoutKey) {
+        // Let typography/translation/viewport changes finish layout before reading the anchor.
+        // A plain line change skips this wait, so the scroll starts in the frame the highlight moves.
+        motion.layoutKey = layoutKey
+        withFrameNanos { }
+    }
     if (!motion.anchored || list.layoutInfo.visibleItemsInfo.none { it.index == index }) {
         // Initial content / a far seek should not fly past an entire song's lyrics.
         motion.velocity = 0f

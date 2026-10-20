@@ -41,7 +41,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoIcon
+import app.echo.android.design.EchoSheetRow
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.feature.library.R as L10nR
 
@@ -84,21 +84,18 @@ internal fun TrackActionSheet(
     // Short windows need more room for actions while retaining the handle and safe insets.
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val maxHeight = minOf(500.dp, screenHeight * if (screenHeight < 600.dp) 0.82f else 0.58f)
-    Column(Modifier.fillMaxWidth().heightIn(max = maxHeight).padding(horizontal = 20.dp)) {
-        TrackSheetHeader(track, artworkSize = 48.dp)
+    Column(Modifier.fillMaxWidth().heightIn(max = maxHeight)) {
+        TrackSheetHeader(track, artworkSize = 52.dp, modifier = Modifier.padding(horizontal = 24.dp))
         Spacer(Modifier.height(12.dp))
         // Only the actions scroll. At the top, downward scroll passes to the sheet.
         Column(
             modifier = Modifier
                 .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState(), overscrollEffect = null)
-                .padding(bottom = 12.dp),
+                .padding(bottom = 16.dp),
         ) {
             if (onSelectForBatch != null) {
                 TrackActionRow(stringResource(L10nR.string.library_multiselect), Icons.Rounded.Checklist, enabled = true, onClick = onSelectForBatch)
-            }
-            if (onDelete != null) {
-                TrackActionRow(stringResource(L10nR.string.feature_library_delete_138ccf), Icons.Rounded.DeleteOutline, enabled = true, onClick = onDelete)
             }
             TrackActionRow(stringResource(L10nR.string.feature_library_play_38419a), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
             if (canPlayOnPc) {
@@ -183,6 +180,9 @@ internal fun TrackActionSheet(
                 TrackActionRow(stringResource(L10nR.string.track_versions_title), Icons.Rounded.Album, enabled = true, onClick = onVersions)
             }
             TrackActionRow(stringResource(L10nR.string.feature_library_track_info_36a07b), Icons.Rounded.Info, enabled = true, onClick = onInfo)
+            if (onDelete != null) {
+                TrackActionRow(stringResource(L10nR.string.feature_library_delete_138ccf), Icons.Rounded.DeleteOutline, enabled = true, danger = true, onClick = onDelete)
+            }
         }
     }
 }
@@ -193,39 +193,7 @@ private fun TrackActionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     enabled: Boolean,
     onClick: () -> Unit,
+    danger: Boolean = false,
 ) {
-    val alpha = if (enabled) 1f else 0.42f
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
-        color = Color.Transparent,
-        shape = RoundedCornerShape(0.dp),
-        border = null,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            EchoIcon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                label,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
+    EchoSheetRow(label = label, icon = icon, onClick = onClick, enabled = enabled, danger = danger, chevron = false)
 }
-

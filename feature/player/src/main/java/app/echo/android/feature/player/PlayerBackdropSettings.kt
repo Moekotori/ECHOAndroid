@@ -2,10 +2,8 @@ package app.echo.android.feature.player
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,6 +19,7 @@ internal fun lyricsBackdropLabel(style: EchoLyricsBackdrop): Int = when (style) 
     EchoLyricsBackdrop.Halftone -> R.string.lyrics_backdrop_halftone
     EchoLyricsBackdrop.Ridge -> R.string.lyrics_backdrop_ridge
     EchoLyricsBackdrop.Vinyl -> R.string.lyrics_backdrop_vinyl
+    EchoLyricsBackdrop.Iso -> R.string.lyrics_backdrop_iso
 }
 
 /**
@@ -34,20 +33,14 @@ internal fun PlayerBackdropChoices(
     onSelect: (String) -> Unit,
     onUseClassic: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(R.string.lyrics_backdrop_detail),
+            modifier = Modifier.padding(horizontal = 6.dp),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        EchoLyricsBackdrop.entries.chunked(2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { option ->
-                    PlaybackChoiceChip(text = stringResource(lyricsBackdropLabel(option)),
-                        selected = selected == option, onClick = { onSelect(option.id) }, modifier = Modifier.weight(1f))
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
+        SettingsOptionGrid(options = lyricsBackdropOptions(), selectedId = selected.id, onSelect = onSelect)
         if (flatSurface) {
             Text(stringResource(R.string.lyrics_backdrop_needs_classic),
+                modifier = Modifier.padding(horizontal = 6.dp),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton(onClick = onUseClassic) { Text(stringResource(R.string.lyrics_backdrop_use_classic)) }
         }

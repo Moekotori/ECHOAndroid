@@ -1,6 +1,9 @@
 package app.echo.android.feature.player
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import app.echo.android.design.echoPressFeedback
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,12 +47,14 @@ internal fun LyricsSettingSlider(
     val displayed = if (dragging) draft else value.coerceIn(range)
     val valueText = "${(displayed * 100f).roundToInt()}%"
     val resetLabel = stringResource(R.string.lyrics_setting_reset)
-    Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = PlaybackRowInset)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Text(valueText, Modifier.widthIn(min = 48.dp), style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
+            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+            Text(valueText,
+                Modifier.clip(RoundedCornerShape(10.dp)).background(echoAccentColor().copy(alpha = 0.16f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
             TextButton(
                 onClick = { dragging = false; onCommit(defaultValue) },
                 enabled = abs(displayed - defaultValue) > 0.005f,
@@ -104,18 +109,22 @@ internal fun LyricsSettingToggle(
     onCheckedChange: (Boolean) -> Unit,
     hint: String? = null,
 ) {
+    val source = remember { MutableInteractionSource() }
     Column(
-        Modifier.fillMaxWidth()
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
-            .padding(horizontal = 2.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().clip(PlaybackRowShape).echoPressFeedback(source)
+            .toggleable(
+                value = checked, interactionSource = source, indication = LocalIndication.current,
+                role = Role.Switch, onValueChange = onCheckedChange,
+            )
+            .padding(horizontal = PlaybackRowInset, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
             EchoSwitch(checked, onCheckedChange = null)
         }
-        if (!hint.isNullOrBlank()) Text(hint, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodySmall,
+        if (!hint.isNullOrBlank()) Text(hint, Modifier.fillMaxWidth().padding(bottom = 4.dp), style = MaterialTheme.typography.bodySmall,
             color = if (LocalEchoDarkTheme.current) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.65f) else echoTheme().muted)
     }
 }

@@ -1,5 +1,6 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyColumn
@@ -88,12 +89,12 @@ fun EchoLinkRemoteQueueSheet(
             }
         }.distinctUntilChanged().collect { if (it < 0) loadPrevious() else if (it > 0) loadMore() }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss,
+    EchoModalSheet(onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.88f)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.remote_queue_count, queue.totalCount), style = MaterialTheme.typography.headlineSmall)
+                    Text(stringResource(R.string.remote_queue_count, queue.totalCount), style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     Text(pcTitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onDismiss) { EchoIcon(Icons.Rounded.Close, stringResource(R.string.remote_close)) }

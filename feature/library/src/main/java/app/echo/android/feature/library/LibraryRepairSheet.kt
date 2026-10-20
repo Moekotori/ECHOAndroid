@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,12 +47,12 @@ fun LibraryRepairSheet(actions: LibraryExperienceActions, onDismiss: () -> Unit)
         skipPartiallyExpanded = true,
         confirmValueChange = { it != SheetValue.Hidden || !repairInProgress.value },
     )
-    ModalBottomSheet(onDismissRequest = { if (!applying) onDismiss() }, sheetState = sheetState,
+    EchoModalSheet(onDismissRequest = { if (!applying) onDismiss() }, sheetState = sheetState,
         sheetGesturesEnabled = !applying) {
         LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Text(stringResource(R.string.repair_title), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.repair_title), style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                 Text(stringResource(R.string.repair_hint), style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextButton(onClick = { onDismiss(); actions.rescanFolder() }, enabled = !applying) {

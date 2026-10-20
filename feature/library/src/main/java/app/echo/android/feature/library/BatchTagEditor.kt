@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,10 +33,10 @@ internal fun BatchTagEditor(tracks: List<EchoTrack>, actions: LibraryBatchAction
     }
     val valid = fields.any { it.selected } && (!fields[0].selected || fields[0].value.isNotBlank()) &&
         (!fields[4].selected || fields[4].value.isBlank() || fields[4].value.toIntOrNull()?.let { it in 1..9999 } == true)
-    ModalBottomSheet(onDismissRequest = { operation?.cancel(); onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    EchoModalSheet(onDismissRequest = { operation?.cancel(); onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         LazyColumn(Modifier.fillMaxWidth().imePadding(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text(stringResource(R.string.batch_tags), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.batch_tags), style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                 Text(stringResource(R.string.batch_tag_hint, tracks.size))
                 if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text(stringResource(R.string.batch_progress, progress, tracks.size)) }
                 result?.let { Text(stringResource(R.string.batch_result, it.completed, it.failed, it.fileWritesFailed)) }

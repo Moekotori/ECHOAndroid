@@ -1,7 +1,0 @@
-<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@drawable/echo_splash_icon">
-    <target android:name="echo_wave_center" android:animation="@animator/echo_splash_wave_center" />
-    <target android:name="echo_wave_side" android:animation="@animator/echo_splash_wave_side" />
-    <target android:name="echo_wave_edge" android:animation="@animator/echo_splash_wave_edge" />
-    <target android:name="echo_ripple" android:animation="@animator/echo_splash_ripple" />
-</animated-vector>

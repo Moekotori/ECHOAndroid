@@ -16,4 +16,8 @@ internal class BackdropLink(
 
 /** Styles that give the surface a short kick on every lyric line change. */
 internal val EchoLyricsBackdrop.reactsToLyrics: Boolean
-    get() = this == EchoLyricsBackdrop.Ridge || this == EchoLyricsBackdrop.Vinyl
+    get() = this == EchoLyricsBackdrop.Vinyl || this == EchoLyricsBackdrop.Iso
+
+/** Styles whose motion eases down while playback is paused. */
+internal val EchoLyricsBackdrop.slowsWhenPaused: Boolean
+    get() = this == EchoLyricsBackdrop.Ridge || reactsToLyrics

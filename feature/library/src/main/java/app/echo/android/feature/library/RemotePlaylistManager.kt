@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -44,7 +45,7 @@ fun RemotePlaylistManager(actions: RemoteLibraryWritebackActions, onDismiss: () 
         }
     }
     LaunchedEffect(query) { delay(220); settledQuery = query }
-    ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() },
+    EchoModalSheet(onDismissRequest = { if (!busy) onDismiss() },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { !busy })) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.88f).padding(horizontal = 20.dp)) {
             Text(selected?.name ?: stringResource(R.string.remote_playlist_manage), style = MaterialTheme.typography.titleLarge)

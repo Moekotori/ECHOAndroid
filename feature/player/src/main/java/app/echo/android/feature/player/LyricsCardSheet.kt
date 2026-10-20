@@ -1,5 +1,6 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.EchoModalSheet
 import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,10 +70,10 @@ internal fun LyricsCardSheet(track: EchoTrack, lyrics: EchoLyrics, onDismiss: ()
         catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
         finally { rendering = false }
     }
-    ModalBottomSheet(onDismissRequest = { if (!exporting) onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    EchoModalSheet(onDismissRequest = { if (!exporting) onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text(stringResource(R.string.lyrics_card_title), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.lyrics_card_title), style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                 Text(stringResource(R.string.lyrics_card_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     LyricsCardStyle.entries.forEach { item -> FilterChip(style == item, { style = item }, enabled = !exporting,

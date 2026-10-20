@@ -1,11 +1,18 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.EchoModalSheet
+import app.echo.android.design.EchoSheetHeader
+import androidx.compose.ui.text.font.FontWeight
 import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.design.EchoRangeSlider
 import app.echo.android.design.EchoIcon
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import app.echo.android.design.echoClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -53,17 +60,17 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
     var adding by remember { mutableStateOf<Long?>(null) }
     var label by remember { mutableStateOf("") }
     var sharing by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        LazyColumn(Modifier.fillMaxWidth().imePadding(), contentPadding = PaddingValues(24.dp),
+    EchoModalSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        EchoSheetHeader(
+            title = stringResource(R.string.track_tools_title),
+            subtitle = "${displayTrack(track.title)} · ${displayArtist(track.artist)}",
+        )
+        LazyColumn(Modifier.fillMaxWidth().imePadding(),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Text(stringResource(R.string.track_tools_title), style = MaterialTheme.typography.headlineSmall)
-                Text(displayTrack(track.title), style = MaterialTheme.typography.titleMedium)
-                Text(displayArtist(track.artist), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            item {
                 val loopLabel = stringResource(R.string.track_loop_title)
-                Text(loopLabel, style = MaterialTheme.typography.titleLarge)
+                Text(loopLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.track_loop_hint), style = MaterialTheme.typography.bodySmall)
                 if (!loopAvailable) Text(stringResource(R.string.track_loop_external), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -96,9 +103,9 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
                 }
             }
             item {
-                HorizontalDivider()
+                Spacer(Modifier.height(4.dp))
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.track_bookmarks), style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.track_bookmarks), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     TextButton(onClick = { adding = position(); label = trackToolsTime(adding ?: 0) }, enabled = !busy && bookmarks.size < 200) {
                         Text(stringResource(R.string.track_bookmark_add))
                     }
@@ -107,8 +114,9 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             items(bookmarks, key = { it.id }) { bookmark ->
-                Row(Modifier.fillMaxWidth()) {
-                    Column(Modifier.weight(1f).clickable { onSeek(bookmark.positionMs) }.padding(vertical = 8.dp)) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).echoClickable { onSeek(bookmark.positionMs) }.padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 8.dp)) {
                         Text(bookmark.label, style = MaterialTheme.typography.titleMedium)
                         if (bookmark.label != trackToolsTime(bookmark.positionMs)) Text(trackToolsTime(bookmark.positionMs), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -120,7 +128,7 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
                 }
             }
             item {
-                HorizontalDivider()
+                Spacer(Modifier.height(4.dp))
                 OutlinedButton(onClick = { sharing = true }, enabled = lyrics?.lines?.any { it.text.isNotBlank() } == true,
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) { Text(stringResource(R.string.lyrics_card_title)) }
                 if (lyrics == null) Text(stringResource(R.string.lyrics_card_missing), style = MaterialTheme.typography.bodySmall)

@@ -85,9 +85,9 @@ internal fun LyricsLineList(
             maxWidth, maxHeight) {
             if (synced && focusIndex >= 0 && following) {
                 if (animationsVisible) {
-                    // Let typography/translation/viewport changes finish layout before reading the anchor.
-                    withFrameNanos { }
-                    followLyricsLine(listState, focusIndex, followMotion, lightweight, lyricsMotionMode)
+                    followLyricsLine(listState, focusIndex, followMotion, lightweight, lyricsMotionMode,
+                        listOf(lyrics, lyricsFontFamily, lyricsFontScale, lyricsLineSpacing,
+                            showTranslation, showRomanization, maxWidth, maxHeight, lightweight, lyricsMotionMode))
                 } else {
                     // Park the prepared page at the current verse. No hidden scroll animation or ticker.
                     if (listState.firstVisibleItemIndex != focusIndex || listState.firstVisibleItemScrollOffset != 0) {

@@ -1,5 +1,6 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -47,10 +48,10 @@ internal fun LibrarySyncSheet(pcName: String, actions: LibrarySyncActions, onDis
         catch (e: CancellationException) { throw e } catch (e: Exception) { recordError(e) }
         finally { loading = false }
     }
-    ModalBottomSheet(onDismissRequest = { operation?.cancel(); onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    EchoModalSheet(onDismissRequest = { operation?.cancel(); onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
-                Text(stringResource(R.string.sync_title), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.sync_title), style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                 Text(pcName, style = MaterialTheme.typography.titleMedium)
                 Text(stringResource(R.string.sync_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(stringResource(R.string.sync_matching_hint), Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall)

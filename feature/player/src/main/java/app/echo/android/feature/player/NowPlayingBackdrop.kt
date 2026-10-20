@@ -45,10 +45,13 @@ internal fun NowPlayingBackdrop(
     val mode = LocalEchoEffectivePerformanceMode.current
     val theme = echoTheme()
     val motionEnabled = animationsVisible && !mode.isLightweight
-    // Pausing eases the decorative clock to a near stop instead of freezing it mid-motion.
+    // Styles that follow playback ease down while paused but keep drifting; the others never change speed.
     val playing = link?.playing?.value ?: true
+    val followsPlayback = style.slowsWhenPaused
     val rate = remember { Animatable(1f) }
-    LaunchedEffect(playing) { rate.animateTo(if (playing) 1f else PausedClockRate, tween(900)) }
+    LaunchedEffect(playing, followsPlayback) {
+        rate.animateTo(if (playing || !followsPlayback) 1f else PausedClockRate, tween(900))
+    }
     val elapsed = rememberFluidBackdropTime(motionEnabled, fluidBackdropFps(mode)) { rate.value }
     // A short kick on every lyric line change; drawing reads it, so only the backdrop is invalidated.
     val pulse = remember { Animatable(0f) }
@@ -70,13 +73,13 @@ internal fun NowPlayingBackdrop(
     val wash = remember(palette, dark, theme) {
         val anchor = if (dark) theme.night else theme.bgTop
         palette.copy(
-            vibrant = lerp(palette.vibrant, anchor, if (dark) 0.18f else 0.48f),
-            deep = lerp(palette.deep, anchor, if (dark) 0.22f else 0.68f),
-            soft = lerp(palette.soft, anchor, if (dark) 0.30f else 0.48f),
+            vibrant = lerp(palette.vibrant, anchor, if (dark) 0.06f else 0.34f),
+            deep = lerp(palette.deep, anchor, if (dark) 0.10f else 0.50f),
+            soft = lerp(palette.soft, anchor, if (dark) 0.10f else 0.34f),
         )
     }
     val washedGrid = remember(colorGrid, dark, theme) {
-        colorGrid?.washedToward(if (dark) theme.night else theme.bgTop, if (dark) 0.18f else 0.48f)
+        colorGrid?.washedToward(if (dark) theme.night else theme.bgTop, if (dark) 0.06f else 0.34f)
     }
     val target: BackdropField = remember(wash, style, washedGrid) {
         when {
@@ -84,6 +87,7 @@ internal fun NowPlayingBackdrop(
             style == EchoLyricsBackdrop.Halftone && washedGrid != null -> HalftoneBackdropField(wash.deep, washedGrid)
             style == EchoLyricsBackdrop.Ridge && washedGrid != null -> RidgeBackdropField(wash.deep, washedGrid, dark)
             style == EchoLyricsBackdrop.Vinyl && washedGrid != null -> VinylBackdropField(wash.deep, washedGrid, dark)
+            style == EchoLyricsBackdrop.Iso && washedGrid != null -> IsoBackdropField(wash.deep, washedGrid, dark)
             else -> FluidArtworkField(wash)
         }
     }
@@ -97,9 +101,9 @@ internal fun NowPlayingBackdrop(
     }
     Box(modifier.drawWithCache {
         val veil = Brush.verticalGradient(
-            0f to theme.night.copy(alpha = if (dark) 0.24f else 0.02f),
+            0f to theme.night.copy(alpha = if (dark) 0.12f else 0.02f),
             0.46f to Color.Transparent,
-            1f to theme.night.copy(alpha = if (dark) 0.62f else 0.16f),
+            1f to theme.night.copy(alpha = if (dark) 0.38f else 0.12f),
         )
         onDrawBehind {
             // Time and page gestures invalidate drawing only, never the player or its lists.
@@ -113,12 +117,12 @@ internal fun NowPlayingBackdrop(
                     if (layers.previous == null) 1f else smoothBlend, kick)
             }
             drawRect(veil)
-            drawRect(theme.night.copy(alpha = (if (dark) 0.14f else 0.05f) * reveal().coerceIn(0f, 1f)))
+            drawRect(theme.night.copy(alpha = (if (dark) 0.06f else 0.04f) * reveal().coerceIn(0f, 1f)))
         }
     }.fillMaxSize())
 }
 
-private const val PausedClockRate = 0.04f
+private const val PausedClockRate = 0.2f
 private const val PulseDecayMs = 650
 
 // At most two small sets of shaders, including during rapid track changes.

@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
@@ -32,7 +33,7 @@ internal fun PlaylistAddTracksSheet(id: String, actions: PlaylistManagementActio
     LaunchedEffect(query) { delay(220); settledQuery = query }
     val tracks = remember(actions, settledQuery) { actions.candidates(settledQuery) }.collectAsLazyPagingItems()
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { !busy })
-    ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() }, sheetState = sheet) {
+    EchoModalSheet(onDismissRequest = { if (!busy) onDismiss() }, sheetState = sheet) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.85f).padding(horizontal = 20.dp)) {
             Text(stringResource(R.string.playlist_add_tracks), style = MaterialTheme.typography.titleLarge)
             OutlinedTextField(value = query, onValueChange = { query = it }, enabled = !busy, singleLine = true,

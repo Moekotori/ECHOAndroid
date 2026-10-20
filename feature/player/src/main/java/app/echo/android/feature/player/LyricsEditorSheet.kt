@@ -1,5 +1,6 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.EchoModalSheet
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -46,7 +47,7 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
         skipPartiallyExpanded = true,
         confirmValueChange = { it != SheetValue.Hidden || !saveInProgress.value },
     )
-    ModalBottomSheet(onDismissRequest = { if (!saving) onDismiss() }, sheetState = sheetState,
+    EchoModalSheet(onDismissRequest = { if (!saving) onDismiss() }, sheetState = sheetState,
         sheetGesturesEnabled = !saving) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.94f).imePadding()) {
             Column(Modifier.padding(horizontal = 24.dp)) {
@@ -67,7 +68,7 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
                 // Descriptive chrome scrolls; transport and repeated timestamp marking stay reachable.
                 item(key = "editor-header") {
                     Column(Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.lyrics_edit_title), style = MaterialTheme.typography.headlineSmall)
+                        Text(stringResource(R.string.lyrics_edit_title), style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                         Text(stringResource(R.string.lyrics_edit_hint), style = MaterialTheme.typography.bodySmall)
                         if (!session.sourceReady) {
                             if (sourceError != null) Text(sourceError, color = MaterialTheme.colorScheme.error)

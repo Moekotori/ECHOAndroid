@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoModalSheet
 import app.echo.android.feature.library.R as L10nR
 import androidx.compose.ui.res.stringResource
 
@@ -49,7 +50,6 @@ import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -532,7 +532,7 @@ internal fun TrackContextMenu(
     }
 
     sheetMode?.let { mode ->
-        ModalBottomSheet(
+        EchoModalSheet(
             onDismissRequest = { if (!editorSaving) sheetMode = null },
             sheetState = sheetState,
             // Changing top inset padding during a drag would resize the sheet and move its anchor.
@@ -543,9 +543,6 @@ internal fun TrackContextMenu(
                     BottomSheetDefaults.windowInsets
                 }
             },
-            containerColor = MaterialTheme.colorScheme.surface,
-            tonalElevation = 8.dp,
-            shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
         ) {
             when (mode) {
                 TrackSheetMode.Actions -> TrackActionSheet(
@@ -676,10 +673,10 @@ internal fun TrackContextMenu(
 }
 
 @Composable
-internal fun TrackSheetHeader(track: EchoTrack, artworkSize: Dp = 64.dp) {
+internal fun TrackSheetHeader(track: EchoTrack, artworkSize: Dp = 64.dp, modifier: Modifier = Modifier) {
     val subtitle = trackSubtitle(track)
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -687,7 +684,7 @@ internal fun TrackSheetHeader(track: EchoTrack, artworkSize: Dp = 64.dp) {
             track.artworkUri,
             Modifier.size(artworkSize),
             accent = rememberLibraryArtworkAccent(),
-            cornerRadius = 4.dp,
+            cornerRadius = 14.dp,
             elevation = 0.dp,
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {

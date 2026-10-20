@@ -240,14 +240,7 @@ private fun PlaybackSettingsSheet(
     }
     BackHandler(enabled = moreExpanded) { moreExpanded = false }
     val contentScrollState = remember(moreExpanded) { ScrollState(0) }
-    val panelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
-    val titleColor = if (dark) Color.White else echoTheme().heading
-    val mutedColor = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted
     val accent = echoAccentColor()
-    val glowTop = accent.copy(alpha = if (dark) 0.16f else 0.11f)
-    val buttonPlate = if (dark) Color.White.copy(alpha = 0.09f) else echoTheme().muted.copy(alpha = 0.13f)
-    val motion = rememberEchoContentMotion()
-    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val headerTitle = if (moreExpanded) stringResource(L10nR.string.playback_more_settings)
         else status.track?.let { displayTrack(it.title) }
             ?: stringResource(L10nR.string.feature_player_playback_settings_651436)
@@ -258,12 +251,7 @@ private fun PlaybackSettingsSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = maxHeight * 0.88f)
-                .clip(panelShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                // One static wash of the accent at the top edge replaces the old nested cards.
-                .drawBehind {
-                    drawRect(Brush.verticalGradient(listOf(glowTop, Color.Transparent), endY = 220.dp.toPx()))
-                }
+                .settingsSheetSurface()
                 .navigationBarsPadding(),
         ) {
             Column(
@@ -271,57 +259,19 @@ private fun PlaybackSettingsSheet(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 PlaybackSheetHandle(onDismiss = onDismiss)
-                Row(
-                    modifier = Modifier
-                        .echoPageSection(0)
-                        .fillMaxWidth()
-                        .padding(bottom = 10.dp)
-                        .padding(horizontal = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                SettingsSheetHeader(
+                    deeper = moreExpanded,
+                    title = headerTitle,
+                    subtitle = headerSubtitle,
+                    backDescription = stringResource(L10nR.string.feature_player_playback_settings_651436),
+                    closeDescription = stringResource(L10nR.string.feature_player_close_playback_settings_289e1a),
+                    onBack = { moreExpanded = false },
+                    onClose = onDismiss,
                 ) {
-                    EchoStateContent(moreExpanded) { more ->
-                        if (more) {
-                            GlyphButton(
-                                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                                description = stringResource(L10nR.string.feature_player_playback_settings_651436),
-                                touchSize = 52.dp, iconSize = 22.dp, tint = titleColor,
-                                background = buttonPlate, onClick = { moreExpanded = false },
-                            )
-                        } else {
-                            ArtworkTile(
-                                artworkUri = status.track?.artworkUri,
-                                modifier = Modifier.size(52.dp),
-                                accent = accent, cornerRadius = 14.dp, elevation = 0.dp,
-                            )
-                        }
-                    }
-                    EchoStateContent(headerTitle to headerSubtitle, Modifier.weight(1f)) { (title, subtitle) ->
-                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(
-                                title,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                color = titleColor,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                subtitle,
-                                color = mutedColor,
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    GlyphButton(
-                        icon = Icons.Rounded.Close,
-                        description = stringResource(L10nR.string.feature_player_close_playback_settings_289e1a),
-                        touchSize = 40.dp,
-                        iconSize = 20.dp,
-                        tint = titleColor,
-                        background = buttonPlate,
-                        onClick = onDismiss,
+                    ArtworkTile(
+                        artworkUri = status.track?.artworkUri,
+                        modifier = Modifier.size(52.dp),
+                        accent = accent, cornerRadius = 14.dp, elevation = 0.dp,
                     )
                 }
             }
@@ -332,17 +282,7 @@ private fun PlaybackSettingsSheet(
                     .verticalScroll(contentScrollState)
                     .padding(start = 20.dp, end = 20.dp, bottom = 18.dp),
             ) {
-                AnimatedContent(
-                    targetState = moreExpanded,
-                    transitionSpec = {
-                        motion.tabSwitch(forward = targetState).using(
-                            if (lightweight) null else SizeTransform(clip = true) { _, _ ->
-                                EchoMotion.silkSize(EchoMotion.ExpandMs)
-                            },
-                        )
-                    },
-                    label = "playback-settings-page",
-                ) { more ->
+                SettingsPageSwitcher(state = moreExpanded, isDeeper = { it }) { more ->
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         if (more) {
                             PlaybackAdvancedSettings(

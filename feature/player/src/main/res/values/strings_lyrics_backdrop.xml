@@ -5,7 +5,8 @@
     <string name="lyrics_backdrop_halftone">Halftone</string>
     <string name="lyrics_backdrop_ridge">Ridge</string>
     <string name="lyrics_backdrop_vinyl">Vinyl</string>
-    <string name="lyrics_backdrop_detail">Painted from the cover\'s colors. Ridge and Vinyl also react to each lyric line and to play or pause.</string>
+    <string name="lyrics_backdrop_iso">Isometric</string>
+    <string name="lyrics_backdrop_detail">Painted from the cover\'s colors. Vinyl and Isometric also react to each lyric line.</string>
     <string name="lyrics_backdrop_needs_classic">The current player style has its own flat surface, so the background only shows with the Classic style.</string>
     <string name="lyrics_backdrop_use_classic">Switch to Classic</string>
 </resources>

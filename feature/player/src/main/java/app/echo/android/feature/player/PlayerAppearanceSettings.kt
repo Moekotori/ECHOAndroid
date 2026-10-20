@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.MaterialTheme
@@ -54,8 +53,7 @@ internal fun PlayerAppearanceSettings(
         PlayerPageStyleSelector(EchoPlayerPageStyle.fromId(appearance.style)) { id ->
             onPreview(appearance.copy(style = id)); onCommit()
         }
-        Text(stringResource(R.string.lyrics_backdrop_title), style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 8.dp))
+        SettingsGroupLabel(stringResource(R.string.lyrics_backdrop_title))
         PlayerBackdropChoices(
             selected = backdrop,
             flatSurface = appearance.usesFlatSurface,
@@ -92,17 +90,11 @@ internal fun playerPageStyleLabel(style: EchoPlayerPageStyle): Int = when (style
 
 @Composable
 internal fun PlayerPageStyleSelector(style: EchoPlayerPageStyle, onSelect: (String) -> Unit) {
-    Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(R.string.player_appearance_detail),
+            modifier = Modifier.padding(horizontal = 6.dp),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        EchoPlayerPageStyle.entries.chunked(2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { option ->
-                    PlaybackChoiceChip(text = stringResource(playerPageStyleLabel(option)),
-                        selected = style == option, onClick = { onSelect(option.id) }, modifier = Modifier.weight(1f))
-                }
-            }
-        }
+        SettingsOptionGrid(options = playerPageStyleOptions(), selectedId = style.id, onSelect = onSelect)
     }
 }
 

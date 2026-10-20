@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,11 +49,9 @@ internal fun LibraryBatchPlaylistSheet(
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var closing by remember { mutableStateOf(false) }
-    ModalBottomSheet(
+    EchoModalSheet(
         onDismissRequest = { if (!closing) onDismiss() },
         sheetState = sheet,
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
     ) {
         LazyColumn(
             Modifier.fillMaxWidth(),
@@ -62,7 +60,7 @@ internal fun LibraryBatchPlaylistSheet(
         ) {
             item(key = "heading") {
                 Column(Modifier.padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(stringResource(R.string.batch_playlist), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.batch_playlist), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     Text(
                         pluralStringResource(R.plurals.batch_selected_count, count, count),
                         style = MaterialTheme.typography.bodyMedium,
@@ -77,7 +75,7 @@ internal fun LibraryBatchPlaylistSheet(
                 }
             }
             items(editable, key = EchoPlaylist::id) { playlist ->
-                Surface(color = MaterialTheme.colorScheme.surface) {
+                Surface(color = androidx.compose.ui.graphics.Color.Transparent, shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) {
                     Row(
                         Modifier.fillMaxWidth().echoClickable(enabled = !closing) {
                             closing = true
@@ -85,7 +83,7 @@ internal fun LibraryBatchPlaylistSheet(
                                 try { sheet.hide(); onSelect(playlist) }
                                 finally { closing = false }
                             }
-                        }.padding(vertical = 12.dp),
+                        }.padding(horizontal = 8.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {

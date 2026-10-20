@@ -1,5 +1,6 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoModalSheet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,7 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -55,10 +55,9 @@ fun CastDevicesSheet(
     onSystemOutputSelector: (() -> Unit)? = null,
     systemOutputAvailable: Boolean = false,
 ) {
-    ModalBottomSheet(
+    EchoModalSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surface,
     ) {
         Column(
             Modifier.fillMaxWidth().fillMaxHeight(0.85f)

@@ -1,6 +1,6 @@
 <resources>
     <color name="ic_launcher_background">#101D35</color>
-    <color name="echo_splash_background">#F5F5F3</color>
+    <color name="echo_splash_background">#EAF1FB</color>
     <color name="echo_splash_halo">#EAF0F6</color>
     <color name="echo_splash_ink">#26364E</color>
 </resources>

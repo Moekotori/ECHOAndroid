@@ -90,6 +90,12 @@ internal fun LyricsLineItem(
         animationSpec = contextMotion,
         label = "lyrics-text-scale",
     )
+    // Depth-of-field: lines fall slightly out of focus with distance. Needs RenderEffect (API 31+).
+    val textBlur = animateFloatAsState(
+        targetValue = if (android.os.Build.VERSION.SDK_INT >= 31 && !immersive) motion.blur(focused, focusDistance) else 0f,
+        animationSpec = contextMotion,
+        label = "lyrics-text-blur",
+    )
     val textLift = animateFloatAsState(
         targetValue = if (focused) 0f else motion.liftDp,
         animationSpec = contextMotion,
@@ -151,6 +157,8 @@ internal fun LyricsLineItem(
                 alpha = animatedPrimaryAlpha.value
                 scaleX = textScale.value
                 scaleY = textScale.value
+                val blur = textBlur.value.dp.toPx()
+                renderEffect = if (blur >= 0.5f) BlurEffect(blur, blur, TileMode.Decal) else null
                 transformOrigin = TransformOrigin(if (lyricsAlignment == "start") 0f else 0.5f, 0.5f)
             },
             // Reserve the focused size and scale only the main lyric in drawing:

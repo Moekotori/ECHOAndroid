@@ -1,5 +1,6 @@
 package app.echo.android.feature.connect
 
+import app.echo.android.design.EchoModalSheet
 import app.echo.android.design.EchoIcon
 
 import androidx.compose.foundation.layout.*
@@ -94,16 +95,15 @@ internal fun RemoteMusicPicker(
         }
     }
     LaunchedEffect(showQueue, search) { listState.scrollToItem(0) }
-    ModalBottomSheet(
+    EchoModalSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surface,
     ) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.88f).imePadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(if (showQueue) R.string.feature_connect_pc_queue_2e91c4 else R.string.remote_choose_music),
-                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                        style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.remote_picker_destination, pcTitle),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

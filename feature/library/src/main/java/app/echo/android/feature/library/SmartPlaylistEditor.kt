@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.EchoModalSheet
 import app.echo.android.design.EchoSwitch
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,12 +44,12 @@ internal fun SmartPlaylistEditor(playlist: EchoPlaylist?, actions: LibraryExperi
         catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
         finally { previewBusy = false }
     }
-    ModalBottomSheet(onDismissRequest = { if (!saving) onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    EchoModalSheet(onDismissRequest = { if (!saving) onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.94f).imePadding()) {
         LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
-                Text(stringResource(R.string.smart_editor_title), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.smart_editor_title), style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                 Text(stringResource(R.string.smart_editor_hint), style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
