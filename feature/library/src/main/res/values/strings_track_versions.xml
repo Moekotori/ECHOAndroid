@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_versions_title">Song versions</string>
+    <string name="track_versions_explanation">Matches use title, artist, album and duration. Original songs and playlists are kept. Unavailable preferred sources fall back when playback starts.</string>
+    <string name="track_versions_auto">Automatic · prefer local files</string>
+    <string name="track_versions_empty">No other matching version in the indexed library.</string>
+    <string name="track_versions_close">Close</string>
+</resources>

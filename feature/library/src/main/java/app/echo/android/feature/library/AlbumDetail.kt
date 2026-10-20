@@ -68,7 +68,6 @@ import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
-import app.echo.android.model.library.LibraryOfflinePin
 
 internal val AlbumDetailBottomPadding = 168.dp
 private val LocalAlbumDetail = staticCompositionLocalOf { false }
@@ -111,7 +110,7 @@ internal fun AlbumDetailPage(
     onShuffle: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -121,8 +120,6 @@ internal fun AlbumDetailPage(
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: (() -> Unit)? = null,
     onOpenTrackArtist: ((EchoTrack) -> Unit)? = null,
-    offlinePin: LibraryOfflinePin? = null,
-    onToggleOffline: (() -> Unit)? = null,
     onPinShortcut: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -159,8 +156,6 @@ internal fun AlbumDetailPage(
                             count = album.trackCount,
                             onPlayAll = onPlayAll,
                             onShuffle = onShuffle,
-                            offlinePin = offlinePin,
-                            onToggleOffline = onToggleOffline,
                             onPinShortcut = onPinShortcut,
                         )
                         if (albumHasCueMovements(loadedTracks)) {
@@ -238,7 +233,7 @@ internal fun AlbumDetailListPage(
     onPlayOnPc: (() -> Unit)? = null,
     onPlayTrack: (EchoTrack) -> Unit,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -336,7 +331,7 @@ internal fun GenreTrackDetailPage(
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -471,21 +466,20 @@ private fun AlbumDetailLightBackground(
 @Composable
 private fun ArtistHero(artist: ArtistSummary, palette: ArtworkPalette) {
     val colors = rememberDetailGlassColors()
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    DetailHeroLayout(
+        artworkSize = 200.dp,
+        centered = true,
+        artwork = { modifier ->
+            ArtworkTile(
+                artworkUri = artist.artworkUri,
+                modifier = modifier,
+                accent = palette.vibrant,
+                showSignal = artist.artworkUri == null,
+                cornerRadius = 0.dp,
+                elevation = 22.dp,
+            )
+        },
     ) {
-        ArtworkTile(
-            artworkUri = artist.artworkUri,
-            modifier = Modifier
-                .padding(top = 6.dp)
-                .size(200.dp),
-            accent = palette.vibrant,
-            showSignal = artist.artworkUri == null,
-            cornerRadius = 0.dp,
-            elevation = 22.dp,
-        )
-        Spacer(Modifier.height(20.dp))
         Text(
             displayMetadataOrUnknown(artist.name, unknownArtistLabel()),
             color = colors.content,
@@ -542,22 +536,18 @@ private fun AlbumHero(
     val titleColor = colors.content
     val artistColor = colors.muted
     val metaColor = colors.muted
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.Start,
+    DetailHeroLayout(
+        artwork = { modifier ->
+            ArtworkTile(
+                artworkUri = album.artworkUri,
+                modifier = modifier,
+                accent = MaterialTheme.colorScheme.primary,
+                showSignal = album.artworkUri == null,
+                cornerRadius = 8.dp,
+                elevation = 14.dp,
+            )
+        },
     ) {
-        ArtworkTile(
-            artworkUri = album.artworkUri,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(top = 4.dp)
-                .size(208.dp),
-            accent = MaterialTheme.colorScheme.primary,
-            showSignal = album.artworkUri == null,
-            cornerRadius = 8.dp,
-            elevation = 14.dp,
-        )
-        Spacer(Modifier.height(24.dp))
         Text(
             displayMetadataOrUnknown(album.title, unknownAlbumLabel()),
             color = titleColor,
@@ -601,8 +591,6 @@ internal fun AlbumActionBar(
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
     onPlayOnPc: (() -> Unit)? = null,
-    offlinePin: LibraryOfflinePin? = null,
-    onToggleOffline: (() -> Unit)? = null,
 ) {
     val refined = LocalAlbumDetail.current
     val colors = rememberDetailGlassColors()
@@ -645,18 +633,6 @@ internal fun AlbumActionBar(
             containerColor = colors.elevatedSurface,
             borderColor = if (refined) colors.border else actionBorder,
             onClick = onPlayOnPc,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-    if (onToggleOffline != null) {
-        AlbumDetailActionButton(
-            icon = libraryOfflinePinIcon(offlinePin),
-            label = libraryOfflinePinLabel(offlinePin),
-            iconSize = 22.dp,
-            contentColor = if (refined) colors.content else actionContent,
-            containerColor = colors.elevatedSurface,
-            borderColor = if (refined) colors.border else actionBorder,
-            onClick = onToggleOffline,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -1129,7 +1105,7 @@ internal fun AlbumTrackRow(
     onClick: () -> Unit,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -1236,7 +1212,7 @@ private fun AlbumDiscTrackRow(
     onClick: () -> Unit,
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,

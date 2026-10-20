@@ -4,7 +4,7 @@
     <string name="scan_rules_presets">扫描预设</string>
     <string name="scan_rules_recommended_hint">至少 30 秒、100 KB，跳过隐藏目录和非音乐目录</string>
     <string name="scan_rules_all_hint">扫描所有支持的音频，不限制时长、大小，也不自动排除目录</string>
-    <string name="scan_rules_lossless_hint">沿用推荐过滤条件，仅扫描 FLAC、WAV、AIFF 和 DSD</string>
+    <string name="scan_rules_lossless_hint">沿用推荐过滤条件，仅扫描受支持的无损格式</string>
     <string name="scan_rules_file_filters">文件过滤</string>
     <string name="scan_rules_file_filters_hint">低于任一门槛的文件会被跳过，时长或大小未知时保留。这些门槛和格式选择不会移除已导入的歌曲。</string>
     <string name="scan_rules_folder_filters">排除非音乐内容</string>

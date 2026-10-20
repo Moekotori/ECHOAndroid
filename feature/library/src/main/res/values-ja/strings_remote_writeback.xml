@@ -1,0 +1,16 @@
+<resources>
+    <string name="remote_playlist_manage">サーバーのプレイリストを管理</string>
+    <string name="remote_playlist_server_hint">変更は現在の Navidrome / Subsonic サーバーに保存されます。他のソースは読み取り専用です。</string>
+    <string name="remote_playlist_error">サーバーの操作を完了できませんでした。接続と編集権限を確認して再試行してください。ローカルデータは保持されています。</string>
+    <string name="remote_playlist_empty">サーバーにプレイリストがありません。</string>
+    <string name="remote_playlist_back">戻る</string>
+    <string name="remote_playlist_rename">名前を変更</string>
+    <string name="remote_playlist_delete">削除</string>
+    <string name="remote_playlist_show_tracks">プレイリストの曲</string>
+    <string name="remote_playlist_retry">再試行</string>
+    <string name="remote_playlist_add">追加</string>
+    <string name="remote_playlist_remove">削除</string>
+    <string name="remote_playlist_close">閉じる</string>
+    <string name="remote_playlist_save">保存</string>
+    <string name="remote_playlist_delete_confirm">サーバーから「%1$s」を削除しますか？他のデバイスからも削除されます。</string>
+</resources>

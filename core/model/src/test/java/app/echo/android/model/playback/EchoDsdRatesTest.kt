@@ -46,14 +46,18 @@ class EchoDsdRatesTest {
     }
 
     @Test
-    fun dopRatesCoverDsd64AndDsd128Only() {
+    fun dopRatesCoverDsd64Through512() {
         assertEquals(176_400, EchoDsdRates.dopSampleRateHz(2_822_400))
         assertEquals(352_800, EchoDsdRates.dopSampleRateHz(5_644_800))
-        assertNull(EchoDsdRates.dopSampleRateHz(11_289_600))
+        assertEquals(705_600, EchoDsdRates.dopSampleRateHz(11_289_600))
+        assertEquals(1_411_200, EchoDsdRates.dopSampleRateHz(22_579_200))
+        assertNull(EchoDsdRates.dopSampleRateHz(45_158_400))
         assertNull(EchoDsdRates.dopSampleRateHz(88_200))
         assertEquals(176_400, EchoDsdRates.dopSampleRateFromDecoderPcm(352_800))
         assertEquals(352_800, EchoDsdRates.dopSampleRateFromDecoderPcm(705_600))
-        assertNull(EchoDsdRates.dopSampleRateFromDecoderPcm(1_411_200))
+        assertEquals(705_600, EchoDsdRates.dopSampleRateFromDecoderPcm(1_411_200))
+        assertEquals(1_411_200, EchoDsdRates.dopSampleRateFromDecoderPcm(2_822_400))
+        assertNull(EchoDsdRates.dsdRateFromDecoderPcm(Int.MAX_VALUE))
     }
 
     @Test

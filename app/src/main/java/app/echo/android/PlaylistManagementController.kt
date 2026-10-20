@@ -21,6 +21,7 @@ internal class PlaylistManagementController(
     context: Context,
     private val repository: EchoLibraryRepository,
     private val scope: CoroutineScope,
+    private val remoteFavorite: (suspend (String, Boolean) -> Boolean)? = null,
 ) {
     private val resolver = context.applicationContext.contentResolver
     private val mutableImport = MutableStateFlow<PlaylistImportUiState?>(null)
@@ -33,7 +34,11 @@ internal class PlaylistManagementController(
     suspend fun sort(id: String, order: PlaylistTrackOrder) = repository.setPlaylistOrder(id, order)
     fun candidates(query: String) = repository.pagedTracks(query).map { data -> data.map { it.toEchoTrack() } }
     suspend fun add(id: String, tracks: List<String>) = repository.addTracksToPlaylist(id, tracks)
-    suspend fun remove(id: String, trackId: String) = withContext(Dispatchers.IO) { repository.removeTrackFromLocalPlaylist(id, trackId) }
+    suspend fun remove(id: String, trackId: String): Boolean {
+        if (id == EchoPlaylist.LikedSongsId && trackId.startsWith("subsonic:") && remoteFavorite != null)
+            return remoteFavorite.invoke(trackId, false)
+        return withContext(Dispatchers.IO) { repository.removeTrackFromLocalPlaylist(id, trackId) }
+    }
     suspend fun move(id: String, trackId: String, direction: Int) = repository.movePlaylistTrack(id, trackId, direction)
     suspend fun copy(id: String, name: String) = repository.copyPlaylist(id, name)
 

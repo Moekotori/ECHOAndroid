@@ -24,9 +24,14 @@ data class EchoLayoutInfo(val widthDp: Float, val heightDp: Float, val fontScale
             else -> 0
         }
 
-    fun supportsTwoPanes(minimumWidthDp: Float = 840f): Boolean =
-        widthDp >= minimumWidthDp * fontScale.coerceAtLeast(1f) &&
-            heightDp >= 320f * fontScale.coerceAtLeast(1f)
+    fun supportsTwoPanes(minimumWidthDp: Float = 840f): Boolean {
+        // A phone in landscape can fit two readable panes after reserving the rail.
+        // Keep tablet/portrait thresholds and enlarged-text fallbacks independent.
+        val minimumWidth = if (shortLandscape) minOf(minimumWidthDp, 720f) else minimumWidthDp
+        val minimumHeight = if (shortLandscape) 300f else 320f
+        val textScale = fontScale.coerceAtLeast(1f)
+        return widthDp >= minimumWidth * textScale && heightDp >= minimumHeight * textScale
+    }
 }
 
 val LocalEchoLayout = staticCompositionLocalOf { EchoLayoutInfo(0f, 0f) }

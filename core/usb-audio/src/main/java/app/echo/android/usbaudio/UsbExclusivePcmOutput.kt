@@ -14,7 +14,7 @@ class UsbExclusivePcmOutput(context: Context) {
     private val probe = UsbAudioProbe(appContext)
 
     fun open(spec: UsbPcmFormatSpec, bitPerfect: Boolean = false, transferCount: Int = 16,
-        keepAliveOnPause: Boolean = true): UsbExclusivePcmSession {
+        keepAliveOnPause: Boolean = true, dopDeviceLimits: Map<String, Int>? = null): UsbExclusivePcmSession {
         val device = probe.findBestDevice()
             ?: return UsbExclusivePcmSession.closed(
                 UsbExclusiveOpenResult(
@@ -30,6 +30,14 @@ class UsbExclusivePcmOutput(context: Context) {
                     message = "USB audio permission has not been granted",
                 ),
             )
+        }
+
+        if (dopDeviceLimits != null && !UsbDopPolicy.permits(
+                dopDeviceLimits, device.vendorId, device.productId, spec.sampleRateHz)) {
+            return UsbExclusivePcmSession.closed(UsbExclusiveOpenResult(
+                state = UsbExclusiveOutputState.DopConfigurationRequired,
+                message = "DoP is disabled for this DAC or exceeds its configured DSD limit",
+            ))
         }
 
         val snapshot = probe.snapshot()
@@ -105,6 +113,7 @@ class UsbExclusivePcmOutput(context: Context) {
                 usbVersion = snapshot.descriptor.usbVersion,
                 transferCount = transferCount.coerceIn(8, 32),
                 keepAliveOnPause = keepAliveOnPause,
+                dop = dopDeviceLimits != null,
                 openResult = UsbExclusiveOpenResult(
                     state = UsbExclusiveOutputState.Ready,
                     selectedFormat = selectedFormat,
@@ -170,6 +179,7 @@ class UsbExclusivePcmSession internal constructor(
     private val usbVersion: Int? = null,
     private val transferCount: Int = 16,
     private val keepAliveOnPause: Boolean = true,
+    private val dop: Boolean = false,
     val openResult: UsbExclusiveOpenResult,
 ) : AutoCloseable {
     private val lock = Any()
@@ -232,17 +242,18 @@ class UsbExclusivePcmSession internal constructor(
         if (nativeHandle == 0L) {
             error("Unable to start native isochronous writer")
         }
-        UsbIsochronousNative.prime(nativeHandle)
+        // DoP starts with real marked audio; PCM zero prefill must never enter it.
+        if (!dop) UsbIsochronousNative.prime(nativeHandle)
     }
 
     fun prime() {
         synchronized(lock) {
-            if (!closed && nativeHandle != 0L) UsbIsochronousNative.prime(nativeHandle)
+            if (!dop && !closed && nativeHandle != 0L) UsbIsochronousNative.prime(nativeHandle)
         }
     }
 
     fun setKeepAlive(enabled: Boolean) {
-        val requested = enabled && keepAliveOnPause
+        val requested = enabled && keepAliveOnPause && !dop
         synchronized(lock) {
             if (closed) return
             keepAlive = requested

@@ -12,6 +12,9 @@ import java.text.Normalizer
 class LocalFileDuplicateIndex<T> private constructor(
     private val groups: Map<LocalFileIdentity, List<LocalFileDuplicateCandidate<T>>>,
 ) {
+    private val groupsById = buildMap {
+        groups.values.forEach { group -> group.forEach { putIfAbsent(it.id, group) } }
+    }
     fun isEmpty(): Boolean = groups.isEmpty()
 
     fun find(
@@ -26,7 +29,7 @@ class LocalFileDuplicateIndex<T> private constructor(
 
     /** 与 [matchedId] 处于同一路径的其他曲库行，不含它自己。 */
     fun otherCopies(matchedId: String): List<T> {
-        val group = groups.values.firstOrNull { candidates -> candidates.any { it.id == matchedId } } ?: return emptyList()
+        val group = groupsById[matchedId] ?: return emptyList()
         return group.filter { it.id != matchedId }.map { it.value }
     }
 

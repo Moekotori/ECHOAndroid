@@ -1,30 +1,25 @@
 package app.echo.android.design
 
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontLoadingStrategy
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 
-/**
- * Pin the variable font's weight axis so its default Thin instance is not used.
- * Preserve requested weights to keep body text distinct from headings.
- */
-internal fun outfitRenderedWeight(requested: Int): Int =
-    requested.coerceIn(400, 900)
-
-// All weights share the existing variable font resource; no duplicate font binaries.
-@OptIn(ExperimentalTextApi::class)
+// Static instances preserve the actual outlines for each weight. Changing a variable
+// font's default-axis metadata alone leaves its Thin outlines in place.
 internal val EchoOutfitFontFamily = FontFamily(
-    (400..900 step 100).map { weight ->
+    listOf(
+        R.font.outfit_400 to FontWeight.Normal,
+        R.font.outfit_500 to FontWeight.Medium,
+        R.font.outfit_600 to FontWeight.SemiBold,
+        R.font.outfit_700 to FontWeight.Bold,
+        R.font.outfit_800 to FontWeight.ExtraBold,
+        R.font.outfit_900 to FontWeight.Black,
+    ).map { (resource, weight) ->
         Font(
-            resId = R.font.outfit_variable,
-            weight = FontWeight(weight),
+            resId = resource,
+            weight = weight,
             loadingStrategy = FontLoadingStrategy.Blocking,
-            variationSettings = FontVariation.Settings(
-                FontVariation.weight(outfitRenderedWeight(weight)),
-            ),
         )
     },
 )

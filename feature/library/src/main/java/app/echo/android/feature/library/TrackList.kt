@@ -57,10 +57,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -110,7 +113,7 @@ internal fun TrackList(
     tracks: LazyPagingItems<EchoTrack>,
     playingTrackId: String? = null,
     onPlayTrack: (EchoTrack) -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -173,7 +176,7 @@ internal fun TrackList(
 internal fun TrackList(
     tracks: List<EchoTrack>,
     onPlayTrack: (EchoTrack) -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -231,7 +234,7 @@ internal fun TrackList(
 internal fun TrackRow(
     track: EchoTrack,
     onClick: () -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -379,7 +382,7 @@ private enum class TrackSheetMode {
 internal fun TrackContextMenu(
     track: EchoTrack,
     onPlay: () -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -399,6 +402,7 @@ internal fun TrackContextMenu(
 ) {
     val selection = LocalLibraryBatchSelection.current
     val requestTrackDeletion = LocalLibraryDeleteTrack.current
+    val openTrackVersions = LocalTrackVersionsAction.current
     val selecting = selection?.active == true
     val selected = selecting && track.id in selection.selected
     val canSelect = selection?.locked != true && (!selecting || selected || selection.selected.size < LibraryBatchSelection.Limit)
@@ -407,17 +411,28 @@ internal fun TrackContextMenu(
     val onSelectForBatch = selection?.let { { it.start(track) } }
     val actionScope = rememberCoroutineScope()
     var expanded by remember(track.id) { mutableStateOf(false) }
-    var sheetMode by remember(track.id) { mutableStateOf<TrackSheetMode?>(null) }
+    var sheetMode by rememberSaveable(track.id) { mutableStateOf<TrackSheetMode?>(null) }
     var showInfo by remember(track.id) { mutableStateOf(false) }
-    var showEditor by remember(track.id) { mutableStateOf(false) }
-    var editorSaving by remember(track.id) { mutableStateOf(false) }
+    var showEditor by rememberSaveable(track.id) { mutableStateOf(false) }
+    val editorSave = retain(track.id) { TrackMetadataSaveState() }
+    val editorSaving = editorSave.saving
+    LaunchedEffect(editorSave.completed) {
+        if (editorSave.completed) {
+            sheetMode = null
+            showEditor = false
+            editorSave.consumeCompletion()
+        }
+    }
+    suspend fun saveMetadata(update: EchoTrackMetadataUpdate): Boolean = editorSave.save {
+        onUpdateTrackMetadata?.invoke(update) ?: false
+    }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
         confirmValueChange = { value ->
             !editorSaving || value != SheetValue.Hidden
         },
     )
-    val canEditMetadata = onUpdateTrackMetadata != null && track.source.isLocalAudioFile
+    val canEditMetadata = onUpdateTrackMetadata != null && track.canEditFileTags()
 
     Box(modifier = modifier
         .libraryDeletionFeedback(track.id in selection?.deletingIds.orEmpty())
@@ -497,6 +512,12 @@ internal fun TrackContextMenu(
                     },
                 )
             }
+            if (openTrackVersions != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(L10nR.string.track_versions_title)) },
+                    onClick = { expanded = false; openTrackVersions(track) },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(L10nR.string.feature_library_track_info_36a07b)) },
                 leadingIcon = {
@@ -559,6 +580,7 @@ internal fun TrackContextMenu(
                         onOpenAlbum?.invoke()
                     },
                     onEdit = { sheetMode = TrackSheetMode.Editor },
+                    onVersions = openTrackVersions?.let { open -> { sheetMode = null; open(track) } },
                     onDelete = requestTrackDeletion?.let { request ->
                         {
                             sheetMode = null
@@ -622,14 +644,8 @@ internal fun TrackContextMenu(
                         track = track,
                         saving = editorSaving,
                         onDismiss = { sheetMode = null },
-                        onSave = onUpdateTrackMetadata,
-                        onSavingChange = { editorSaving = it },
-                        onPickArtwork = onPickArtwork?.let { pick ->
-                            {
-                                sheetMode = null
-                                pick(track)
-                            }
-                        },
+                        onSave = ::saveMetadata,
+                        canPickArtwork = onPickArtwork != null,
                     )
                 }
             }
@@ -653,14 +669,8 @@ internal fun TrackContextMenu(
             track = track,
             saving = editorSaving,
             onDismiss = { showEditor = false },
-            onSave = onUpdateTrackMetadata,
-            onSavingChange = { editorSaving = it },
-            onPickArtwork = onPickArtwork?.let { pick ->
-                {
-                    showEditor = false
-                    pick(track)
-                }
-            },
+            onSave = ::saveMetadata,
+            canPickArtwork = onPickArtwork != null,
         )
     }
 }
@@ -705,11 +715,11 @@ private fun TrackMetadataEditorSheet(
     track: EchoTrack,
     saving: Boolean,
     onDismiss: () -> Unit,
-    onSave: suspend (EchoTrackMetadataUpdate) -> Unit,
-    onSavingChange: (Boolean) -> Unit,
-    onPickArtwork: (() -> Unit)? = null,
+    onSave: suspend (EchoTrackMetadataUpdate) -> Boolean,
+    canPickArtwork: Boolean = false,
 ) {
     val editor = rememberTrackMetadataEditorState(track)
+    val pickArtwork = rememberTrackMetadataArtworkPicker(editor)
     val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier
@@ -721,7 +731,7 @@ private fun TrackMetadataEditorSheet(
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TrackSheetHeader(track)
+        TrackSheetHeader(track.copy(artworkUri = editor.artworkUri ?: track.artworkUri))
         Spacer(Modifier.height(2.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -743,23 +753,15 @@ private fun TrackMetadataEditorSheet(
         TrackMetadataEditorFields(
             state = editor,
             saving = saving,
-            onPickArtwork = onPickArtwork,
+            onPickArtwork = if (canPickArtwork) pickArtwork else null,
         )
         Button(
             enabled = editor.canSave || saving,
             onClick = {
                 if (saving || !editor.canSave) return@Button
                 val update = editor.toUpdate(track)
-                onSavingChange(true)
                 scope.launch {
-                    try {
-                        withContext(NonCancellable) {
-                            onSave(update)
-                        }
-                    } finally {
-                        onSavingChange(false)
-                        onDismiss()
-                    }
+                    withContext(NonCancellable) { onSave(update) }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -847,6 +849,9 @@ private fun TrackMetadataEditorFields(
         modifier = Modifier.fillMaxWidth(),
     )
     if (onPickArtwork != null) {
+        state.artworkUri?.let { uri ->
+            ArtworkTile(uri, Modifier.size(64.dp), accent = rememberLibraryArtworkAccent())
+        }
         TextButton(onClick = onPickArtwork, enabled = !saving) {
             Text(stringResource(L10nR.string.metadata_choose_artwork))
         }
@@ -863,11 +868,11 @@ private fun TrackMetadataEditorDialog(
     track: EchoTrack,
     saving: Boolean,
     onDismiss: () -> Unit,
-    onSave: suspend (EchoTrackMetadataUpdate) -> Unit,
-    onSavingChange: (Boolean) -> Unit,
-    onPickArtwork: (() -> Unit)? = null,
+    onSave: suspend (EchoTrackMetadataUpdate) -> Boolean,
+    canPickArtwork: Boolean = false,
 ) {
     val editor = rememberTrackMetadataEditorState(track)
+    val pickArtwork = rememberTrackMetadataArtworkPicker(editor)
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = { if (!saving) onDismiss() },
@@ -888,7 +893,7 @@ private fun TrackMetadataEditorDialog(
                 TrackMetadataEditorFields(
                     state = editor,
                     saving = saving,
-                    onPickArtwork = onPickArtwork,
+                    onPickArtwork = if (canPickArtwork) pickArtwork else null,
                 )
             }
         },
@@ -898,16 +903,8 @@ private fun TrackMetadataEditorDialog(
                 onClick = {
                     if (saving || !editor.canSave) return@TextButton
                     val update = editor.toUpdate(track)
-                    onSavingChange(true)
                     scope.launch {
-                        try {
-                            withContext(NonCancellable) {
-                                onSave(update)
-                            }
-                        } finally {
-                            onSavingChange(false)
-                            onDismiss()
-                        }
+                        withContext(NonCancellable) { onSave(update) }
                     }
                 },
             ) {

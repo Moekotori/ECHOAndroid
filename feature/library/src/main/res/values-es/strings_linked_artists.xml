@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="linked_artists_partial">Canciones cargadas: %1$d / %2$d. La información de artistas está incompleta.</string>
+    <string name="linked_artists_load_more">Cargar más</string>
+</resources>

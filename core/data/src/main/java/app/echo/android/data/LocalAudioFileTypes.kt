@@ -6,17 +6,20 @@ internal object LocalAudioFileTypes {
     fun mimeTypeForFileName(name: String): String? {
         val lower = name.lowercase(Locale.ROOT)
         return when {
-            lower.endsWith(".flac") -> "audio/flac"
+            lower.endsWith(".flac") || lower.endsWith(".fla") -> "audio/flac"
             lower.endsWith(".ape") -> "audio/ape"
             lower.endsWith(".wv") -> "audio/x-wavpack"
+            lower.endsWith(".tta") -> "audio/x-tta"
+            lower.endsWith(".tak") -> "audio/x-tak"
+            lower.endsWith(".w64") -> "audio/x-w64"
             lower.endsWith(".wma") || lower.endsWith(".asf") -> "audio/x-ms-wma"
             lower.endsWith(".mp3") -> "audio/mpeg"
             lower.endsWith(".mp2") -> "audio/mpeg"
-            lower.endsWith(".m4a") || lower.endsWith(".m4b") -> "audio/mp4"
+            lower.endsWith(".m4a") || lower.endsWith(".m4b") || lower.endsWith(".alac") -> "audio/mp4"
             lower.endsWith(".aac") -> "audio/aac"
             lower.endsWith(".ogg") || lower.endsWith(".oga") -> "audio/ogg"
             lower.endsWith(".opus") -> "audio/opus"
-            lower.endsWith(".wav") || lower.endsWith(".wave") -> "audio/wav"
+            lower.endsWith(".wav") || lower.endsWith(".wave") || lower.endsWith(".bwf") -> "audio/wav"
             lower.endsWith(".adts") -> "audio/aac"
             lower.endsWith(".aiff") || lower.endsWith(".aif") || lower.endsWith(".aifc") -> "audio/aiff"
             lower.endsWith(".dsf") -> "audio/dsf"
@@ -44,11 +47,11 @@ internal object LocalAudioFileTypes {
     }
 
     fun resolvedMimeType(name: String, mimeType: String?): String? =
-        mimeType?.takeIf { it.isAudioMime() } ?: mimeTypeForFileName(name)
+        mimeType.normalizedMediaMime()?.takeIf { it.isAudioMime() } ?: mimeTypeForFileName(name)
 
     /**
-     * Android often leaves DSD/surround in MediaStore.Files with IS_MUSIC=0.
-     * Device scan still picks them up by filename.
+     * Some providers leave even WAV/FLAC in MediaStore.Files without an audio
+     * classification. Device scan still picks up known audio extensions.
      */
     fun mediaStoreFallbackNameClause(column: String): Pair<String, Array<String>> {
         val clause = MediaStoreFallbackExtensions.joinToString(" OR ") { "$column LIKE ?" }
@@ -79,10 +82,13 @@ internal object LocalAudioFileTypes {
 
 internal val MediaStoreFallbackExtensions = listOf(
     "ape", "wv", "wma", "asf", "dsf", "dff", "ac3", "eac3", "ec3", "dts", "amr", "aiff", "aif", "aifc",
+    "flac", "mp3", "mp2", "m4a", "m4b", "aac", "adts", "ogg", "oga", "opus", "wav", "wave", "mka",
+    "fla", "alac", "bwf",
+    "tta", "tak", "w64",
 )
 
 internal fun String?.isAudioMime(): Boolean {
-    val mime = this?.lowercase(Locale.ROOT) ?: return false
+    val mime = normalizedMediaMime() ?: return false
     return mime.startsWith("audio/") || mime in ApplicationAudioMimes
 }
 
@@ -94,4 +100,7 @@ private val ApplicationAudioMimes = setOf(
 )
 
 internal fun String?.isVideoMime(): Boolean =
-    this?.startsWith("video/", ignoreCase = true) == true
+    normalizedMediaMime()?.startsWith("video/") == true
+
+private fun String?.normalizedMediaMime(): String? =
+    this?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT)

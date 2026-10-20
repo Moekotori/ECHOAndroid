@@ -2,11 +2,44 @@ package app.echo.android.lyrics
 
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyrics
+import app.echo.android.model.lyrics.EchoLyricWord
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.util.Locale
 
 class EchoLrcFormatterTest {
+    @Test
+    fun embeddedWriteAllowsLosslessPlainAndSyncedLyrics() {
+        for (lyrics in listOf(
+            EchoLyricsParser.parse("First\nSecond", "song.txt"),
+            EchoLyricsParser.parse("[00:01.00]Original\n[00:01.00]译文\n[00:02.00]Next", "song.lrc"),
+        )) {
+            assertEquals(EchoLrcFormatter.format(lyrics), EchoLrcFormatter.formatForEmbeddedWriteOrNull(lyrics))
+        }
+    }
+
+    @Test
+    fun embeddedWriteRejectsLossOfTimingAndVocalFields() {
+        val line = EchoLyricLine(1000, text = "Words")
+        for (richLine in listOf(
+            line.copy(words = listOf(EchoLyricWord(1000, 2000, "Words"))),
+            line.copy(romanization = "roma"),
+            line.copy(speaker = "v2"),
+            line.copy(isBackground = true),
+            line.copy(endMs = 2000),
+            line.copy(startMs = 1001),
+        )) {
+            assertNull(EchoLrcFormatter.formatForEmbeddedWriteOrNull(EchoLyrics(listOf(richLine))))
+        }
+    }
+
+    @Test
+    fun embeddedWriteRejectsEmptyTimedLyrics() {
+        val lyrics = EchoLyricsParser.parse("[00:01.00]\n[00:02.00]", "empty.lrc")
+        assertNull(EchoLrcFormatter.formatForEmbeddedWriteOrNull(lyrics))
+    }
+
     @Test
     fun formatsSyncedLines() {
         val lyrics = EchoLyrics(

@@ -162,8 +162,10 @@ import app.echo.android.design.echoDrag
 import app.echo.android.design.echoDarkGlassBorder
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
+import app.echo.android.design.rememberArtworkColorGrid
 import app.echo.android.design.rememberArtworkPalette
 import app.echo.android.design.echoTheme
+import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
 import app.echo.android.model.settings.EchoPlayerPageStyle
 import app.echo.android.model.lyrics.EchoLyricLine
@@ -222,6 +224,7 @@ fun NowPlayingScreen(
     positionState: State<PlaybackPositionState>? = null,
     lyricsFontFamily: FontFamily? = null,
     lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
+    lyricsBackdrop: String = EchoLyricsBackdrop.Fluid.id,
     lyricsFontMode: String = "system",
     lyricsFontScale: Float = 1f,
     lyricsColorMode: String = "white",
@@ -243,6 +246,7 @@ fun NowPlayingScreen(
     onLyricsFontFamilyChange: (String) -> Unit = {},
     onLyricsFontScaleChange: (Float) -> Unit = {},
     onLyricsColorModeChange: (String) -> Unit = {},
+    onLyricsBackdropChange: (String) -> Unit = {},
     onLyricsAlignmentChange: (String) -> Unit = {},
     onLyricsLineSpacingChange: (Float) -> Unit = {},
     onLyricsBackgroundDimChange: (Float) -> Unit = {},
@@ -286,6 +290,8 @@ fun NowPlayingScreen(
     val effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current
     val effectiveLyricsFocusGlowEnabled = lyricsFocusGlowEnabled && !effectivePerformanceMode.isLightweight
     val palette = rememberArtworkPalette(track?.artworkUri, seedKey = track?.id)
+    val backdropStyle = EchoLyricsBackdrop.fromId(lyricsBackdrop)
+    val colorGrid = rememberArtworkColorGrid(track?.artworkUri, enabled = backdropStyle.needsColorGrid)
     var splitNowPlaying by remember { mutableStateOf(false) }
     val pagerState = rememberPagerState(
         // A direct lyrics opening has its own outer entrance; do not add a simultaneous page slide.
@@ -474,7 +480,7 @@ fun NowPlayingScreen(
             if (drawLyricsBackdrop) {
                 val backdropModifier = Modifier.fillMaxSize()
                 LyricsPageBackdrop(palette, lyricsReveal,
-                    presentationExpanded && !overlayBlocking && track != null, backdropModifier)
+                    presentationExpanded && !overlayBlocking && track != null, backdropModifier, backdropStyle, colorGrid)
             }
             Column(
                 modifier = Modifier
@@ -588,6 +594,8 @@ fun NowPlayingScreen(
                             lyricsPageStyle = lyricStyle,
                             palette = palette,
                             showBackdrop = split,
+                            backdropStyle = backdropStyle,
+                            colorGrid = colorGrid,
                             showLyricsControlDeck = showLyricsControlDeck,
                             lyricsFontFamily = styledLyricsFont,
                             lyricsFontScale = lyricsFontScale,
@@ -685,6 +693,8 @@ fun NowPlayingScreen(
                 lyricsFontFamily = styledLyricsFont,
                 lyricsPageStyle = lyricStyle,
                 playerPageStyle = appearance.style,
+                lyricsBackdrop = backdropStyle.id,
+                onLyricsBackdropChange = onLyricsBackdropChange,
                 onLyricsPageStyleChange = { next ->
                     val updated = appearance.copy(style = next)
                     appearanceDraft.current = updated
@@ -938,6 +948,8 @@ private fun LyricsSettingsDrawer(
     lyricsPageStyle: EchoLyricsPageStyle,
     playerPageStyle: String,
     onLyricsPageStyleChange: (String) -> Unit,
+    lyricsBackdrop: String,
+    onLyricsBackdropChange: (String) -> Unit,
     lyricsFontMode: String,
     importedFontUri: String?,
     lyricsFontScale: Float,
@@ -987,6 +999,8 @@ private fun LyricsSettingsDrawer(
             lyricsPageStyle = lyricsPageStyle,
             playerPageStyle = playerPageStyle,
             onLyricsPageStyleChange = onLyricsPageStyleChange,
+            lyricsBackdrop = lyricsBackdrop,
+            onLyricsBackdropChange = onLyricsBackdropChange,
             lyricsFontMode = lyricsFontMode,
             importedFontUri = importedFontUri,
             lyricsFontScale = lyricsFontScale,

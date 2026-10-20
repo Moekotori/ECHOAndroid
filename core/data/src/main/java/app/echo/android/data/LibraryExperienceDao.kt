@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import androidx.paging.PagingSource
 import androidx.room.*
+import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
@@ -35,6 +36,12 @@ internal const val SmartRuleMatchSql = """
  )))
 """
 
+internal const val SmartPlaylistSummarySql =
+    "SELECT p.id, p.name, p.source, (SELECT COUNT(*) FROM library_tracks t " +
+        "LEFT JOIN library_playback_stats s ON s.trackId = t.id WHERE " + SmartRuleMatchSql +
+        ") AS trackCount, p.artworkUri, p.updatedAtEpochMs FROM library_smart_rules r " +
+        "JOIN library_playlists p ON p.id = r.playlistId"
+
 @Dao
 interface LibraryExperienceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -55,17 +62,20 @@ interface LibraryExperienceDao {
     @Query("DELETE FROM library_smart_rules WHERE playlistId = :id")
     suspend fun deleteRule(id: String)
 
-    @Query("SELECT p.id, p.name, p.source, (SELECT COUNT(*) FROM library_tracks t " +
-        "LEFT JOIN library_playback_stats s ON s.trackId = t.id WHERE " + SmartRuleMatchSql +
-        ") AS trackCount, p.artworkUri, p.updatedAtEpochMs FROM library_smart_rules r " +
-        "JOIN library_playlists p ON p.id = r.playlistId")
-    fun observeSmartPlaylists(): Flow<List<PlaylistSummaryRow>>
+    fun observeSmartPlaylists(): Flow<List<PlaylistSummaryRow>> =
+        observeSmartPlaylistRows(SimpleSQLiteQuery(SmartPlaylistSummarySql))
 
-    @Query("SELECT p.id, p.name, p.source, (SELECT COUNT(*) FROM library_tracks t " +
-        "LEFT JOIN library_playback_stats s ON s.trackId = t.id WHERE " + SmartRuleMatchSql +
-        ") AS trackCount, p.artworkUri, p.updatedAtEpochMs FROM library_smart_rules r " +
-        "JOIN library_playlists p ON p.id = r.playlistId WHERE r.playlistId = :id")
-    suspend fun smartPlaylist(id: String): PlaylistSummaryRow?
+    suspend fun smartPlaylist(id: String): PlaylistSummaryRow? =
+        querySmartPlaylist(SimpleSQLiteQuery(SmartPlaylistSummarySql + " WHERE r.playlistId = ?", arrayOf(id)))
+
+    // Keep the large smart-rule predicate out of Room's compile-time SQL parser.
+    // These are exactly the tables read by SmartPlaylistSummarySql, including its subqueries.
+    @RawQuery(observedEntities = [LibrarySmartRuleEntity::class, LibraryPlaylistEntity::class,
+        LibraryTrackEntity::class, LibraryPlaybackStatsEntity::class, LibraryFavoriteEntity::class])
+    fun observeSmartPlaylistRows(query: SupportSQLiteQuery): Flow<List<PlaylistSummaryRow>>
+
+    @RawQuery
+    suspend fun querySmartPlaylist(query: SupportSQLiteQuery): PlaylistSummaryRow?
 
     @RawQuery(observedEntities = [LibraryTrackEntity::class, LibrarySmartRuleEntity::class,
         LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class])

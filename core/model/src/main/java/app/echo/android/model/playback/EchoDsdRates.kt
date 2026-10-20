@@ -7,6 +7,8 @@ object EchoDsdRates {
     const val OutputHighRateHz = 176_400
     const val DopDsd64Hz = 176_400
     const val DopDsd128Hz = 352_800
+    const val DopDsd256Hz = 705_600
+    const val DopDsd512Hz = 1_411_200
 
     fun familyLabel(dsdRateHz: Int): String? {
         if (dsdRateHz < Dsd64Hz || dsdRateHz % Dsd64Hz != 0) return null
@@ -24,17 +26,19 @@ object EchoDsdRates {
     }
 
     fun dsdRateFromDecoderPcm(decoderPcmRateHz: Int): Int? {
-        if (decoderPcmRateHz < DecoderPcmDsd64Hz) return null
+        if (decoderPcmRateHz < DecoderPcmDsd64Hz || decoderPcmRateHz > Int.MAX_VALUE / 8) return null
         val dsdRateHz = decoderPcmRateHz * 8
         return dsdRateHz.takeIf { isDsdRate(it) }
     }
 
-    /** 24-bit DoP PCM rate for DSD64/128. Higher rates are not packed in this path. */
+    /** 16 DSD bits per 24-bit DoP frame; the USB clock must accept this exact carrier rate. */
     fun dopSampleRateHz(dsdRateHz: Int): Int? {
         if (!isDsdRate(dsdRateHz)) return null
         return when (dsdRateHz / 16) {
             DopDsd64Hz -> DopDsd64Hz
             DopDsd128Hz -> DopDsd128Hz
+            DopDsd256Hz -> DopDsd256Hz
+            DopDsd512Hz -> DopDsd512Hz
             else -> null
         }
     }

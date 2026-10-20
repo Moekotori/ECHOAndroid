@@ -19,6 +19,11 @@ internal class PendingTagWriteQueue<T>(
         return true
     }
 
+    fun remove(requestId: Long) {
+        requests.removeAll { requestIdOf(it) == requestId }
+        _pending.value = requests.firstOrNull()
+    }
+
     fun take(requestId: Long): T? {
         val head = requests.firstOrNull() ?: return null
         if (requestIdOf(head) != requestId) return null

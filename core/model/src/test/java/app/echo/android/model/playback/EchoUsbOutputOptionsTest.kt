@@ -6,6 +6,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoUsbOutputOptionsTest {
+    @Test fun dopProfilesRequireKnownRatesAndTriggerStrictRebuild() {
+        val previous = EchoUsbOutputOptions()
+        val configured = previous.copy(dopDeviceLimits = mapOf("123:456" to 11_289_600))
+        assertTrue(configured.needsRebuild(previous, strict = true))
+        assertFalse(configured.needsRebuild(previous, strict = false))
+        assertEquals(configured, configured.normalized)
+        assertEquals(emptyMap<String, Int>(), previous.copy(dopDeviceLimits =
+            mapOf("bad" to 2_822_400, "1:2" to 123, "70000:2" to 2_822_400)).normalized.dopDeviceLimits)
+    }
+
     @Test fun invalidPersistedValuesReturnToBoundedDefaults() {
         val state = EchoUsbOutputOptions(sampleRateHz = -1, bitDepth = 8, channelCount = 8, volumePercent = 400).normalized
         assertEquals(EchoUsbOutputOptions(), state)

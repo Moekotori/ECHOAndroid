@@ -44,8 +44,8 @@
     <string name="feature_library_count_tracks_local_playlist_352a0d">"%1$s 首 · 本地歌单"</string>
     <string name="feature_library_count_tracks_navidrome_294a65">"%1$s 首 · Navidrome"</string>
     <string name="feature_library_create_7b4bc9">"创建"</string>
-    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"在系统允许写入时，会把 MP3 / FLAC / WAV 标签写进音频文件；否则只保存在 ECHOAndroid 曲库索引。"</string>
-    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"在系统允许写入时，会把 MP3 / FLAC / WAV 标签写进音频文件，包括导入的歌词和封面。"</string>
+    <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"在系统允许写入时，会把 受支持格式的标签写进音频文件；否则只保存在 ECHOAndroid 曲库索引。"</string>
+    <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"在系统允许写入时，会把 受支持格式的标签写进音频文件，包括导入的歌词和封面。"</string>
     <string name="feature_library_custom_artwork_c8c999">"自定义封面"</string>
     <string name="feature_library_delete_138ccf">"删除"</string>
     <string name="feature_library_delete_playlist_4d9753">"删除歌单"</string>

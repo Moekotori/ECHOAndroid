@@ -122,6 +122,7 @@ internal class PlaybackController(
     private val _playbackControls = MutableStateFlow(PlaybackControlsState())
     val playbackControls: StateFlow<PlaybackControlsState> = _playbackControls.asStateFlow()
 
+    private val persistenceQueueCache = PlaybackPersistenceQueueCache()
     private val _playbackQueue = MutableStateFlow(PlaybackQueueState())
     val playbackQueue: StateFlow<PlaybackQueueState> = _playbackQueue.asStateFlow()
 
@@ -432,10 +433,29 @@ internal class PlaybackController(
         withController(playWhenReady = false) { pause() }
     }
 
+    private var fileWriteResume: (() -> Unit)? = null
+    private var controllerActionRevision = 0L
+
     fun releaseCurrentItemForFileWrite(trackId: String): Boolean {
         if (currentTrackId != trackId) return false
         val mediaController = controller ?: return false
         if (shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands)) return false
+        val itemIndex = mediaController.currentMediaItemIndex
+        val item = mediaController.currentMediaItem
+        val positionMs = mediaController.currentPosition.coerceAtLeast(0L)
+        val resumePlayback = mediaController.playWhenReady
+        val revision = controllerActionRevision
+        fileWriteResume = {
+            if (controller === mediaController && currentTrackId == trackId &&
+                mediaController.currentMediaItemIndex == itemIndex && mediaController.currentMediaItem == item &&
+                mediaController.playbackState == Player.STATE_IDLE && controllerActionRevision == revision
+            ) {
+                mediaController.seekTo(positionMs)
+                mediaController.prepare()
+                mediaController.playWhenReady = resumePlayback
+                updatePlaybackCore(mediaController)
+            }
+        }
         mediaController.pause()
         mediaController.stop()
         updatePlaybackCore(mediaController)
@@ -443,16 +463,9 @@ internal class PlaybackController(
     }
 
     fun prepareAfterFileWrite(trackId: String) {
-        if (currentTrackId != trackId) return
-        val mediaController = controller ?: return
-        if (shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands)) return
-        if (
-            mediaController.playbackState == Player.STATE_IDLE &&
-            mediaController.mediaItemCount > 0
-        ) {
-            mediaController.prepare()
-        }
-        updatePlaybackCore(mediaController)
+        val resume = fileWriteResume
+        fileWriteResume = null
+        if (currentTrackId == trackId) resume?.invoke()
     }
 
     fun playPause() {
@@ -472,7 +485,7 @@ internal class PlaybackController(
     }
 
     fun seekTo(positionMs: Long) {
-        withController {
+        withController(changesPlaybackIntent = true) {
             if (EchoRadioStation.isRadio(currentMediaItem?.mediaId)) return@withController
             val recover = PlaybackSessionPolicy.shouldPrepareBeforePlay(
                 hasPlayerError = playerError != null,
@@ -522,7 +535,7 @@ internal class PlaybackController(
 
     fun skipNext() {
         resetStickyPlaybackError()
-        withController {
+        withController(changesPlaybackIntent = true) {
             seekToNextMediaItem()
             recoverAfterSkip()
         }
@@ -530,7 +543,7 @@ internal class PlaybackController(
 
     fun skipPrevious() {
         resetStickyPlaybackError()
-        withController {
+        withController(changesPlaybackIntent = true) {
             seekToPrevious()
             recoverAfterSkip()
         }
@@ -546,7 +559,7 @@ internal class PlaybackController(
         val entry = _playbackQueue.value.items.getOrNull(index)?.queueContext?.entryId ?: return
         val target = targetIndex?.let { _playbackQueue.value.items.getOrNull(it)?.queueContext?.entryId }
         resetStickyPlaybackError()
-        withController {
+        withController(changesPlaybackIntent = true) {
             sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
                 putString("action", action)
                 putString("entry", entry)
@@ -557,7 +570,7 @@ internal class PlaybackController(
 
     fun clearQueue() {
         resetStickyPlaybackError()
-        withController {
+        withController(changesPlaybackIntent = true) {
             if (mediaItemCount <= 0) return@withController
             removeMediaItems(0, mediaItemCount)
             replaceQueueLookups(emptyList())
@@ -569,7 +582,7 @@ internal class PlaybackController(
         if (uris.isEmpty()) return
         require(uris.size <= 200)
         // Queue the receipt behind saved-session restoration when reconnecting to the service.
-        withController {
+        withController(changesPlaybackIntent = true) {
             sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
                 putString("action", EchoPlaybackSessionCommands.EDIT_REMOVE_DELETED_FILES)
                 putStringArrayList("uris", ArrayList(uris))
@@ -680,7 +693,7 @@ internal class PlaybackController(
         }
         pendingRestorePlayUntilWebDavAuth = false
         pendingRestoreQueueUris = emptyList()
-        withController { recoverAndPlay() }
+        withController(playWhenReady = true) { recoverAndPlay() }
     }
 
     fun cyclePlayMode() {
@@ -704,6 +717,7 @@ internal class PlaybackController(
 
     fun clear() {
         if (cleared) return
+        fileWriteResume = null
         persistPlaybackSession(force = true)
         cleared = true
         controllerGeneration += 1
@@ -723,6 +737,7 @@ internal class PlaybackController(
             startDetachedSessionPersistence(mediaController)
         }
         controller = null
+        persistenceQueueCache.invalidate()
     }
 
     private fun connectController(attempt: Int = 0) {
@@ -824,6 +839,7 @@ internal class PlaybackController(
     private fun handleControllerDisconnected(disconnected: MediaController, generation: Long) {
         if (cleared || generation != controllerGeneration || controller !== disconnected) return
         controller = null
+        persistenceQueueCache.invalidate()
         controllerGeneration += 1
         sessionReadyForCommands = false
         restoredPlaybackSession = false
@@ -849,6 +865,7 @@ internal class PlaybackController(
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            if (events.contains(Player.EVENT_TIMELINE_CHANGED)) persistenceQueueCache.invalidate()
             if (events.containsAny(*PlaybackCoreEvents)) {
                 updatePlaybackCore(
                     player = player,
@@ -980,7 +997,11 @@ internal class PlaybackController(
         val position = player.toPlaybackPositionState()
         if (remapQueue) {
             retainQueueLookups(player)
-            updateState(_playbackQueue, player.toPlaybackQueueState())
+            val mappedQueue = player.toPlaybackQueueState()
+            updateState(_playbackQueue, mappedQueue)
+            // Share the already mapped rows instead of retaining a second full queue copy.
+            persistenceQueueCache.snapshot(player, player.currentTimeline, player.mediaItemCount,
+                readQueue = { mappedQueue }, readShuffleOrder = { player.queueShuffleOrder() })
         } else {
             val currentQueue = _playbackQueue.value
             val newIndex = player.currentMediaItemIndex.takeIf { it in 0 until player.mediaItemCount } ?: -1
@@ -1035,9 +1056,11 @@ internal class PlaybackController(
     private fun withController(
         replacesQueue: Boolean = false,
         playWhenReady: Boolean? = if (replacesQueue) true else null,
+        changesPlaybackIntent: Boolean = replacesQueue || playWhenReady != null,
         action: MediaController.() -> Unit,
     ) {
         if (cleared) return
+        if (changesPlaybackIntent) controllerActionRevision++
         val mediaController = controller
         if (
             mediaController != null && mediaController.isConnected &&
@@ -1279,16 +1302,19 @@ internal class PlaybackController(
         persistBecauseOfSeek: Boolean = false,
     ) {
         val mediaController = controller ?: return
-        val playerMediaIds = (0 until mediaController.mediaItemCount).map { index ->
-            mediaController.getMediaItemAt(index).let { it.queueContext()?.entryId ?: it.mediaId }
-        }
+        val queueSnapshot = persistenceQueueCache.snapshot(
+            mediaController, mediaController.currentTimeline, mediaController.mediaItemCount,
+            readQueue = { mediaController.toPlaybackQueueState() },
+            readShuffleOrder = { mediaController.queueShuffleOrder() },
+        )
         val currentIndex = mediaController.currentMediaItemIndex
             .takeIf { it in 0 until mediaController.mediaItemCount }
             ?: -1
         val signature = playbackSessionPersistSignature(
             currentIndex = currentIndex,
             playWhenReady = mediaController.playWhenReady,
-            mediaIds = playerMediaIds,
+            // This signature is an in-memory deduplication key, not the saved queue identity.
+            mediaIds = listOf(queueSnapshot.revision.toString()),
             shuffleEnabled = mediaController.shuffleModeEnabled,
             repeatMode = mediaController.repeatMode,
             playbackSpeed = mediaController.playbackParameters.speed,
@@ -1315,17 +1341,7 @@ internal class PlaybackController(
         ) {
             return
         }
-        val cachedQueue = _playbackQueue.value
-        val queue = if (
-            PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(
-                cachedMediaIds = cachedQueue.items.map { it.queueContext?.entryId ?: it.id },
-                playerMediaIds = playerMediaIds,
-            )
-        ) {
-            cachedQueue.copy(currentIndex = currentIndex)
-        } else {
-            mediaController.toPlaybackQueueState()
-        }
+        val queue = queueSnapshot.queue.copy(currentIndex = currentIndex)
         val currentTrack = mediaController.currentMediaItem?.toEchoTrackRef(
             durationMs = mediaController.duration.takeIf { it > 0L } ?: 0L,
         )
@@ -1341,7 +1357,7 @@ internal class PlaybackController(
                 repeatMode = mediaController.repeatMode.toEchoRepeatMode(),
                 playbackSpeed = mediaController.playbackParameters.speed,
                 playbackPitch = mediaController.playbackParameters.pitch,
-                shuffleOrder = mediaController.queueShuffleOrder(),
+                shuffleOrder = queueSnapshot.shuffleOrder,
             )
         }
         if (
@@ -1455,16 +1471,17 @@ internal class PlaybackController(
         val detachedSettingsStore = settingsStore
         var lastSignature: String? = null
         var lastPositionBucket: Long? = null
-        var cachedMediaIds: List<String> = emptyList()
-        var cachedQueue = PlaybackQueueState()
+        val queueCache = PlaybackPersistenceQueueCache()
         EchoPlaybackProcessRuntime.startProgress(PERSIST_POSITION_BUCKET_MS) { player ->
             if (player !== mediaController) return@startProgress
-            val mediaIds = (0 until player.mediaItemCount).map { index -> player.getMediaItemAt(index).let { it.queueContext()?.entryId ?: it.mediaId } }
+            val snapshot = queueCache.snapshot(player, player.currentTimeline, player.mediaItemCount,
+                readQueue = { player.toPlaybackQueueState() },
+                readShuffleOrder = { player.queueShuffleOrder() })
             val currentIndex = player.currentMediaItemIndex.takeIf { it in 0 until player.mediaItemCount } ?: -1
             val signature = playbackSessionPersistSignature(
                 currentIndex = currentIndex,
                 playWhenReady = player.playWhenReady,
-                mediaIds = mediaIds,
+                mediaIds = listOf(snapshot.revision.toString()),
                 shuffleEnabled = player.shuffleModeEnabled,
                 repeatMode = player.repeatMode,
                 playbackSpeed = player.playbackParameters.speed,
@@ -1472,15 +1489,8 @@ internal class PlaybackController(
             )
             val positionBucket = player.currentPosition.coerceAtLeast(0L) / PERSIST_POSITION_BUCKET_MS
             if (signature == lastSignature && positionBucket == lastPositionBucket) return@startProgress
-            val queue = if (PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(cachedMediaIds, mediaIds)) {
-                cachedQueue.copy(currentIndex = currentIndex)
-            } else {
-                player.toPlaybackQueueState().also {
-                    cachedMediaIds = mediaIds
-                    cachedQueue = it
-                }
-            }
-            val session = player.toSavedPlaybackSession(queue)
+            val queue = snapshot.queue.copy(currentIndex = currentIndex)
+            val session = player.toSavedPlaybackSession(queue, snapshot.shuffleOrder)
             withContext(Dispatchers.IO) {
                 detachedSettingsStore.savePlaybackSession(session)
             }
@@ -1559,7 +1569,7 @@ internal class PlaybackController(
     }
 }
 
-private fun Player.toSavedPlaybackSession(queue: PlaybackQueueState): EchoSavedPlaybackSession? {
+private fun Player.toSavedPlaybackSession(queue: PlaybackQueueState, shuffleOrder: List<Int>): EchoSavedPlaybackSession? {
     if (queue.items.isEmpty() || queue.currentIndex !in queue.items.indices || currentMediaItem == null) return null
     return EchoSavedPlaybackSession(
         queue = queue.items,
@@ -1570,6 +1580,6 @@ private fun Player.toSavedPlaybackSession(queue: PlaybackQueueState): EchoSavedP
         repeatMode = repeatMode.toEchoRepeatMode(),
         playbackSpeed = playbackParameters.speed,
         playbackPitch = playbackParameters.pitch,
-        shuffleOrder = queueShuffleOrder(),
+        shuffleOrder = shuffleOrder,
     )
 }

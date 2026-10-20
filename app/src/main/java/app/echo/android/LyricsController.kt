@@ -7,6 +7,7 @@ import app.echo.android.lyrics.EchoLyricsSearchRequest
 import app.echo.android.lyrics.EchoLyricsParser
 import app.echo.android.lyrics.ImportedLyricsStore
 import app.echo.android.lyrics.LocalLyricsResolver
+import app.echo.android.lyrics.LyricsSelectionWrites
 import app.echo.android.lyrics.withUserOffset
 import app.echo.android.model.lyrics.EchoLyricsCandidate
 import app.echo.android.lyrics.LyricsApplyPolicy
@@ -59,33 +60,44 @@ internal class LyricsController(
     val managementError = _managementError.asStateFlow()
     private val onlineCacheLock = Any()
     private val offsetWriteMutex = Mutex()
+    private val selectionWrites = LyricsSelectionWrites()
+    fun beginSelectionChange(trackId: String): Long = selectionWrites.begin(trackId)
+    fun selectionVersion(trackId: String): Long = selectionWrites.current(trackId)
+    fun isCurrentSelection(trackId: String, version: Long): Boolean = selectionWrites.isCurrent(trackId, version)
+    suspend fun withCurrentSelection(trackId: String, version: Long, block: suspend () -> Unit): Boolean =
+        selectionWrites.runIfCurrent(trackId, version, block)
     private var lastLyricsTrackId: String? = null
     val currentTrackId: String? get() = lastLyricsTrackId
-    suspend fun saveEditedLyrics(trackId: String, lyrics: EchoLyrics) {
+    suspend fun saveEditedLyrics(trackId: String, lyrics: EchoLyrics, version: Long = beginSelectionChange(trackId)) {
         withContext(Dispatchers.IO) {
-            importedLyricsStore.save(trackId, lyrics, selected = true)
-            importedLyricsStore.setLyricsOffset(trackId, 0)
+            withCurrentSelection(trackId, version) {
+                importedLyricsStore.save(trackId, lyrics, selected = true)
+                importedLyricsStore.setLyricsOffset(trackId, 0)
+            }
         }
-        if (lastLyricsTrackId == trackId) updateLyricsForTrack(trackId, force = true)
+        if (isCurrentSelection(trackId, version) && lastLyricsTrackId == trackId) updateLyricsForTrack(trackId, force = true)
     }
 
-    suspend fun applyEmbeddedLyricsEdit(trackId: String, text: String) {
+    suspend fun applyEmbeddedLyricsEdit(trackId: String, text: String, version: Long = beginSelectionChange(trackId)) {
         val lyrics = withContext(Dispatchers.Default) {
             EchoLyricsParser.parse(text, sourceLabel = "Embedded tags")
         }
         // The explicit tag edit becomes the selected source, including an intentional clear.
         // Keep the old selection intact until the audio file has been written successfully.
-        saveEditedLyrics(trackId, lyrics)
+        saveEditedLyrics(trackId, lyrics, version)
     }
     suspend fun backupSelections(lookup: suspend (Set<String>) -> Map<String,String>) = withContext(Dispatchers.IO) {
         importedLyricsStore.selectedForBackup(lookup)
     }
     suspend fun restoreSelection(trackId: String, json: String?, offset: Long) {
+        val version = beginSelectionChange(trackId)
         withContext(Dispatchers.IO) {
-            if (json != null) importedLyricsStore.save(trackId, app.echo.android.lyrics.EchoLyricsJson.decode(json), selected = true)
-            importedLyricsStore.setLyricsOffset(trackId, offset)
+            withCurrentSelection(trackId, version) {
+                if (json != null) importedLyricsStore.save(trackId, app.echo.android.lyrics.EchoLyricsJson.decode(json), selected = true)
+                importedLyricsStore.setLyricsOffset(trackId, offset)
+            }
         }
-        if (lastLyricsTrackId == trackId) updateLyricsForTrack(trackId, force = true)
+        if (isCurrentSelection(trackId, version) && lastLyricsTrackId == trackId) updateLyricsForTrack(trackId, force = true)
     }
     private var currentLyricsUserOffsetMs: Long = 0L
     @Volatile
@@ -114,24 +126,29 @@ internal class LyricsController(
     fun importLyrics(
         uri: Uri,
         currentTrackId: String?,
-        onImported: ((EchoLyrics) -> Unit)? = null,
+        onImported: ((EchoLyrics, Long) -> Unit)? = null,
     ) {
         val target = currentTrackId ?: return
+        val version = beginSelectionChange(target)
         _managementError.value = null
         importJob?.cancel()
         importJob = scope.launch {
             try {
                 val parsed = withContext(Dispatchers.IO) {
                     val imported = lyricsResolver.importFromUri(uri)
-                    importedLyricsStore.save(target, imported, selected = true)
-                    importedLyricsStore.bindLyrics(target, uri)
+                    // The atomic selected file is self-contained; URI bindings are legacy fallback only.
+                    if (!withCurrentSelection(target, version) {
+                        importedLyricsStore.save(target, imported, selected = true)
+                    }) return@withContext null
                     imported
-                }
+                } ?: return@launch
+                if (!isCurrentSelection(target, version)) return@launch
                 if (target == lastLyricsTrackId) updateLyricsForTrack(target, force = true)
                 _managementError.value = null
-                onImported?.invoke(parsed)
+                onImported?.invoke(parsed, version)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
+                if (!isCurrentSelection(target, version)) return@launch
                 reportManagementError(error.lyricsErrorMessage("Lyrics import failed"))
                 if (target == lastLyricsTrackId && originalLyrics == null) {
                     _lyricsState.value = EchoLyricsLoadState.Error(_managementError.value!!)
@@ -194,13 +211,17 @@ internal class LyricsController(
     fun selectCandidate(id: String, trackId: String?) {
         if (trackId == null || trackId != lastLyricsTrackId || trackId != searchTrackId) return
         val candidate = _candidates.value.firstOrNull { it.id == id } ?: return
+        val version = beginSelectionChange(trackId)
         lyricsJob?.cancel()
-        lyricsJob = scope.launch {
+        scope.launch {
             try {
-                withContext(Dispatchers.IO) { importedLyricsStore.save(trackId, candidate.lyrics.copy(metadata = candidate.lyrics.metadata + ("selection_id" to id)), selected = true) }
-                if (trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
+                withContext(Dispatchers.IO) { withCurrentSelection(trackId, version) {
+                    importedLyricsStore.save(trackId, candidate.lyrics.copy(metadata = candidate.lyrics.metadata + ("selection_id" to id)), selected = true)
+                } }
+                if (isCurrentSelection(trackId, version) && trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
+                if (!isCurrentSelection(trackId, version)) return@launch
                 reportManagementError(error.lyricsErrorMessage("Could not save lyrics"))
             }
         }
@@ -208,12 +229,14 @@ internal class LyricsController(
 
     fun removeSelection(trackId: String?) {
         if (trackId == null) return
+        val version = beginSelectionChange(trackId)
         scope.launch {
             try {
-                withContext(Dispatchers.IO) { importedLyricsStore.unbindLyrics(trackId) }
-                if (trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
+                withContext(Dispatchers.IO) { withCurrentSelection(trackId, version) { importedLyricsStore.unbindLyrics(trackId) } }
+                if (isCurrentSelection(trackId, version) && trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
+                if (!isCurrentSelection(trackId, version)) return@launch
                 reportManagementError(error.lyricsErrorMessage("Could not clear lyrics selection"))
             }
         }

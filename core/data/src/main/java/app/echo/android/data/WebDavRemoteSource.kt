@@ -218,7 +218,14 @@ internal fun parseWebDavListing(base: URI, xml: String): WebDavListingParse {
     var hrefParseFailed = false
     for (index in 0 until responses.length) {
         val response = responses.item(index) as? Element ?: continue
-        val hrefText = response.childText("href") ?: continue
+        val hrefText = response.childText("href")?.takeIf { it.isNotBlank() }
+        val responseStatus = (0 until response.childNodes.length).asSequence()
+            .mapNotNull { response.childNodes.item(it) as? Element }
+            .firstOrNull { it.localName == "status" }?.textContent
+        if (hrefText == null || !responseStatus.isSuccessfulWebDavStatus()) {
+            hrefParseFailed = true
+            continue
+        }
         val href = resolveWebDavHref(base, hrefText)
         if (href == null) {
             hrefParseFailed = true
@@ -237,7 +244,10 @@ internal fun parseWebDavListing(base: URI, xml: String): WebDavListingParse {
                 }
             }
         }
-        if (successfulProps.isEmpty()) continue
+        if (successfulProps.isEmpty()) {
+            hrefParseFailed = true
+            continue
+        }
         val directory = successfulProps.any { prop ->
             val resourcetype = prop.getElementsByTagNameNS("*", "resourcetype").item(0) as? Element
             (resourcetype?.getElementsByTagNameNS("*", "collection")?.length ?: 0) > 0

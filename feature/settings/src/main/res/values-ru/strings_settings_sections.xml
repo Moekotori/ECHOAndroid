@@ -2,7 +2,6 @@
 <resources>
     <string name="settings_section_lyrics">Тексты песен и уведомления</string>
     <string name="settings_section_usb">USB-аудио</string>
-    <string name="settings_section_offline">Музыка офлайн</string>
     <string name="settings_section_maintenance">Обслуживание медиатеки</string>
     <string name="settings_section_music_services">Музыкальные сервисы</string>
 </resources>

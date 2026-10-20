@@ -8,6 +8,20 @@ import org.junit.Test
 
 class EmbeddedTagReplaceTest {
     @Test
+    fun collidingJavaHashesCannotShareRecoveryBackups() {
+        assertEquals("saf:Aa".hashCode(), "saf:BB".hashCode())
+        withTempDir { dir ->
+            val a = File(dir, "original-a").apply { writeText("music A") }
+            val b = File(dir, "original-b").apply { writeText("music B") }
+            val backupA = EmbeddedTagBackup.preserveOriginal(a, dir, EmbeddedTagBackup.keyForTrack("saf:Aa"))
+            val backupB = EmbeddedTagBackup.preserveOriginal(b, dir, EmbeddedTagBackup.keyForTrack("saf:BB"))
+            assertTrue(backupA != backupB)
+            assertEquals("music A", backupA.readText())
+            assertEquals("music B", backupB.readText())
+        }
+    }
+
+    @Test
     fun replaceOverwritesTargetWithSourceBytes() {
         withTempDir { dir ->
             val target = File(dir, "song.mp3").apply { writeBytes(byteArrayOf(1, 2, 3, 4)) }
@@ -50,6 +64,19 @@ class EmbeddedTagReplaceTest {
             assertEquals(byteArrayOf(1, 2, 3).toList(), kept.readBytes().toList())
             assertFalse(second.exists())
         }
+    }
+
+    @Test
+    fun permissionFailureAfterPartialWriteRestoresOrKeepsBackup() {
+        var restored = false
+        assertEquals(EmbeddedTagReplaceStatus.Restored, replaceEmbeddedTagsWithRestore(
+            replace = { throw SecurityException("permission revoked after write began") },
+            verify = { error("must not verify failed write") }, restore = { restored = true },
+        ))
+        assertTrue(restored)
+        assertEquals(EmbeddedTagReplaceStatus.BackupKept, replaceEmbeddedTagsWithRestore(
+            replace = {}, verify = { false }, restore = { throw SecurityException("restore denied") },
+        ))
     }
 
     private fun withTempDir(block: (File) -> Unit) {

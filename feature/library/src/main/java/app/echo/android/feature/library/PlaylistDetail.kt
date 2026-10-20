@@ -32,7 +32,6 @@ import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
-import app.echo.android.model.library.LibraryOfflinePin
 import app.echo.android.model.library.LibrarySmartPlaylistKind
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.library.PlaylistTrackOrder
@@ -56,7 +55,7 @@ internal fun PlaylistDetailPage(
     onDeletePlaylist: () -> Unit,
     onRemoveTrack: (EchoTrack) -> Unit,
     onMoveTrack: (fromIndex: Int, toIndex: Int) -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)? = null,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
     onPickArtwork: ((EchoTrack) -> Unit)? = null,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
@@ -66,8 +65,6 @@ internal fun PlaylistDetailPage(
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
-    offlinePin: LibraryOfflinePin? = null,
-    onToggleOffline: (() -> Unit)? = null,
     onPinShortcut: ((Boolean) -> Unit)? = null,
     management: PlaylistManagementActions? = null,
     experienceActions: LibraryExperienceActions? = null,
@@ -143,8 +140,6 @@ internal fun PlaylistDetailPage(
                     durationMs = durationMs,
                     onPlayAll = onPlayAll,
                     onShuffle = onShuffle,
-                    offlinePin = offlinePin,
-                    onToggleOffline = onToggleOffline,
                 )
             }
             item(key = "playlist-tools", contentType = "tools") {

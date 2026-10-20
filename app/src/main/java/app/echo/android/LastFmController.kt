@@ -2,6 +2,11 @@ package app.echo.android
 
 import androidx.annotation.StringRes
 import app.echo.android.data.EchoAppSettings
+import app.echo.android.data.PendingScrobble
+import app.echo.android.data.ScrobbleOutboxStore
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
 import java.io.IOException
@@ -24,6 +29,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 data class LastFmUiState(
+    val pendingCount: Int = 0,
     val isConnecting: Boolean = false,
     @get:StringRes val lastMessageRes: Int = R.string.lastfm_disconnected,
     val lastMessageArg: String? = null,
@@ -71,10 +77,41 @@ private data class ActiveScrobble(
 
 internal class LastFmScrobbleController(
     private val scope: CoroutineScope,
+    store: ScrobbleOutboxStore,
     private val client: LastFmClient = LastFmClient(),
 ) {
     private val _uiState = MutableStateFlow(LastFmUiState())
     val uiState: StateFlow<LastFmUiState> = _uiState.asStateFlow()
+
+    private val outbox = EchoScrobbleOutbox<LastFmCredentials>(
+        scope = scope,
+        store = store,
+        submit = { credentials, listen ->
+            client.scrobble(credentials, LastFmTrack(
+                listen.trackId, listen.title, listen.artist, listen.album, listen.durationMs,
+            ), listen.startedAtEpochSeconds)
+        },
+        status = { listen, pending, error ->
+            val current = _uiState.value
+            _uiState.value = current.copy(
+                pendingCount = pending.coerceAtLeast(0),
+                lastMessageRes = when {
+                    error != null -> R.string.lastfm_scrobble_failed
+                    pending > 0 -> R.string.scrobble_pending
+                    listen != null -> R.string.lastfm_scrobbled
+                    else -> current.lastMessageRes
+                },
+                lastMessageArg = if (pending > 0) pending.toString() else listen?.title ?: current.lastMessageArg,
+                lastError = error?.message,
+                lastSubmittedTrackId = if (error == null && listen != null) listen.trackId else current.lastSubmittedTrackId,
+            )
+        },
+    )
+    private var accountFingerprint: String? = null
+    private var accountCredentials: LastFmCredentials? = null
+    private var nowPlayingJob: Job? = null
+
+    fun retryPendingWhenConnected() = outbox.retryWhenConnected()
 
     private var settings: EchoAppSettings = EchoAppSettings()
     private var active: ActiveScrobble? = null
@@ -123,6 +160,8 @@ internal class LastFmScrobbleController(
     }
 
     fun setDisconnected() {
+        nowPlayingJob?.cancel()
+        outbox.configure(null)
         active = null
         _uiState.value = LastFmUiState(
             lastMessageRes = R.string.lastfm_disconnected_done,
@@ -146,8 +185,20 @@ internal class LastFmScrobbleController(
         EchoErrorLog.record(EchoErrorSource.Network, message)
     }
 
-    private fun handleSnapshot(snapshot: EchoScrobblePlayback) {
+    private suspend fun handleSnapshot(snapshot: EchoScrobblePlayback) {
         val credentials = settings.lastFmCredentialsOrNull()
+        val fingerprint = if (credentials != accountCredentials) {
+            credentials?.let { scrobbleFingerprint(it.apiKey, it.sessionKey) }
+        } else accountFingerprint
+        accountCredentials = credentials
+        if (fingerprint != accountFingerprint || !settings.lastFmEnabled) {
+            active = null
+            nowPlayingJob?.cancel()
+            accountFingerprint = fingerprint
+        }
+        outbox.configure(credentials?.let {
+            ScrobbleAccount(checkNotNull(fingerprint), it, settings.lastFmEnabled)
+        })
         if (
             LastFmScrobbleRules.shouldClearActiveScrobble(
                 credentialsReady = settings.lastFmEnabled && credentials != null,
@@ -201,6 +252,7 @@ internal class LastFmScrobbleController(
         val current = active
         val currentPositionMs = snapshot.position.positionMs.coerceAtLeast(0L)
         active = if (current?.track?.id != track.id) {
+            nowPlayingJob?.cancel()
             if (current != null) {
                 val accumulated = LastFmScrobbleRules.accumulatedPlayMs(
                     previouslyAccumulatedMs = current.accumulatedPlayMs,
@@ -212,7 +264,7 @@ internal class LastFmScrobbleController(
             }
             ActiveScrobble(
                 track = track,
-                startedAtEpochSeconds = nowEpochMs / 1000L,
+                startedAtEpochSeconds = if (snapshot.status.isPlaying) nowEpochMs / 1000L else 0L,
                 lastTickEpochMs = if (snapshot.status.isPlaying) nowEpochMs else 0L,
                 lastPositionMs = currentPositionMs,
                 wasPlaying = snapshot.status.isPlaying,
@@ -226,13 +278,16 @@ internal class LastFmScrobbleController(
         ) {
             ActiveScrobble(
                 track = track,
-                startedAtEpochSeconds = nowEpochMs / 1000L,
+                startedAtEpochSeconds = if (snapshot.status.isPlaying) nowEpochMs / 1000L else 0L,
                 lastTickEpochMs = if (snapshot.status.isPlaying) nowEpochMs else 0L,
                 lastPositionMs = currentPositionMs,
                 wasPlaying = snapshot.status.isPlaying,
             )
         } else {
             current.copy(
+                startedAtEpochSeconds = if (current.startedAtEpochSeconds <= 0L && snapshot.status.isPlaying) {
+                    nowEpochMs / 1_000L
+                } else current.startedAtEpochSeconds,
                 track = current.track.copy(durationMs = maxOf(current.track.durationMs, track.durationMs)),
                 accumulatedPlayMs = LastFmScrobbleRules.accumulatedPlayMs(
                     previouslyAccumulatedMs = current.accumulatedPlayMs,
@@ -247,44 +302,16 @@ internal class LastFmScrobbleController(
         }
 
         var activeScrobble = active ?: return
-        if (!activeScrobble.scrobbled &&
-            LastFmScrobbleRules.shouldScrobble(activeScrobble.track.durationMs, activeScrobble.accumulatedPlayMs) &&
-            LastFmScrobbleRules.shouldAttemptSubmit(
+        if (LastFmScrobbleRules.shouldAttemptSubmit(
                 alreadySubmitted = activeScrobble.scrobbled,
-                lastAttemptEpochMs = activeScrobble.lastScrobbleAttemptEpochMs,
-                nowEpochMs = nowEpochMs,
+                lastAttemptEpochMs = activeScrobble.lastScrobbleAttemptEpochMs, nowEpochMs = nowEpochMs,
+            ) && LastFmScrobbleRules.shouldScrobble(
+                activeScrobble.track.durationMs, activeScrobble.accumulatedPlayMs,
             )
         ) {
-            val scrobbleTrack = activeScrobble.track
-            val startedAt = activeScrobble.startedAtEpochSeconds
-            activeScrobble = activeScrobble.copy(
-                scrobbled = true,
-                lastScrobbleAttemptEpochMs = nowEpochMs,
-            )
+            val queued = submitScrobbleIfDue(credentials, activeScrobble)
+            activeScrobble = activeScrobble.copy(scrobbled = queued, lastScrobbleAttemptEpochMs = nowEpochMs)
             active = activeScrobble
-            scope.launch(Dispatchers.IO) {
-                client.scrobble(credentials, scrobbleTrack, startedAt)
-                    .onSuccess {
-                        _uiState.value = LastFmUiState(
-                            lastMessageRes = R.string.lastfm_scrobbled,
-                            lastMessageArg = scrobbleTrack.title,
-                            lastSubmittedTrackId = scrobbleTrack.id,
-                        )
-                    }
-                    .onFailure { error ->
-                        if (active?.track?.id == scrobbleTrack.id &&
-                            !LastFmScrobbleRules.keepSubmittedFlag(false)
-                        ) {
-                            active = active?.copy(scrobbled = false)
-                        }
-                        val message = error.message ?: "Scrobble failed"
-                        _uiState.value = LastFmUiState(
-                            lastMessageRes = R.string.lastfm_scrobble_failed,
-                            lastError = message,
-                        )
-                        EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
-                    }
-            }
         }
         if (!snapshot.status.isPlaying) return
 
@@ -300,15 +327,19 @@ internal class LastFmScrobbleController(
                 nowPlayingSent = true,
                 lastNowPlayingAttemptEpochMs = nowEpochMs,
             )
-            scope.launch(Dispatchers.IO) {
+            nowPlayingJob = scope.launch {
                 client.updateNowPlaying(credentials, nowPlayingTrack)
+                    .also { currentCoroutineContext().ensureActive() }
                     .onSuccess {
+                        if (accountFingerprint != fingerprint || _uiState.value.pendingCount > 0) return@onSuccess
                         _uiState.value = LastFmUiState(
                             lastMessageRes = R.string.lastfm_now_playing,
                             lastMessageArg = nowPlayingTrack.title,
                         )
                     }
                     .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        if (accountFingerprint != fingerprint || _uiState.value.pendingCount > 0) return@onFailure
                         if (active?.track?.id == nowPlayingTrack.id &&
                             !LastFmScrobbleRules.keepSubmittedFlag(false)
                         ) {
@@ -325,40 +356,30 @@ internal class LastFmScrobbleController(
         }
     }
 
-    private fun submitScrobbleIfDue(
+    private suspend fun submitScrobbleIfDue(
         credentials: LastFmCredentials,
         scrobble: ActiveScrobble,
     ): Boolean {
-        if (
-            !LastFmScrobbleRules.shouldFlushScrobbleBeforeReplacing(
-                alreadyScrobbled = scrobble.scrobbled,
-                durationMs = scrobble.track.durationMs,
+        if (!LastFmScrobbleRules.shouldFlushScrobbleBeforeReplacing(
+                alreadyScrobbled = scrobble.scrobbled, durationMs = scrobble.track.durationMs,
                 listenedMs = scrobble.accumulatedPlayMs,
+            )) return false
+        return try {
+            outbox.enqueue(PendingScrobble(
+                account = scrobbleFingerprint(credentials.apiKey, credentials.sessionKey),
+                trackId = scrobble.track.id, title = scrobble.track.title, artist = scrobble.track.artist,
+                album = scrobble.track.album, durationMs = scrobble.track.durationMs,
+                startedAtEpochSeconds = scrobble.startedAtEpochSeconds,
+            ))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            _uiState.value = _uiState.value.copy(
+                lastMessageRes = R.string.lastfm_scrobble_failed,
+                lastError = error.message,
             )
-        ) {
-            return false
+            false
         }
-        val scrobbleTrack = scrobble.track
-        val startedAt = scrobble.startedAtEpochSeconds
-        scope.launch(Dispatchers.IO) {
-            client.scrobble(credentials, scrobbleTrack, startedAt)
-                .onSuccess {
-                    _uiState.value = LastFmUiState(
-                        lastMessageRes = R.string.lastfm_scrobbled,
-                        lastMessageArg = scrobbleTrack.title,
-                        lastSubmittedTrackId = scrobbleTrack.id,
-                    )
-                }
-                .onFailure { error ->
-                    val message = error.message ?: "Scrobble failed"
-                    _uiState.value = LastFmUiState(
-                        lastMessageRes = R.string.lastfm_scrobble_failed,
-                        lastError = message,
-                    )
-                    EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
-                }
-        }
-        return true
     }
 
     private fun EchoAppSettings.lastFmCredentialsOrNull(): LastFmCredentials? {
@@ -457,7 +478,11 @@ internal class LastFmClient(
             "sk" to credentials.sessionKey,
         )
         track.album?.let { params["album"] = it }
-        postSigned(params, credentials.sharedSecret).let { }
+        val response = postSigned(params, credentials.sharedSecret)
+        val scrobbles = response.optJSONObject("scrobbles")
+        if (scrobbles?.optJSONObject("@attr")?.optInt("accepted", 0) != 1) {
+            throw IOException("Last.fm did not accept the listen")
+        }
     }
 
     private suspend fun postSigned(
@@ -487,7 +512,7 @@ internal class LastFmClient(
                 connection.errorStream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
             }
             val json = JSONObject(responseText.ifBlank { "{}" })
-            if (connection.responseCode !in 200..299 || json.optString("status") == "failed") {
+            if (connection.responseCode !in 200..299 || json.has("error") || json.optString("status") == "failed") {
                 val message = json.optString("message").ifBlank { "HTTP ${connection.responseCode}" }
                 throw IOException(message)
             }

@@ -5,13 +5,16 @@ import app.echo.android.model.library.LibraryAudioProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Fixed format and rate buckets bound the result to at most 21 x 15 rows. */
+/** Fixed format and rate buckets keep the aggregation bounded. */
 internal const val LibraryAudioProfileQuery = """
     SELECT
         CASE
             WHEN mime IN ('audio/flac', 'audio/x-flac') OR name LIKE '%.flac' THEN 'FLAC'
             WHEN mime IN ('audio/alac', 'audio/x-alac') THEN 'ALAC'
             WHEN mime IN ('audio/ape', 'audio/x-ape', 'audio/x-monkeys-audio') OR name LIKE '%.ape' THEN 'APE'
+            WHEN mime IN ('audio/tta', 'audio/x-tta') OR name LIKE '%.tta' THEN 'TTA'
+            WHEN mime IN ('audio/tak', 'audio/x-tak') OR name LIKE '%.tak' THEN 'TAK'
+            WHEN mime IN ('audio/w64', 'audio/x-w64') OR name LIKE '%.w64' THEN 'W64'
             WHEN mime IN ('audio/dsd', 'audio/x-dsd', 'audio/dsf', 'audio/x-dsf', 'audio/dff', 'audio/x-dff') OR name LIKE '%.dsf' OR name LIKE '%.dff' THEN 'DSD'
             WHEN name LIKE '%.mp2' THEN 'MP2'
             WHEN mime IN ('audio/mpeg', 'audio/mp3', 'audio/x-mp3') OR name LIKE '%.mp3' THEN 'MP3'
@@ -77,7 +80,7 @@ internal fun audioProfileFromBuckets(buckets: List<LibraryAudioProfileBucket>): 
         }
         rates[rate] = (rates[rate] ?: 0) + bucket.trackCount
         when (bucket.format) {
-            "FLAC", "ALAC", "APE" -> lossless += bucket.trackCount
+            "FLAC", "ALAC", "APE", "TTA", "TAK" -> lossless += bucket.trackCount
             "MP2", "MP3", "AAC", "OPUS", "VORBIS", "AC3", "EAC3", "AMR" -> lossy += bucket.trackCount
             "DSD" -> dsd += bucket.trackCount
         }

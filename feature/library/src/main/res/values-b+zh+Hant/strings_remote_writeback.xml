@@ -1,0 +1,16 @@
+<resources>
+    <string name="remote_playlist_manage">管理伺服器歌單</string>
+    <string name="remote_playlist_server_hint">變更會寫入目前的 Navidrome / Subsonic 伺服器，其他來源維持唯讀。</string>
+    <string name="remote_playlist_error">伺服器操作未完成。請檢查連線和編輯權限後重試，本機資料已保留。</string>
+    <string name="remote_playlist_empty">此伺服器尚無歌單。</string>
+    <string name="remote_playlist_back">返回</string>
+    <string name="remote_playlist_rename">重新命名</string>
+    <string name="remote_playlist_delete">刪除</string>
+    <string name="remote_playlist_show_tracks">歌單歌曲</string>
+    <string name="remote_playlist_retry">重試</string>
+    <string name="remote_playlist_add">加入</string>
+    <string name="remote_playlist_remove">移除</string>
+    <string name="remote_playlist_close">關閉</string>
+    <string name="remote_playlist_save">儲存</string>
+    <string name="remote_playlist_delete_confirm">從伺服器刪除「%1$s」？其他裝置上也會刪除此歌單。</string>
+</resources>

@@ -223,7 +223,7 @@ fun ConnectScreen(
                     Column(
                         Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()
                             .verticalScroll(scrollStates[tab]).padding(horizontal = 24.dp)
-                            .padding(top = 24.dp, bottom = 188.dp),
+                            .padding(top = if (shortLandscape) 12.dp else 24.dp, bottom = if (shortLandscape) 100.dp else 188.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
                         if (tab == 2) {

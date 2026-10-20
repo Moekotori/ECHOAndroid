@@ -30,7 +30,6 @@ internal fun SettingsLibraryOverview(
     artistCount: Int,
     durationMs: Long,
     localSizeBytes: Long,
-    offlineSizeBytes: Long,
     onOpenLibrary: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -38,7 +37,6 @@ internal fun SettingsLibraryOverview(
     val locale = configuration.locales[0]
     val numbers = remember(locale) { NumberFormat.getIntegerInstance(locale) }
     val localBytes = localSizeBytes.coerceAtLeast(0L)
-    val offlineBytes = offlineSizeBytes.coerceIn(0L, Long.MAX_VALUE - localBytes)
     val minutes = durationMs.coerceAtLeast(0L) / 60_000L
 
     LibraryStatsSection(stringResource(R.string.settings_library_overview_title), action = {
@@ -69,7 +67,7 @@ internal fun SettingsLibraryOverview(
             Column(Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 LibraryStatsDivider()
                 LibraryOverviewDetail(stringResource(R.string.settings_library_overview_storage),
-                    Formatter.formatFileSize(context, localBytes + offlineBytes))
+                    Formatter.formatFileSize(context, localBytes))
                 LibraryOverviewDetail(stringResource(R.string.settings_library_overview_duration),
                     stringResource(R.string.settings_library_overview_hours_minutes,
                         numbers.format(minutes / 60L), numbers.format(minutes % 60L)))
@@ -79,9 +77,6 @@ internal fun SettingsLibraryOverview(
         LibraryStatsDisclosure(stringResource(R.string.settings_library_storage_details)) {
             LibraryOverviewDetail(stringResource(R.string.settings_library_overview_local),
                 Formatter.formatFileSize(context, localBytes))
-            LibraryOverviewDetail(stringResource(R.string.settings_library_overview_offline),
-                Formatter.formatFileSize(context, offlineBytes))
-            LibraryStatsNote(stringResource(R.string.settings_library_overview_scope))
         }
     }
 }

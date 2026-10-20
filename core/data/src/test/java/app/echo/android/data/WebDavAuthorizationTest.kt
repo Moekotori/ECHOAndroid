@@ -88,4 +88,24 @@ class WebDavAuthorizationTest {
         )
         assertEquals("用户:密码", decoded)
     }
+    @Test
+    fun failedRemoteEntryMakesTheWholeListingIncomplete() {
+        for (failure in listOf(
+            "<D:href>/music/unreadable.flac</D:href><D:propstat><D:prop/><D:status>HTTP/1.1 403 Forbidden</D:status></D:propstat>",
+            "<D:href>/music/unreadable.flac</D:href><D:status>HTTP/1.1 403 Forbidden</D:status>",
+            "<D:propstat><D:prop/></D:propstat>",
+        )) {
+            val listing = parseWebDavListing(URI("https://dav.example/music/"),
+                """<D:multistatus xmlns:D="DAV:">
+                    <D:response><D:href>/music/ok.flac</D:href><D:propstat><D:prop/>
+                    <D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>
+                    <D:response>$failure</D:response></D:multistatus>""")
+            assertEquals(1, listing.entries.size)
+            assertTrue(listing.hrefParseFailed)
+            val visit = RemoteSyncVisit(1, false, listing.hrefParseFailed)
+            assertFalse(LibraryScanPolicy.shouldDeleteMissingLibraryRows(
+                LibraryScanCompleteness(true, 1, 2, hitVisitCap = visit.incomplete)))
+        }
+    }
+
 }

@@ -24,6 +24,7 @@ data class TrackFingerprint(
     val dateModifiedSeconds: Long = 0L,
     val relativePath: String? = null,
     val durationMs: Long = 0L,
+    val fileName: String? = null,
 )
 
 data class TrackAlbumKeyRow(
@@ -49,6 +50,9 @@ data class TrackIdPathRow(
 
 @Dao
 interface LibraryTrackDao {
+    @Query("SELECT * FROM library_tracks WHERE source = :source AND (:query = '' OR title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE, id")
+    fun pageRemoteWritebackCandidates(source: String, query: String): PagingSource<Int, LibraryTrackEntity>
+
     @Query(LibraryAudioProfileQuery)
     suspend fun localAudioProfile(): List<LibraryAudioProfileBucket>
 
@@ -281,49 +285,17 @@ interface LibraryTrackDao {
     )
     fun observeLibraryStats(): Flow<LibraryStats>
 
-    @Query(
-        """
-        SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds
-        FROM library_album_summaries
-        WHERE isRemote = 0
-          AND (:query IS NULL OR
-               title LIKE '%' || :query || '%' OR
-               albumArtist LIKE '%' || :query || '%' OR
-               artist LIKE '%' || :query || '%' OR
-               pinyinTitle LIKE '%' || lower(:query) || '%' OR
-               pinyinArtist LIKE '%' || lower(:query) || '%')
-        ORDER BY
-            CASE WHEN :sort = 'Artist' THEN albumArtist END COLLATE NOCASE ASC,
-            CASE WHEN :sort = 'Year' THEN year END DESC,
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            CASE WHEN :sort = 'RecentlyAdded' THEN addedAtSeconds END DESC,
-            title COLLATE NOCASE ASC
-        """,
-    )
-    fun pageAlbums(query: String?, sort: String): PagingSource<Int, AlbumSummary>
+    fun pageAlbums(query: String?, sort: String): PagingSource<Int, AlbumSummary> =
+        pageAlbumsSorted(LibrarySummaryPagingQuery.albums(query, sort, remote = false))
 
-    @Query(
-        """
-        SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds
-        FROM library_album_summaries
-        WHERE isRemote = 1
-          AND (:query IS NULL OR
-               title LIKE '%' || :query || '%' OR
-               albumArtist LIKE '%' || :query || '%' OR
-               artist LIKE '%' || :query || '%' OR
-               pinyinTitle LIKE '%' || lower(:query) || '%' OR
-               pinyinArtist LIKE '%' || lower(:query) || '%')
-        ORDER BY
-            CASE WHEN :sort = 'Artist' THEN albumArtist END COLLATE NOCASE ASC,
-            CASE WHEN :sort = 'Year' THEN year END DESC,
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            CASE WHEN :sort = 'RecentlyAdded' THEN addedAtSeconds END DESC,
-            title COLLATE NOCASE ASC
-        """,
-    )
-    fun pageRemoteAlbums(query: String?, sort: String): PagingSource<Int, AlbumSummary>
+    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class])
+    fun pageAlbumsSorted(query: SupportSQLiteQuery): PagingSource<Int, AlbumSummary>
+
+    fun pageRemoteAlbums(query: String?, sort: String): PagingSource<Int, AlbumSummary> =
+        pageRemoteAlbumsSorted(LibrarySummaryPagingQuery.albums(query, sort, remote = true))
+
+    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class])
+    fun pageRemoteAlbumsSorted(query: SupportSQLiteQuery): PagingSource<Int, AlbumSummary>
 
     @Query(
         """
@@ -367,37 +339,17 @@ interface LibraryTrackDao {
     )
     fun observeAlbumListenStats(limit: Int): Flow<List<LibraryAlbumListenStatsRow>>
 
-    @Query(
-        """
-        SELECT artistKey, name, artworkUri, albumCount, trackCount, durationMs
-        FROM library_artist_summaries
-        WHERE (:query IS NULL OR
-               name LIKE '%' || :query || '%' OR
-               pinyinName LIKE '%' || lower(:query) || '%')
-        ORDER BY
-            CASE WHEN :sort = 'AlbumCount' THEN albumCount END DESC,
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            name COLLATE NOCASE ASC
-        """,
-    )
-    fun pageArtists(query: String?, sort: String): PagingSource<Int, ArtistSummary>
+    fun pageArtists(query: String?, sort: String): PagingSource<Int, ArtistSummary> =
+        pageArtistsSorted(LibrarySummaryPagingQuery.artists(query, sort))
 
-    @Query(
-        """
-        SELECT genreKey, name, artworkUri, albumCount, trackCount, durationMs
-        FROM library_genre_summaries
-        WHERE (:query IS NULL OR
-               name LIKE '%' || :query || '%' OR
-               pinyinName LIKE '%' || lower(:query) || '%')
-        ORDER BY
-            CASE WHEN :sort = 'AlbumCount' THEN albumCount END DESC,
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            name COLLATE NOCASE ASC
-        """,
-    )
-    fun pageGenres(query: String?, sort: String): PagingSource<Int, app.echo.android.model.library.GenreSummary>
+    @RawQuery(observedEntities = [LibraryArtistSummaryEntity::class])
+    fun pageArtistsSorted(query: SupportSQLiteQuery): PagingSource<Int, ArtistSummary>
+
+    fun pageGenres(query: String?, sort: String): PagingSource<Int, app.echo.android.model.library.GenreSummary> =
+        pageGenresSorted(LibrarySummaryPagingQuery.genres(query, sort))
+
+    @RawQuery(observedEntities = [LibraryGenreSummaryEntity::class])
+    fun pageGenresSorted(query: SupportSQLiteQuery): PagingSource<Int, app.echo.android.model.library.GenreSummary>
 
     @Query(
         """
@@ -426,25 +378,11 @@ interface LibraryTrackDao {
     )
     fun pageTracksByComposer(composerKey: String): PagingSource<Int, LibraryTrackEntity>
 
-    @Query(
-        """
-        SELECT folderKey, path, artworkUri, trackCount, albumCount, artistCount,
-               durationMs, totalSizeBytes, latestModifiedSeconds
-        FROM library_folder_summaries
-        WHERE (:query IS NULL OR
-               path LIKE '%' || :query || '%' OR
-               folderKey LIKE '%' || :query || '%')
-        ORDER BY
-            CASE WHEN :sort = 'TrackCount' THEN trackCount END DESC,
-            CASE WHEN :sort = 'AlbumCount' THEN albumCount END DESC,
-            CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
-            CASE WHEN :sort = 'Size' THEN totalSizeBytes END DESC,
-            CASE WHEN :sort = 'RecentlyModified' THEN latestModifiedSeconds END DESC,
-            CASE WHEN folderKey = '' THEN 1 ELSE 0 END,
-            path COLLATE NOCASE ASC
-        """,
-    )
-    fun pageFolders(query: String?, sort: String): PagingSource<Int, FolderSummary>
+    fun pageFolders(query: String?, sort: String): PagingSource<Int, FolderSummary> =
+        pageFoldersSorted(LibrarySummaryPagingQuery.folders(query, sort))
+
+    @RawQuery(observedEntities = [LibraryFolderSummaryEntity::class])
+    fun pageFoldersSorted(query: SupportSQLiteQuery): PagingSource<Int, FolderSummary>
 
     @Query(
         """
@@ -1004,7 +942,7 @@ interface LibraryTrackDao {
     @Query("SELECT COUNT(*) FROM library_tracks WHERE source = :source")
     suspend fun countTracksFromSource(source: String): Int
 
-    @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
+    @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
     suspend fun getDocumentFingerprints(): List<TrackFingerprint>
 
     @Query("SELECT DISTINCT artworkUri FROM library_tracks WHERE artworkUri LIKE 'file:%'")
@@ -1012,7 +950,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName
         FROM library_tracks
         WHERE source = :source
         """,
@@ -1021,7 +959,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName
         FROM library_tracks
         WHERE source = :source
           AND relativePath LIKE :relativePathLike ESCAPE '\'
@@ -1077,6 +1015,31 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getLocalFileTagBackfillTrackIds(): List<String>
+
+    @Query("""
+        SELECT * FROM library_tracks WHERE id > :afterId
+          AND source IN ('mediastore', 'saf') AND metadataEditedAtEpochMs IS NULL
+          AND id NOT LIKE '%#cue:%' AND clipStartMs = 0 AND clipEndMs = 0
+          AND (
+            lower(ifnull(mimeType, '')) IN (
+              'audio/ape', 'audio/x-ape', 'audio/x-monkeys-audio', 'audio/x-wavpack', 'audio/wavpack',
+              'audio/aiff', 'audio/x-aiff', 'audio/x-ms-wma', 'audio/x-ms-asf',
+              'audio/x-tta', 'audio/tta', 'audio/x-tak', 'audio/tak', 'audio/x-w64', 'audio/w64'
+            )
+            OR lower(ifnull(fileName, '')) GLOB '*.ape'
+            OR lower(ifnull(fileName, '')) GLOB '*.wv'
+            OR lower(ifnull(fileName, '')) GLOB '*.aif'
+            OR lower(ifnull(fileName, '')) GLOB '*.aiff'
+            OR lower(ifnull(fileName, '')) GLOB '*.aifc'
+            OR lower(ifnull(fileName, '')) GLOB '*.wma'
+            OR lower(ifnull(fileName, '')) GLOB '*.asf'
+            OR lower(ifnull(fileName, '')) GLOB '*.tta'
+            OR lower(ifnull(fileName, '')) GLOB '*.tak'
+            OR lower(ifnull(fileName, '')) GLOB '*.w64'
+            OR (durationMs = 0 AND lower(ifnull(mimeType, '')) IN ('audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'))
+          ) ORDER BY id LIMIT :limit
+    """)
+    suspend fun getExtendedAudioBackfillPage(afterId: String, limit: Int): List<LibraryTrackEntity>
 
     @Query("SELECT * FROM library_tracks WHERE id IN (:ids)")
     suspend fun getTracksByIds(ids: List<String>): List<LibraryTrackEntity>
@@ -1275,79 +1238,17 @@ interface LibraryTrackDao {
     )
     suspend fun searchTracksByFts(matchQuery: String, rankQuery: String, limit: Int): List<LibraryTrackEntity>
 
-    @Query(
-        """
-        SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds
-        FROM library_album_summaries
-        WHERE isRemote = 0
-          AND (
-            title LIKE '%' || :query || '%'
-            OR albumArtist LIKE '%' || :query || '%'
-            OR artist LIKE '%' || :query || '%'
-            OR pinyinTitle LIKE '%' || lower(:query) || '%'
-            OR pinyinArtist LIKE '%' || lower(:query) || '%'
-            OR EXISTS (
-                SELECT 1
-                FROM library_tracks AS matched_track
-                WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
-                  AND matched_track.albumKey = library_album_summaries.albumKey
-                  AND (
-                    matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedAlbum LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedAlbumArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinTitle LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinAlbum LIKE '%' || lower(:query) || '%'
-                  )
-            )
-          )
-        ORDER BY
-            CASE
-                WHEN title LIKE :query || '%' THEN 0
-                WHEN pinyinTitle LIKE lower(:query) || '%' THEN 1
-                WHEN albumArtist LIKE :query || '%' THEN 2
-                WHEN pinyinArtist LIKE lower(:query) || '%' THEN 3
-                ELSE 4
-            END,
-            title COLLATE NOCASE ASC
-        LIMIT :limit
-        """,
-    )
-    suspend fun searchAlbums(query: String, limit: Int): List<AlbumSummary>
+    suspend fun searchAlbums(query: String, limit: Int): List<AlbumSummary> =
+        searchAlbumsIndexed(LibrarySummarySearchQuery.searchAlbums(query, limit))
 
-    @Query(
-        """
-        SELECT artistKey, name, artworkUri, albumCount, trackCount, durationMs
-        FROM library_artist_summaries
-        WHERE name LIKE '%' || :query || '%'
-           OR pinyinName LIKE '%' || lower(:query) || '%'
-           OR EXISTS (
-                SELECT 1
-                FROM library_tracks AS matched_track
-                WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
-                  AND matched_track.id IN (SELECT trackId FROM library_track_artists WHERE artistKey = library_artist_summaries.artistKey)
-                  AND (
-                    matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedAlbum LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedAlbumArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinTitle LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinAlbum LIKE '%' || lower(:query) || '%'
-                  )
-           )
-        ORDER BY
-            CASE
-                WHEN name LIKE :query || '%' THEN 0
-                WHEN pinyinName LIKE lower(:query) || '%' THEN 1
-                ELSE 2
-            END,
-            name COLLATE NOCASE ASC
-        LIMIT :limit
-        """,
-    )
-    suspend fun searchArtists(query: String, limit: Int): List<ArtistSummary>
+    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class])
+    suspend fun searchAlbumsIndexed(query: SupportSQLiteQuery): List<AlbumSummary>
+
+    suspend fun searchArtists(query: String, limit: Int): List<ArtistSummary> =
+        searchArtistsIndexed(LibrarySummarySearchQuery.searchArtists(query, limit))
+
+    @RawQuery(observedEntities = [LibraryArtistSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class, LibraryTrackArtistEntity::class])
+    suspend fun searchArtistsIndexed(query: SupportSQLiteQuery): List<ArtistSummary>
 
     @Transaction
     suspend fun upsertBatchWithFts(tracks: List<LibraryTrackEntity>) {

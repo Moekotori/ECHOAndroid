@@ -12,6 +12,7 @@ internal fun DacAssessment.guidanceResource(): Int = when (this) {
     DacAssessment.ExclusivePending -> R.string.dac_help_exclusive_pending
     DacAssessment.UnsupportedSource -> R.string.dac_help_unsupported_source
     DacAssessment.UnsupportedFormat -> R.string.dac_help_unsupported_format
+    DacAssessment.DopConfigurationRequired -> R.string.usb_dop_blocked
     DacAssessment.ClockUnverified -> R.string.dac_help_clock_unverified
     DacAssessment.VolumeChanged -> R.string.dac_help_volume_changed
     DacAssessment.Direct -> R.string.dac_help_direct

@@ -40,4 +40,15 @@ class LibraryAudioProfileTest {
         assertEquals(0, profile.dsdCount)
         assertEquals("OTHER", profile.sampleRates.single().key)
     }
+
+    @Test fun ttaAndTakAreLosslessButWave64RemainsAContainer() {
+        val profile = audioProfileFromBuckets(listOf(
+            LibraryAudioProfileBucket("TTA", "48000", 1, 0),
+            LibraryAudioProfileBucket("TAK", "44100", 1, 0),
+            LibraryAudioProfileBucket("W64", "96000", 1, 1),
+        ))
+        assertEquals(2, profile.losslessCount)
+        assertEquals(1, profile.unconfirmedCount)
+        assertEquals(setOf("TTA", "TAK", "W64"), profile.formats.map { it.key }.toSet())
+    }
 }

@@ -5,26 +5,34 @@ import java.util.Locale
 
 /** Shared FLAC, Vorbis and Opus comment decoding; counts and payloads are bounded. */
 internal object VorbisTagReader {
-    fun comments(payload: ByteArray): List<Pair<String, String>> {
+    fun comments(payload: ByteArray): List<Pair<String, String>> = readComments(payload, complete = false).orEmpty()
+
+    /** Writers must distinguish a complete tag from a truncated or unsupported read. */
+    fun commentsForRewrite(payload: ByteArray): List<Pair<String, String>>? = readComments(payload, complete = true)
+
+    private fun readComments(payload: ByteArray, complete: Boolean): List<Pair<String, String>>? {
         fun number(offset: Int): Long? = if (offset < 0 || offset + 4 > payload.size) null else
             (0..3).fold(0L) { value, index -> value or ((payload[offset + index].toLong() and 255) shl (index * 8)) }
-        val vendorSize = number(0) ?: return emptyList()
-        if (vendorSize > payload.size - 4) return emptyList()
+        val vendorSize = number(0) ?: return null
+        if (vendorSize > payload.size - 4) return null
         var cursor = 4 + vendorSize.toInt()
-        val count = number(cursor) ?: return emptyList()
+        val count = number(cursor) ?: return null
+        if (complete && count > 4096) return null
         cursor += 4
         val comments = ArrayList<Pair<String, String>>()
         repeat(minOf(count, 4096).toInt()) {
-            val size = number(cursor) ?: return comments
+            val size = number(cursor) ?: return if (complete) null else comments
             cursor += 4
-            if (size > payload.size - cursor) return comments
-            val comment = TagTextDecoder.decodeDeclared(payload.copyOfRange(cursor, cursor + size.toInt()), Charsets.UTF_8)
+            if (size > payload.size - cursor) return if (complete) null else comments
+            val bytes = payload.copyOfRange(cursor, cursor + size.toInt())
+            val comment = TagTextDecoder.decodeDeclared(bytes, Charsets.UTF_8)
             cursor += size.toInt()
-            if (comment != null && '=' in comment) {
+            if (comment != null && '=' in comment && comment.substringBefore('=').isNotBlank()) {
                 val key = comment.substringBefore('=')
-                if (key.isNotBlank()) comments += key to comment.substringAfter('=')
-            }
+                comments += key to comment.substringAfter('=')
+            } else if (complete) return null
         }
+        if (complete && cursor != payload.size) return null
         return comments
     }
 

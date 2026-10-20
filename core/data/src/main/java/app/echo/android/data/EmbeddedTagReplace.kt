@@ -52,6 +52,10 @@ internal object EmbeddedTagFileReplace {
 }
 
 internal object EmbeddedTagBackup {
+    fun keyForTrack(trackId: String): String = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(trackId.toByteArray(Charsets.UTF_8))
+        .joinToString("") { byte -> (byte.toInt() and 255).toString(16).padStart(2, '0') }
+
     fun preserveOriginal(original: File, cacheDir: File, trackKey: String): File {
         val dest = File(cacheDir, "backup-$trackKey")
         if (dest.exists() && dest.length() > 0L) {
@@ -64,5 +68,25 @@ internal object EmbeddedTagBackup {
             original.delete()
         }
         return dest
+    }
+}
+
+/** Permission errors after replacement starts require the same rollback as I/O failures. */
+internal fun replaceEmbeddedTagsWithRestore(
+    replace: () -> Unit,
+    verify: () -> Boolean,
+    restore: () -> Unit,
+): EmbeddedTagReplaceStatus {
+    try {
+        replace()
+        if (verify()) return EmbeddedTagReplaceStatus.Replaced
+    } catch (_: Exception) {
+        // The target may already be partially overwritten.
+    }
+    return try {
+        restore()
+        EmbeddedTagReplaceStatus.Restored
+    } catch (_: Exception) {
+        EmbeddedTagReplaceStatus.BackupKept
     }
 }

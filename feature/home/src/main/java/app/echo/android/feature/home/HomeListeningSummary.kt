@@ -1,6 +1,7 @@
 package app.echo.android.feature.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,21 +50,20 @@ internal fun HomeListeningSummary(
     val scheme = MaterialTheme.colorScheme
     val locale = Locale.getDefault()
     val playCount = remember(summary.first, locale) { NumberFormat.getIntegerInstance(locale).format(summary.first) }
+    HomeBlock(verticalPadding = 8.dp) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             EchoIcon(Icons.Rounded.Headphones, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(20.dp))
-            Text(stringResource(R.string.home_listening_journal), style = MaterialTheme.typography.titleSmall, color = scheme.onSurface)
+            Text(stringResource(R.string.home_listening_journal), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
         }
         Text(
             text = if (summary.first > 0L) stringResource(R.string.home_listening_play_count, playCount)
                 else stringResource(R.string.home_listening_empty_title),
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Bold,
             color = scheme.onSurface,
         )
         Text(
@@ -81,5 +81,6 @@ internal fun HomeListeningSummary(
                 Text(stringResource(R.string.home_listening_open_library))
             }
         }
+    }
     }
 }

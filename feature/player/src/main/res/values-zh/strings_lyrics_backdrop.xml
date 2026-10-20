@@ -1,0 +1,6 @@
+<resources>
+    <string name="lyrics_backdrop_title">背景样式</string>
+    <string name="lyrics_backdrop_fluid">流体</string>
+    <string name="lyrics_backdrop_mesh">流光</string>
+    <string name="lyrics_backdrop_halftone">半调</string>
+</resources>

@@ -43,7 +43,9 @@ internal fun LyricsPageLayout(
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                 heading(false)
                 Box(Modifier.fillMaxWidth().weight(1f)) { lyrics() }
-                if (supportingPane) {
+                if (supportingPane || viewportHeight < 600.dp) {
+                    // Enlarged text can prevent a side-by-side layout even in landscape.
+                    // Bound and scroll the controls so the lyrics retain a visible viewport.
                     Column(Modifier.fillMaxWidth().heightIn(max = viewportHeight * 0.35f)
                         .verticalScroll(rememberScrollState())) { controls(false) }
                 } else controls(false)

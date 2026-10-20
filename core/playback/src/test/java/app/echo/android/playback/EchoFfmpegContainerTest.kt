@@ -5,11 +5,15 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class EchoFfmpegContainerTest {
-    @Test fun recognizesOnlyTheFourNewContainers() {
+    @Test fun recognizesOnlyExplicitlySupportedContainers() {
         fun header(value: String) = value.toByteArray(Charsets.ISO_8859_1).copyOf(16)
         assertEquals("aiff", echoFfmpegContainer(header("FORM\u0000\u0000\u0000\u0010AIFF")))
         assertEquals("aiff", echoFfmpegContainer(header("FORM\u0000\u0000\u0000\u0010AIFC")))
         assertEquals("wv", echoFfmpegContainer(header("wvpk")))
+        assertEquals("tta", echoFfmpegContainer(header("TTA1")))
+        assertEquals("tak", echoFfmpegContainer(header("tBaK")))
+        assertEquals("w64", echoFfmpegContainer(header("riff\u002e\u0091\u00cf\u0011\u00a5\u00d6\u0028\u00db\u0004\u00c1\u0000\u0000")))
+        assertNull(echoFfmpegContainer(header("riff")))
         for (signature in listOf("\u007f\u00fe\u0080\u0001", "\u00fe\u007f\u0001\u0080",
             "\u001f\u00ff\u00e8\u0000", "\u00ff\u001f\u0000\u00e8")) {
             assertEquals("dts", echoFfmpegContainer(header(signature)))

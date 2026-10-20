@@ -1,14 +1,11 @@
 package app.echo.android.feature.settings
 
-import android.text.format.Formatter
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import app.echo.android.model.library.LibraryOfflinePolicy
 
 @Composable
 internal fun SettingsLibraryContent(
@@ -24,17 +21,13 @@ internal fun SettingsLibraryContent(
     localSizeBytes: Long,
     trackAudioInfoTagsVisible: Boolean,
     watchedFolderRescanEnabled: Boolean,
-    offlineWifiOnly: Boolean,
-    offlineUsedBytes: Long,
     onTrackAudioInfoTagsVisibleChange: (Boolean) -> Unit,
     onWatchedFolderRescanEnabledChange: (Boolean) -> Unit,
-    onOfflineWifiOnlyChange: (Boolean) -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenLibraryRepair: () -> Unit,
     onClearLocalLibraryIndex: suspend () -> Boolean,
     onCleanupLocalLibrary: suspend () -> Pair<Int, Int> = { 0 to 0 },
 ) {
-    val context = LocalContext.current
     Column(Modifier.fillMaxWidth()
         .settingsSearchAnchor(stringResource(R.string.settings_section_library))
         .padding(horizontal = SettingsContentInset)) {
@@ -56,29 +49,12 @@ internal fun SettingsLibraryContent(
             onCheckedChange = onWatchedFolderRescanEnabledChange,
         )
     }
-    SettingsSectionCard(title = stringResource(R.string.settings_section_offline)) {
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_offline_wifi_only),
-            detail = stringResource(R.string.settings_offline_wifi_only_detail),
-            checked = offlineWifiOnly,
-            onCheckedChange = onOfflineWifiOnlyChange,
-        )
-        SettingsInfoRow(
-            title = stringResource(R.string.settings_offline_storage),
-            detail = stringResource(
-                R.string.settings_offline_storage_detail,
-                Formatter.formatFileSize(context, offlineUsedBytes.coerceAtLeast(0L)),
-                Formatter.formatFileSize(context, LibraryOfflinePolicy.DefaultQuotaBytes),
-            ),
-        )
-    }
     SettingsLibraryOverview(
         trackCount = trackCount,
         albumCount = albumCount,
         artistCount = artistCount,
         durationMs = durationMs,
         localSizeBytes = localSizeBytes,
-        offlineSizeBytes = offlineUsedBytes,
         onOpenLibrary = onOpenLibrary,
     )
     SettingsLibraryHealthContent(

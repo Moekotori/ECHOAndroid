@@ -9,6 +9,8 @@ import android.provider.OpenableColumns
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.readLocalAudioTags
 import app.echo.android.data.toEchoTrack
+import app.echo.android.data.isSupportedIncomingAudioFile
+import app.echo.android.data.incomingAudioMimeType
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.platform.EchoPlatformCapabilities
@@ -37,10 +39,14 @@ suspend fun resolveIncomingAudioTrack(
     return readStandaloneIncomingTrack(context, uri)
 }
 
-private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
-    val fallbackTitle = displayName(context, uri)
-        ?.substringBeforeLast('.')
-        ?.takeIf { it.isNotBlank() }
+private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack? {
+    val name = displayName(context, uri) ?: uri.lastPathSegment.orEmpty()
+    val providerMime = if (uri.scheme == "content") runCatching { context.contentResolver.getType(uri) }.getOrNull() else null
+    if (!isSupportedIncomingAudioFile(name, providerMime)) return null
+    val resolvedMime = incomingAudioMimeType(name, providerMime)
+    val fallbackTitle = name
+        .substringBeforeLast('.')
+        .takeIf { it.isNotBlank() }
         ?: uri.lastPathSegment?.substringBeforeLast('.')
         ?: context.getString(R.string.unknown_track)
     val fileTags = runCatching {
@@ -89,7 +95,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
                 ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
             genre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE),
             durationMs = durationMs,
-            mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE),
+            mimeType = resolvedMime ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE),
             sampleRateHz = sampleRateHz,
             source = LibrarySource.Unknown,
         )
@@ -105,6 +111,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack {
             discNumber = fileTags?.discNumber,
             year = fileTags?.year,
             composer = fileTags?.composer,
+            mimeType = resolvedMime,
             source = LibrarySource.Unknown,
         )
     } finally {

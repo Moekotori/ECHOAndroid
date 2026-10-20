@@ -317,7 +317,7 @@ class AudioFileTagRewriterTest {
     }
 
     @Test
-    fun mp4IsUnsupported() {
+    fun truncatedMp4IsRejected() {
         val ftyp = byteArrayOf(0, 0, 0, 24, 'f'.code.toByte(), 't'.code.toByte(), 'y'.code.toByte(), 'p'.code.toByte(), 1, 2, 3, 4)
         val status = AudioFileTagRewriter.rewrite(
             ByteArrayInputStream(ftyp),
@@ -325,7 +325,223 @@ class AudioFileTagRewriterTest {
             SAMPLE_FIELDS,
             "audio/mp4",
         )
-        assertEquals(AudioTagRewriteStatus.UnsupportedFormat, status)
+        assertEquals(AudioTagRewriteStatus.InvalidSource, status)
+    }
+
+    @Test
+    fun clearingFieldsUpdatesLegacyFooterWithoutChangingAudioOrComment() {
+        val audio = FAKE_MP3 + ByteArray(70_000) { (it % 251).toByte() }
+        val footer = id3v1("Title", "Artist", "Old album", Charsets.ISO_8859_1, "2007", 3)
+        "Comment".toByteArray().copyInto(footer, 97)
+        val output = rewrite(audio + footer, SAMPLE_FIELDS.copy(album = null, year = null, trackNumber = null), "audio/mpeg")
+        val read = readLocalAudioTags(output.inputStream())!!
+        assertNull(read.album)
+        assertNull(read.year)
+        assertNull(read.trackNumber)
+        val audioStart = output.size - audio.size - 128
+        assertTrue(output.copyOfRange(audioStart, audioStart + audio.size).contentEquals(audio))
+        assertTrue(output.copyOfRange(output.size - 31, output.size - 24).contentEquals("Comment".toByteArray()))
+    }
+
+    @Test
+    fun id3v22EditKeepsPictureCommentAndComposer() {
+        fun frame(id: String, payload: ByteArray) = id.toByteArray() +
+            byteArrayOf(0, (payload.size shr 8).toByte(), payload.size.toByte()) + payload
+        val picture = byteArrayOf(0) + "PNG".toByteArray() + byteArrayOf(3, 0, 1, 2, 3)
+        val comment = byteArrayOf(0) + "eng".toByteArray() + byteArrayOf(0) + "Keep comment".toByteArray()
+        val original = id3File(2, listOf(frame("PIC", picture), frame("COM", comment),
+            frame("TCM", byteArrayOf(0) + "Composer".toByteArray())), FAKE_MP3)
+        val output = rewrite(original, SAMPLE_FIELDS, "audio/mpeg")
+        val read = readLocalAudioTags(output.inputStream())!!
+        assertTrue(read.artworkBytes!!.contentEquals(byteArrayOf(1, 2, 3)))
+        assertEquals("image/png", read.artworkMime)
+        assertEquals("Composer", read.composer)
+        assertTrue(output.toString(Charsets.ISO_8859_1).contains("Keep comment"))
+    }
+
+    @Test
+    fun id3v22UnknownFrameRefusesRewriteInsteadOfDroppingData() {
+        val source = id3File(2, listOf("XYZ".toByteArray() + byteArrayOf(0, 0, 3, 1, 2, 3)), FAKE_MP3)
+        val out = ByteArrayOutputStream()
+        assertEquals(AudioTagRewriteStatus.InvalidSource,
+            AudioFileTagRewriter.rewrite(source.inputStream(), out, SAMPLE_FIELDS, "audio/mpeg"))
+        assertEquals(0, out.size())
+    }
+
+    @Test
+    fun unrelatedEditKeepsFullDatesTotalsAndRepeatedComments() {
+        val fields = SAMPLE_FIELDS.copy(year = 2020, trackNumber = 3, discNumber = 1)
+        val flac = rewrite(flacFile(listOf("DATE=2020-06-07", "TRACKNUMBER=3/12", "DISCNUMBER=1/2",
+            "COMMENT=first note", "COMMENT=second note"), byteArrayOf(1, 2)), fields, "audio/flac").asString()
+        listOf("DATE=2020-06-07", "TRACKNUMBER=3/12", "DISCNUMBER=1/2", "COMMENT=first note", "COMMENT=second note")
+            .forEach { assertTrue("missing $it", flac.contains(it)) }
+        val mp3 = id3File(4, listOf(textFrameV24("TDRC", "2020-06-07"),
+            textFrameV24("TRCK", "3/12"), textFrameV24("TPOS", "1/2")), FAKE_MP3)
+        val changed = rewrite(mp3, fields.copy(trackNumber = 4), "audio/mpeg").asString()
+        assertTrue(changed.contains("2020-06-07"))
+        assertTrue(changed.contains("4/12"))
+        assertTrue(changed.contains("1/2"))
+    }
+
+    @Test
+    fun clearingAndReplacingVorbisAliasesLeavesNoOldValues() {
+        val source = flacFile(listOf("ALBUM_ARTIST=Old owner", "TRACK=3/12", "DISC=1/2", "DATE=2020-06-07"), byteArrayOf(1))
+        val cleared = SAMPLE_FIELDS.copy(albumArtist = null, trackNumber = null, discNumber = null, year = null)
+        val output = rewrite(source, cleared, "audio/flac")
+        val read = readLocalAudioTags(output.inputStream())!!
+        assertNull(read.albumArtist)
+        assertNull(read.trackNumber)
+        assertNull(read.discNumber)
+        assertNull(read.year)
+        assertTrue(read.matchesWrittenTags(cleared))
+        val replaced = readLocalAudioTags(rewrite(source, cleared.copy(albumArtist = "New owner", trackNumber = 4), "audio/flac").inputStream())!!
+        assertEquals("New owner", replaced.albumArtist)
+        assertEquals(4, replaced.trackNumber)
+    }
+
+    @Test
+    fun wavInfoDateAndTrackTotalSurviveTitleEdit() {
+        val base = silentWav()
+        val info = wavChunk("LIST", "INFO".toByteArray() + wavChunk("ICRD", "2020-06-07\u0000".toByteArray()) +
+            wavChunk("ITRK", "3/12\u0000".toByteArray()))
+        val source = base + info
+        leInt(source.size - 8).copyInto(source, 4)
+        val output = rewrite(source, SAMPLE_FIELDS.copy(year = 2020, trackNumber = 3), "audio/wav").asString()
+        assertTrue(output.contains("2020-06-07"))
+        assertTrue(output.contains("3/12"))
+    }
+
+    @Test
+    fun wavRejectsUnparsedChunksAndOversizedTagsBeforeWriting() {
+        val base = silentWav()
+        val manyChunks = base.copyOfRange(0, 36) +
+            List(256) { wavChunk("JUNK", byteArrayOf()) }.fold(byteArrayOf()) { all, chunk -> all + chunk } +
+            base.copyOfRange(36, base.size)
+        leInt(manyChunks.size - 8).copyInto(manyChunks, 4)
+        val bigTag = id3File(4, listOf(textFrameV24("TIT2", "Original"), ByteArray(2 * 1024 * 1024)), byteArrayOf())
+        val oversized = base + wavChunk("id3 ", bigTag)
+        leInt(oversized.size - 8).copyInto(oversized, 4)
+        for (bytes in listOf(manyChunks, oversized)) {
+            val source = java.io.File.createTempFile("echo-wav-source", ".wav")
+            val output = java.io.File.createTempFile("echo-wav-output", ".wav")
+            try {
+                source.writeBytes(bytes)
+                output.writeText("untouched")
+                assertEquals(AudioTagRewriteStatus.InvalidSource,
+                    AudioFileTagRewriter.rewriteFile(source, output, SAMPLE_FIELDS, "audio/wav"))
+                assertEquals("untouched", output.readText())
+                assertTrue(bytes.contentEquals(source.readBytes()))
+            } finally { source.delete(); output.delete() }
+        }
+    }
+
+    @Test
+    fun wavLeadingId3LyricsAndArtworkSurviveTitleEdit() {
+        val lyrics = "Keep these lyrics"
+        val leading = id3File(4, listOf(
+            Id3FrameBytes("USLT", byteArrayOf(3) + "eng".toByteArray() + byteArrayOf(0) + lyrics.toByteArray()),
+            Id3FrameBytes("APIC", byteArrayOf(0) + "image/png".toByteArray() + byteArrayOf(0, 3, 0) + TINY_PNG),
+        ), silentWav())
+        val source = java.io.File.createTempFile("echo-prefix", ".wav")
+        val output = java.io.File.createTempFile("echo-prefix-output", ".wav")
+        try {
+            source.writeBytes(leading)
+            assertEquals(AudioTagRewriteStatus.Written,
+                AudioFileTagRewriter.rewriteFile(source, output, SAMPLE_FIELDS, "audio/wav"))
+            val tags = readLocalAudioTags(output.inputStream())!!
+            assertEquals(SAMPLE_FIELDS.title, tags.title)
+            assertEquals(lyrics, tags.lyrics)
+            assertTrue(TINY_PNG.contentEquals(tags.artworkBytes))
+            assertTrue(output.readBytes().takeLast(16).toByteArray().contentEquals(ByteArray(16)))
+        } finally { source.delete(); output.delete() }
+    }
+
+    @Test
+    fun unchangedGenreAndComposerKeepAllValuesWhileEditsAndClearsReplaceThem() {
+        val original = flacFile(listOf("GENRE=Rock", "GENRE=Jazz", "COMPOSER=One", "COMPOSER=Two"), byteArrayOf(1))
+        val unchanged = SAMPLE_FIELDS.copy(genre = "Rock", composer = "One", genreModified = true, composerModified = true)
+        val kept = rewrite(original, unchanged, "audio/flac").asString()
+        assertTrue(kept.contains("GENRE=Jazz"))
+        assertTrue(kept.contains("COMPOSER=Two"))
+        val edited = rewrite(original, unchanged.copy(genre = "Ambient", composer = "New"), "audio/flac").asString()
+        assertTrue(edited.contains("GENRE=Ambient"))
+        assertTrue(!edited.contains("GENRE=Jazz") && !edited.contains("COMPOSER=Two"))
+        val cleared = readLocalAudioTags(rewrite(original,
+            unchanged.copy(genre = null, composer = null), "audio/flac").inputStream())!!
+        assertNull(cleared.genre)
+        assertNull(cleared.composer)
+        val mp3 = id3File(4, listOf(textFrameV24("TCON", "Rock"), textFrameV24("TCON", "Jazz"),
+            textFrameV24("TCOM", "One"), textFrameV24("TCOM", "Two")), FAKE_MP3)
+        val mp3Kept = rewrite(mp3, unchanged, "audio/mpeg").asString()
+        assertTrue(mp3Kept.contains("Jazz") && mp3Kept.contains("Two"))
+    }
+
+    @Test
+    fun wavPreservesV23GroupedArtworkWhenEditingText() {
+        val payload = byteArrayOf(9, 0) + "image/png".toByteArray() + byteArrayOf(0, 3, 0) + TINY_PNG
+        val frame = "APIC".toByteArray() + java.nio.ByteBuffer.allocate(4).putInt(payload.size).array() +
+            byteArrayOf(0, 0x20) + payload
+        val base = silentWav()
+        val wav = base + wavChunk("id3 ", id3File(3, listOf(frame), byteArrayOf()))
+        leInt(wav.size - 8).copyInto(wav, 4)
+        assertTrue(TINY_PNG.contentEquals(readLocalAudioTags(wav.inputStream())!!.artworkBytes))
+
+        val rewritten = rewrite(wav, SAMPLE_FIELDS, "audio/wav")
+        val after = readLocalAudioTags(rewritten.inputStream())!!
+        assertTrue(TINY_PNG.contentEquals(after.artworkBytes))
+        assertTrue(after.matchesWrittenTags(SAMPLE_FIELDS))
+    }
+
+    @Test
+    fun flacRejectsCommentsThatCannotBeCompletelyPreserved() {
+        val comments = listOf("TITLE=old", "ARTIST=old", "ALBUM=old", "ALBUMARTIST=old",
+            "TRACKNUMBER=1", "DISCNUMBER=1", "DATE=2000") +
+            List(4089) { "X_$it=keep" } + "COMMENT=must survive"
+        val source = flacFile(comments, byteArrayOf(1))
+        val output = ByteArrayOutputStream()
+        assertEquals(AudioTagRewriteStatus.InvalidSource,
+            AudioFileTagRewriter.rewrite(source.inputStream(), output, SAMPLE_FIELDS, "audio/flac"))
+        assertEquals(0, output.size())
+        assertTrue(source.asString().contains("COMMENT=must survive"))
+    }
+
+    @Test
+    fun changingFrontCoverPreservesOtherId3AndFlacPictures() {
+        val back = "back-image-must-survive".toByteArray()
+        fun id3Picture(type: Byte, image: ByteArray) = Id3FrameBytes("APIC",
+            byteArrayOf(0) + "image/png".toByteArray() + byteArrayOf(0, type, 0) + image)
+        val mp3 = id3File(4, listOf(id3Picture(3, "old-front".toByteArray()), id3Picture(4, back)), FAKE_MP3)
+        fun be(value: Int) = java.nio.ByteBuffer.allocate(4).putInt(value).array()
+        fun flacPicture(type: Int, image: ByteArray): ByteArray =
+            be(type) + be(9) + "image/png".toByteArray() + be(0) + be(1) + be(1) + be(24) + be(0) + be(image.size) + image
+        val base = flacFile(emptyList(), byteArrayOf(1))
+        val metadata = base.copyOf(base.size - 1).apply { this[42] = 4 }
+        val flac = metadata + flacBlock(6, false, flacPicture(3, "old-front".toByteArray())) +
+            flacBlock(6, true, flacPicture(4, back)) + byteArrayOf(1)
+        val fields = SAMPLE_FIELDS.copy(artworkBytes = TINY_PNG, artworkMime = "image/png")
+        for ((source, mime) in listOf(mp3 to "audio/mpeg", flac to "audio/flac")) {
+            val rewritten = rewrite(source, fields, mime)
+            assertTrue(rewritten.asString().contains("back-image-must-survive"))
+            assertTrue(!rewritten.asString().contains("old-front"))
+            assertTrue(readLocalAudioTags(rewritten.inputStream()).matchesWrittenTags(fields))
+        }
+    }
+
+    @Test
+    fun repeatedV23ReplayGainEditsReplaceTheExistingUtf16Frame() {
+        val payload = byteArrayOf(1, 0xff.toByte(), 0xfe.toByte()) +
+            "REPLAYGAIN_TRACK_GAIN".toByteArray(Charsets.UTF_16LE) +
+            byteArrayOf(0, 0, 0xff.toByte(), 0xfe.toByte()) +
+            "+1.00 dB".toByteArray(Charsets.UTF_16LE) + byteArrayOf(0, 0)
+        val frame = "TXXX".toByteArray() + java.nio.ByteBuffer.allocate(4).putInt(payload.size).array() +
+            byteArrayOf(0, 0) + payload
+        var source = id3File(3, listOf(frame), FAKE_MP3)
+        for (gain in listOf(-5f, -2f)) {
+            val fields = SAMPLE_FIELDS.copy(replayGainTrackGainDb = gain)
+            source = rewrite(source, fields, "audio/mpeg")
+            assertEquals(1, Regex("TXXX").findAll(source.asString()).count())
+            assertTrue(readLocalAudioTags(source.inputStream()).matchesWrittenTags(fields))
+        }
     }
 
     private fun rewrite(source: ByteArray, fields: AudioTagFields, mimeType: String): ByteArray {

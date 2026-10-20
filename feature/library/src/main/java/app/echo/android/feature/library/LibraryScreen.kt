@@ -105,7 +105,6 @@ import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.FolderSummary
-import app.echo.android.model.library.LibraryOfflinePin
 import app.echo.android.model.library.LibraryPlaybackOrigin
 import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
@@ -298,7 +297,7 @@ fun LibraryScreen(
     onPlayNext: (EchoTrack) -> Unit = {},
     onAddNextUp: (EchoTrack) -> Unit = {},
     onEnqueueTrack: (EchoTrack) -> Unit = {},
-    onUpdateTrackMetadata: suspend (EchoTrackMetadataUpdate) -> Unit,
+    onUpdateTrackMetadata: suspend (EchoTrackMetadataUpdate) -> Boolean,
     onImportLyricsForTrack: (EchoTrack) -> Unit,
     onPickTrackArtwork: (EchoTrack) -> Unit,
     onPlayAlbum: (AlbumSummary) -> Unit,
@@ -316,6 +315,7 @@ fun LibraryScreen(
     onCreatePlaylist: (String) -> Unit,
     experienceActions: LibraryExperienceActions? = null,
     playlistManagement: PlaylistManagementActions? = null,
+    remotePlaylistManagement: RemoteLibraryWritebackActions? = null,
     onRenamePlaylist: (EchoPlaylist, String) -> Unit,
     onDeletePlaylist: (EchoPlaylist) -> Unit,
     onAddTrackToPlaylist: (EchoPlaylist, EchoTrack) -> Unit,
@@ -347,13 +347,8 @@ fun LibraryScreen(
     radioDirectorySearch: app.echo.android.model.radio.EchoRadioDirectorySearch =
         app.echo.android.model.radio.EchoRadioDirectorySearch(),
     onRadioDirectoryQuery: (String) -> Unit = {},
-    albumOfflinePin: LibraryOfflinePin? = null,
-    playlistOfflinePin: LibraryOfflinePin? = null,
     onPinAlbumShortcut: ((AlbumSummary, Boolean) -> Unit)? = null,
     onPinPlaylistShortcut: ((EchoPlaylist, Boolean) -> Unit)? = null,
-    onPinAlbumOffline: (AlbumSummary) -> Unit = {},
-    onPinPlaylistOffline: (EchoPlaylist) -> Unit = {},
-    onUnpinOffline: (String) -> Unit = {},
     libraryLayout: EchoLibraryLayout = EchoLibraryLayout(),
     onLibraryLayoutChange: ((EchoLibraryLayout) -> Unit)? = null,
 ) {
@@ -655,6 +650,7 @@ fun LibraryScreen(
                                 onPlayPlaylist = onPlayPlaylist,
                                 onCreatePlaylist = onCreatePlaylist,
                                 experienceActions = experienceActions,
+                                remoteManagement = remotePlaylistManagement,
                                 onRenamePlaylist = onRenamePlaylist,
                                 onDeletePlaylist = onDeletePlaylist,
                                 onImportM3uPlaylist = onImportM3uPlaylist,
@@ -872,8 +868,6 @@ fun LibraryScreen(
                 onEnqueue = enqueueTrack,
                 onOpenArtist = onOpenAlbumArtist,
                 onOpenTrackArtist = onOpenTrackArtist,
-                offlinePin = albumOfflinePin,
-                onToggleOffline = albumOfflineToggle(target.album, albumOfflinePin, onPinAlbumOffline, onUnpinOffline),
                 modifier = Modifier.fillMaxSize(),
             )
             is LibraryDetailTransitionTarget.GenreDetail -> GenreTrackDetailPage(
@@ -979,14 +973,6 @@ fun LibraryScreen(
                 onEnqueue = enqueueTrack,
                 onOpenArtist = onOpenTrackArtist,
                 onOpenAlbum = onOpenTrackAlbum,
-                offlinePin = playlistOfflinePin,
-                onToggleOffline = playlistOfflineToggle(
-                    target.playlist,
-                    target.tracks.itemSnapshotList.items,
-                    playlistOfflinePin,
-                    onPinPlaylistOffline,
-                    onUnpinOffline,
-                ),
                 modifier = Modifier.fillMaxSize(),
             )
             is LibraryDetailTransitionTarget.LinkedAlbum -> {
@@ -1019,18 +1005,28 @@ fun LibraryScreen(
             }
             is LibraryDetailTransitionTarget.LinkedArtist -> {
                 val linkedState by linkedLibraryState.collectAsState()
-                LinkedArtistTracksPage(
-                    artist = target.artist,
-                    tracks = linkedState.tracks.filter { it.linkedArtistKey() == target.artist.artistKey },
-                    onBack = { selectedLinkedArtist = null },
-                    onPlayLinkedTrack = onPlayLinkedTrack,
-                    onPlayLinkedQueue = onPlayLinkedQueue,
-                    onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
-                    onOpenRemoteAlbum = { remote ->
-                        selectedLinkedAlbum = remote.toLinkedAlbumSummary()
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
+                Column(Modifier.fillMaxSize()) {
+                    LinkedArtistPagingControls(
+                        linkedState.tracks.size, linkedState.totalCount, linkedState.isLoadingMore,
+                        onLoadMore = {
+                            if (linkedState.tracks.size >= linkedState.totalCount) onRefreshLinkedLibrary(linkedState.query)
+                            else onLoadMoreLinkedTracks()
+                        },
+                        error = linkedState.error,
+                    )
+                    LinkedArtistTracksPage(
+                        artist = target.artist,
+                        tracks = linkedState.tracks.filter { it.linkedArtistKey() == target.artist.artistKey },
+                        onBack = { selectedLinkedArtist = null },
+                        onPlayLinkedTrack = onPlayLinkedTrack,
+                        onPlayLinkedQueue = onPlayLinkedQueue,
+                        onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
+                        onOpenRemoteAlbum = { remote ->
+                            selectedLinkedAlbum = remote.toLinkedAlbumSummary()
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
             is LibraryDetailTransitionTarget.LinkedPlaylist -> {
                 val linkedState by linkedLibraryState.collectAsState()
@@ -1187,38 +1183,44 @@ private fun LinkedEchoLibraryPage(
     val includeAlbums = selectedMode == LinkedLibraryMode.Albums
     val includeArtists = selectedMode == LinkedLibraryMode.Artists
     val includePlaylists = selectedMode == LinkedLibraryMode.Playlists
-    val catalog by produceState(
-        initialValue = LinkedLibraryCatalog.Empty,
-        tracks,
-        playlists,
-        normalizedQuery,
-        remoteQuery,
-        selectedSortMode,
-        albumSortMode,
-        artistSortMode,
-        includeSortedTracks,
-        includeAlbums,
-        includeArtists,
-        includePlaylists,
-        state.albums,
-    ) {
-        // 输入防抖:按键会重启本协程,连续输入只保留最后一次全量 filter/sort/拼音构建
-        if (normalizedQuery.isNotEmpty()) delay(200)
-        value = withContext(Dispatchers.Default) {
-            LinkedLibraryCatalog.build(
-                tracks = tracks,
-                playlists = playlists,
-                query = normalizedQuery,
-                remoteQuery = remoteQuery,
-                sortMode = selectedSortMode,
-                albumSortMode = albumSortMode,
-                artistSortMode = artistSortMode,
-                includeSortedTracks = includeSortedTracks,
-                includeAlbums = includeAlbums,
-                includeArtists = includeArtists,
-                includePlaylists = includePlaylists,
-                remoteAlbums = state.albums,
-            )
+    val searchText = remember { LinkedLibrarySearchTextCache() }
+    val randomOrder = remember(selectedSource, normalizedQuery) { LinkedLibraryRandomOrder() }
+    val catalog by androidx.compose.runtime.key(selectedSource, normalizedQuery, selectedMode) {
+        produceState(
+            initialValue = LinkedLibraryCatalog.Empty,
+            tracks,
+            playlists,
+            normalizedQuery,
+            remoteQuery,
+            selectedSortMode,
+            albumSortMode,
+            artistSortMode,
+            includeSortedTracks,
+            includeAlbums,
+            includeArtists,
+            includePlaylists,
+            state.albums,
+        ) {
+            // 输入防抖:按键会重启本协程,连续输入只保留最后一次全量 filter/sort/拼音构建
+            if (normalizedQuery.isNotEmpty()) delay(200)
+            value = withContext(Dispatchers.Default) {
+                LinkedLibraryCatalog.build(
+                    searchText = searchText,
+                    tracks = tracks,
+                    playlists = playlists,
+                    query = normalizedQuery,
+                    remoteQuery = remoteQuery,
+                    sortMode = linkedTrackSort(selectedSortMode),
+                    albumSortMode = linkedAlbumSort(albumSortMode),
+                    artistSortMode = artistSortMode,
+                    includeSortedTracks = includeSortedTracks,
+                    includeAlbums = includeAlbums,
+                    includeArtists = includeArtists,
+                    includePlaylists = includePlaylists,
+                    remoteAlbums = state.albums,
+                    randomOrder = randomOrder,
+                )
+            }
         }
     }
     val sortedTracks = catalog.tracks
@@ -1275,7 +1277,7 @@ private fun LinkedEchoLibraryPage(
             onArtistSortModeChange = onArtistSortModeChange,
             onFolderSortModeChange = onFolderSortModeChange,
         )
-        errorMessage?.takeIf { it.isNotBlank() }?.let { message ->
+        errorMessage?.takeIf { it.isNotBlank() && selectedMode != LinkedLibraryMode.Artists }?.let { message ->
             Text(
                 text = message,
                 color = MaterialTheme.colorScheme.error,
@@ -1291,6 +1293,15 @@ private fun LinkedEchoLibraryPage(
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
             )
         }
+        if (selectedMode == LinkedLibraryMode.Artists && catalog !== LinkedLibraryCatalog.Empty) {
+            LinkedArtistPagingControls(
+                tracks.size, state.totalCount, state.isLoadingMore,
+                onLoadMore = {
+                    if (tracks.size >= state.totalCount) onRefresh(normalizedQuery) else onLoadMoreTracks()
+                },
+                error = state.error,
+            )
+        }
         val linkedTabMotion = rememberEchoContentMotion()
         AnimatedContent(
             targetState = selectedMode,
@@ -1301,7 +1312,8 @@ private fun LinkedEchoLibraryPage(
             modifier = Modifier.weight(1f),
         ) { mode ->
         when {
-            state.isLoading && tracks.isEmpty() && albums.isEmpty() && playlists.isEmpty() -> LibraryCollectionEmpty(
+            (mode != LinkedLibraryMode.Folders && catalog === LinkedLibraryCatalog.Empty) ||
+                (state.isLoading && tracks.isEmpty() && albums.isEmpty() && playlists.isEmpty()) -> LibraryCollectionEmpty(
                 stringResource(L10nR.string.feature_library_reading_pc_echo_library_fccbe4),
             )
             mode == LinkedLibraryMode.Songs && sortedTracks.isEmpty() -> {
@@ -1362,7 +1374,7 @@ private fun LinkedEchoLibraryPage(
                 loadedCount = state.tracks.size,
                 totalCount = state.totalCount,
                 isLoadingMore = state.isLoadingMore,
-                onLoadMore = onLoadMoreTracks,
+                onLoadMore = { if (state.error.isNullOrBlank() && normalizedQuery == remoteQuery) onLoadMoreTracks() },
                 modifier = Modifier.fillMaxSize(),
             )
             mode == LinkedLibraryMode.Albums -> LinkedAlbumWall(
@@ -1371,7 +1383,7 @@ private fun LinkedEchoLibraryPage(
                 loadedCount = state.albums.size,
                 totalCount = state.albumTotalCount,
                 isLoadingMore = state.isLoadingMore,
-                onLoadMore = onLoadMoreAlbums,
+                onLoadMore = { if (state.error.isNullOrBlank() && normalizedQuery == remoteQuery) onLoadMoreAlbums() },
                 modifier = Modifier.fillMaxSize(),
             )
             mode == LinkedLibraryMode.Artists -> LinkedArtistWall(
@@ -1385,7 +1397,7 @@ private fun LinkedEchoLibraryPage(
                 loadedCount = state.playlists.size,
                 totalCount = state.playlistTotalCount,
                 isLoadingMore = state.isLoadingMore,
-                onLoadMore = onLoadMorePlaylists,
+                onLoadMore = { if (state.error.isNullOrBlank() && normalizedQuery == remoteQuery) onLoadMorePlaylists() },
                 modifier = Modifier.fillMaxSize(),
             )
             mode == LinkedLibraryMode.Folders -> LinkedFolderBrowser(
@@ -1427,10 +1439,10 @@ private fun LinkedLibraryHeader(
             LibraryTextTabs(modes.map { it.label() }, selectedIndex, { onSelectMode(modes[it]) })
         }
         when (selectedMode) {
-            LinkedLibraryMode.Songs -> LibraryTrackSortMenu(selectedSortMode, onSortModeChange, onCustomize)
-            LinkedLibraryMode.Albums -> LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange, onCustomize)
-            LinkedLibraryMode.Artists -> LibraryArtistSortMenu(artistSortMode, onArtistSortModeChange, onCustomize)
-            LinkedLibraryMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange, onCustomize)
+            LinkedLibraryMode.Songs -> LibraryTrackSortMenu(linkedTrackSort(selectedSortMode), onSortModeChange, onCustomize, linked = true)
+            LinkedLibraryMode.Albums -> LibraryAlbumSortMenu(linkedAlbumSort(albumSortMode), onAlbumSortModeChange, onCustomize, linked = true)
+            LinkedLibraryMode.Artists -> LibraryArtistSortMenu(artistSortMode, onArtistSortModeChange, onCustomize, linked = true)
+            LinkedLibraryMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange, onCustomize, linked = true)
             LinkedLibraryMode.Playlists -> LibraryCustomizeButton(onCustomize)
         }
     }
@@ -1761,8 +1773,15 @@ private fun LinkedArtistTracksPage(
     val remoteTracksByUiId = remember(tracks, artistTracks) {
         tracks.zip(artistTracks).associate { (remote, uiTrack) -> uiTrack.id to remote }
     }
+    val loadedArtist = remember(artist, artistTracks) {
+        artist.copy(
+            trackCount = artistTracks.size,
+            albumCount = tracks.map { it.linkedAlbumKey() }.distinct().size,
+            durationMs = artistTracks.sumOf { it.durationMs.coerceAtLeast(0L) },
+        )
+    }
     ArtistDetailListPage(
-        artist = artist,
+        artist = loadedArtist,
         tracks = artistTracks,
         onBack = onBack,
         onPlayAll = { if (tracks.isNotEmpty()) onPlayLinkedQueue(tracks, 0) },
@@ -1834,14 +1853,16 @@ private fun LibraryTrackSortMenu(
     selectedSortMode: LibraryTrackSortMode,
     onSortModeChange: (LibraryTrackSortMode) -> Unit,
     onCustomize: (() -> Unit)? = null,
+    linked: Boolean = false,
 ) {
     LibrarySortMenu(
         selected = selectedSortMode,
-        options = LibraryTrackSortMode.entries,
+        options = if (linked) LinkedTrackSortOptions else LibraryTrackSortMode.entries,
         label = { it.label() },
         contentDescription = stringResource(L10nR.string.feature_library_set_track_sort_order_4053c0),
         onSelect = onSortModeChange,
         onCustomize = onCustomize,
+        scopeNote = if (linked) stringResource(L10nR.string.library_sort_loaded_items) else null,
     )
 }
 
@@ -1850,14 +1871,16 @@ private fun LibraryAlbumSortMenu(
     selectedSortMode: AlbumSortMode,
     onSortModeChange: (AlbumSortMode) -> Unit,
     onCustomize: (() -> Unit)? = null,
+    linked: Boolean = false,
 ) {
     LibrarySortMenu(
         selected = selectedSortMode,
-        options = AlbumSortMode.entries,
+        options = if (linked) LinkedAlbumSortOptions else AlbumSortMode.entries,
         label = { it.label() },
         contentDescription = stringResource(L10nR.string.feature_library_set_album_sort_order_7c2d91),
         onSelect = onSortModeChange,
         onCustomize = onCustomize,
+        scopeNote = if (linked) stringResource(L10nR.string.library_sort_loaded_items) else null,
     )
 }
 
@@ -1866,6 +1889,7 @@ private fun LibraryArtistSortMenu(
     selectedSortMode: ArtistSortMode,
     onSortModeChange: (ArtistSortMode) -> Unit,
     onCustomize: (() -> Unit)? = null,
+    linked: Boolean = false,
 ) {
     LibrarySortMenu(
         selected = selectedSortMode,
@@ -1874,6 +1898,7 @@ private fun LibraryArtistSortMenu(
         contentDescription = stringResource(L10nR.string.feature_library_set_artist_sort_order_e15a06),
         onSelect = onSortModeChange,
         onCustomize = onCustomize,
+        scopeNote = if (linked) stringResource(L10nR.string.library_sort_loaded_items) else null,
     )
 }
 
@@ -1882,6 +1907,7 @@ private fun LibraryFolderSortMenu(
     selectedSortMode: FolderSortMode,
     onSortModeChange: (FolderSortMode) -> Unit,
     onCustomize: (() -> Unit)? = null,
+    linked: Boolean = false,
 ) {
     LibrarySortMenu(
         selected = selectedSortMode,
@@ -1890,6 +1916,7 @@ private fun LibraryFolderSortMenu(
         contentDescription = stringResource(L10nR.string.feature_library_set_folder_sort_order_9a4f33),
         onSelect = onSortModeChange,
         onCustomize = onCustomize,
+        scopeNote = if (linked) stringResource(L10nR.string.library_sort_loaded_items) else null,
     )
 }
 
@@ -1901,6 +1928,7 @@ private fun <T> LibrarySortMenu(
     contentDescription: String,
     onSelect: (T) -> Unit,
     onCustomize: (() -> Unit)? = null,
+    scopeNote: String? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -1915,6 +1943,10 @@ private fun <T> LibrarySortMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
+            scopeNote?.let { note ->
+                Text(note, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             options.forEach { mode ->
                 EchoDropdownMenuItem(
                     text = { Text(label(mode)) },
@@ -1991,28 +2023,3 @@ private fun LibraryScanProgress.hasResultBannerMessage(): Boolean =
         LibraryScanPhase.WritingDatabase,
         LibraryScanPhase.CleaningRemoved -> false
     }
-
-private fun albumOfflineToggle(
-    album: AlbumSummary,
-    pin: LibraryOfflinePin?,
-    onPinAlbumOffline: (AlbumSummary) -> Unit,
-    onUnpinOffline: (String) -> Unit,
-): (() -> Unit)? {
-    if (!canShowAlbumOffline(album.albumKey, pin)) return null
-    return {
-        if (pin != null) onUnpinOffline(pin.id) else onPinAlbumOffline(album)
-    }
-}
-
-private fun playlistOfflineToggle(
-    playlist: EchoPlaylist,
-    tracks: List<EchoTrack>,
-    pin: LibraryOfflinePin?,
-    onPinPlaylistOffline: (EchoPlaylist) -> Unit,
-    onUnpinOffline: (String) -> Unit,
-): (() -> Unit)? {
-    if (!canShowPlaylistOffline(playlist.source, tracks, pin)) return null
-    return {
-        if (pin != null) onUnpinOffline(pin.id) else onPinPlaylistOffline(playlist)
-    }
-}

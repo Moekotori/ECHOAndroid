@@ -1,0 +1,4 @@
+<resources>
+    <string name="track_versions_error">Could not load or save song versions. Please retry.</string>
+    <string name="track_versions_play_error">Could not prepare the preferred song version. Please try again.</string>
+</resources>

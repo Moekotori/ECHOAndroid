@@ -57,7 +57,7 @@ class EchoDsfExtractorTest {
     }
 
     @Test
-    fun dstCompressedDffIsRejected() {
+    fun malformedDstWithoutFrameInformationIsRejected() {
         val file = EchoDsdFixtures.dff(compressed = true)
         try {
             runExtractor(EchoDffExtractor(), file, CaptureOutput())

@@ -1,0 +1,4 @@
+<resources>
+    <string name="track_versions_error">曲のバージョンを読み込むか保存できませんでした。再試行してください。</string>
+    <string name="track_versions_play_error">優先バージョンを準備できませんでした。再試行してください。</string>
+</resources>

@@ -15,18 +15,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.nativeCanvas
+import app.echo.android.design.ArtworkColorGrid
 import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoTheme
+import app.echo.android.model.settings.EchoLyricsBackdrop
 
-/** One flowing surface behind the cover and lyrics, without decoding another full-screen image. */
+/**
+ * One surface behind the cover and lyrics, without decoding another full-screen image. [style] picks the
+ * painter; styles that read the cover's color mosaic fall back to the fluid surface until [colorGrid] arrives.
+ */
 @Composable
 internal fun NowPlayingBackdrop(
     palette: ArtworkPalette,
     reveal: () -> Float,
     modifier: Modifier = Modifier,
     animationsVisible: Boolean = true,
+    style: EchoLyricsBackdrop = EchoLyricsBackdrop.Fluid,
+    colorGrid: ArtworkColorGrid? = null,
 ) {
     val dark = LocalEchoDarkTheme.current
     val mode = LocalEchoEffectivePerformanceMode.current
@@ -41,7 +48,16 @@ internal fun NowPlayingBackdrop(
             soft = lerp(palette.soft, anchor, if (dark) 0.30f else 0.48f),
         )
     }
-    val target = remember(wash) { FluidArtworkField(wash) }
+    val washedGrid = remember(colorGrid, dark, theme) {
+        colorGrid?.washedToward(if (dark) theme.night else theme.bgTop, if (dark) 0.18f else 0.48f)
+    }
+    val target: BackdropField = remember(wash, style, washedGrid) {
+        when {
+            style == EchoLyricsBackdrop.Mesh && washedGrid != null -> MeshBackdropField(wash.deep, washedGrid)
+            style == EchoLyricsBackdrop.Halftone && washedGrid != null -> HalftoneBackdropField(wash.deep, washedGrid)
+            else -> FluidArtworkField(wash)
+        }
+    }
     var layers by remember { mutableStateOf(FluidBackdropLayers(target)) }
     LaunchedEffect(target, motionEnabled) {
         if (target !== layers.current) {
@@ -74,7 +90,7 @@ internal fun NowPlayingBackdrop(
 
 // At most two small sets of shaders, including during rapid track changes.
 private data class FluidBackdropLayers(
-    val current: FluidArtworkField,
-    val previous: FluidArtworkField? = null,
+    val current: BackdropField,
+    val previous: BackdropField? = null,
     val changedAtMs: Long = 0L,
 )

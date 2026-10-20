@@ -65,6 +65,7 @@ internal object EchoDsdMetadata {
         var dsdRateHz = 0
         var dataSize = -1L
         var compressed = false
+        var dstDurationMs: Long? = null
         var tags: AudioTagFields? = null
         var chunks = 0
         while (chunks < 64 && remaining >= 12L) {
@@ -97,7 +98,13 @@ internal object EchoDsdMetadata {
                 "DST " -> {
                     compressed = true
                     dataSize = size
-                    if (!skipExact(input, padded)) return null
+                    if (size < 18L) return null
+                    val frameInfo = input.readExact(18) ?: return null
+                    if (fourcc(frameInfo, 0) != "FRTE" || u64be(frameInfo, 4) != 6L) return null
+                    val frameRate = ((frameInfo[16].toInt() and 255) shl 8) or (frameInfo[17].toInt() and 255)
+                    if (frameRate <= 0) return null
+                    dstDurationMs = u32be(frameInfo, 12) * 1000L / frameRate
+                    if (!skipExact(input, padded - 18L)) return null
                 }
                 "ID3 " -> {
                     if (size in 10L..64L * 1024 * 1024) {
@@ -116,7 +123,7 @@ internal object EchoDsdMetadata {
             }
         }
         if (channels !in 1..6 || dsdRateHz < 8 || dsdRateHz % 8 != 0 || dataSize <= 0L) return null
-        val durationMs = ((dataSize / channels) * 8000L) / dsdRateHz
+        val durationMs = if (compressed) dstDurationMs ?: return null else ((dataSize / channels) * 8000L) / dsdRateHz
         return EchoDsdScanInfo(
             durationMs = durationMs,
             sampleRateHz = dsdRateHz,

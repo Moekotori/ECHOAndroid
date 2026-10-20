@@ -3,6 +3,9 @@ package app.echo.android.feature.player
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import app.echo.android.design.LocalEchoLayout
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
@@ -37,6 +40,7 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
             catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
         }
     }
+    val shortWindow = LocalEchoLayout.current.heightDp < 600f
     val saveInProgress = rememberUpdatedState(saving)
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
@@ -46,13 +50,7 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
         sheetGesturesEnabled = !saving) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.94f).imePadding()) {
             Column(Modifier.padding(horizontal = 24.dp)) {
-                Text(stringResource(R.string.lyrics_edit_title), style = MaterialTheme.typography.headlineSmall)
-                Text(stringResource(R.string.lyrics_edit_hint), style = MaterialTheme.typography.bodySmall)
-                if (!session.sourceReady) {
-                    if (sourceError != null) Text(sourceError, color = MaterialTheme.colorScheme.error)
-                    else CircularProgressIndicator()
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onPlayPause) { Text(stringResource(R.string.lyrics_edit_play)) }
                     TextButton(onClick = {
                         if (rows.isNotEmpty()) {
@@ -66,6 +64,17 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
                 }
             }
             LazyColumn(Modifier.weight(1f), state = scroll, contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Descriptive chrome scrolls; transport and repeated timestamp marking stay reachable.
+                item(key = "editor-header") {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.lyrics_edit_title), style = MaterialTheme.typography.headlineSmall)
+                        Text(stringResource(R.string.lyrics_edit_hint), style = MaterialTheme.typography.bodySmall)
+                        if (!session.sourceReady) {
+                            if (sourceError != null) Text(sourceError, color = MaterialTheme.colorScheme.error)
+                            else CircularProgressIndicator()
+                        }
+                    }
+                }
                 items(rows.size, key = { it }) { index -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         TextButton(onClick = { active = index; EchoLyricsEditing.parseTimestamp(rows[index].time)?.takeIf { it >= 0 }?.let(onSeek) }) {
@@ -79,10 +88,10 @@ fun LyricsEditorSheet(lyrics: EchoLyrics, position: () -> Long, onPlayPause: () 
                     HorizontalDivider()
                 } }
             }
-            Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+            Column(Modifier.padding(horizontal = 24.dp, vertical = if (shortWindow) 8.dp else 16.dp)) {
                 if (error) Text(stringResource(R.string.lyrics_edit_error), color = MaterialTheme.colorScheme.error)
                 if (session.saved) Text(stringResource(R.string.lyrics_edit_saved), color = MaterialTheme.colorScheme.primary)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = { error = false; val draftRows = rows.toList(); saving = true; scope.launch {
                         try { val draft = withContext(Dispatchers.Default) { session.snapshot(draftRows) }; onSave(draft); session.markSaved(draftRows) }
                         catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }

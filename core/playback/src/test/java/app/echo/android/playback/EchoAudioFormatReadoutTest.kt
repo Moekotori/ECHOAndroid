@@ -6,6 +6,33 @@ import org.junit.Test
 
 class EchoAudioFormatReadoutTest {
     @Test
+    fun dsd512DecoderRateIsNotMistakenForDsd64WithoutLibraryMetadata() {
+        val readout = echoAudioFormatReadout(
+            mimeType = EchoDsdMime.MsbfPlanar,
+            formatSampleRateHz = 2_822_400,
+            sourceSampleRateHz = null,
+            bitDepth = null,
+            channelCount = 2,
+            bitrate = null,
+        )
+        assertEquals(22_579_200, readout.sampleRateHz)
+        assertEquals(176_400, readout.decodedSampleRateHz)
+    }
+
+    @Test
+    fun highRateDopReadoutKeepsExactCarrier() {
+        for ((source, carrier) in listOf(11_289_600 to 705_600, 22_579_200 to 1_411_200)) {
+            val readout = echoAudioFormatReadout(
+                mimeType = "audio/raw", mediaUri = "file:///music/song.dsf",
+                formatSampleRateHz = carrier, sourceSampleRateHz = source,
+                bitDepth = 24, channelCount = 2, bitrate = null,
+            )
+            assertEquals(source, readout.sampleRateHz)
+            assertEquals(carrier, readout.decodedSampleRateHz)
+        }
+    }
+
+    @Test
     fun dsd64LibraryRateReportsFamilyAnd88200Pcm() {
         val readout = echoAudioFormatReadout(
             mimeType = EchoDsdMime.MsbfPlanar,

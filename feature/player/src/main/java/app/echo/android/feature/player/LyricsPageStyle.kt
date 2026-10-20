@@ -8,7 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoTheme
+import app.echo.android.design.ArtworkColorGrid
 import app.echo.android.design.ArtworkPalette
+import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
 import app.echo.android.model.settings.EchoPlayerPageStyle
 
@@ -20,12 +22,14 @@ internal fun LyricsPageBackdrop(
     reveal: () -> Float,
     animationsVisible: Boolean,
     modifier: Modifier,
+    backdropStyle: EchoLyricsBackdrop = EchoLyricsBackdrop.Fluid,
+    colorGrid: ArtworkColorGrid? = null,
 ) {
     if (LocalLyricsPageStyle.current == EchoLyricsPageStyle.Paper || LocalLyricsPageStyle.current.isAfterglow) {
         Box(modifier.background(LocalEchoTheme.current.bgTop))
     } else {
         Box(modifier) {
-            NowPlayingBackdrop(palette, reveal, Modifier.fillMaxSize(), animationsVisible)
+            NowPlayingBackdrop(palette, reveal, Modifier.fillMaxSize(), animationsVisible, backdropStyle, colorGrid)
         }
     }
 }

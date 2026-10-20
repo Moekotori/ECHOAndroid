@@ -11,7 +11,6 @@ import java.util.TreeSet
 internal class EchoPlaybackCacheEvictor : CacheEvictor {
     private val leastRecentlyUsed = TreeSet(::compareSpans)
     private var currentSize = 0L
-    @Volatile var pinnedResourceKeys: Set<String> = emptySet()
 
     override fun requiresCacheSpanTouches(): Boolean = true
 
@@ -62,22 +61,10 @@ internal class EchoPlaybackCacheEvictor : CacheEvictor {
 
     private fun evictCacheLocked(cache: Cache, requiredSpace: Long) {
         val maxBytes = EchoPlaybackCachePolicy.maxCacheBytes
-        val skipped = ArrayList<CacheSpan>()
         while (currentSize + requiredSpace > maxBytes && leastRecentlyUsed.isNotEmpty()) {
-            val span = leastRecentlyUsed.first()
-            if (isPinned(span.key)) {
-                leastRecentlyUsed.remove(span)
-                skipped += span
-                if (leastRecentlyUsed.isEmpty()) break
-                continue
-            }
-            cache.removeSpan(span)
+            cache.removeSpan(leastRecentlyUsed.first())
         }
-        skipped.forEach { leastRecentlyUsed.add(it) }
     }
-
-    private fun isPinned(cacheKey: String): Boolean =
-        pinnedResourceKeys.any { token -> token.isNotBlank() && cacheKey.contains(token) }
 
     private companion object {
         fun compareSpans(left: CacheSpan, right: CacheSpan): Int {

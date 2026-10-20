@@ -2,7 +2,6 @@
 <resources>
     <string name="settings_section_lyrics">Lyrics and notifications</string>
     <string name="settings_section_usb">USB audio</string>
-    <string name="settings_section_offline">Offline music</string>
     <string name="settings_section_maintenance">Library maintenance</string>
     <string name="settings_section_music_services">Music services</string>
 </resources>

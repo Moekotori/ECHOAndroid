@@ -116,7 +116,7 @@ internal fun LibraryTrackEntity.withAudioTags(tags: AudioTagFields?): LibraryTra
 
 internal object LibraryWavTagPolicy {
     fun isWavContainer(mimeType: String?, fileNameOrUri: String? = null): Boolean {
-        val mime = mimeType.orEmpty().lowercase()
+        val mime = mimeType.orEmpty().substringBefore(';').trim().lowercase(java.util.Locale.ROOT)
         if (
             mime == "audio/wav" ||
             mime == "audio/x-wav" ||
@@ -125,7 +125,7 @@ internal object LibraryWavTagPolicy {
         ) {
             return true
         }
-        val name = fileNameOrUri.orEmpty().lowercase().substringBefore('?')
-        return name.endsWith(".wav") || name.contains(".wav%")
+        val name = fileNameOrUri.orEmpty().lowercase(java.util.Locale.ROOT).substringBefore('?')
+        return listOf("wav", "wave", "bwf").any { name.endsWith(".$it") || name.contains(".$it%") }
     }
 }

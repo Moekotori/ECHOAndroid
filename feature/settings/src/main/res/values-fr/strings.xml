@@ -116,8 +116,6 @@
     <string name="settings_watched_folder_rescan_detail">Lorsque vous revenez dans ECHO, les dossiers déjà choisis sont réanalysés pour prendre en compte les morceaux ajoutés ou supprimés. Les fichiers inchangés ne sont pas relus</string>
     <string name="settings_local_music">Musique locale</string>
     <string name="settings_local_music_detail">Parcourir les titres, albums, artistes et l\'analyse</string>
-    <string name="settings_pin_queue_offline">Garder la file actuelle hors ligne</string>
-    <string name="settings_pin_queue_offline_detail">Mettre en cache les titres distants et PC de la file actuelle pour la lecture hors ligne</string>
     <string name="settings_library_cleanup">Nettoyer les fichiers manquants et les doublons</string>
     <string name="settings_library_cleanup_detail">Retirer les titres dont le fichier a disparu et fusionner les copies identiques</string>
     <string name="settings_library_cleanup_confirm">Retirer de l\'index de la bibliothèque les fichiers manquants et les copies supplémentaires du même titre. Les fichiers sur le disque ne sont pas supprimés.</string>

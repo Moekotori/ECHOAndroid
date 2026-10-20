@@ -4,6 +4,22 @@ import java.nio.ByteBuffer
 
 /** Integer-only PCM packing. Source s32 is left-aligned as returned by libswresample. */
 object UsbBitPerfectPacker {
+    /** Re-stamp markers at the session boundary, after packing, including partial writes. */
+    fun packDop(source: ByteBuffer, outputBits: Int, outputBytes: Int,
+        destination: ByteArray, channels: Int, destinationOffset: Int, startWithMarkerA: Boolean): Int {
+        val written = pack(source, 3, 24, false, outputBits, outputBytes, destination, channels, destinationOffset)
+        val frames = written / (outputBytes * channels)
+        var markerA = startWithMarkerA
+        repeat(frames) { frame ->
+            val marker = if (markerA) 0x05.toByte() else 0xFA.toByte()
+            repeat(channels) { channel ->
+                destination[destinationOffset + (frame * channels + channel + 1) * outputBytes - 1] = marker
+            }
+            markerA = !markerA
+        }
+        return written
+    }
+
     fun pack(source: ByteBuffer, sourceBytes: Int, sourceBits: Int, bigEndian: Boolean,
         outputBits: Int, outputBytes: Int, destination: ByteArray, channels: Int,
         destinationOffset: Int = 0): Int {

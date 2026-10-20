@@ -47,6 +47,7 @@ internal fun SettingsUsbContent(
         )
         UsbOutputModeControl(usbBitPerfectEnabled, onUsbBitPerfectEnabledChange)
     }
+    UsbDopControls(options, status.diagnostics, onOptionsChange)
     UsbOutputFormatControls(options, status.diagnostics, usbBitPerfectEnabled, onOptionsChange)
     UsbSettingsSection(stringResource(R.string.usb_param_transport), secondary = true) {
         val bufferLabel = stringResource(when (options.bufferMode) {

@@ -1,0 +1,17 @@
+<resources>
+    <string name="personal_sync_title">Personal listening state</string>
+    <string name="personal_sync_hint">Review listening history, saved moments and lyric timing across your paired devices.</string>
+    <string name="personal_sync_phone_counts">Phone: %1$d listens · %2$d moments · %3$d lyric offsets</string>
+    <string name="personal_sync_pc_counts">PC: %1$d listens · %2$d moments · %3$d lyric offsets</string>
+    <string name="personal_sync_limits">Each sync includes up to 1,000 recent listens, 500 saved moments and 500 lyric offsets. Unmatched songs are reported.</string>
+    <string name="personal_sync_to_phone">PC → Phone</string>
+    <string name="personal_sync_to_pc">Phone → PC</string>
+    <string name="personal_sync_overwrite">History is merged without removing existing listens. At the same saved point, notes and lyric offsets use the selected source. Audio files and lyric documents are not transferred.</string>
+    <string name="personal_sync_apply">Apply reviewed personal state</string>
+    <string name="personal_sync_result">Added listens: %1$d · Moments: %2$d · Offsets: %3$d · Unmatched: %4$d</string>
+    <string name="personal_sync_error">Personal state was not fully applied. Some changes may have completed. Refresh the preview before retrying.</string>
+    <string name="personal_sync_resume">Continue on this phone</string>
+    <string name="personal_sync_resume_hint">Replaces the phone queue with this matched song at the current PC position. Requires an available matching version on the phone.</string>
+    <string name="personal_sync_bookmark_compatibility">PC segments retain their end position. A PC that supports only segments skips phone point bookmarks; notes over 100 characters cannot be imported on the phone. Skipped bookmarks are reported and kept on their source.</string>
+    <string name="personal_sync_unsupported_bookmarks">Bookmarks kept on the source because the destination does not support their form: %1$d</string>
+</resources>

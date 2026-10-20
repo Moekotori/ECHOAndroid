@@ -28,7 +28,8 @@ internal object EchoDsdDop {
     fun frameCount(sourceLength: Int, channelCount: Int): Int {
         if (channelCount !in 1..2 || sourceLength <= 0) return 0
         if (sourceLength % channelCount != 0) return 0
-        return (sourceLength / channelCount) / DsdBytesPerChannel
+        val perChannel = sourceLength / channelCount
+        return perChannel / DsdBytesPerChannel + perChannel % DsdBytesPerChannel
     }
 
     fun outputSize(sourceLength: Int, channelCount: Int): Int =
@@ -45,6 +46,7 @@ internal object EchoDsdDop {
         destination: ByteArray,
         destinationOffset: Int = 0,
     ): EchoDsdDopPackResult {
+        require(channelCount in 1..2 && sourceLength % channelCount == 0)
         val frames = frameCount(sourceLength, channelCount)
         val needed = frames * channelCount * PcmBytesPerChannel
         require(sourceOffset >= 0 && sourceLength >= 0 && sourceOffset + sourceLength <= source.size)
@@ -68,10 +70,13 @@ internal object EchoDsdDop {
                     secondIndex = base + channelCount + channel
                 }
                 var first = source[firstIndex]
-                var second = source[secondIndex]
+                // Extractors emit whole packets; only the final packet may have an odd
+                // byte per channel. Complete its last DoP word with DSD silence.
+                val hasSecond = frame * DsdBytesPerChannel + 1 < bytesPerChannel
+                var second = if (hasSecond) source[secondIndex] else 0x69.toByte()
                 if (lsbf) {
                     first = reverseBits(first)
-                    second = reverseBits(second)
+                    if (hasSecond) second = reverseBits(second)
                 }
                 destination[out++] = second
                 destination[out++] = first
@@ -81,7 +86,7 @@ internal object EchoDsdDop {
         return EchoDsdDopPackResult(bytesWritten = needed, frames = frames, nextMarkerA = markerA)
     }
 
-    private fun reverseBits(value: Byte): Byte {
+    internal fun reverseBits(value: Byte): Byte {
         var bits = value.toInt() and 0xFF
         bits = ((bits and 0xF0) ushr 4) or ((bits and 0x0F) shl 4)
         bits = ((bits and 0xCC) ushr 2) or ((bits and 0x33) shl 2)

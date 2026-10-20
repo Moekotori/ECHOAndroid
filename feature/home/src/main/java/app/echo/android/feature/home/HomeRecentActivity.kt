@@ -6,7 +6,10 @@ import app.echo.android.design.displayTrack
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -59,11 +62,11 @@ internal fun RoonRecentActivitySection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 4.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             HomeSectionHeader(stringResource(L10nR.string.feature_home_recent_activity_581ef8))
             RecentActivityTabs(
@@ -203,22 +206,23 @@ private fun RecentActivityModeTab(
 
 @Composable
 private fun SingleRecentAlbum(album: AlbumSummary, onOpen: (AlbumSummary) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).clip(RoundedCornerShape(4.dp))
-            .homeCardClickable(onClick = { onOpen(album) })
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ArtworkTile(album.artworkUri, modifier = Modifier.size(88.dp),
-            accent = echoAccentColor(), cornerRadius = 4.dp, elevation = 0.dp)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(displayAlbum(album.title), style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(displayArtist(album.albumArtist ?: album.artist),
-                style = MaterialTheme.typography.bodyMedium, color = homeBodyColor(),
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
+    Box(Modifier.padding(horizontal = 24.dp)) {
+        HomeBlock(onClick = { onOpen(album) }) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ArtworkTile(album.artworkUri, modifier = Modifier.size(88.dp),
+                    accent = echoAccentColor(), cornerRadius = HomeCoverCorner, elevation = 0.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(displayAlbum(album.title), style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(displayArtist(album.albumArtist ?: album.artist),
+                        style = MaterialTheme.typography.bodyMedium, color = homeBodyColor(),
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
         }
     }
 }

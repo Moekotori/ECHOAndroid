@@ -55,6 +55,7 @@ class SignalDacAssessmentTest {
         val expected = mapOf(
             EchoBitPerfectState.UnsupportedSource to DacAssessment.UnsupportedSource,
             EchoBitPerfectState.UnsupportedFormat to DacAssessment.UnsupportedFormat,
+            EchoBitPerfectState.DopConfigurationRequired to DacAssessment.DopConfigurationRequired,
             EchoBitPerfectState.ClockUnverified to DacAssessment.ClockUnverified,
             EchoBitPerfectState.VolumeChanged to DacAssessment.VolumeChanged,
             EchoBitPerfectState.TransportError to DacAssessment.TransportError,

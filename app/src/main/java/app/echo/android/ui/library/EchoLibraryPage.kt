@@ -30,7 +30,6 @@ import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.FolderSummary
-import app.echo.android.model.library.LibraryOfflinePolicy
 
 @Composable
 internal fun EchoLibraryPage(
@@ -90,6 +89,10 @@ internal fun EchoLibraryPage(
             add = tools::add, remove = tools::remove, move = tools::move, copy = tools::copy,
             pickArtwork = { id -> playlistCoverTarget = id; playlistCoverPicker.launch(arrayOf("image/*")) },
         )
+    }
+    val remotePlaylistManagement = remember(viewModel, appSettings.subsonicServerUrl,
+        appSettings.subsonicUsername, appSettings.subsonicPassword) {
+        viewModel.remoteLibraryTools.actions(app.echo.android.subsonicEndpointFrom(appSettings))
     }
     val playlistImportState by viewModel.playlistTools.importState.collectAsStateWithLifecycle()
     app.echo.android.feature.library.PlaylistImportDialog(playlistImportState,
@@ -161,16 +164,6 @@ internal fun EchoLibraryPage(
     val playlistDetailTracks = selectedPlaylistId?.let { playlistId ->
         remember(playlistId) { viewModel.playlistTrackPaging(playlistId) }.collectAsLazyPagingItems()
     }
-    val albumOfflinePin = selectedAlbumKey?.let { albumKey ->
-        remember(albumKey) {
-            viewModel.observeOfflinePin(LibraryOfflinePolicy.albumPinId(albumKey))
-        }.collectAsStateWithLifecycle(initialValue = null).value
-    }
-    val playlistOfflinePin = selectedPlaylistId?.let { playlistId ->
-        remember(playlistId) {
-            viewModel.observeOfflinePin(LibraryOfflinePolicy.playlistPinId(playlistId))
-        }.collectAsStateWithLifecycle(initialValue = null).value
-    }
     var pendingM3uExportPlaylist by remember { mutableStateOf<EchoPlaylist?>(null) }
     val importM3uLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -221,6 +214,9 @@ internal fun EchoLibraryPage(
         }
     }
     val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as app.echo.android.EchoApplication
+    app.echo.android.feature.library.TrackVersionsProvider(
+        load = viewModel::trackVersions, save = viewModel::setPreferredTrackVersion,
+    ) {
     app.echo.android.feature.library.ArtistOnlineInfoProvider(
         loader = application.artistOnlineInfo,
         matcher = app.echo.android.model.library.ArtistSetlistMatcher { viewModel.matchSetlist(it) },
@@ -354,6 +350,7 @@ internal fun EchoLibraryPage(
             onCreatePlaylist = { name -> viewModel.createLocalPlaylist(name) },
             experienceActions = experienceActions,
             playlistManagement = playlistManagement,
+            remotePlaylistManagement = remotePlaylistManagement,
             onRenamePlaylist = { playlist, name -> viewModel.renameLocalPlaylist(playlist.id, name) },
             onDeletePlaylist = { playlist ->
                 viewModel.deleteLocalPlaylist(playlist.id)
@@ -410,12 +407,8 @@ internal fun EchoLibraryPage(
                 val fileName = playlist.name.trim().ifBlank { "playlist" }.replace(Regex("[\\\\/:*?\"<>|]"), "-")
                 exportM3uLauncher.launch("$fileName.m3u")
             },
-            albumOfflinePin = albumOfflinePin,
-            playlistOfflinePin = playlistOfflinePin,
-            onPinAlbumOffline = { album -> viewModel.pinAlbumOffline(album.albumKey, album.title) },
-            onPinPlaylistOffline = { playlist -> viewModel.pinPlaylistOffline(playlist.id, playlist.name) },
-            onUnpinOffline = viewModel::unpinOffline,
         )
+    }
     }
     }
     }

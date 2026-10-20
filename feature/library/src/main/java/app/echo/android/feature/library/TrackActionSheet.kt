@@ -78,10 +78,12 @@ internal fun TrackActionSheet(
     onInfo: () -> Unit,
     onSelectForBatch: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
+    onVersions: (() -> Unit)? = null,
 ) {
     // Constrain content, not the ModalBottomSheet: its anchors need the full window height.
-    // Leave room for the drag handle and navigation inset, keeping the panel near 2/3 height.
-    val maxHeight = minOf(500.dp, LocalConfiguration.current.screenHeightDp.dp * 0.58f)
+    // Short windows need more room for actions while retaining the handle and safe insets.
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val maxHeight = minOf(500.dp, screenHeight * if (screenHeight < 600.dp) 0.82f else 0.58f)
     Column(Modifier.fillMaxWidth().heightIn(max = maxHeight).padding(horizontal = 20.dp)) {
         TrackSheetHeader(track, artworkSize = 48.dp)
         Spacer(Modifier.height(12.dp))
@@ -177,6 +179,9 @@ internal fun TrackActionSheet(
                 enabled = canPickArtwork,
                 onClick = onPickArtwork,
             )
+            if (onVersions != null) {
+                TrackActionRow(stringResource(L10nR.string.track_versions_title), Icons.Rounded.Album, enabled = true, onClick = onVersions)
+            }
             TrackActionRow(stringResource(L10nR.string.feature_library_track_info_36a07b), Icons.Rounded.Info, enabled = true, onClick = onInfo)
         }
     }

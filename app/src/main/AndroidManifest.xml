@@ -73,6 +73,8 @@
                 <data android:mimeType="application/x-ogg" />
                 <data android:mimeType="application/flac" />
                 <data android:mimeType="application/x-flac" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/x-ape" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -83,6 +85,8 @@
                 <data android:mimeType="application/x-ogg" />
                 <data android:mimeType="application/flac" />
                 <data android:mimeType="application/x-flac" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/x-ape" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />

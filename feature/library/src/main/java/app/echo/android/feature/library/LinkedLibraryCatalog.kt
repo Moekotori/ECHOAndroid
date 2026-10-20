@@ -10,6 +10,8 @@ import app.echo.android.model.library.ArtistSortMode
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.library.LibraryTrackSortMode
 import app.echo.android.model.library.sortedForLibrary
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 internal data class LinkedLibraryCatalog(
     val tracks: List<EchoRemoteTrack>,
@@ -25,7 +27,8 @@ internal data class LinkedLibraryCatalog(
             playlists = emptyList(),
         )
 
-        fun build(
+        suspend fun build(
+            searchText: LinkedLibrarySearchTextCache,
             tracks: List<EchoRemoteTrack>,
             playlists: List<EchoRemotePlaylist>,
             query: String,
@@ -38,34 +41,38 @@ internal data class LinkedLibraryCatalog(
             includeArtists: Boolean = true,
             includePlaylists: Boolean = true,
             remoteAlbums: List<EchoRemoteAlbum> = emptyList(),
+            randomOrder: LinkedLibraryRandomOrder = LinkedLibraryRandomOrder(),
         ): LinkedLibraryCatalog {
             val normalizedQuery = query.trim()
-            remoteQuery
+            val computationContext = currentCoroutineContext()
+            val checkActive = { computationContext.ensureActive() }
             val needsTracks = includeSortedTracks || includeArtists || (includeAlbums && remoteAlbums.isEmpty())
             val filteredTracks = if (!needsTracks) {
                 emptyList()
             } else {
-                tracks.filterLinkedLibraryQuery(normalizedQuery)
+                tracks.filterLinkedLibraryQuery(normalizedQuery, searchText, checkActive)
             }
             val filteredPlaylists = if (!includePlaylists) {
                 emptyList()
             } else {
-                playlists.filterLinkedPlaylistQuery(normalizedQuery)
+                playlists.filterLinkedPlaylistQuery(normalizedQuery, searchText, checkActive)
             }
             val catalogAlbums = when {
                 !includeAlbums -> emptyList()
-                remoteAlbums.isNotEmpty() -> remoteAlbums.toAlbumSummaries().filterLinkedAlbumQuery(normalizedQuery)
-                else -> filteredTracks.toLinkedAlbums()
+                remoteAlbums.isNotEmpty() -> remoteAlbums.toAlbumSummaries().filterLinkedAlbumQuery(normalizedQuery, searchText, checkActive)
+                else -> filteredTracks.toLinkedAlbums(checkActive)
             }
+            checkActive()
+            currentCoroutineContext().ensureActive()
             return LinkedLibraryCatalog(
                 tracks = if (includeSortedTracks) {
-                    filteredTracks.sortedForLinkedLibrary(sortMode)
+                    filteredTracks.sortedForLinkedLibrary(sortMode, randomOrder, checkActive)
                 } else {
                     filteredTracks
                 },
-                albums = catalogAlbums.sortedForLibrary(albumSortMode),
+                albums = catalogAlbums.sortedForLibrary(linkedAlbumSort(albumSortMode)).also { checkActive() },
                 artists = if (includeArtists) {
-                    filteredTracks.toLinkedArtists().sortedForLibrary(artistSortMode)
+                    filteredTracks.toLinkedArtists(checkActive).sortedForLibrary(artistSortMode).also { checkActive() }
                 } else {
                     emptyList()
                 },
@@ -96,10 +103,11 @@ internal fun EchoRemoteTrack.linkedAlbumKey(): String =
 internal fun EchoRemoteTrack.linkedArtistKey(): String =
     "echo-link:${artist.trim().ifBlank { "PC ECHO" }.lowercase()}"
 
-private fun List<EchoRemoteTrack>.toLinkedAlbums(): List<AlbumSummary> =
-    groupBy { it.linkedAlbumKey() }
+private fun List<EchoRemoteTrack>.toLinkedAlbums(checkActive: () -> Unit): List<AlbumSummary> =
+    groupBy { checkActive(); it.linkedAlbumKey() }
         .values
         .map { albumTracks ->
+            checkActive()
             val first = albumTracks.first()
             AlbumSummary(
                 albumKey = first.linkedAlbumKey(),
@@ -113,10 +121,11 @@ private fun List<EchoRemoteTrack>.toLinkedAlbums(): List<AlbumSummary> =
             )
         }
 
-private fun List<EchoRemoteTrack>.toLinkedArtists(): List<ArtistSummary> =
-    groupBy { it.linkedArtistKey() }
+private fun List<EchoRemoteTrack>.toLinkedArtists(checkActive: () -> Unit): List<ArtistSummary> =
+    groupBy { checkActive(); it.linkedArtistKey() }
         .values
         .map { artistTracks ->
+            checkActive()
             val first = artistTracks.first()
             ArtistSummary(
                 artistKey = first.linkedArtistKey(),
@@ -128,11 +137,13 @@ private fun List<EchoRemoteTrack>.toLinkedArtists(): List<ArtistSummary> =
             )
         }
 
-private fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String): List<EchoRemoteTrack> {
+private suspend fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String, searchText: LinkedLibrarySearchTextCache, checkActive: () -> Unit): List<EchoRemoteTrack> {
     val terms = normalizedSearchTerms(query)
     if (terms.isEmpty()) return this
-    return filter { track ->
-        val searchableText = searchableLibraryText(
+    return filterIndexed { index, track ->
+        if (index % 64 == 0) currentCoroutineContext().ensureActive()
+        checkActive()
+        val searchableText = searchText.text(
             track.title,
             track.artist,
             track.album.orEmpty(),
@@ -141,11 +152,13 @@ private fun List<EchoRemoteTrack>.filterLinkedLibraryQuery(query: String): List<
     }
 }
 
-private fun List<AlbumSummary>.filterLinkedAlbumQuery(query: String): List<AlbumSummary> {
+private suspend fun List<AlbumSummary>.filterLinkedAlbumQuery(query: String, searchText: LinkedLibrarySearchTextCache, checkActive: () -> Unit): List<AlbumSummary> {
     val terms = normalizedSearchTerms(query)
     if (terms.isEmpty()) return this
-    return filter { album ->
-        val searchableText = searchableLibraryText(
+    return filterIndexed { index, album ->
+        if (index % 64 == 0) currentCoroutineContext().ensureActive()
+        checkActive()
+        val searchableText = searchText.text(
             album.title,
             album.artist.orEmpty(),
             album.albumArtist.orEmpty(),
@@ -154,11 +167,13 @@ private fun List<AlbumSummary>.filterLinkedAlbumQuery(query: String): List<Album
     }
 }
 
-private fun List<EchoRemotePlaylist>.filterLinkedPlaylistQuery(query: String): List<EchoRemotePlaylist> {
+private suspend fun List<EchoRemotePlaylist>.filterLinkedPlaylistQuery(query: String, searchText: LinkedLibrarySearchTextCache, checkActive: () -> Unit): List<EchoRemotePlaylist> {
     val terms = normalizedSearchTerms(query)
     if (terms.isEmpty()) return this
-    return filter { playlist ->
-        val searchableText = searchableLibraryText(
+    return filterIndexed { index, playlist ->
+        if (index % 64 == 0) currentCoroutineContext().ensureActive()
+        checkActive()
+        val searchableText = searchText.text(
             playlist.name,
             playlist.sourceLabel.orEmpty(),
         )
@@ -168,88 +183,39 @@ private fun List<EchoRemotePlaylist>.filterLinkedPlaylistQuery(query: String): L
 
 private fun List<EchoRemoteTrack>.sortedForLinkedLibrary(
     sortMode: LibraryTrackSortMode,
-): List<EchoRemoteTrack> =
-    when (sortMode) {
+    randomOrder: LinkedLibraryRandomOrder,
+    checkActive: () -> Unit,
+): List<EchoRemoteTrack> {
+    val compare = when (sortMode) {
         LibraryTrackSortMode.Title,
         LibraryTrackSortMode.FrequentlyPlayed,
         LibraryTrackSortMode.RecentlyPlayed,
         LibraryTrackSortMode.RecentlyUpdated,
-        -> sortedWith(
+        ->
             compareBy<EchoRemoteTrack> { it.title.lowercase() }
                 .thenBy { it.artist.lowercase() }
-                .thenBy { it.album.orEmpty().lowercase() },
-        )
-        LibraryTrackSortMode.Duration -> sortedWith(
+                .thenBy { it.album.orEmpty().lowercase() }
+        LibraryTrackSortMode.Duration ->
             compareByDescending<EchoRemoteTrack> { it.durationMs }
-                .thenBy { it.title.lowercase() },
-        )
-        LibraryTrackSortMode.Random -> shuffled()
-        LibraryTrackSortMode.Artist -> sortedWith(
+                .thenBy { it.title.lowercase() }
+        LibraryTrackSortMode.Random -> return randomOrder.order(this, checkActive)
+        LibraryTrackSortMode.Artist ->
             compareBy<EchoRemoteTrack> { it.artist.lowercase() }
                 .thenBy { it.album.orEmpty().lowercase() }
-                .thenBy { it.title.lowercase() },
-        )
-        LibraryTrackSortMode.Album -> sortedWith(
+                .thenBy { it.title.lowercase() }
+        LibraryTrackSortMode.Album ->
             compareBy<EchoRemoteTrack> { it.album.orEmpty().lowercase() }
                 .thenBy { it.artist.lowercase() }
-                .thenBy { it.title.lowercase() },
-        )
+                .thenBy { it.title.lowercase() }
     }
+    return sortedWith { left, right ->
+        checkActive()
+        compare.compare(left, right)
+    }
+}
 
 private fun normalizedSearchTerms(query: String): List<String> =
     query.trim()
         .lowercase()
         .split(Regex("\\s+"))
         .filter(String::isNotBlank)
-
-private fun searchableLibraryText(vararg parts: String): String =
-    buildString {
-        parts.filter(String::isNotBlank).forEach { part ->
-            if (isNotEmpty()) append(' ')
-            append(part.lowercase())
-            val pinyin = linkedLibrarySearchPinyin(part)
-            if (pinyin.isNotBlank()) {
-                append(' ')
-                append(pinyin)
-            }
-        }
-    }
-
-private fun linkedLibrarySearchPinyin(text: String): String {
-    if (text.isBlank()) return ""
-    if (text.none(Char::needsPinyin)) return text.lowercase()
-    val full = StringBuilder(text.length * 6)
-    val initials = StringBuilder(text.length)
-    return try {
-        val outputFormat = net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat().apply {
-            caseType = net.sourceforge.pinyin4j.format.HanyuPinyinCaseType.LOWERCASE
-            toneType = net.sourceforge.pinyin4j.format.HanyuPinyinToneType.WITHOUT_TONE
-            vCharType = net.sourceforge.pinyin4j.format.HanyuPinyinVCharType.WITH_V
-        }
-        text.forEach { ch ->
-            val pinyinArray = net.sourceforge.pinyin4j.PinyinHelper.toHanyuPinyinStringArray(ch, outputFormat)
-            if (!pinyinArray.isNullOrEmpty()) {
-                val syllable = pinyinArray[0]
-                full.append(syllable)
-                initials.append(syllable.first())
-            } else if (ch.isLetterOrDigit()) {
-                val normalized = ch.lowercaseChar()
-                full.append(normalized)
-                initials.append(normalized)
-            }
-        }
-        buildList {
-            val fullPinyin = full.toString()
-            val initialsPinyin = initials.toString()
-            if (fullPinyin.isNotBlank()) add(fullPinyin)
-            if (initialsPinyin.isNotBlank() && initialsPinyin != fullPinyin) add(initialsPinyin)
-        }.joinToString(" ")
-    } catch (_: Exception) {
-        text.lowercase()
-    }
-}
-
-private fun Char.needsPinyin(): Boolean =
-    this in '\u3400'..'\u4DBF' ||
-        this in '\u4E00'..'\u9FFF' ||
-        this in '\uF900'..'\uFAFF'

@@ -30,6 +30,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
     private var nextSourceBits = 0
     private var dsdDop = false
     private var nextDsdDop = false
+    private var dopMarkerA = true
     private var playing = false
     private var volume = 1f
     private var ended = false
@@ -76,9 +77,13 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         if (session == null) {
             val options = EchoPlaybackProcessRuntime.usbOutputOptions
             val opened = output.open(UsbPcmFormatSpec(wanted.sampleRate, wanted.channelCount, nextSourceBits), bitPerfect = true,
-                transferCount = options.bufferMode.transferCount, keepAliveOnPause = options.keepAliveOnPause)
+                transferCount = options.bufferMode.transferCount,
+                // PCM zero keepalive has no DoP markers and would switch the DAC out of DSD.
+                keepAliveOnPause = options.keepAliveOnPause && !nextDsdDop,
+                dopDeviceLimits = options.dopDeviceLimits.takeIf { nextDsdDop })
             if (!opened.openResult.isReady) {
                 val state = when {
+                    opened.openResult.state == UsbExclusiveOutputState.DopConfigurationRequired -> EchoBitPerfectState.DopConfigurationRequired
                     opened.openResult.message?.contains("clock-unverified") == true -> EchoBitPerfectState.ClockUnverified
                     opened.openResult.state == UsbExclusiveOutputState.FormatUnavailable -> EchoBitPerfectState.UnsupportedFormat
                     else -> EchoBitPerfectState.UsbUnavailable
@@ -113,8 +118,13 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
             initializationFailure(EchoBitPerfectState.UnsupportedSource, current)
         }
         try {
-            pendingEnd += UsbBitPerfectPacker.pack(buffer, bytes, sourceBits, isBigEndian(current.pcmEncoding),
-                session!!.bitResolution!!, session!!.bytesPerSample, pending, current.channelCount, pendingEnd)
+            val outputBytes = session!!.bytesPerSample
+            val written = if (dsdDop) UsbBitPerfectPacker.packDop(buffer,
+                session!!.bitResolution!!, outputBytes, pending, current.channelCount, pendingEnd, dopMarkerA)
+            else UsbBitPerfectPacker.pack(buffer, bytes, sourceBits, isBigEndian(current.pcmEncoding),
+                session!!.bitResolution!!, outputBytes, pending, current.channelCount, pendingEnd)
+            if (dsdDop && (written / (outputBytes * current.channelCount)) % 2 != 0) dopMarkerA = !dopMarkerA
+            pendingEnd += written
         } catch (error: IllegalArgumentException) {
             initializationFailure(EchoBitPerfectState.UnsupportedSource, current)
         }
@@ -176,6 +186,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
 
     private fun closeSession() {
         session?.close(); session = null
+        dopMarkerA = true
         pendingStart = 0; pendingEnd = 0; submittedFrames = 0; firstPts = C.TIME_UNSET
         EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(null)
         waiting()

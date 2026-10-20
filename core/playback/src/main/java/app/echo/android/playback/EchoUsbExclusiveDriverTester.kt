@@ -41,6 +41,8 @@ class EchoUsbExclusiveDriverTester(context: Context) {
                     "Permission denied: enable USB exclusive and allow ECHO in the system USB dialog"
                 UsbExclusiveOutputState.DeviceUnavailable ->
                     "No USB Audio Class device detected"
+                UsbExclusiveOutputState.DopConfigurationRequired ->
+                    "DoP configuration required: ${result.message ?: target}"
                 UsbExclusiveOutputState.FormatUnavailable ->
                     "Format unavailable: ${result.message ?: target}"
                 UsbExclusiveOutputState.OpenFailed ->

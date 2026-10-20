@@ -45,8 +45,9 @@ class CueSheetParserTest {
     }
 
     @Test
-    fun rejectsASingleTrackWithNoOffsets() {
-        assertNull(
+    fun keepsSingleWholeFileTrackMetadata() {
+        assertEquals(
+            "Only",
             CueSheetParser.parseText(
                 """
                 FILE "one.wav" WAVE
@@ -54,7 +55,7 @@ class CueSheetParserTest {
                     TITLE "Only"
                     INDEX 01 00:00:00
                 """.trimIndent(),
-            ),
+            )?.tracks?.single()?.title,
         )
     }
 
@@ -72,19 +73,20 @@ class CueSheetParserTest {
     }
 
     @Test
-    fun acceptsIndex1AndIndex00Fallback() {
+    fun acceptsIndex1AndPreservesPregapWithoutMovingTrackStart() {
         val cue = CueSheetParser.parseText(
             """
             FILE "a.flac" WAVE
               TRACK 01 AUDIO
                 TITLE "Hidden"
                 INDEX 00 00:00:00
+                INDEX 01 00:02:00
               TRACK 02 AUDIO
                 TITLE "Main"
                 INDEX 1 01:00:00
             """.trimIndent(),
         )!!
-        assertEquals(0L, cue.tracks[0].startMs)
+        assertEquals(2000L, cue.tracks[0].startMs)
         assertEquals(CueSheetPolicy.framesToMs(1, 0, 0), cue.tracks[1].startMs)
     }
 
@@ -161,4 +163,35 @@ class CueSheetParserTest {
         assertEquals(2, cue.tracks.size)
         assertEquals("A", cue.tracks[0].title)
     }
+    @Test
+    fun acceptsTabsQuotesAndFrameCountIndices() {
+        val cue = CueSheetParser.parseText("FILE\t'album.flac' WAVE\nTRACK\t01 AUDIO\nTITLE\t'First'\nINDEX\t01 150\n")!!
+        assertEquals("album.flac", cue.fileName)
+        assertEquals("First", cue.tracks.single().title)
+        assertEquals(2000L, cue.tracks.single().startMs)
+    }
+
+    @Test
+    fun rejectsIncompleteDuplicateAndDescendingTracksAsAWhole() {
+        val prefix = "FILE \"album.flac\" WAVE\nTRACK 01 AUDIO\nTITLE \"Old title\"\n"
+        assertNull(CueSheetParser.parseText(prefix + "TRACK 02 AUDIO\nINDEX 01 01:00:00"))
+        assertNull(CueSheetParser.parseText(prefix + "INDEX 00 00:00:00"))
+        assertNull(CueSheetParser.parseText(prefix + "INDEX 01 00:00:00\nTRACK 01 AUDIO\nINDEX 01 01:00:00"))
+        assertNull(CueSheetParser.parseText(prefix + "INDEX 01 02:00:00\nTRACK 02 AUDIO\nINDEX 01 01:00:00"))
+    }
+
+    @Test
+    fun fileInsideTrackKeepsItsTitleAndDataTrackBoundsAudio() {
+        val cue = CueSheetParser.parseText("""
+            TRACK 01 AUDIO
+            TITLE "Music"
+            FILE "album.bin" BINARY
+            INDEX 01 00:00:00
+            TRACK 02 MODE1/2352
+            INDEX 01 01:00:00
+        """.trimIndent())!!
+        assertEquals("Music", cue.tracks.single().title)
+        assertEquals(60_000L, cue.tracks.single().endMs)
+    }
+
 }

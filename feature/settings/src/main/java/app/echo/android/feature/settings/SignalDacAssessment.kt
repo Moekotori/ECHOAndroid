@@ -10,7 +10,7 @@ internal enum class DacAssessment {
     PlaybackError, NoUsb, Bluetooth, PermissionPending, PermissionRequired,
     ExclusiveDisabled, WaitingPlayback, TransportError, ExclusivePending,
     UnsupportedSource, UnsupportedFormat, ClockUnverified, VolumeChanged,
-    Direct, Processing, BitPerfectPending,
+    Direct, Processing, BitPerfectPending, DopConfigurationRequired,
 }
 
 internal fun EchoPlaybackStatus.hasLiveUsbOutput(): Boolean =
@@ -28,6 +28,7 @@ internal fun assessDac(status: EchoPlaybackStatus): DacAssessment {
     val strictFailure = if (d.usbBitPerfectEnabled) when (d.bitPerfectState) {
         EchoBitPerfectState.UnsupportedSource -> DacAssessment.UnsupportedSource
         EchoBitPerfectState.UnsupportedFormat -> DacAssessment.UnsupportedFormat
+        EchoBitPerfectState.DopConfigurationRequired -> DacAssessment.DopConfigurationRequired
         EchoBitPerfectState.ClockUnverified -> DacAssessment.ClockUnverified
         EchoBitPerfectState.VolumeChanged -> DacAssessment.VolumeChanged
         EchoBitPerfectState.TransportError, EchoBitPerfectState.UsbUnavailable -> DacAssessment.TransportError

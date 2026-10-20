@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="linked_artists_partial">불러온 곡: %1$d / %2$d. 아티스트 정보가 아직 완전하지 않습니다.</string>
+    <string name="linked_artists_load_more">더 불러오기</string>
+</resources>

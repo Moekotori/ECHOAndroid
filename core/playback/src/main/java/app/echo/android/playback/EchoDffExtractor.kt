@@ -3,6 +3,7 @@ package app.echo.android.playback
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.ParserException
+import androidx.media3.common.util.ParsableByteArray
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.extractor.Extractor
 import androidx.media3.extractor.ExtractorInput
@@ -19,6 +20,8 @@ internal class EchoDffExtractor : Extractor {
     private var trackOutput: TrackOutput? = null
     private var layout: EchoDffLayout? = null
     private var dataBytesRead: Long = 0L
+    private var dst: EchoDstPackets? = null
+    private val packet = ParsableByteArray()
 
     override fun sniff(input: ExtractorInput): Boolean {
         val header = ByteArray(16)
@@ -34,21 +37,24 @@ internal class EchoDffExtractor : Extractor {
 
     override fun read(input: ExtractorInput, seekPosition: PositionHolder): Int {
         val current = layout ?: return readHeader(input)
+        dst?.let { return it.read(input, trackOutput!!) }
         val track = trackOutput ?: return Extractor.RESULT_END_OF_INPUT
         val remaining = current.dataSize - dataBytesRead
         if (remaining <= 0L) return Extractor.RESULT_END_OF_INPUT
         val packetBytes = current.channelCount * EchoDffLayout.PacketFrames
         val toRead = min(packetBytes.toLong(), remaining).toInt()
         val timeUs = current.timeUs(dataBytesRead)
-        val written = track.sampleData(input, toRead, true)
-        if (written == C.RESULT_END_OF_INPUT) return Extractor.RESULT_END_OF_INPUT
-        track.sampleMetadata(timeUs, C.BUFFER_FLAG_KEY_FRAME, written, 0, null)
-        dataBytesRead += written
+        packet.reset(toRead)
+        if (!input.readFully(packet.data, 0, toRead, true)) return Extractor.RESULT_END_OF_INPUT
+        track.sampleData(packet, toRead)
+        track.sampleMetadata(timeUs, C.BUFFER_FLAG_KEY_FRAME, toRead, 0, null)
+        dataBytesRead += toRead
         return Extractor.RESULT_CONTINUE
     }
 
     override fun seek(position: Long, timeUs: Long) {
         val current = layout ?: return
+        dst?.let { it.seek(position, timeUs); return }
         dataBytesRead = if (position >= current.dataOffset) {
             (position - current.dataOffset).coerceIn(0L, current.dataSize)
         } else {
@@ -60,11 +66,18 @@ internal class EchoDffExtractor : Extractor {
 
     private fun readHeader(input: ExtractorInput): Int {
         val parsed = parseDff(input)
-        if (parsed.compressed) {
-            throw ParserException.createForUnsupportedContainerFeature("DST compressed DFF is not supported")
-        }
         layout = parsed
         val track = trackOutput ?: return Extractor.RESULT_END_OF_INPUT
+        if (parsed.compressed) {
+            val packets = EchoDstPackets.readHeader(input, parsed)
+            dst = packets
+            track.format(Format.Builder().setSampleMimeType(EchoDstPackets.Mime)
+                .setChannelCount(parsed.channelCount).setSampleRate(parsed.decoderPcmRateHz)
+                .setInitializationData(listOf(byteArrayOf(), ByteArray(16)))
+                .setMaxInputSize(EchoDstPackets.MaxPacketBytes).build())
+            output?.seekMap(packets.seekMap)
+            return Extractor.RESULT_CONTINUE
+        }
         val maxInput = parsed.channelCount * EchoDffLayout.PacketFrames
         track.format(
             Format.Builder()

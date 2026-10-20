@@ -21,7 +21,7 @@ internal data class UsbOutputPresentation(
 ) {
     val failed: Boolean get() = when (assessment) {
         DacAssessment.PlaybackError, DacAssessment.TransportError, DacAssessment.UnsupportedSource,
-        DacAssessment.UnsupportedFormat, DacAssessment.ClockUnverified, DacAssessment.VolumeChanged -> true
+        DacAssessment.DopConfigurationRequired, DacAssessment.UnsupportedFormat, DacAssessment.ClockUnverified, DacAssessment.VolumeChanged -> true
         else -> false
     }
 

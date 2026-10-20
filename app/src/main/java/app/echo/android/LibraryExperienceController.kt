@@ -8,7 +8,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Session wiring for library tools; Room and file operations remain in core:data. */
-internal class LibraryExperienceController(private val repository: EchoLibraryRepository, private val context: Context) {
+internal class LibraryExperienceController(
+    private val repository: EchoLibraryRepository,
+    private val context: Context,
+    private val remoteFavorite: (suspend (String, Boolean) -> Boolean)? = null,
+) {
     suspend fun preview(rule: EchoSmartPlaylistRule) = repository.previewSmartPlaylist(rule)
     suspend fun rule(id: String) = repository.smartPlaylistRule(id)
     suspend fun save(id: String?, name: String, rule: EchoSmartPlaylistRule) = repository.saveSmartPlaylist(id, name, rule)
@@ -25,7 +29,16 @@ internal class LibraryExperienceController(private val repository: EchoLibraryRe
     suspend fun saveBookmark(track: EchoTrack, position: Long, label: String) = repository.saveBookmark(track, position, label)
     fun moments(query: String) = repository.pagedMoments(query)
     suspend fun searchMoments(query: String) = repository.searchMoments(query)
-    suspend fun favorites(ids: List<String>, selected: Boolean) = repository.batchFavorites(ids, selected)
+    suspend fun favorites(ids: List<String>, selected: Boolean) {
+        require(ids.size <= 200)
+        val (remote, local) = ids.distinct().partition { it.startsWith("subsonic:") }
+        var failed = false
+        for (id in remote) {
+            if (remoteFavorite?.invoke(id, selected) != true) failed = true
+        }
+        repository.batchFavorites(local, selected)
+        check(!failed) { "Some server favorites could not be saved" }
+    }
     suspend fun addToPlaylist(id: String, tracks: List<String>) = repository.batchAddToPlaylist(id, tracks)
     suspend fun tags(ids: List<String>, patch: EchoBatchTagPatch, progress: (Int) -> Unit) = repository.batchTags(ids, patch, progress)
     suspend fun deleteBookmark(id: String) = repository.deleteBookmark(id)

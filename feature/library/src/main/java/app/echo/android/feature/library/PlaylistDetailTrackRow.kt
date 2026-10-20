@@ -38,7 +38,7 @@ internal fun PlaylistTrackRow(
     track: EchoTrack,
     accent: Color,
     onClick: () -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Unit)?,
+    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)?,
     onImportLyrics: ((EchoTrack) -> Unit)?,
     onPickArtwork: ((EchoTrack) -> Unit)?,
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)?,

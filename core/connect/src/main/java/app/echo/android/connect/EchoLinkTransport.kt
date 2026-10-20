@@ -73,6 +73,8 @@ internal data class EchoLinkStreamResponse(
 )
 
 internal interface EchoLinkTransport {
+    suspend fun personalState(endpoint: EchoRemoteEndpoint): app.echo.android.model.connect.EchoPersonalState = throw app.echo.android.model.connect.EchoSyncUnsupportedException()
+    suspend fun importPersonalState(endpoint: EchoRemoteEndpoint, expectedRevision: String, state: app.echo.android.model.connect.EchoPersonalState): app.echo.android.model.connect.EchoPersonalStateResult = throw app.echo.android.model.connect.EchoSyncUnsupportedException()
     suspend fun syncSnapshot(endpoint: EchoRemoteEndpoint,key: String): app.echo.android.model.connect.EchoSyncState = throw app.echo.android.model.connect.EchoSyncUnsupportedException()
     suspend fun syncReplace(endpoint: EchoRemoteEndpoint,expected: String,desired: app.echo.android.model.connect.EchoSyncState): app.echo.android.model.connect.EchoSyncApplyResult = throw app.echo.android.model.connect.EchoSyncUnsupportedException()
     suspend fun syncCollections(endpoint: EchoRemoteEndpoint): List<app.echo.android.model.connect.EchoSyncCollection> =
@@ -137,6 +139,25 @@ internal class OkHttpEchoLinkTransport(
 
     // The PC sends idle heartbeats every 15 s. Reuse pools, but allow missed heartbeats.
     private val eventClient = client.newBuilder().readTimeout(45, TimeUnit.SECONDS).build()
+    override suspend fun personalState(endpoint: EchoRemoteEndpoint) = withContext(responseDispatcher) {
+        require(endpoint.token.isNotBlank())
+        try {
+            EchoPersonalStateCodec.decode(executeJson(Request.Builder().url(endpoint.versionedUrl(1, "personal-state")).authorized(endpoint).get().build()))
+        } catch (error: EchoLinkHttpException) {
+            if (error.statusCode == 404 || error.statusCode == 501) throw app.echo.android.model.connect.EchoSyncUnsupportedException()
+            throw error
+        }
+    }
+
+    override suspend fun importPersonalState(endpoint: EchoRemoteEndpoint, expectedRevision: String, state: app.echo.android.model.connect.EchoPersonalState) = withContext(responseDispatcher) {
+        require(endpoint.token.isNotBlank())
+        val body = JSONObject().put("version", 1).put("expectedRevision", expectedRevision).put("state", EchoPersonalStateCodec.encode(state)).toString()
+        require(body.toByteArray(Charsets.UTF_8).size <= app.echo.android.model.connect.EchoPersonalStateLimits.MaxBytes)
+        val response = executeJson(Request.Builder().url(endpoint.versionedUrl(1, "personal-state")).authorized(endpoint)
+            .post(body.toRequestBody(JsonMediaType)).build())
+        app.echo.android.model.connect.EchoPersonalStateResult(response.getInt("historyAdded"), response.getInt("bookmarksApplied"), response.getInt("offsetsApplied"), response.getInt("missing"), response.optInt("unsupportedBookmarks", 0))
+    }
+
     override suspend fun syncSnapshot(endpoint: EchoRemoteEndpoint,key: String) = withContext(responseDispatcher) {
         try { executeJson(Request.Builder().url(endpoint.versionedUrl(1,"library","sync2","state") { addQueryParameter("key",key) }).authorized(endpoint).get().build()).syncState() }
         catch (error: EchoLinkHttpException) { if (error.statusCode == 404 || error.statusCode == 501) throw app.echo.android.model.connect.EchoSyncUnsupportedException(); throw error }
@@ -523,10 +544,12 @@ internal class OkHttpEchoLinkTransport(
             override fun onResponse(call: Call, response: Response) {
                 val result = runCatching {
                     response.use {
-                        val body = if (request.url.encodedPath.startsWith("/echo-link/peer/v1/")) {
+                        val personal = request.url.encodedPath.endsWith("/personal-state")
+                        val limit = if (personal) app.echo.android.model.connect.EchoPersonalStateLimits.MaxBytes.toLong() else 512 * 1024L
+                        val body = if (personal || request.url.encodedPath.startsWith("/echo-link/peer/v1/")) {
                             val source = it.body?.source()
-                            source?.request(512 * 1024L + 1)
-                            if (source != null && source.buffer.size > 512 * 1024L)
+                            source?.request(limit + 1)
+                            if (source != null && source.buffer.size > limit)
                                 throw EchoLinkHttpException("peer_response_too_large", 413)
                             source?.readUtf8().orEmpty()
                         } else it.body?.string().orEmpty()

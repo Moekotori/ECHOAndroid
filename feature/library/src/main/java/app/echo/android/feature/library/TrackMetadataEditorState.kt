@@ -4,13 +4,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import kotlin.coroutines.cancellation.CancellationException
 
-internal class TrackMetadataEditorState {
+internal class TrackMetadataEditorState(
+    private val draftArtwork: MutableState<String?> = mutableStateOf(null),
+) {
+    val artworkUri: String? get() = draftArtwork.value
+
+    fun editArtwork(uri: String) {
+        draftArtwork.value = uri
+    }
+
     var title by mutableStateOf("")
     var artist by mutableStateOf("")
     var album by mutableStateOf("")
@@ -46,15 +55,17 @@ internal class TrackMetadataEditorState {
             trackNumber = trackNumber.toPositiveIntOrNull(),
             discNumber = discNumber.toPositiveIntOrNull(),
             year = year.toPositiveIntOrNull(),
-            composer = composer.trim().takeIf { it.isNotBlank() },
-            artworkUri = track.artworkUri,
+            composer = composer.trim(),
+            artworkUri = artworkUri,
             lyrics = lyrics.takeIf { lyricsEdited },
         )
 }
 
 @Composable
 internal fun rememberTrackMetadataEditorState(track: EchoTrack): TrackMetadataEditorState {
-    val state = remember(track.id) {
+    // Retain the whole draft across configuration changes without serializing large lyrics.
+    // Leaving the editor permanently retires the retained draft.
+    val state = retain(track.id) {
         TrackMetadataEditorState().apply {
             title = track.title
             artist = track.artist

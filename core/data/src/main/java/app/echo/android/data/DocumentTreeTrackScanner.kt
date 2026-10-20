@@ -6,7 +6,6 @@ import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.platform.EchoPlatformCapabilities
 import kotlinx.coroutines.CancellationException
 import android.content.ContentResolver
-import java.io.ByteArrayOutputStream
 import android.database.Cursor
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -29,6 +28,7 @@ class DocumentTreeTrackScanner(
         existingTracks: Map<String, TrackFingerprint> = emptyMap(),
         mediaStoreDuplicateKeys: LocalFileDuplicateIndex<LibraryTrackEntity> = LocalFileDuplicateIndex.empty(),
         readSampleRate: Boolean = true,
+        refreshCueMetadata: Boolean = false,
         options: LibraryScanOptions = LibraryScanOptions(0L, 0L, false, false),
         onDuplicate: suspend (oldId: String, targetId: String) -> Unit = { _, _ -> },
         rejectedFiles: LocalScanFilterCache? = null,
@@ -46,6 +46,9 @@ class DocumentTreeTrackScanner(
         val pendingDirectories = ArrayDeque<DocumentTreeDirectory>()
         var scannedCount = 0
         var unmatchedCueCount = 0
+        val uncertainCueDirectories = HashSet<String>()
+        val descendantCues = HashMap<String, MutableList<Pair<CueSheet, String>>>()
+        var descendantTrackCount = 0
         var querySucceeded = true
         var failedReads = 0
         var excludedDirectories = 0
@@ -127,9 +130,31 @@ class DocumentTreeTrackScanner(
                     relativePath = childRelative,
                 )
             }
-            val (cueByAudioName, unmatchedInDirectory) = cueSheetsByAudioName(cueRows, audioRows.map { it.displayName })
+            val inherited = descendantCues.remove(directory.relativePath.lowercase(java.util.Locale.ROOT)).orEmpty()
+            descendantTrackCount -= inherited.sumOf { it.first.tracks.size }
+            val (cueByAudioName, unmatchedInDirectory) = cueSheetsByAudioName(
+                cueRows, audioRows.map { it.displayName }, inherited,
+                onReadFailure = {
+                    failedReads++
+                    uncertainCueDirectories += directory.relativePath.lowercase(java.util.Locale.ROOT)
+                },
+            ) { folder, sheet, cueName ->
+                val target = appendRelativePath(directory.relativePath, folder).lowercase(java.util.Locale.ROOT)
+                if (descendantTrackCount + sheet.tracks.size <= 32768) {
+                    descendantCues.getOrPut(target) { ArrayList() }.add(sheet to cueName)
+                    descendantTrackCount += sheet.tracks.size
+                } else unmatchedCueCount++
+            }
             unmatchedCueCount += unmatchedInDirectory
             val unchangedIds = ArrayList<String>()
+            val currentDirectory = directory.relativePath.lowercase(java.util.Locale.ROOT)
+            val externalReadFailed = uncertainCueDirectories.any {
+                it.isEmpty() || currentDirectory == it || currentDirectory.startsWith("$it/")
+            }
+            fun preserveFailedCue(baseId: String) {
+                failedReads++
+                unchangedIds += CueScanState.preservedIds(baseId, baseId in existingTracks, cueChildrenByBase[baseId].orEmpty())
+            }
             for (row in audioRows) {
                 coroutineContext.ensureActive()
                 val cueSheet = cueByAudioName[row.displayName]
@@ -140,8 +165,20 @@ class DocumentTreeTrackScanner(
                     displayName = row.displayName,
                 )
                 if (duplicate != null) {
-                    val expanded = cueSheet?.let { duplicate.splitByCue(it, row.displayName) } ?: listOf(duplicate)
                     val safBaseId = "saf:${Uri.encode(row.documentId)}"
+                    val knownSource = listOf(safBaseId, duplicate.id).any {
+                        it in existingTracks || cueChildrenByBase[it].orEmpty().isNotEmpty()
+                    }
+                    val expansion = duplicate.expandLocalCue(contentResolver, cueSheet, row.displayName, externalReadFailed && knownSource)
+                    if (expansion is CueExpansion.ReadFailed) {
+                        preserveFailedCue(safBaseId)
+                        preserveFailedCue(duplicate.id)
+                        mediaStoreDuplicateKeys.otherCopies(duplicate.id).forEach { preserveFailedCue(it.id) }
+                        scannedCount++
+                        onProgress(scannedCount, null)
+                        continue
+                    }
+                    val expanded = (expansion as CueExpansion.Success).tracks
                     LibraryScanPolicy.safDuplicateAliases(safBaseId, expanded.map { it.id }).forEach { (oldId, targetId) ->
                         onDuplicate(oldId, targetId)
                     }
@@ -174,7 +211,10 @@ class DocumentTreeTrackScanner(
                     incomingRelativePath = row.relativePath,
                 )
                 val remembered = if (fileUnchanged) {
-                    LibraryScanPolicy.rememberUnchangedCueIds(trackId, existingCueIds, hasCueSheet = cueSheet != null)
+                    LibraryScanPolicy.rememberUnchangedCueIds(
+                        trackId, existingCueIds,
+                        hasCueSheet = cueSheet != null || CueScanState.isWholeFileCue(existingTrack?.fingerprint) || (refreshCueMetadata),
+                    )
                 } else {
                     null
                 }
@@ -216,6 +256,12 @@ class DocumentTreeTrackScanner(
                     // deletion of other songs that this listing proved are gone.
                     if (track.fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint) {
                         failedReads++
+                        if (existingCueIds.isNotEmpty() || CueScanState.isWholeFileCue(existingTrack?.fingerprint)) {
+                            preserveFailedCue(trackId)
+                            scannedCount++
+                            onProgress(scannedCount, null)
+                            return@onSuccess
+                        }
                     }
                     if (track.id !in existingTracks &&
                         track.fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint &&
@@ -226,8 +272,14 @@ class DocumentTreeTrackScanner(
                         onProgress(scannedCount, null)
                         return@onSuccess
                     }
-                    val expanded = cueSheet?.let { track.splitByCue(it, row.displayName) } ?: listOf(track)
-                    expanded.forEach { item ->
+                    val expansion = track.expandLocalCue(contentResolver, cueSheet, row.displayName, externalReadFailed && existingTrack != null)
+                    if (expansion is CueExpansion.ReadFailed) {
+                        preserveFailedCue(trackId)
+                        scannedCount++
+                        onProgress(scannedCount, null)
+                        return@onSuccess
+                    }
+                    (expansion as CueExpansion.Success).tracks.forEach { item ->
                         batch += item
                         scannedCount += 1
                         onProgress(scannedCount, item)
@@ -262,39 +314,34 @@ class DocumentTreeTrackScanner(
             querySucceeded = querySucceeded,
             failedReadCount = failedReads,
             excludedDirectoryCount = excludedDirectories,
-            unmatchedCueCount = unmatchedCueCount,
+            unmatchedCueCount = unmatchedCueCount + descendantCues.values.sumOf { it.size },
         )
     }
 
     private fun cueSheetsByAudioName(
         cueRows: List<DocumentAudioRow>,
         audioNames: List<String>,
+        inherited: List<Pair<CueSheet, String>>,
+        onReadFailure: () -> Unit,
+        onDescendant: (String, CueSheet, String) -> Unit,
     ): Pair<Map<String, CueSheet>, Int> {
-        if (cueRows.isEmpty()) return emptyMap<String, CueSheet>() to 0
-        if (audioNames.isEmpty()) return emptyMap<String, CueSheet>() to cueRows.size
         val matched = LinkedHashMap<String, CueSheet>()
+        val audioIndex = CueAudioNameIndex(audioNames)
         var unmatched = 0
+        val local = ArrayList<Pair<CueSheet, String>>(inherited)
         for (row in cueRows) {
-            if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) {
-                unmatched++
-                continue
+            val sheet = if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) null else readCueSheet(row.documentUri)
+            val directories = sheet?.forLocalDirectories().orEmpty()
+            if (directories.isEmpty()) { unmatched++; onReadFailure(); continue }
+            directories.forEach { (folder, localized) ->
+                if (folder.isEmpty()) local += localized to row.displayName
+                else onDescendant(folder, localized, row.displayName)
             }
-            val sheet = readCueSheet(row.documentUri)
-            if (sheet == null) {
-                unmatched++
-                continue
-            }
-            val wantedNames = buildList {
-                add(row.displayName)
-                sheet.fileName?.let(::add)
-                sheet.tracks.forEach { track -> track.fileName?.let(::add) }
-            }
-            val hits = wantedNames.mapNotNull { wanted -> CueSheetPolicy.matchAudioName(wanted, audioNames) }
-            if (hits.isEmpty()) {
-                unmatched++
-            } else {
-                hits.forEach { audioName -> matched.putIfAbsent(audioName, sheet) }
-            }
+        }
+        for ((sheet, cueName) in local) {
+            val hits = sheet.forDirectoryAudio(audioIndex, cueName)
+            if (hits.isEmpty()) unmatched++
+            else hits.forEach { (name, resolved) -> matched.putIfAbsent(name, resolved) }
         }
         return matched to unmatched
     }
@@ -302,17 +349,7 @@ class DocumentTreeTrackScanner(
     private fun readCueSheet(uri: Uri): CueSheet? {
         return try {
             contentResolver.openInputStream(uri)?.use { input ->
-                val output = ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                var total = 0
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    total += count
-                    if (total > CueSheetPolicy.MaxCueBytes) return null
-                    output.write(buffer, 0, count)
-                }
-                CueSheetParser.parse(output.toByteArray())
+                readCueSheet(input)
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -431,20 +468,16 @@ class DocumentTreeTrackScanner(
         displayName: String,
         persistArtwork: (ByteArray?) -> String?,
     ): DocumentAudioMetadata {
-        if (EchoApeMetadata.isApe(mimeType, displayName)) {
-            val ape = runCatching {
-                contentResolver.openInputStream(uri)?.use(EchoApeMetadata::read)
-            }.getOrNull()
-            if (ape != null) return DocumentAudioMetadata(
-                durationMs = ape.durationMs,
-                sampleRateHz = ape.sampleRateHz.takeIf { readSampleRate },
-            )
-        }
-        val fileTags = if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, displayName)) {
-            runCatching { contentResolver.openInputStream(uri)?.use(::readLocalAudioTags) }.getOrNull()
-        } else {
-            null
-        }
+        val container = if (LocalAudioContainerMetadata.supports(mimeType, displayName)) {
+            try {
+                contentResolver.openInputStream(uri)?.use(LocalAudioContainerMetadata::read)
+            } catch (error: CancellationException) { throw error } catch (_: Exception) { null }
+        } else null
+        val fileTags = mergeAudioTags(container?.tags, if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, displayName)) {
+            try {
+                contentResolver.openInputStream(uri)?.use(::readLocalAudioTags)
+            } catch (error: CancellationException) { throw error } catch (_: Exception) { null }
+        } else null)
         if (EchoDsdMetadata.isDsd(mimeType, displayName)) {
             val dsd = runCatching {
                 contentResolver.openInputStream(uri)?.use(EchoDsdMetadata::read)
@@ -466,6 +499,16 @@ class DocumentTreeTrackScanner(
                 )
             }
         }
+        fun fallbackMetadata() = fileTags.toDocumentMetadata(readSucceeded = container?.durationMs?.let { it > 0 } == true).copy(
+            durationMs = container?.durationMs ?: 0L,
+            sampleRateHz = container?.sampleRateHz.takeIf { readSampleRate },
+            artworkUri = persistArtwork(fileTags?.artworkBytes),
+        )
+        if (container != null && container.durationMs > 0 &&
+            (EchoApeMetadata.isApe(mimeType, displayName) ||
+                displayName.substringAfterLast('.').lowercase(java.util.Locale.ROOT) in setOf("wv", "tta", "tak"))) {
+            return fallbackMetadata()
+        }
         val retriever = MediaMetadataRetriever()
         return try {
             contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
@@ -483,7 +526,7 @@ class DocumentTreeTrackScanner(
                         ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_GENRE),
                     composer = fileTags?.composer?.takeIf { it.isNotBlank() }
                         ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
-                    durationMs = retriever.metadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    durationMs = container?.durationMs?.takeIf { it > 0 } ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                         ?.toLongOrNull()
                         ?.coerceAtLeast(0L)
                         ?: 0L,
@@ -502,24 +545,20 @@ class DocumentTreeTrackScanner(
                         readSampleRate &&
                         Build.VERSION.SDK_INT >= EchoPlatformCapabilities.MediaMetadataSampleRateSdk
                     ) {
-                        retriever.metadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
+                        container?.sampleRateHz ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
                             ?.toIntOrNull()
                             ?.takeIf { it > 0 }
                     } else {
-                        null
+                        container?.sampleRateHz.takeIf { readSampleRate }
                     },
                     artworkUri = persistArtwork(fileTags?.artworkBytes ?: runCatching { retriever.embeddedPicture }.getOrNull()),
                 )
-            } ?: fileTags.toDocumentMetadata(readSucceeded = false).copy(
-                artworkUri = persistArtwork(fileTags?.artworkBytes),
-            )
+            } ?: fallbackMetadata()
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
             Log.d(TAG, "Unable to read document tree audio metadata for $uri.", error)
-            fileTags.toDocumentMetadata(readSucceeded = false).copy(
-                artworkUri = persistArtwork(fileTags?.artworkBytes),
-            )
+            fallbackMetadata()
         } finally {
             retriever.release()
         }

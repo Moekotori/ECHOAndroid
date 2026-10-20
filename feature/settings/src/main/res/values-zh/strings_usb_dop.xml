@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_dop_title">DSD 直出（DoP）</string>
+    <string name="usb_dop_enable">为此 DAC 开启 DoP</string>
+    <string name="usb_dop_connect">连接 USB DAC 后可配置 DoP。</string>
+    <string name="usb_dop_note">仅在此 DAC 支持 DoP 时开启，按 USB 厂商与产品 ID 保存。PCM 采样率不能证明支持 DoP。</string>
+    <string name="usb_dop_max">最高 DSD 档位</string>
+    <string name="usb_dop_strict_note">需开启 USB bit-perfect 模式。高码率仍须通过 DAC 对应时钟检查；不支持时停止，不转为 PCM。</string>
+    <string name="usb_dop_blocked">请为此 DAC 开启 DoP，并将最高 DSD 档位设为当前曲目所需档位，再重新播放。</string>
+</resources>

@@ -143,7 +143,8 @@ public final class FfmpegAudioRenderer extends DecoderAudioRenderer<FfmpegAudioD
    */
   private boolean sinkSupportsFormat(Format inputFormat, @C.PcmEncoding int pcmEncoding) {
     int sampleRate = inputFormat.sampleRate;
-    if (EchoDsdMime.isDecoderMime(inputFormat.sampleMimeType)) {
+    if (EchoDsdMime.isDecoderMime(inputFormat.sampleMimeType)
+        || "audio/x-echo-ffmpeg-dst".equals(inputFormat.sampleMimeType)) {
       sampleRate = EchoDsdPcm.outputSampleRateHz(sampleRate);
     }
     return sinkSupportsFormat(

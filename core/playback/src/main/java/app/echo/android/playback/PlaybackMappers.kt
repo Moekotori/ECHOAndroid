@@ -330,6 +330,7 @@ internal fun echoAudioFormatReadout(
     val dsdRateHz = when {
         !sourceIsDsd -> null
         sourceRate != null && EchoDsdRates.isDsdRate(sourceRate) -> sourceRate
+        formatRate != null && EchoDsdMime.isDecoderMime(mimeType) -> EchoDsdRates.dsdRateFromDecoderPcm(formatRate)
         formatRate != null && EchoDsdRates.isDsdRate(formatRate) -> formatRate
         formatRate != null -> EchoDsdRates.dsdRateFromDecoderPcm(formatRate)
         sourceRate != null -> EchoDsdRates.dsdRateFromDecoderPcm(sourceRate)
@@ -343,12 +344,12 @@ internal fun echoAudioFormatReadout(
             formatRate != null && !EchoDsdRates.isDsdRate(formatRate) -> {
                 val decoderPcm = formatRate
                 if (dsdRateHz != null && decoderPcm == EchoDsdRates.decoderPcmRateHz(dsdRateHz)) {
-                    EchoDsdRates.outputPcmRateHz(decoderPcm)
+                    EchoDsdRates.outputPcmRateHz(dsdRateHz)
                 } else {
                     decoderPcm
                 }
             }
-            dsdRateHz != null -> EchoDsdRates.outputPcmRateHz(EchoDsdRates.decoderPcmRateHz(dsdRateHz))
+            dsdRateHz != null -> EchoDsdRates.outputPcmRateHz(dsdRateHz)
             else -> formatRate
         }
     } else {
@@ -379,6 +380,7 @@ private fun codecLabel(mime: String?): String? {
             "wavpack" -> "WavPack"
             "wmav1", "wmav2", "wmapro", "wmalossless" -> "WMA"
             "dts", "dca" -> "DTS"
+            "dst" -> "DSD"
             else -> if (codec.startsWith("pcm_") || codec == "adpcm_ima_qt") "AIFF" else codec.uppercase()
         }
         mime.equals("audio/raw", ignoreCase = true) -> "PCM"

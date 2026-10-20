@@ -20,20 +20,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryArtistSummaryEntity::class,
         LibraryFolderSummaryEntity::class,
         LibraryGenreSummaryEntity::class,
-        LibraryOfflinePinEntity::class,
-        LibraryOfflineFileEntity::class,
         LibraryPlayEventEntity::class,
         LibrarySmartRuleEntity::class,
         LibraryBookmarkEntity::class,
         LibraryRepairArchiveEntity::class,
     ],
-    version = 21,
+    version = 24,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
     abstract fun trackDao(): LibraryTrackDao
     abstract fun playlistDao(): LibraryPlaylistDao
-    abstract fun offlineDao(): LibraryOfflineDao
     abstract fun playEventDao(): LibraryPlayEventDao
     abstract fun experienceDao(): LibraryExperienceDao
 
@@ -70,9 +67,19 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         Migration18To19,
                         Migration19To20,
                         Migration20To21,
+                        Migration21To22,
+                        LibraryTitleSortMigration,
+                        LibrarySearchSpeedMigration,
                     )
                     .build()
                     .also { instance = it }
+            }
+        }
+
+        internal val Migration21To22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS library_offline_files")
+                db.execSQL("DROP TABLE IF EXISTS library_offline_pins")
             }
         }
 

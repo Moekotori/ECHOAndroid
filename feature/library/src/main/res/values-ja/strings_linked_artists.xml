@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="linked_artists_partial">読み込み済みの曲：%1$d / %2$d。アーティスト情報は一部のみです。</string>
+    <string name="linked_artists_load_more">さらに読み込む</string>
+</resources>

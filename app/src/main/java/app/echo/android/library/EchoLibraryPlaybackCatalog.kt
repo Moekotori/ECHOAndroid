@@ -6,6 +6,7 @@ import app.echo.android.data.LibraryFavoriteEntity
 import app.echo.android.data.LibraryFavoritePolicy
 import app.echo.android.data.LibraryFavoriteSnapshot
 import app.echo.android.data.LibrarySmartPlaylistPolicy
+import app.echo.android.data.toEchoTrack
 import app.echo.android.data.LibraryTrackEntity
 import app.echo.android.feature.library.R as LibraryR
 import app.echo.android.R as AppR
@@ -22,6 +23,9 @@ import app.echo.android.playback.EchoPlaybackBrowseItem
 import app.echo.android.playback.EchoPlaybackBrowseKind
 import app.echo.android.playback.EchoPlaybackCatalog
 import app.echo.android.playback.EchoPlaybackLibraryIds
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -31,6 +35,10 @@ class EchoLibraryPlaybackCatalog(
     private val context: Context,
     private val loadRadioStations: suspend () -> List<EchoRadioStation> = { emptyList() },
 ) : EchoPlaybackCatalog {
+    private val remoteWriteback by lazy { app.echo.android.data.RemoteLibraryWriteback(database, context.applicationContext) }
+    private val remoteFavoriteMutation = Mutex()
+    private val versions by lazy { app.echo.android.data.TrackVersionsRepository(database, context.applicationContext) }
+
     override suspend fun root(): EchoPlaybackBrowseItem = categoryItem(
         mediaId = EchoPlaybackLibraryIds.ROOT,
         title = context.getString(AppR.string.app_name),
@@ -175,6 +183,9 @@ class EchoLibraryPlaybackCatalog(
     }
 
     override suspend fun playableQueue(mediaId: String): List<EchoPlaybackBrowseItem> =
+        resolveVersions(rawPlayableQueue(mediaId))
+
+    private suspend fun rawPlayableQueue(mediaId: String): List<EchoPlaybackBrowseItem> =
         withContext(Dispatchers.IO) {
             val limit = EchoPlaybackLibraryIds.PLAYABLE_QUEUE_LIMIT
             when (mediaId) {
@@ -232,6 +243,34 @@ class EchoLibraryPlaybackCatalog(
             }
         }
 
+    private suspend fun resolveVersions(queue: List<EchoPlaybackBrowseItem>): List<EchoPlaybackBrowseItem> = withContext(Dispatchers.IO) {
+        if (queue.isEmpty() || queue.all { EchoRadioStation.isRadio(it.mediaId) }) return@withContext queue
+        try {
+            val ids = queue.filterNot { EchoRadioStation.isRadio(it.mediaId) }.map { it.mediaId }.distinct()
+            val tracks = ids.chunked(400).flatMap { database.trackDao().getTracksByIds(it) }.associateBy { it.id }
+            val indexed = queue.mapIndexedNotNull { index, item -> tracks[item.mediaId]?.toEchoTrack()?.let { index to it } }
+            val settings = app.echo.android.data.EchoSettingsStore(context.applicationContext).appSettings.first()
+            val linked = (context.applicationContext as? app.echo.android.EchoApplication)?.echoLinkSession
+                ?.client?.status?.value?.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected
+            val resolved = versions.resolvePreferredTrackVersions(indexed.map { it.second },
+                app.echo.android.trackVersionSourceReadiness(settings, linked))
+            val result = queue.toMutableList()
+            indexed.forEachIndexed { position, (queueIndex, _) ->
+                val track = resolved[position]
+                result[queueIndex] = queue[queueIndex].copy(mediaId = track.id, title = track.title, subtitle = track.artist,
+                    artworkUri = track.artworkUri, playUri = track.uri,
+                    persistUri = EchoLinkPlaybackUri.persistableUri(track.id, track.uri), durationMs = track.durationMs,
+                    clipStartMs = track.clipStartMs, clipEndMs = track.clipEndMs)
+            }
+            result
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            app.echo.android.model.error.EchoErrorLog.record(app.echo.android.model.error.EchoErrorSource.Library,
+                "Background song version selection failed", throwable = error)
+            queue
+        }
+    }
+
     override suspend fun widgetPlaylists(query: String): List<EchoPlaybackBrowseItem> = withContext(Dispatchers.IO) {
         if (query.isBlank()) children(EchoPlaybackLibraryIds.PLAYLISTS, 0, 100) else searchPlaylists(query.take(256), 100)
     }
@@ -241,7 +280,7 @@ class EchoLibraryPlaybackCatalog(
             if (request.term.isBlank()) {
                 val recent = database.trackDao().listRecentlyPlayedTracksForBrowse(EchoPlaybackLibraryIds.PLAYABLE_QUEUE_LIMIT, 0)
                 return@withContext app.echo.android.playback.EchoPlaybackSearchResult(
-                    recent.map { it.toBrowseItem() }.ifEmpty { playableQueue(EchoPlaybackLibraryIds.TRACKS) })
+                    resolveVersions(recent.map { it.toBrowseItem() }.ifEmpty { rawPlayableQueue(EchoPlaybackLibraryIds.TRACKS) }))
             }
             val dao = database.trackDao()
             val limit = EchoPlaybackLibraryIds.MAX_PAGE_SIZE
@@ -258,8 +297,9 @@ class EchoLibraryPlaybackCatalog(
             }
             val target = app.echo.android.playback.EchoVoiceSearchPolicy.select(request, candidates)
                 ?: return@withContext app.echo.android.playback.EchoPlaybackSearchResult(emptyList())
-            val queue = playableQueue(target.mediaId)
-            app.echo.android.playback.EchoPlaybackSearchResult(queue, queue.indexOfFirst { it.mediaId == target.mediaId }.coerceAtLeast(0))
+            val queue = rawPlayableQueue(target.mediaId)
+            val start = queue.indexOfFirst { it.mediaId == target.mediaId }.coerceAtLeast(0)
+            app.echo.android.playback.EchoPlaybackSearchResult(resolveVersions(queue), start)
         }
 
     override suspend fun isFavorite(trackId: String): Boolean = withContext(Dispatchers.IO) {
@@ -271,6 +311,18 @@ class EchoLibraryPlaybackCatalog(
     override suspend fun toggleFavorite(trackId: String): Boolean? = withContext(Dispatchers.IO) {
         val id = trackId.trim()
         if (id.isEmpty()) return@withContext null
+        if (id.startsWith("subsonic:")) return@withContext try {
+            remoteFavoriteMutation.withLock {
+                val settings = app.echo.android.data.EchoSettingsStore(context.applicationContext).appSettings.first()
+                val endpoint = requireNotNull(app.echo.android.subsonicEndpointFrom(settings))
+                remoteWriteback.toggleFavorite(endpoint, id)
+            }
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            app.echo.android.model.error.EchoErrorLog.record(app.echo.android.model.error.EchoErrorSource.Library,
+                "Server favorite writeback failed", throwable = error)
+            null
+        }
         val dao = database.playlistDao()
         val current = LibraryFavoriteSnapshot(dao.getFavoriteTrackIds().toSet())
         val next = LibraryFavoritePolicy.toggle(current, id)

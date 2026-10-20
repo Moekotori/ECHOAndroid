@@ -1,0 +1,16 @@
+<resources>
+    <string name="remote_playlist_manage">Manage server playlists</string>
+    <string name="remote_playlist_server_hint">Changes are saved to the configured Navidrome / Subsonic server. Other sources remain read-only.</string>
+    <string name="remote_playlist_error">Could not save to the server. Local data was kept. Check the connection and permission, then retry.</string>
+    <string name="remote_playlist_empty">No playlists on this server.</string>
+    <string name="remote_playlist_back">Back</string>
+    <string name="remote_playlist_rename">Rename</string>
+    <string name="remote_playlist_delete">Delete</string>
+    <string name="remote_playlist_show_tracks">Playlist tracks</string>
+    <string name="remote_playlist_retry">Retry</string>
+    <string name="remote_playlist_add">Add</string>
+    <string name="remote_playlist_remove">Remove</string>
+    <string name="remote_playlist_close">Close</string>
+    <string name="remote_playlist_save">Save</string>
+    <string name="remote_playlist_delete_confirm">Delete “%1$s” from the server? This also removes it from other devices.</string>
+</resources>

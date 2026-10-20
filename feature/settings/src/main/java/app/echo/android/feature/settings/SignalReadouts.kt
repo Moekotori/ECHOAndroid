@@ -113,6 +113,7 @@ internal fun EchoPlaybackDiagnostics.bitPerfectReadout(equalizerState: EchoEqual
         EchoBitPerfectState.UnsupportedSource -> R.string.bitperfect_source
         EchoBitPerfectState.UsbUnavailable -> R.string.bitperfect_usb
         EchoBitPerfectState.UnsupportedFormat -> R.string.bitperfect_format
+        EchoBitPerfectState.DopConfigurationRequired -> R.string.usb_dop_blocked
         EchoBitPerfectState.ClockUnverified -> R.string.bitperfect_clock
         EchoBitPerfectState.VolumeChanged -> R.string.bitperfect_volume
         EchoBitPerfectState.TransportError -> R.string.bitperfect_transport

@@ -90,7 +90,8 @@ static int is_dsd_codec(const AVCodec* codec) {
   return codec->id == AV_CODEC_ID_DSD_LSBF ||
          codec->id == AV_CODEC_ID_DSD_MSBF ||
          codec->id == AV_CODEC_ID_DSD_LSBF_PLANAR ||
-         codec->id == AV_CODEC_ID_DSD_MSBF_PLANAR;
+         codec->id == AV_CODEC_ID_DSD_MSBF_PLANAR ||
+         codec->id == AV_CODEC_ID_DST;
 }
 
 static int echo_dsd_output_sample_rate(int decoder_pcm_hz) {

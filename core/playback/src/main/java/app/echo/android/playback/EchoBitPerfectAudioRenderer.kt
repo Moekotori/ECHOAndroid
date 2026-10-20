@@ -6,6 +6,7 @@ import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.decoder.CryptoConfig
+import androidx.media3.decoder.Decoder
 import androidx.media3.decoder.DecoderInputBuffer
 import androidx.media3.decoder.SimpleDecoder
 import androidx.media3.decoder.SimpleDecoderOutputBuffer
@@ -20,14 +21,14 @@ import app.echo.android.model.playback.EchoBitPerfectState
 @UnstableApi
 internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRendererEventListener,
     private val sink: EchoBitPerfectAudioSink) :
-    DecoderAudioRenderer<SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>>(handler, listener, sink) {
+    DecoderAudioRenderer<Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>>(handler, listener, sink) {
     private var input = Format.Builder().build()
     override fun getName() = "EchoBitPerfectAudioRenderer"
     override fun supportsFormatInternal(format: Format): Int =
         if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled && MimeTypes.isAudio(format.sampleMimeType))
             C.FORMAT_HANDLED else C.FORMAT_UNSUPPORTED_TYPE
 
-    override fun createDecoder(format: Format, cryptoConfig: CryptoConfig?): SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException> {
+    override fun createDecoder(format: Format, cryptoConfig: CryptoConfig?): Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException> {
         input = format
         EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot()
         if (format.cryptoType != C.CRYPTO_TYPE_NONE) unsupported()
@@ -47,7 +48,7 @@ internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRend
         }
     }
 
-    override fun getOutputFormat(decoder: SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>): Format {
+    override fun getOutputFormat(decoder: Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>): Format {
         if (decoder is EchoDsdDopDecoder) {
             sink.sourcePrecision(EchoDsdDop.SourceBits, dsdDop = true)
             return Format.Builder()

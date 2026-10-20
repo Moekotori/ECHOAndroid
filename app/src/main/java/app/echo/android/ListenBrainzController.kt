@@ -2,6 +2,11 @@ package app.echo.android
 
 import androidx.annotation.StringRes
 import app.echo.android.data.EchoAppSettings
+import app.echo.android.data.PendingScrobble
+import app.echo.android.data.ScrobbleOutboxStore
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
 import java.io.IOException
@@ -23,6 +28,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 data class ListenBrainzUiState(
+    val pendingCount: Int = 0,
     val isConnecting: Boolean = false,
     @get:StringRes val lastMessageRes: Int = R.string.listenbrainz_disconnected,
     val lastMessageArg: String? = null,
@@ -53,10 +59,40 @@ private data class ActiveListenBrainzListen(
 
 internal class ListenBrainzScrobbleController(
     private val scope: CoroutineScope,
+    store: ScrobbleOutboxStore,
     private val client: ListenBrainzClient = ListenBrainzClient(),
 ) {
     private val _uiState = MutableStateFlow(ListenBrainzUiState())
     val uiState: StateFlow<ListenBrainzUiState> = _uiState.asStateFlow()
+
+    private val outbox = EchoScrobbleOutbox<String>(
+        scope = scope,
+        store = store,
+        submit = { credentials, listen ->
+            client.submitListen(credentials, ListenBrainzTrack(
+                listen.trackId, listen.title, listen.artist, listen.album, listen.durationMs,
+            ), listen.startedAtEpochSeconds)
+        },
+        status = { listen, pending, error ->
+            val current = _uiState.value
+            _uiState.value = current.copy(
+                pendingCount = pending.coerceAtLeast(0),
+                lastMessageRes = when {
+                    error != null -> R.string.listenbrainz_submit_failed
+                    pending > 0 -> R.string.scrobble_pending
+                    listen != null -> R.string.listenbrainz_recorded
+                    else -> current.lastMessageRes
+                },
+                lastMessageArg = if (pending > 0) pending.toString() else listen?.title ?: current.lastMessageArg,
+                lastError = error?.message,
+            )
+        },
+    )
+    private var accountFingerprint: String? = null
+    private var accountToken: String = ""
+    private var nowPlayingJob: Job? = null
+
+    fun retryPendingWhenConnected() = outbox.retryWhenConnected()
 
     private var settings: EchoAppSettings = EchoAppSettings()
     private var active: ActiveListenBrainzListen? = null
@@ -101,6 +137,8 @@ internal class ListenBrainzScrobbleController(
     }
 
     fun setDisconnected() {
+        nowPlayingJob?.cancel()
+        outbox.configure(null)
         active = null
         _uiState.value = ListenBrainzUiState(
             lastMessageRes = R.string.listenbrainz_disconnected_done,
@@ -115,8 +153,18 @@ internal class ListenBrainzScrobbleController(
         EchoErrorLog.record(EchoErrorSource.Network, message)
     }
 
-    private fun handleSnapshot(snapshot: EchoScrobblePlayback) {
+    private suspend fun handleSnapshot(snapshot: EchoScrobblePlayback) {
         val token = settings.listenBrainzToken?.trim().orEmpty()
+        val fingerprint = if (token != accountToken) {
+            token.takeIf(String::isNotBlank)?.let { scrobbleFingerprint(it) }
+        } else accountFingerprint
+        accountToken = token
+        if (fingerprint != accountFingerprint || !settings.listenBrainzEnabled) {
+            active = null
+            nowPlayingJob?.cancel()
+            accountFingerprint = fingerprint
+        }
+        outbox.configure(fingerprint?.let { ScrobbleAccount(it, token, settings.listenBrainzEnabled) })
         if (
             LastFmScrobbleRules.shouldClearActiveScrobble(
                 credentialsReady = settings.listenBrainzEnabled && token.isNotBlank(),
@@ -169,6 +217,7 @@ internal class ListenBrainzScrobbleController(
         val current = active
         val currentPositionMs = snapshot.position.positionMs.coerceAtLeast(0L)
         active = if (current?.track?.id != track.id) {
+            nowPlayingJob?.cancel()
             if (current != null) {
                 val accumulated = LastFmScrobbleRules.accumulatedPlayMs(
                     previouslyAccumulatedMs = current.accumulatedPlayMs,
@@ -180,7 +229,7 @@ internal class ListenBrainzScrobbleController(
             }
             ActiveListenBrainzListen(
                 track = track,
-                startedAtEpochSeconds = nowEpochMs / 1000L,
+                startedAtEpochSeconds = if (snapshot.status.isPlaying) nowEpochMs / 1000L else 0L,
                 lastTickEpochMs = if (snapshot.status.isPlaying) nowEpochMs else 0L,
                 lastPositionMs = currentPositionMs,
                 wasPlaying = snapshot.status.isPlaying,
@@ -194,13 +243,16 @@ internal class ListenBrainzScrobbleController(
         ) {
             ActiveListenBrainzListen(
                 track = track,
-                startedAtEpochSeconds = nowEpochMs / 1000L,
+                startedAtEpochSeconds = if (snapshot.status.isPlaying) nowEpochMs / 1000L else 0L,
                 lastTickEpochMs = if (snapshot.status.isPlaying) nowEpochMs else 0L,
                 lastPositionMs = currentPositionMs,
                 wasPlaying = snapshot.status.isPlaying,
             )
         } else {
             current.copy(
+                startedAtEpochSeconds = if (current.startedAtEpochSeconds <= 0L && snapshot.status.isPlaying) {
+                    nowEpochMs / 1_000L
+                } else current.startedAtEpochSeconds,
                 track = current.track.copy(durationMs = maxOf(current.track.durationMs, track.durationMs)),
                 accumulatedPlayMs = LastFmScrobbleRules.accumulatedPlayMs(
                     previouslyAccumulatedMs = current.accumulatedPlayMs,
@@ -215,45 +267,16 @@ internal class ListenBrainzScrobbleController(
         }
 
         var activeListen = active ?: return
-        if (!activeListen.submitted &&
-            LastFmScrobbleRules.shouldScrobble(activeListen.track.durationMs, activeListen.accumulatedPlayMs) &&
-            LastFmScrobbleRules.shouldAttemptSubmit(
+        if (LastFmScrobbleRules.shouldAttemptSubmit(
                 alreadySubmitted = activeListen.submitted,
-                lastAttemptEpochMs = activeListen.lastSubmitAttemptEpochMs,
-                nowEpochMs = nowEpochMs,
+                lastAttemptEpochMs = activeListen.lastSubmitAttemptEpochMs, nowEpochMs = nowEpochMs,
+            ) && LastFmScrobbleRules.shouldScrobble(
+                activeListen.track.durationMs, activeListen.accumulatedPlayMs,
             )
         ) {
-            val listenTrack = activeListen.track
-            val startedAt = activeListen.startedAtEpochSeconds
-            activeListen = activeListen.copy(
-                submitted = true,
-                lastSubmitAttemptEpochMs = nowEpochMs,
-            )
+            val queued = submitListenIfDue(token, activeListen)
+            activeListen = activeListen.copy(submitted = queued, lastSubmitAttemptEpochMs = nowEpochMs)
             active = activeListen
-            scope.launch(Dispatchers.IO) {
-                client.submitListen(token, listenTrack, startedAt)
-                    .onSuccess {
-                        _uiState.value = ListenBrainzUiState(
-                            lastMessageRes = R.string.listenbrainz_recorded,
-                            lastMessageArg = listenTrack.title,
-                            userName = _uiState.value.userName,
-                        )
-                    }
-                    .onFailure { error ->
-                        if (active?.track?.id == listenTrack.id &&
-                            !LastFmScrobbleRules.keepSubmittedFlag(false)
-                        ) {
-                            active = active?.copy(submitted = false)
-                        }
-                        val message = error.message ?: "ListenBrainz submit failed"
-                        _uiState.value = ListenBrainzUiState(
-                            lastMessageRes = R.string.listenbrainz_submit_failed,
-                            lastError = message,
-                            userName = _uiState.value.userName,
-                        )
-                        EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
-                    }
-            }
         }
         if (!snapshot.status.isPlaying) return
 
@@ -269,9 +292,11 @@ internal class ListenBrainzScrobbleController(
                 nowPlayingSent = true,
                 lastNowPlayingAttemptEpochMs = nowEpochMs,
             )
-            scope.launch(Dispatchers.IO) {
+            nowPlayingJob = scope.launch {
                 client.submitPlayingNow(token, nowPlayingTrack)
+                    .also { currentCoroutineContext().ensureActive() }
                     .onSuccess {
+                        if (accountFingerprint != fingerprint || _uiState.value.pendingCount > 0) return@onSuccess
                         _uiState.value = ListenBrainzUiState(
                             lastMessageRes = R.string.listenbrainz_now_playing,
                             lastMessageArg = nowPlayingTrack.title,
@@ -279,6 +304,8 @@ internal class ListenBrainzScrobbleController(
                         )
                     }
                     .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        if (accountFingerprint != fingerprint || _uiState.value.pendingCount > 0) return@onFailure
                         if (active?.track?.id == nowPlayingTrack.id &&
                             !LastFmScrobbleRules.keepSubmittedFlag(false)
                         ) {
@@ -296,42 +323,33 @@ internal class ListenBrainzScrobbleController(
         }
     }
 
-    private fun submitListenIfDue(
+    private suspend fun submitListenIfDue(
         token: String,
         listen: ActiveListenBrainzListen,
     ): Boolean {
-        if (
-            !LastFmScrobbleRules.shouldFlushScrobbleBeforeReplacing(
-                alreadyScrobbled = listen.submitted,
-                durationMs = listen.track.durationMs,
+        if (!LastFmScrobbleRules.shouldFlushScrobbleBeforeReplacing(
+                alreadyScrobbled = listen.submitted, durationMs = listen.track.durationMs,
                 listenedMs = listen.accumulatedPlayMs,
+            )) return false
+        return try {
+            outbox.enqueue(PendingScrobble(
+                account = scrobbleFingerprint(token),
+                trackId = listen.track.id, title = listen.track.title, artist = listen.track.artist,
+                album = listen.track.album, durationMs = listen.track.durationMs,
+                startedAtEpochSeconds = listen.startedAtEpochSeconds,
+            ))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            _uiState.value = _uiState.value.copy(
+                lastMessageRes = R.string.listenbrainz_submit_failed,
+                lastError = error.message,
             )
-        ) {
-            return false
+            false
         }
-        val listenTrack = listen.track
-        val startedAt = listen.startedAtEpochSeconds
-        scope.launch(Dispatchers.IO) {
-            client.submitListen(token, listenTrack, startedAt)
-                .onSuccess {
-                    _uiState.value = ListenBrainzUiState(
-                        lastMessageRes = R.string.listenbrainz_recorded,
-                        lastMessageArg = listenTrack.title,
-                        userName = _uiState.value.userName,
-                    )
-                }
-                .onFailure { error ->
-                    val message = error.message ?: "ListenBrainz submit failed"
-                    _uiState.value = ListenBrainzUiState(
-                        lastMessageRes = R.string.listenbrainz_submit_failed,
-                        lastError = message,
-                        userName = _uiState.value.userName,
-                    )
-                    EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
-                }
-        }
-        return true
     }
+
+
 }
 
 internal class ListenBrainzClient(

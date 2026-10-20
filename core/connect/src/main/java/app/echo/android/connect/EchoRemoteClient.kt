@@ -138,6 +138,12 @@ class EchoRemoteClient internal constructor(
                 status.value.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected)
         }
         return object : EchoLibrarySyncSession {
+            override suspend fun personalState(): app.echo.android.model.connect.EchoPersonalState {
+                assertCurrent(); return transport.personalState(target).also { assertCurrent() }
+            }
+            override suspend fun importPersonalState(expectedRevision: String, state: app.echo.android.model.connect.EchoPersonalState): app.echo.android.model.connect.EchoPersonalStateResult {
+                assertCurrent(); return transport.importPersonalState(target, expectedRevision, state).also { assertCurrent() }
+            }
             override suspend fun snapshot(key: String): app.echo.android.model.connect.EchoSyncState { assertCurrent(); return transport.syncSnapshot(target,key) }
             override suspend fun replace(expected: String,desired: app.echo.android.model.connect.EchoSyncState): app.echo.android.model.connect.EchoSyncApplyResult { assertCurrent(); return transport.syncReplace(target,expected,desired) }
             override suspend fun collections(): List<app.echo.android.model.connect.EchoSyncCollection> {
@@ -627,13 +633,14 @@ class EchoRemoteClient internal constructor(
         val generation = libraryRefreshGeneration
         val query = _library.value.query
         onJob(scope.launch {
-            _library.update { it.copy(isLoadingMore = true) }
+            _library.update { it.copy(isLoadingMore = true, error = null) }
             val result = runSuspendCatching { fetch(target, query, nextPage) }
             if (endpoint?.id != target.id || generation != libraryRefreshGeneration) return@launch
             result.onSuccess { page ->
                 if (itemCount(page) <= 0) {
-                    onAdvance(0)
-                    _library.update { it.copy(isLoadingMore = false) }
+                    // A premature empty page must remain retryable and cannot look complete.
+                    _library.update { it.copy(isLoadingMore = false,
+                        error = text(R.string.connect_library_partial, loaded, total.coerceAtLeast(loaded))) }
                     return@onSuccess
                 }
                 if (endpoint?.id != target.id || generation != libraryRefreshGeneration) return@onSuccess
@@ -641,7 +648,7 @@ class EchoRemoteClient internal constructor(
                 if (generation != libraryRefreshGeneration) return@onSuccess
                 onAdvance(if (isComplete(_library.value)) 0 else nextPage + 1)
             }.onFailure { error ->
-                onAdvance(0)
+                // Keep the failed cursor. UI prefetch pauses on error; an explicit retry resumes here.
                 _library.update { it.copy(isLoadingMore = false, error = error.userMessage()) }
             }
         })

@@ -69,6 +69,22 @@ internal object EchoDsdFixtures {
         return id.toByteArray(Charsets.ISO_8859_1) + u64be(payload.size.toLong()) + payload + pad
     }
 
+    fun dstDff(frames: Int = 3): ByteArray {
+        val raw = dff(compressed = true)
+        val audioOffset = raw.indexOfSlice("DST ".toByteArray(), raw.indexOfSlice("PROP".toByteArray(), 0) + 12)
+        // Reuse the valid PROP header; the final DST chunk follows the CMPR property.
+        val dataOffset = raw.indexOfSlice("DST ".toByteArray(), audioOffset + 4)
+        val payload = dffChunk("FRTE", u32be(frames) + u16be(75)) +
+            (0 until frames).fold(byteArrayOf()) { bytes, index ->
+                bytes + dffChunk("DSTF", byteArrayOf(0) + ByteArray(2 * 4704) { (0x69 + index).toByte() })
+            }
+        val body = raw.copyOfRange(12, dataOffset) + dffChunk("DST ", payload)
+        return "FRM8".toByteArray() + u64be(body.size.toLong()) + body
+    }
+
+    private fun ByteArray.indexOfSlice(needle: ByteArray, start: Int): Int =
+        (start..size - needle.size).first { offset -> needle.indices.all { this[offset + it] == needle[it] } }
+
     private fun u32le(value: Int): ByteArray = byteArrayOf(
         (value and 0xFF).toByte(),
         ((value shr 8) and 0xFF).toByte(),
