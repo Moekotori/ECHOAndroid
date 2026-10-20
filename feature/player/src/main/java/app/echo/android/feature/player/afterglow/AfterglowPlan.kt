@@ -78,12 +78,16 @@ internal class AfterglowPlan private constructor(val lines: List<EchoLyricLine>,
     }
 }
 
-internal data class AfterglowBudget(val framesPerSecond: Int, val particles: Int, val glyphMotion: Boolean, val rasterMaxSide: Int) {
+internal data class AfterglowBudget(
+    val framesPerSecond: Int, val particles: Int, val glyphMotion: Boolean, val rasterMaxSide: Int,
+    /** Engine at full resolution with no automatic step-down; otherwise it is capped at 720 px and may step down. */
+    val fullQuality: Boolean = false,
+) {
     companion object {
         fun forMode(mode: EchoEffectivePerformanceMode): AfterglowBudget = when (mode) {
             EchoEffectivePerformanceMode.Lightweight -> AfterglowBudget(0, 0, false, 360)
             EchoEffectivePerformanceMode.Balanced -> AfterglowBudget(30, 12, true, 540)
-            EchoEffectivePerformanceMode.HighPerformance -> AfterglowBudget(60, 24, true, 720)
+            EchoEffectivePerformanceMode.HighPerformance -> AfterglowBudget(60, 24, true, 720, fullQuality = true)
         }
     }
 }

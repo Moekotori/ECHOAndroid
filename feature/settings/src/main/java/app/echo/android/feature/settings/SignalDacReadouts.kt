@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun SignalDacDeviceHeader(device: String, audioClass: String?, headline: String, accent: Color) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        EchoIcon(Icons.Rounded.Usb, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+        EchoIcon(Icons.Rounded.Usb, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(device, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {

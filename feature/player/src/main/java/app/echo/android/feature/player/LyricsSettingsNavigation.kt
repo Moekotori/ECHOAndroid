@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Palette
@@ -39,6 +40,7 @@ internal enum class LyricsSettingsCategory(val titleRes: Int, val icon: ImageVec
     Typography(R.string.lyrics_setting_typography, Icons.Rounded.TextFields),
     Color(R.string.lyrics_setting_color_background, Icons.Rounded.ColorLens),
     Motion(R.string.lyrics_setting_motion, Icons.Rounded.Lyrics),
+    WordStyle(R.string.lyrics_word_style_title, Icons.Rounded.AutoAwesome),
     Content(R.string.lyrics_setting_content, Icons.Rounded.Translate),
 }
 
@@ -50,6 +52,7 @@ internal fun LyricsSettingsMenu(
     typographySummary: String,
     colorSummary: String,
     motionSummary: String,
+    wordStyleSummary: String,
     onSelect: (LyricsSettingsCategory) -> Unit,
 ) {
     val theme = echoTheme()
@@ -60,6 +63,7 @@ internal fun LyricsSettingsMenu(
                 LyricsSettingsCategory.Typography -> typographySummary
                 LyricsSettingsCategory.Color -> colorSummary
                 LyricsSettingsCategory.Motion -> motionSummary
+                LyricsSettingsCategory.WordStyle -> wordStyleSummary
                 LyricsSettingsCategory.Content -> stringResource(R.string.lyrics_setting_content_summary)
                 LyricsSettingsCategory.Appearance -> appearanceSummary
             }

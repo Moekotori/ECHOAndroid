@@ -52,7 +52,7 @@ internal fun SettingsAppearancePreview(
                     style = typography.bodySmall, color = scheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            EchoIcon(Icons.Rounded.PlayArrow, null, tint = scheme.primary)
+            EchoIcon(Icons.Rounded.PlayArrow, null, tint = scheme.onSurfaceVariant)
         }
         HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.4f))
     }

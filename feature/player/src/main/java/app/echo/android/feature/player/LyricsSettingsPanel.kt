@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -106,8 +107,15 @@ internal fun LyricsSettingsPanel(
     val showPreview = category != null && category != LyricsSettingsCategory.Content && category != LyricsSettingsCategory.Backdrop
     val scrollState = remember(category) { ScrollState(0) }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // The style gallery is long and shares the sheet with a pinned preview, so it gets a taller sheet.
+        val sheetMaxHeight by animateDpAsState(
+            targetValue = if (category == LyricsSettingsCategory.WordStyle) minOf(maxHeight * 0.88f, 780.dp)
+            else minOf(maxHeight * 0.72f, 600.dp),
+            animationSpec = tween(if (LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 260, easing = LyricsSettingsMotionEasing),
+            label = "lyrics-settings-sheet-height",
+        )
         Column(
-            Modifier.fillMaxWidth().heightIn(max = minOf(maxHeight * 0.72f, 600.dp))
+            Modifier.fillMaxWidth().heightIn(max = sheetMaxHeight)
                 .settingsSheetSurface()
                 .navigationBarsPadding(),
         ) {
@@ -140,7 +148,7 @@ internal fun LyricsSettingsPanel(
                     highlightEnabled = lyricsWordHighlightEnabled,
                     highlightIntensity = lyricsWordHighlightIntensity,
                     motionMode = lyricsMotionMode,
-                    animateMotion = category == LyricsSettingsCategory.Motion,
+                    animateMotion = category == LyricsSettingsCategory.Motion || category == LyricsSettingsCategory.WordStyle,
                 )
             }
             CompositionLocalProvider(LocalContentColor provides titleColor) {
@@ -156,6 +164,7 @@ internal fun LyricsSettingsPanel(
                                 typographySummary = "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",
                                 colorSummary = lyricsColorLabel(lyricsColorMode),
                                 motionSummary = lyricsMotionLabel(lyricsMotionMode),
+                                wordStyleSummary = stringResource(lyricsWordStyleLabel(EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle))),
                                 onSelect = { category = it },
                             )
                             if (page == LyricsSettingsCategory.Appearance) {
@@ -207,17 +216,17 @@ internal fun LyricsSettingsPanel(
                                             onLyricsEstimatedWordHighlightEnabledChange,
                                             hint = stringResource(L10nR.string.lyrics_setting_estimated_word_highlight_hint),
                                         )
-                                        SettingsGroupLabel(stringResource(L10nR.string.lyrics_word_style_title))
-                                        LyricsWordStyleChoices(EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle),
-                                            onLyricsWordHighlightStyleChange)
-                                        Text(stringResource(L10nR.string.lyrics_word_style_hint), color = mutedColor,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.padding(horizontal = PlaybackRowInset))
-                                        LyricsSettingSlider(stringResource(L10nR.string.lyrics_setting_highlight_strength), lyricsWordHighlightIntensity,
-                                            0.45f..1.35f, 1f, onLyricsWordHighlightIntensityChange)
                                     }
                                 }
                                 LyricsSettingToggle(stringResource(L10nR.string.feature_player_immersive_d86793), lyricsImmersiveModeEnabled, onLyricsImmersiveModeChange)
+                            }
+                            if (page == LyricsSettingsCategory.WordStyle) {
+                                Text(stringResource(L10nR.string.lyrics_word_style_hint), color = mutedColor,
+                                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 6.dp))
+                                SettingsOptionGrid(options = lyricsWordStyleOptions(), selectedId = lyricsWordHighlightStyle,
+                                    onSelect = onLyricsWordHighlightStyleChange)
+                                LyricsSettingSlider(stringResource(L10nR.string.lyrics_setting_highlight_strength), lyricsWordHighlightIntensity,
+                                    0.45f..1.35f, 1f, onLyricsWordHighlightIntensityChange)
                             }
                             if (page == LyricsSettingsCategory.Content) {
                                 val noContent = stringResource(L10nR.string.lyrics_setting_no_content)

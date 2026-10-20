@@ -89,7 +89,7 @@ internal fun SettingsSearchResultRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     EchoIcon(result.item.category?.icon ?: SettingsCategoryIcons.Plugins, null,
-                        Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+                        Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(result.title, style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)

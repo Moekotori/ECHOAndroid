@@ -296,7 +296,7 @@ internal fun BackgroundSourceAction(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (selected) EchoIcon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = accent)
+        if (selected) EchoIcon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface)
         Text(
             label,
             color = accent,
@@ -420,7 +420,7 @@ internal fun SettingsOptionChip(
     ) {
         // Reserve the mark's width so selecting another option does not reflow the group.
         Box(Modifier.size(16.dp), contentAlignment = Alignment.Center) {
-            if (selected) EchoIcon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = settingsControlColor())
+            if (selected) EchoIcon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = scheme.onSurface)
         }
         Text(
             label,

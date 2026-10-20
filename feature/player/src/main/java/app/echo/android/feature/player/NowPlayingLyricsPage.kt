@@ -190,6 +190,7 @@ internal fun NowPlayingLyricsPage(
                                             onSeek = onSeek,
                                             modifier = Modifier.fillMaxSize(),
                                             fallback = ordinaryLyrics,
+                                            artist = app.echo.android.design.displayArtist(status.track?.artist),
                                         )
                                     }
                                 } else ordinaryLyrics()

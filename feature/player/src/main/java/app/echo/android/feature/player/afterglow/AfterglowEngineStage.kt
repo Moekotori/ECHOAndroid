@@ -77,8 +77,8 @@ internal fun AfterglowEngineStage(
         }
         if (value == null) failed()
     }
-    LaunchedEffect(ready, budget.framesPerSecond, motion) {
-        if (ready) host.deliver(AfterglowEngineProject.renderSettings(budget.framesPerSecond, stepped = !motion, pressureReduced = false))
+    LaunchedEffect(ready, budget, motion) {
+        if (ready) host.deliver(AfterglowEngineProject.renderSettings(budget.framesPerSecond, budget.fullQuality, stepped = !motion, pressureReduced = !budget.fullQuality))
     }
     LaunchedEffect(ready, project) {
         val json = project

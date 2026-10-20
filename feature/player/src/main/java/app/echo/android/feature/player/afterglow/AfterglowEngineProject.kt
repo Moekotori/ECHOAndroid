@@ -107,8 +107,8 @@ internal object AfterglowEngineProject {
             "\"playbackRate\":${speed.takeIf { it.isFinite() && it > 0f } ?: 1f},\"playing\":$playing,\"offsetMs\":$offsetMs," +
             "\"frameIntervalMs\":${frameIntervalMs ?: "null"},\"motion\":$motion}}"
 
-    fun renderSettings(fps: Int, stepped: Boolean, pressureReduced: Boolean): String =
-        "{\"type\":\"echo:jizura:render-settings\",\"settings\":{\"fps\":${fps.coerceIn(1, 240)},\"quality\":\"auto\"," +
+    fun renderSettings(fps: Int, fullQuality: Boolean, stepped: Boolean, pressureReduced: Boolean): String =
+        "{\"type\":\"echo:jizura:render-settings\",\"settings\":{\"fps\":${fps.coerceIn(1, 240)},\"quality\":\"${if (fullQuality) "full" else "auto"}\"," +
             "\"steppedMotion\":$stepped,\"pressureReduced\":$pressureReduced,\"transparent\":false}}"
 
     fun projectMessage(project: String): String = "{\"type\":\"echo:jizura:project\",\"project\":$project}"

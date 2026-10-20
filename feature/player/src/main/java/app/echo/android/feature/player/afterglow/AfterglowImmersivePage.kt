@@ -120,7 +120,8 @@ internal fun AfterglowImmersivePage(
                 fontScale, lineSpacing, motionMode, showTranslation, showRomanization, wordHighlight,
                 estimatedHighlight, highlightIntensity, onSeek, Modifier.fillMaxSize(), ordinaryLyrics,
                 controlsLayer = controls, onControlsInteraction = chrome::touch,
-                onControlsMenu = { chrome.menuOpen = it; chrome.touch() }, onStagePalette = { palette = it })
+                onControlsMenu = { chrome.menuOpen = it; chrome.touch() }, onStagePalette = { palette = it },
+                artist = app.echo.android.design.displayArtist(status.track?.artist))
         } else ordinaryLyrics()
     }
 }

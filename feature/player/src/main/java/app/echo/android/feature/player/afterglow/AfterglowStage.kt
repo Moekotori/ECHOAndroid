@@ -47,6 +47,7 @@ internal fun AfterglowStage(
     onControlsInteraction: () -> Unit = {},
     onControlsMenu: (Boolean) -> Unit = {},
     onStagePalette: (AfterglowPalette) -> Unit = {},
+    artist: String = "",
 ) {
     val budget = AfterglowBudget.forMode(LocalEchoEffectivePerformanceMode.current)
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -82,7 +83,7 @@ internal fun AfterglowStage(
             derivedStateOf(structuralEqualityPolicy()) { plan.indexAt(hostPosition.value + lyrics.offsetMs) }
         }
         Box(modifier) {
-            AfterglowEngineStage(plan, AfterglowEngineProject.look(style), title, "", durationMs,
+            AfterglowEngineStage(plan, AfterglowEngineProject.look(style), title, artist, durationMs,
                 (seed.toLong() and 0xFFFFFFFFL), hostPosition, lyrics.offsetMs, playing, speed, renderActive, budget, motion,
                 wordHighlight, estimatedWordHighlight, palette.background, title, controller,
                 onFailed = { engineFailed = true }, onSeed = { seed = it.toInt() }, modifier = Modifier.fillMaxSize())
