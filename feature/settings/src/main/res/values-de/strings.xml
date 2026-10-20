@@ -173,6 +173,9 @@
     <string name="settings_listenbrainz">ListenBrainz</string>
     <string name="settings_listenbrainz_token">Benutzertoken</string>
     <string name="settings_listenbrainz_token_placeholder">ListenBrainz-Benutzertoken</string>
+    <string name="error_log_back">Zurück</string>
+    <string name="settings_lastfm_api_key_placeholder">Last.fm-API-Schlüssel</string>
+    <string name="settings_lastfm_shared_secret_placeholder">Last.fm – Gemeinsames Geheimnis</string>
     <string name="settings_listenbrainz_save">Token speichern</string>
     <string name="settings_listenbrainz_token_detail">Token in den ListenBrainz-Profileinstellungen erstellen</string>
     <string name="settings_listenbrainz_disconnect">ListenBrainz trennen</string>

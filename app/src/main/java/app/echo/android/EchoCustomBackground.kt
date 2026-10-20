@@ -39,7 +39,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import app.echo.android.data.EchoAppSettings
-import app.echo.android.data.EchoBackgroundMode
+import app.echo.android.model.settings.EchoBackgroundMode
 import app.echo.android.design.EchoGlassBackground
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode

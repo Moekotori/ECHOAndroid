@@ -173,6 +173,9 @@
     <string name="settings_listenbrainz">ListenBrainz</string>
     <string name="settings_listenbrainz_token">User token</string>
     <string name="settings_listenbrainz_token_placeholder">ListenBrainz user token</string>
+    <string name="error_log_back">Back</string>
+    <string name="settings_lastfm_api_key_placeholder">Last.fm API key</string>
+    <string name="settings_lastfm_shared_secret_placeholder">Last.fm shared secret</string>
     <string name="settings_listenbrainz_save">Save token</string>
     <string name="settings_listenbrainz_token_detail">Create a token in ListenBrainz profile settings</string>
     <string name="settings_listenbrainz_disconnect">Disconnect ListenBrainz</string>

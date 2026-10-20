@@ -1,6 +1,6 @@
 package app.echo.android
 
-import app.echo.android.data.EchoThemeMode
+import app.echo.android.model.settings.EchoThemeMode
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

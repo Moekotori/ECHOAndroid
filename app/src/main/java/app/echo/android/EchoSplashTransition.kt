@@ -10,17 +10,13 @@ import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.AnimatedVectorDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.PowerManager
 import android.view.animation.PathInterpolator
-import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.core.splashscreen.SplashScreen
-import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
@@ -28,24 +24,31 @@ import app.echo.android.model.settings.EchoPerformanceMode
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
-/** Continue the system splash in place, optionally drawing a still image behind its icon. */
+/** Longest the system splash waits for the performance mode and startup image before handing off. */
+private const val HandOffWaitMillis = 250L
+
+/**
+ * Fade the system splash (a plain background) into the in-app [EchoLaunchSplash]. A null
+ * [launchSplash] means a restored or animator-less start: the system splash is simply removed.
+ */
 internal fun SplashScreen.installEchoExitTransition(
     activity: ComponentActivity,
-    restored: Boolean,
+    launchSplash: EchoLaunchSplashState?,
     startupBackgroundUri: String?,
 ) {
-    if (restored || !ValueAnimator.areAnimatorsEnabled()) {
+    if (launchSplash == null) {
         setOnExitAnimationListener { it.remove() }
         return
     }
 
-    // Never hold the first frame for settings I/O. Until loaded, use the lightest transition.
+    // Never hold the first frame for settings I/O. Until loaded, assume the lightest mode.
     var mode = EchoEffectivePerformanceMode.Lightweight
     var startupBackground: Bitmap? = null
     val imageJob = startupBackgroundUri?.let { uri ->
@@ -65,7 +68,7 @@ internal fun SplashScreen.installEchoExitTransition(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                // A revoked or unreadable image falls back to the built-in splash color.
+                // A revoked or unreadable image falls back to the built-in splash.
             }
         }
     }
@@ -78,66 +81,42 @@ internal fun SplashScreen.installEchoExitTransition(
         }
     }
     setOnExitAnimationListener { provider ->
-        settingsJob.cancel()
-        imageJob?.cancel()
-        val lifecycle = activity.lifecycle
-        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) ||
-            !ValueAnimator.areAnimatorsEnabled()
-        ) {
-            provider.remove()
-            return@setOnExitAnimationListener
-        }
+        activity.lifecycleScope.launch {
+            withTimeoutOrNull(HandOffWaitMillis) {
+                settingsJob.join()
+                imageJob?.join()
+            }
+            val surface = provider.view
+            if (!activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) ||
+                !ValueAnimator.areAnimatorsEnabled()
+            ) {
+                launchSplash.finished = true
+                provider.remove()
+                return@launch
+            }
+            val background = startupBackground
+            if (background != null) surface.background = EchoSplashBackgroundDrawable(background)
+            launchSplash.background = background
+            launchSplash.lightweight = mode.isLightweight
+            launchSplash.started = true
 
-        val surface = provider.view
-        val icon = provider.iconView
-        startupBackground?.let { surface.background = EchoSplashBackgroundDrawable(it) }
-        startupBackground = null
-        val lightweight = mode.isLightweight
-        val duration = if (lightweight) 120L else 360L
-        val easing = PathInterpolator(0.4f, 0f, 0.2f, 1f)
-        val signal = if (!lightweight && icon is ImageView) {
-            (activity.getDrawable(R.drawable.echo_splash_reveal) as? AnimatedVectorDrawable)
-                ?.also { icon.setImageDrawable(it) }
-        } else null
-        var removed = false
-        lateinit var observer: DefaultLifecycleObserver
-        fun finish() {
-            if (removed) return
-            removed = true
-            lifecycle.removeObserver(observer)
-            surface.animate().setListener(null).cancel()
-            icon.animate().cancel()
-            signal?.stop()
-            surface.background = null
-            provider.remove()
-        }
-        observer = object : DefaultLifecycleObserver {
-            override fun onStop(owner: LifecycleOwner) = finish()
-            override fun onDestroy(owner: LifecycleOwner) = finish()
-        }
-        lifecycle.addObserver(observer)
+            // The overlay beneath already shows the same ground; this only dissolves the system layer.
+            surface.animate()
+                .alpha(0f)
+                .setDuration(if (mode.isLightweight) 120L else 180L)
+                .setInterpolator(PathInterpolator(0.4f, 0f, 0.2f, 1f))
+                .setListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) = finish()
+                    override fun onAnimationCancel(animation: Animator) = finish()
 
-        // One outward signal pulse, then a soft hand-off. No loops or minimum splash hold.
-        signal?.start()
-        val iconExit = icon.animate()
-            .alpha(0f)
-            .setStartDelay(if (lightweight) 0L else 80L)
-            .setDuration(if (lightweight) 120L else 280L)
-            .setInterpolator(easing)
-        if (!lightweight) {
-            iconExit.scaleX(1.06f).scaleY(1.06f)
+                    private fun finish() {
+                        surface.animate().setListener(null)
+                        surface.background = null
+                        provider.remove()
+                    }
+                })
+                .start()
         }
-        iconExit.start()
-        surface.animate()
-            .alpha(0f)
-            .setStartDelay(if (lightweight) 0L else 100L)
-            .setDuration(if (lightweight) duration else duration - 100L)
-            .setInterpolator(easing)
-            .setListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) = finish()
-                override fun onAnimationCancel(animation: Animator) = finish()
-            })
-            .start()
     }
 }
 

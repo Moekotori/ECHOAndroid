@@ -168,6 +168,7 @@ import app.echo.android.design.rememberArtworkPalette
 import app.echo.android.design.echoTheme
 import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
+import app.echo.android.model.settings.EchoLyricsWordHighlightStyle
 import app.echo.android.model.settings.EchoPlayerPageStyle
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyrics
@@ -235,6 +236,7 @@ fun NowPlayingScreen(
     lyricsWordHighlightEnabled: Boolean = true,
     lyricsEstimatedWordHighlightEnabled: Boolean = false,
     lyricsWordHighlightIntensity: Float = 1f,
+    lyricsWordHighlightStyle: String = EchoLyricsWordHighlightStyle.Sweep.id,
     lyricsImmersiveModeEnabled: Boolean = false,
     lyricsMotionMode: String = "smooth",
     lyricsShowTranslation: Boolean = true,
@@ -254,6 +256,7 @@ fun NowPlayingScreen(
     onLyricsWordHighlightEnabledChange: (Boolean) -> Unit = {},
     onLyricsEstimatedWordHighlightEnabledChange: (Boolean) -> Unit = {},
     onLyricsWordHighlightIntensityChange: (Float) -> Unit = {},
+    onLyricsWordHighlightStyleChange: (String) -> Unit = {},
     onLyricsImmersiveModeChange: (Boolean) -> Unit = {},
     onLyricsMotionModeChange: (String) -> Unit = {},
     onLyricsShowTranslationChange: (Boolean) -> Unit = {},
@@ -453,7 +456,10 @@ fun NowPlayingScreen(
     val settingsTokens = LocalEchoTheme.current
     val settingsColorScheme = MaterialTheme.colorScheme
     val settingsTypography = MaterialTheme.typography
-    CompositionLocalProvider(LocalPlayerPageStyle provides sharedStyle) {
+    CompositionLocalProvider(
+        LocalPlayerPageStyle provides sharedStyle,
+        LocalLyricsWordHighlightStyle provides EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle),
+    ) {
     LyricsPageTheme(lyricStyle, enabled = !isRadio) {
         Box(
             modifier = modifier
@@ -729,6 +735,7 @@ fun NowPlayingScreen(
                 lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
                 lyricsEstimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
                 lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
+                lyricsWordHighlightStyle = lyricsWordHighlightStyle,
                 lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
                 lyricsMotionMode = lyricsMotionMode,
                 lyricAccent = lyricAccent,
@@ -758,6 +765,7 @@ fun NowPlayingScreen(
                 onLyricsWordHighlightEnabledChange = onLyricsWordHighlightEnabledChange,
                 onLyricsEstimatedWordHighlightEnabledChange = onLyricsEstimatedWordHighlightEnabledChange,
                 onLyricsWordHighlightIntensityChange = onLyricsWordHighlightIntensityChange,
+                onLyricsWordHighlightStyleChange = onLyricsWordHighlightStyleChange,
                 onLyricsImmersiveModeChange = onLyricsImmersiveModeChange,
                 onLyricsMotionModeChange = onLyricsMotionModeChange,
                 onLyricsShowTranslationChange = onLyricsShowTranslationChange,
@@ -976,6 +984,7 @@ private fun LyricsSettingsDrawer(
     lyricsWordHighlightEnabled: Boolean,
     lyricsEstimatedWordHighlightEnabled: Boolean,
     lyricsWordHighlightIntensity: Float,
+    lyricsWordHighlightStyle: String,
     lyricsImmersiveModeEnabled: Boolean,
     lyricsMotionMode: String,
     lyricAccent: Color,
@@ -999,6 +1008,7 @@ private fun LyricsSettingsDrawer(
     onLyricsWordHighlightEnabledChange: (Boolean) -> Unit,
     onLyricsEstimatedWordHighlightEnabledChange: (Boolean) -> Unit,
     onLyricsWordHighlightIntensityChange: (Float) -> Unit,
+    onLyricsWordHighlightStyleChange: (String) -> Unit,
     onLyricsImmersiveModeChange: (Boolean) -> Unit,
     onLyricsMotionModeChange: (String) -> Unit,
     onLyricsShowTranslationChange: (Boolean) -> Unit,
@@ -1027,6 +1037,7 @@ private fun LyricsSettingsDrawer(
             lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
             lyricsEstimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
             lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
+            lyricsWordHighlightStyle = lyricsWordHighlightStyle,
             lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
             lyricsMotionMode = lyricsMotionMode,
             lyricAccent = lyricAccent,
@@ -1050,6 +1061,7 @@ private fun LyricsSettingsDrawer(
             onLyricsWordHighlightEnabledChange = onLyricsWordHighlightEnabledChange,
             onLyricsEstimatedWordHighlightEnabledChange = onLyricsEstimatedWordHighlightEnabledChange,
             onLyricsWordHighlightIntensityChange = onLyricsWordHighlightIntensityChange,
+            onLyricsWordHighlightStyleChange = onLyricsWordHighlightStyleChange,
             onLyricsImmersiveModeChange = onLyricsImmersiveModeChange,
             onLyricsMotionModeChange = onLyricsMotionModeChange,
             onLyricsShowTranslationChange = onLyricsShowTranslationChange,

@@ -29,8 +29,13 @@ import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoReplayGainMode
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.settings.EchoAppLanguage
+import app.echo.android.model.settings.EchoBackgroundMode
+import app.echo.android.model.settings.EchoFontFamilyMode
+import app.echo.android.model.settings.EchoLyricsMotionMode
+import app.echo.android.model.settings.EchoThemeMode
 import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
+import app.echo.android.model.settings.EchoLyricsWordHighlightStyle
 import app.echo.android.model.settings.EchoPlayerPageStyle
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.model.settings.EchoCustomColors
@@ -116,6 +121,7 @@ data class EchoAppSettings(
     val lyricsWordHighlightEnabled: Boolean = true,
     val lyricsEstimatedWordHighlightEnabled: Boolean = false,
     val lyricsWordHighlightIntensity: Float = 1f,
+    val lyricsWordHighlightStyle: String = EchoLyricsWordHighlightStyle.Sweep.id,
     val lyricsImmersiveModeEnabled: Boolean = false,
     val lyricsMotionMode: String = EchoLyricsMotionMode.Smooth,
     val lyricsShowTranslation: Boolean = true,
@@ -169,20 +175,6 @@ data class EchoAppSettings(
     val libraryLayout: EchoLibraryLayout = EchoLibraryLayout(),
 )
 
-object EchoBackgroundMode {
-    const val Default = "default"
-    const val Image = "image"
-    const val Video = "video"
-}
-
-object EchoFontFamilyMode {
-    const val System = "system"
-    const val Outfit = "outfit"
-    const val Serif = "serif"
-    const val Monospace = "monospace"
-    const val Imported = "imported"
-}
-
 object EchoLyricsColorMode {
     const val White = "white"
     const val Warm = "warm"
@@ -196,18 +188,6 @@ object EchoLyricsAlignment {
     const val Start = "start"
     const val Center = "center"
     const val Dynamic = "dynamic"
-}
-
-object EchoLyricsMotionMode {
-    const val Calm = "calm"
-    const val Smooth = "smooth"
-    const val Stage = "stage"
-}
-
-object EchoThemeMode {
-    const val System = "system"
-    const val Light = "light"
-    const val Dark = "dark"
 }
 
 object EchoLibrarySelectedSource {
@@ -371,6 +351,7 @@ class EchoSettingsStore(
                 lyricsWordHighlightEnabled = preferences[Keys.LyricsWordHighlightEnabled] ?: true,
                 lyricsEstimatedWordHighlightEnabled = preferences[Keys.LyricsEstimatedWordHighlightEnabled] ?: false,
                 lyricsWordHighlightIntensity = (preferences[Keys.LyricsWordHighlightIntensity] ?: 1f).coerceIn(0.45f, 1.35f),
+                lyricsWordHighlightStyle = EchoLyricsWordHighlightStyle.fromId(preferences[Keys.LyricsWordHighlightStyle]).id,
                 lyricsImmersiveModeEnabled = preferences[Keys.LyricsImmersiveModeEnabled] ?: false,
                 lyricsMotionMode = normalizeLyricsMotionMode(preferences[Keys.LyricsMotionMode]),
                 lyricsShowTranslation = preferences[Keys.LyricsShowTranslation] ?: true,
@@ -926,6 +907,10 @@ class EchoSettingsStore(
 
     suspend fun setLyricsWordHighlightIntensity(value: Float) {
         context.echoSettings.edit { it[Keys.LyricsWordHighlightIntensity] = value.coerceIn(0.45f, 1.35f) }
+    }
+
+    suspend fun setLyricsWordHighlightStyle(value: String) {
+        context.echoSettings.edit { it[Keys.LyricsWordHighlightStyle] = EchoLyricsWordHighlightStyle.fromId(value).id }
     }
 
     suspend fun setLyricsImmersiveModeEnabled(enabled: Boolean) {
@@ -1666,6 +1651,7 @@ class EchoSettingsStore(
             backup.lyricsWordHighlightEnabled?.let { prefs[Keys.LyricsWordHighlightEnabled] = it }
             backup.lyricsEstimatedWordHighlightEnabled?.let { prefs[Keys.LyricsEstimatedWordHighlightEnabled] = it }
             backup.lyricsWordHighlightIntensity?.let { prefs[Keys.LyricsWordHighlightIntensity] = it }
+            backup.lyricsWordHighlightStyle?.let { prefs[Keys.LyricsWordHighlightStyle] = EchoLyricsWordHighlightStyle.fromId(it).id }
             backup.lyricsImmersiveModeEnabled?.let { prefs[Keys.LyricsImmersiveModeEnabled] = it }
             backup.lyricsMotionMode?.let { prefs[Keys.LyricsMotionMode] = it }
             backup.lyricsShowTranslation?.let { prefs[Keys.LyricsShowTranslation] = it }
@@ -1767,6 +1753,7 @@ class EchoSettingsStore(
         val LyricsWordHighlightEnabled = booleanPreferencesKey("lyrics_word_highlight_enabled")
         val LyricsEstimatedWordHighlightEnabled = booleanPreferencesKey("lyrics_estimated_word_highlight_enabled")
         val LyricsWordHighlightIntensity = floatPreferencesKey("lyrics_word_highlight_intensity")
+        val LyricsWordHighlightStyle = stringPreferencesKey("lyrics_word_highlight_style")
         val LyricsImmersiveModeEnabled = booleanPreferencesKey("lyrics_immersive_mode_enabled")
         val LyricsMotionMode = stringPreferencesKey("lyrics_motion_mode")
         val LyricsShowTranslation = booleanPreferencesKey("lyrics_show_translation")
@@ -1993,6 +1980,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
         lyricsEstimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
         lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
+        lyricsWordHighlightStyle = lyricsWordHighlightStyle,
         lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
         lyricsMotionMode = lyricsMotionMode,
         lyricsShowTranslation = lyricsShowTranslation,

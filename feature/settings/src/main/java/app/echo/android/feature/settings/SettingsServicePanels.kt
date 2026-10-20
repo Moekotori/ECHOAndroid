@@ -42,7 +42,7 @@ internal fun LastFmSettingsPanel(
             SettingsTextInputRow(
                 title = stringResource(R.string.settings_search_api_key),
                 value = apiKey,
-                placeholder = "Last.fm API key",
+                placeholder = stringResource(R.string.settings_lastfm_api_key_placeholder),
                 onValueChange = onApiKeyChange,
             )
         }
@@ -55,7 +55,7 @@ internal fun LastFmSettingsPanel(
             SettingsTextInputRow(
                 title = stringResource(R.string.settings_search_shared_secret),
                 value = sharedSecret,
-                placeholder = "Last.fm shared secret",
+                placeholder = stringResource(R.string.settings_lastfm_shared_secret_placeholder),
                 secret = true,
                 onValueChange = onSharedSecretChange,
             )

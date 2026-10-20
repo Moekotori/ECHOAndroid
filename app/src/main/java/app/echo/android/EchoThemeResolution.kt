@@ -2,7 +2,7 @@ package app.echo.android
 
 import android.content.Context
 import android.content.res.Configuration
-import app.echo.android.data.EchoThemeMode
+import app.echo.android.model.settings.EchoThemeMode
 import java.time.LocalTime
 
 internal fun Context.isEchoSystemDarkTheme(): Boolean =

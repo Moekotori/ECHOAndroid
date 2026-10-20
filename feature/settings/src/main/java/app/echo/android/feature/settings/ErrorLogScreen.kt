@@ -107,7 +107,7 @@ fun ErrorLogScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
+                    EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.error_log_back))
                 }
                 Column(Modifier.weight(1f)) {
                     Text(

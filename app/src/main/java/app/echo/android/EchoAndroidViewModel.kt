@@ -1840,6 +1840,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setLyricsWordHighlightStyle(value: String) {
+        updateSettings {
+            setLyricsWordHighlightStyle(value)
+        }
+    }
+
     fun setLyricsMotionMode(value: String) {
         updateSettings {
             setLyricsMotionMode(value)

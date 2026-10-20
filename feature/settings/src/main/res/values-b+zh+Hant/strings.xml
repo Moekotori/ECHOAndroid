@@ -167,6 +167,9 @@
     <string name="settings_listenbrainz">ListenBrainz</string>
     <string name="settings_listenbrainz_token">使用者令牌</string>
     <string name="settings_listenbrainz_token_placeholder">ListenBrainz 使用者令牌</string>
+    <string name="error_log_back">返回</string>
+    <string name="settings_lastfm_api_key_placeholder">Last.fm API 金鑰</string>
+    <string name="settings_lastfm_shared_secret_placeholder">Last.fm 共用密鑰</string>
     <string name="settings_listenbrainz_save">儲存令牌</string>
     <string name="settings_listenbrainz_token_detail">在 ListenBrainz 個人設定中建立令牌</string>
     <string name="settings_listenbrainz_disconnect">中斷 ListenBrainz 連線</string>

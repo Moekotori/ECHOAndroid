@@ -86,6 +86,7 @@ data class EchoBackupSettings(
     val lyricsWordHighlightEnabled: Boolean? = null,
     val lyricsEstimatedWordHighlightEnabled: Boolean? = null,
     val lyricsWordHighlightIntensity: Float? = null,
+    val lyricsWordHighlightStyle: String? = null,
     val lyricsImmersiveModeEnabled: Boolean? = null,
     val lyricsMotionMode: String? = null,
     val lyricsShowTranslation: Boolean? = null,

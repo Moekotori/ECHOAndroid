@@ -183,6 +183,7 @@ object EchoBackupCodec {
         putOptNullableBoolean("lyricsWordHighlightEnabled", settings.lyricsWordHighlightEnabled)
         putOptNullableBoolean("lyricsEstimatedWordHighlightEnabled", settings.lyricsEstimatedWordHighlightEnabled)
         settings.lyricsWordHighlightIntensity?.let { put("lyricsWordHighlightIntensity", it.toDouble()) }
+        putOpt("lyricsWordHighlightStyle", settings.lyricsWordHighlightStyle)
         putOptNullableBoolean("lyricsImmersiveModeEnabled", settings.lyricsImmersiveModeEnabled)
         putOpt("lyricsMotionMode", settings.lyricsMotionMode)
         putOptNullableBoolean("lyricsShowTranslation", settings.lyricsShowTranslation)
@@ -282,6 +283,7 @@ object EchoBackupCodec {
             lyricsWordHighlightEnabled = json.optionalBoolean("lyricsWordHighlightEnabled"),
             lyricsEstimatedWordHighlightEnabled = json.optionalBoolean("lyricsEstimatedWordHighlightEnabled"),
             lyricsWordHighlightIntensity = json.optionalFloat("lyricsWordHighlightIntensity"),
+            lyricsWordHighlightStyle = json.optionalString("lyricsWordHighlightStyle"),
             lyricsImmersiveModeEnabled = json.optionalBoolean("lyricsImmersiveModeEnabled"),
             lyricsMotionMode = json.optionalString("lyricsMotionMode"),
             lyricsShowTranslation = json.optionalBoolean("lyricsShowTranslation"),

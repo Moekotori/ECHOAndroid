@@ -122,8 +122,8 @@ import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.ui.shell.outerPagerUserScrollEnabled
 import app.echo.android.ui.shell.rememberHomeSafePagerNestedScroll
 import app.echo.android.ui.shell.dockNavigationMotionSpec
-import app.echo.android.data.EchoBackgroundMode
-import app.echo.android.data.EchoFontFamilyMode
+import app.echo.android.model.settings.EchoBackgroundMode
+import app.echo.android.model.settings.EchoFontFamilyMode
 import app.echo.android.data.toEchoTrack
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState

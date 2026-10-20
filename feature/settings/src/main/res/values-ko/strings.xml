@@ -173,6 +173,9 @@
     <string name="settings_listenbrainz">ListenBrainz</string>
     <string name="settings_listenbrainz_token">사용자 토큰</string>
     <string name="settings_listenbrainz_token_placeholder">ListenBrainz 사용자 토큰</string>
+    <string name="error_log_back">뒤로</string>
+    <string name="settings_lastfm_api_key_placeholder">Last.fm API 키</string>
+    <string name="settings_lastfm_shared_secret_placeholder">Last.fm 공유 암호</string>
     <string name="settings_listenbrainz_save">토큰 저장</string>
     <string name="settings_listenbrainz_token_detail">ListenBrainz 프로필 설정에서 토큰을 만듭니다</string>
     <string name="settings_listenbrainz_disconnect">ListenBrainz 연결 해제</string>

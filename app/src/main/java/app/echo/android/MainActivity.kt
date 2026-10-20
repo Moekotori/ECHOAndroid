@@ -1,5 +1,6 @@
 package app.echo.android
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
 import android.view.KeyEvent
@@ -11,6 +12,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
@@ -60,7 +64,14 @@ class MainActivity : ComponentActivity() {
             ),
         )
         applyEdgeToEdge(startupDarkTheme)
+        // Restored or animator-less starts skip the in-app launch splash.
+        val launchSplash = if (savedInstanceState == null && ValueAnimator.areAnimatorsEnabled()) {
+            EchoLaunchSplashState()
+        } else {
+            null
+        }
         fun showContent(snapshot: EchoStartupThemeSnapshot) {
+            var launchDark = startupDarkTheme
             if (!startupReady) {
                 applicationContext.initializeEchoAppLocale(snapshot.appLanguage)
                 val dark = resolveEchoDarkTheme(
@@ -75,9 +86,15 @@ class MainActivity : ComponentActivity() {
                     EchoColorTheme.fromId(snapshot.colorTheme), dark, snapshot.customColors,
                 ))
                 applyEdgeToEdge(dark)
+                launchDark = dark
             }
-            splashScreen.installEchoExitTransition(this, savedInstanceState != null, snapshot.startupBackgroundUri)
-            setContent { EchoMobileApp() }
+            splashScreen.installEchoExitTransition(this, launchSplash, snapshot.startupBackgroundUri)
+            setContent {
+                Box(Modifier.fillMaxSize()) {
+                    EchoMobileApp()
+                    if (launchSplash != null) EchoLaunchSplash(launchSplash, launchDark)
+                }
+            }
             startupReady = true
         }
         if (startupReady) {

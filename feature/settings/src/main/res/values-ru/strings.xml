@@ -173,6 +173,9 @@
     <string name="settings_listenbrainz">ListenBrainz</string>
     <string name="settings_listenbrainz_token">Токен пользователя</string>
     <string name="settings_listenbrainz_token_placeholder">Токен пользователя ListenBrainz</string>
+    <string name="error_log_back">Назад</string>
+    <string name="settings_lastfm_api_key_placeholder">Ключ API Last.fm</string>
+    <string name="settings_lastfm_shared_secret_placeholder">Общий секрет Last.fm</string>
     <string name="settings_listenbrainz_save">Сохранить токен</string>
     <string name="settings_listenbrainz_token_detail">Создайте токен в настройках профиля ListenBrainz</string>
     <string name="settings_listenbrainz_disconnect">Отключить ListenBrainz</string>
