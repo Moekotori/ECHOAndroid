@@ -12,6 +12,15 @@ internal fun sanitizeFtsQuery(rawQuery: String): String? {
     return tokens.takeIf { it.isNotEmpty() }?.joinToString(" AND ")
 }
 
+/** Whitespace separates terms; punctuation and wildcard characters remain literal text. */
+internal fun librarySearchTerms(query: String): List<String> =
+    query.trim().lowercase().split(Regex("\\s+")).filter(String::isNotBlank).distinct()
+
+/** Contains candidates use indexed ASCII trigrams and CJK characters, followed by exact verification. */
+internal fun substringFtsQuery(query: String): String? =
+    (LibrarySubstringIndex.tokens(listOf(query)) + query.filter(Char::isCjk).map { "$it*" })
+        .takeIf { it.isNotEmpty() }?.joinToString(" AND ")
+
 internal fun ftsRankQuery(rawQuery: String): String =
     "%${rawQuery.trim().lowercase()}%"
 
@@ -45,7 +54,7 @@ private fun String.toFtsTokens(): List<String> =
         listOf(this)
     }
 
-private fun buildFtsNormalizedText(vararg parts: String): String {
+internal fun buildFtsNormalizedText(vararg parts: String): String {
     val joined = parts
         .filter { it.isNotBlank() }
         .joinToString(" ")
@@ -63,7 +72,7 @@ private fun buildFtsNormalizedText(vararg parts: String): String {
                 .filter { token -> token.all { c -> c.isLetterOrDigit() && c.code < 128 } }
         }
         .toList()
-    return listOf(joined, cjkTokens, *pinyinParts.toTypedArray())
+    return listOf(joined, cjkTokens, *pinyinParts.toTypedArray(), LibrarySubstringIndex.tokens(parts.asIterable()).joinToString(" "))
         .filter { it.isNotBlank() }
         .joinToString(" ")
 }

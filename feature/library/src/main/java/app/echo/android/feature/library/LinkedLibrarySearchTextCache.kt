@@ -6,7 +6,7 @@ internal class LinkedLibrarySearchTextCache(
     private val maxChars: Int = 1_000_000,
     private val transliterate: (String) -> String = ::linkedLibrarySearchPinyin,
 ) {
-    private val entries = LinkedHashMap<String, String>(16, 0.75f, true)
+    private val entries = HashMap<String, String>()
     private var retainedChars = 0
 
     fun text(vararg parts: String): String = buildString {
@@ -32,13 +32,11 @@ internal class LinkedLibrarySearchTextCache(
         if (maxEntries <= 0 || cost > maxChars) return value
         synchronized(entries) {
             entries[part]?.let { return it }
-            entries[part] = value
-            retainedChars += cost
-            val oldest = entries.entries.iterator()
-            while (entries.size > maxEntries || retainedChars > maxChars) {
-                val entry = oldest.next()
-                retainedChars -= entry.key.length + entry.value.length
-                oldest.remove()
+            // Keep a stable bounded subset. LRU would evict the entire working set on
+            // every sequential scan when a library is just larger than its capacity.
+            if (entries.size < maxEntries && retainedChars + cost <= maxChars) {
+                entries[part] = value
+                retainedChars += cost
             }
         }
         return value

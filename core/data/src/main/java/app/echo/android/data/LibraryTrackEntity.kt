@@ -8,7 +8,9 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "library_tracks",
     indices = [
-        Index(value = ["title"]),
+        Index(value = ["title", "id"]),
+        Index(value = ["durationMs", "title", "id"], orders = [Index.Order.DESC, Index.Order.ASC, Index.Order.ASC]),
+        Index(value = ["dateModifiedSeconds", "title", "id"], orders = [Index.Order.DESC, Index.Order.ASC, Index.Order.ASC]),
         Index(value = ["album"]),
         Index(value = ["artist"]),
         Index(value = ["contentUri"], unique = true),
@@ -29,7 +31,7 @@ import androidx.room.PrimaryKey
 data class LibraryTrackEntity(
     @PrimaryKey val id: String,
     val contentUri: String,
-    val title: String,
+    @ColumnInfo(collate = ColumnInfo.NOCASE) val title: String,
     val artist: String,
     val album: String?,
     val albumArtist: String?,

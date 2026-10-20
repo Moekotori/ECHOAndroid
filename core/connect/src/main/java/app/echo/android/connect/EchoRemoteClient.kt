@@ -633,13 +633,14 @@ class EchoRemoteClient internal constructor(
         val generation = libraryRefreshGeneration
         val query = _library.value.query
         onJob(scope.launch {
-            _library.update { it.copy(isLoadingMore = true) }
+            _library.update { it.copy(isLoadingMore = true, error = null) }
             val result = runSuspendCatching { fetch(target, query, nextPage) }
             if (endpoint?.id != target.id || generation != libraryRefreshGeneration) return@launch
             result.onSuccess { page ->
                 if (itemCount(page) <= 0) {
-                    onAdvance(0)
-                    _library.update { it.copy(isLoadingMore = false) }
+                    // A premature empty page must remain retryable and cannot look complete.
+                    _library.update { it.copy(isLoadingMore = false,
+                        error = text(R.string.connect_library_partial, loaded, total.coerceAtLeast(loaded))) }
                     return@onSuccess
                 }
                 if (endpoint?.id != target.id || generation != libraryRefreshGeneration) return@onSuccess
@@ -647,7 +648,7 @@ class EchoRemoteClient internal constructor(
                 if (generation != libraryRefreshGeneration) return@onSuccess
                 onAdvance(if (isComplete(_library.value)) 0 else nextPage + 1)
             }.onFailure { error ->
-                onAdvance(0)
+                // Keep the failed cursor. UI prefetch pauses on error; an explicit retry resumes here.
                 _library.update { it.copy(isLoadingMore = false, error = error.userMessage()) }
             }
         })

@@ -43,6 +43,7 @@ object EchoUsbExclusiveApplyPolicy {
             UsbExclusiveOutputState.DeviceUnavailable,
             UsbExclusiveOutputState.PermissionDenied,
             -> true
+            UsbExclusiveOutputState.DopConfigurationRequired,
             UsbExclusiveOutputState.FormatUnavailable,
             UsbExclusiveOutputState.OpenFailed,
             UsbExclusiveOutputState.UnsupportedTransport,
@@ -82,6 +83,8 @@ object EchoUsbExclusiveApplyPolicy {
 data class EchoUsbAudioStatus(
     val exclusiveEnabled: Boolean = false,
     val deviceName: String? = null,
+    val vendorId: Int? = null,
+    val productId: Int? = null,
     val connected: Boolean = false,
     val hostPermissionGranted: Boolean = false,
     val hostPermissionPending: Boolean = false,
@@ -231,6 +234,8 @@ class EchoUsbAudioMonitor(context: Context) {
         if (device == null || !exclusiveEnabled) {
             return EchoUsbAudioStatus(
                 exclusiveEnabled = exclusiveEnabled,
+                vendorId = usbSnapshot.vendorId ?: usbDevice?.vendorId,
+                productId = usbSnapshot.productId ?: usbDevice?.productId,
                 deviceName = usbSnapshot.displayName ?: usbDevice?.getDisplayName() ?: device?.getDisplayName(),
                 connected = usbSnapshot.connected || usbDevice != null || device != null,
                 hostPermissionGranted = hostPermissionGranted,
@@ -262,6 +267,8 @@ class EchoUsbAudioMonitor(context: Context) {
 
         return EchoUsbAudioStatus(
             exclusiveEnabled = exclusiveEnabled,
+            vendorId = usbSnapshot.vendorId ?: usbDevice?.vendorId,
+            productId = usbSnapshot.productId ?: usbDevice?.productId,
             deviceName = device.getDisplayName().ifBlank {
                 usbSnapshot.displayName ?: usbDevice?.getDisplayName().orEmpty()
             },
@@ -456,6 +463,8 @@ fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): Echo
         usbExclusiveEnabled = status.exclusiveEnabled,
         usbConnected = status.connected,
         usbDeviceName = status.deviceName,
+        usbVendorId = status.vendorId,
+        usbProductId = status.productId,
         usbHostPermissionGranted = status.hostPermissionGranted,
         usbHostPermissionPending = status.hostPermissionPending,
         usbAudioClass = status.audioClass,

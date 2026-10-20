@@ -17,6 +17,8 @@ data class EchoPlaybackDiagnostics(
     val usbExclusiveEnabled: Boolean = false,
     val usbConnected: Boolean = false,
     val usbDeviceName: String? = null,
+    val usbVendorId: Int? = null,
+    val usbProductId: Int? = null,
     val usbHostPermissionGranted: Boolean = false,
     val usbHostPermissionPending: Boolean = false,
     val usbAudioClass: String? = null,

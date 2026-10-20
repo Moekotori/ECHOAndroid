@@ -116,6 +116,7 @@ enum class UsbExclusiveOutputState {
     PermissionDenied,
     DeviceUnavailable,
     FormatUnavailable,
+    DopConfigurationRequired,
     OpenFailed,
     Closed,
 }

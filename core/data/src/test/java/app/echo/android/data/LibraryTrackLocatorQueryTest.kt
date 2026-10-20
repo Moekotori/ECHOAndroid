@@ -24,6 +24,16 @@ class LibraryTrackLocatorQueryTest {
             LibraryTrackSortMode.Title, idsOnly = true)
         assertFalse(sql.contains("x'"))
         assertTrue(sql.contains(LibraryScanPolicy.LocalSourceSql))
-        assertEquals(6, sql.count { it == '?' })
+        assertEquals(31, sql.count { it == '?' })
     }
+    @Test fun queuesAndPagesShareEverySortIncludingSearchRankingAndTies() {
+        for (sort in LibraryTrackSortMode.entries) {
+            for ((query, fts) in listOf("" to false, "晴天" to true, "ody" to false)) {
+                val page = LibraryTrackQueryBuilder.buildTrackPagingSql(query, fts, sort)
+                val queue = LibraryTrackQueryBuilder.buildTrackQueueSql(query, fts, true, 60, sort)
+                assertEquals(page + " LIMIT 60", queue)
+            }
+        }
+    }
+
 }

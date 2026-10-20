@@ -23,25 +23,35 @@ class LinkedLibrarySearchTextCacheTest {
         assertEquals(3, conversions)
     }
 
-    @Test fun evictsByEntryCountAndDoesNotRetainOversizedText() {
+    @Test fun saturatedCacheRetainsItsWorkingSubsetAndRejectsOversizedText() {
         var conversions = 0
         val cache = LinkedLibrarySearchTextCache(maxEntries = 2, maxChars = 20,
             transliterate = { conversions++; "" })
         cache.text("a", "b")
-        cache.text("a", "c") // a stays hot; b is evicted.
+        cache.text("a", "c") // c is not admitted; the working subset remains cached.
         cache.text("b")
-        assertEquals(4, conversions)
+        assertEquals(3, conversions)
         repeat(2) { cache.text("this text exceeds the character budget") }
-        assertEquals(6, conversions)
+        assertEquals(5, conversions)
     }
 
-    @Test fun evictsWhenCharacterBudgetIsFullEvenBelowEntryLimit() {
+    @Test fun characterBudgetBoundsAdmissionEvenBelowEntryLimit() {
         var conversions = 0
         val cache = LinkedLibrarySearchTextCache(maxEntries = 10, maxChars = 8,
             transliterate = { conversions++; "" })
         cache.text("aaa")
         cache.text("bb") // Retaining both would cost ten characters.
         cache.text("aaa")
-        assertEquals(3, conversions)
+        assertEquals(2, conversions)
     }
+    @Test fun scanningBeyondCapacityDoesNotInvalidateTheWholeCache() {
+        var conversions = 0
+        val cache = LinkedLibrarySearchTextCache(transliterate = { conversions++; "" })
+        repeat(4097) { cache.text("unique-title-$it") }
+        val firstPass = conversions
+        repeat(4097) { cache.text("unique-title-$it") }
+        assertEquals(4097, firstPass)
+        assertEquals(1, conversions - firstPass)
+    }
+
 }

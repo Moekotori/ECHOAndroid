@@ -6,6 +6,28 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class UsbBitPerfectTest {
+    @Test fun dopRequiresTheExactDeviceOptInAndRespectsItsDsdLimit() {
+        val limits = mapOf("123:456" to 11_289_600)
+        assertEquals(true, UsbDopPolicy.permits(limits, 123, 456, 705_600))
+        assertEquals(false, UsbDopPolicy.permits(limits, 123, 456, 1_411_200))
+        assertEquals(false, UsbDopPolicy.permits(limits, 123, 457, 176_400))
+        assertEquals(false, UsbDopPolicy.permits(emptyMap(), 123, 456, 176_400))
+        assertEquals(false, UsbDopPolicy.permits(limits, 123, 456, 192_000))
+    }
+
+    @Test fun dopMarkersContinueAcrossDecoderRestartsAndPartialPacking() {
+        val output = ByteArray(16)
+        val trackOne = ByteBuffer.wrap(byteArrayOf(2, 1, 5, 12, 11, 5))
+        val trackTwo = ByteBuffer.wrap(byteArrayOf(4, 3, 5, 14, 13, 5, 6, 5, 0xFA.toByte(), 16, 15, 0xFA.toByte()))
+        assertEquals(8, UsbBitPerfectPacker.packDop(trackOne, 32, 4, output, 2, 0, true))
+        // The new decoder restarts at 0x05; the session must stamp 0xFA instead.
+        assertEquals(8, UsbBitPerfectPacker.packDop(trackTwo, 32, 4, output, 2, 8, false))
+        assertArrayEquals(byteArrayOf(0, 2, 1, 5, 0, 12, 11, 5,
+            0, 4, 3, 0xFA.toByte(), 0, 14, 13, 0xFA.toByte()), output)
+        assertEquals(8, UsbBitPerfectPacker.packDop(trackTwo, 32, 4, output, 2, 0, true))
+        assertArrayEquals(byteArrayOf(0, 6, 5, 5, 0, 16, 15, 5), output.copyOf(8))
+    }
+
     @Test fun appendingDecodedFramesPreservesUsbTailAndBackpressure() {
         val output = ByteArray(24)
         val tail = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8)

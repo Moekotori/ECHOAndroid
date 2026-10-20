@@ -12,7 +12,7 @@ class LibrarySummaryPagingQueryTest {
         assertFalse(query.sql.contains(text))
         assertEquals(5, query.argCount)
         assertTrue(query.sql.contains("WHERE isRemote = 0 AND ("))
-        assertTrue(query.sql.endsWith("ORDER BY addedAtSeconds DESC, title COLLATE NOCASE ASC"))
+        assertTrue(query.sql.endsWith("ORDER BY addedAtSeconds DESC, title COLLATE NOCASE ASC, albumKey ASC"))
     }
 
     @Test fun absentSearchRemovesOnlyTheSearchPredicateAndKeepsTheSourceBoundary() {

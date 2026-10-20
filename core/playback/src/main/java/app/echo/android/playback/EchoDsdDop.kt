@@ -86,7 +86,7 @@ internal object EchoDsdDop {
         return EchoDsdDopPackResult(bytesWritten = needed, frames = frames, nextMarkerA = markerA)
     }
 
-    private fun reverseBits(value: Byte): Byte {
+    internal fun reverseBits(value: Byte): Byte {
         var bits = value.toInt() and 0xFF
         bits = ((bits and 0xF0) ushr 4) or ((bits and 0x0F) shl 4)
         bits = ((bits and 0xCC) ushr 2) or ((bits and 0x33) shl 2)

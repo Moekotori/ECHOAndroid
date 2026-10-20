@@ -1238,78 +1238,17 @@ interface LibraryTrackDao {
     )
     suspend fun searchTracksByFts(matchQuery: String, rankQuery: String, limit: Int): List<LibraryTrackEntity>
 
-    @Query(
-        """
-        SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds
-        FROM library_album_summaries
-        WHERE isRemote = 0
-          AND (
-            title LIKE '%' || :query || '%'
-            OR albumArtist LIKE '%' || :query || '%'
-            OR artist LIKE '%' || :query || '%'
-            OR pinyinTitle LIKE '%' || lower(:query) || '%'
-            OR pinyinArtist LIKE '%' || lower(:query) || '%'
-            OR albumKey IN (
-                SELECT matched_track.albumKey
-                FROM library_tracks AS matched_track
-                WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
-                  AND (
-                    matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedAlbum LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedAlbumArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinTitle LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinAlbum LIKE '%' || lower(:query) || '%'
-                  )
-            )
-          )
-        ORDER BY
-            CASE
-                WHEN title LIKE :query || '%' THEN 0
-                WHEN pinyinTitle LIKE lower(:query) || '%' THEN 1
-                WHEN albumArtist LIKE :query || '%' THEN 2
-                WHEN pinyinArtist LIKE lower(:query) || '%' THEN 3
-                ELSE 4
-            END,
-            title COLLATE NOCASE ASC
-        LIMIT :limit
-        """,
-    )
-    suspend fun searchAlbums(query: String, limit: Int): List<AlbumSummary>
+    suspend fun searchAlbums(query: String, limit: Int): List<AlbumSummary> =
+        searchAlbumsIndexed(LibrarySummarySearchQuery.searchAlbums(query, limit))
 
-    @Query(
-        """
-        SELECT artistKey, name, artworkUri, albumCount, trackCount, durationMs
-        FROM library_artist_summaries
-        WHERE name LIKE '%' || :query || '%'
-           OR pinyinName LIKE '%' || lower(:query) || '%'
-           OR artistKey IN (
-                SELECT credits.artistKey
-                FROM library_tracks AS matched_track
-                JOIN library_track_artists AS credits ON credits.trackId = matched_track.id
-                WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
-                  AND (
-                    matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedAlbum LIKE '%' || lower(:query) || '%'
-                    OR matched_track.normalizedAlbumArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinTitle LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinArtist LIKE '%' || lower(:query) || '%'
-                    OR matched_track.pinyinAlbum LIKE '%' || lower(:query) || '%'
-                  )
-           )
-        ORDER BY
-            CASE
-                WHEN name LIKE :query || '%' THEN 0
-                WHEN pinyinName LIKE lower(:query) || '%' THEN 1
-                ELSE 2
-            END,
-            name COLLATE NOCASE ASC
-        LIMIT :limit
-        """,
-    )
-    suspend fun searchArtists(query: String, limit: Int): List<ArtistSummary>
+    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class])
+    suspend fun searchAlbumsIndexed(query: SupportSQLiteQuery): List<AlbumSummary>
+
+    suspend fun searchArtists(query: String, limit: Int): List<ArtistSummary> =
+        searchArtistsIndexed(LibrarySummarySearchQuery.searchArtists(query, limit))
+
+    @RawQuery(observedEntities = [LibraryArtistSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class, LibraryTrackArtistEntity::class])
+    suspend fun searchArtistsIndexed(query: SupportSQLiteQuery): List<ArtistSummary>
 
     @Transaction
     suspend fun upsertBatchWithFts(tracks: List<LibraryTrackEntity>) {

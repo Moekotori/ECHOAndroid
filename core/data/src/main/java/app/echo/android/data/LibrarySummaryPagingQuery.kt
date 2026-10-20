@@ -17,17 +17,17 @@ internal object LibrarySummaryPagingQuery {
             "Duration" -> "durationMs DESC, "
             "RecentlyAdded" -> "addedAtSeconds DESC, "
             else -> ""
-        } + "title COLLATE NOCASE ASC",
+        } + "title COLLATE NOCASE ASC, albumKey ASC",
     )
 
     fun artists(query: String?, sort: String): SimpleSQLiteQuery = build(
         "library_artist_summaries", "artistKey, name, artworkUri, albumCount, trackCount, durationMs",
-        null, listOf("name", "pinyinName"), query, countOrder(sort) + "name COLLATE NOCASE ASC",
+        null, listOf("name", "pinyinName"), query, countOrder(sort) + "name COLLATE NOCASE ASC, artistKey ASC",
     )
 
     fun genres(query: String?, sort: String): SimpleSQLiteQuery = build(
         "library_genre_summaries", "genreKey, name, artworkUri, albumCount, trackCount, durationMs",
-        null, listOf("name", "pinyinName"), query, countOrder(sort) + "name COLLATE NOCASE ASC",
+        null, listOf("name", "pinyinName"), query, countOrder(sort) + "name COLLATE NOCASE ASC, genreKey ASC",
     )
 
     fun folders(query: String?, sort: String): SimpleSQLiteQuery = build(
@@ -38,7 +38,7 @@ internal object LibrarySummaryPagingQuery {
             "Size" -> "totalSizeBytes DESC, "
             "RecentlyModified" -> "latestModifiedSeconds DESC, "
             else -> countOrder(sort)
-        } + "CASE WHEN folderKey = '' THEN 1 ELSE 0 END, path COLLATE NOCASE ASC",
+        } + "CASE WHEN folderKey = '' THEN 1 ELSE 0 END, path COLLATE NOCASE ASC, folderKey ASC",
     )
 
     private fun countOrder(sort: String): String = when (sort) {

@@ -116,4 +116,12 @@ class LibraryFtsSearchTest {
         assertTrue(entity.toFtsEntity().normalizedText.contains("ziwei"))
         assertTrue(entity.toFtsEntity().normalizedText.contains("zw"))
     }
+    @Test fun substringCandidatesNeverRequireAnAsciiWordPrefix() {
+        assertEquals("eg3ody", substringFtsQuery("ody"))
+        assertTrue(substringFtsQuery("qingtian")!!.contains("eg3ing"))
+        assertEquals("eg3ody AND 晴* AND 天*", substringFtsQuery("晴天 ody"))
+        assertNull(substringFtsQuery("ab"))
+        assertEquals(listOf("ac/dc", "%_", "晴天"), librarySearchTerms("AC/DC  %_ 晴天"))
+    }
+
 }

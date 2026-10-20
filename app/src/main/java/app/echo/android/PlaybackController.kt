@@ -122,6 +122,7 @@ internal class PlaybackController(
     private val _playbackControls = MutableStateFlow(PlaybackControlsState())
     val playbackControls: StateFlow<PlaybackControlsState> = _playbackControls.asStateFlow()
 
+    private val persistenceQueueCache = PlaybackPersistenceQueueCache()
     private val _playbackQueue = MutableStateFlow(PlaybackQueueState())
     val playbackQueue: StateFlow<PlaybackQueueState> = _playbackQueue.asStateFlow()
 
@@ -736,6 +737,7 @@ internal class PlaybackController(
             startDetachedSessionPersistence(mediaController)
         }
         controller = null
+        persistenceQueueCache.invalidate()
     }
 
     private fun connectController(attempt: Int = 0) {
@@ -837,6 +839,7 @@ internal class PlaybackController(
     private fun handleControllerDisconnected(disconnected: MediaController, generation: Long) {
         if (cleared || generation != controllerGeneration || controller !== disconnected) return
         controller = null
+        persistenceQueueCache.invalidate()
         controllerGeneration += 1
         sessionReadyForCommands = false
         restoredPlaybackSession = false
@@ -862,6 +865,7 @@ internal class PlaybackController(
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            if (events.contains(Player.EVENT_TIMELINE_CHANGED)) persistenceQueueCache.invalidate()
             if (events.containsAny(*PlaybackCoreEvents)) {
                 updatePlaybackCore(
                     player = player,
@@ -993,7 +997,11 @@ internal class PlaybackController(
         val position = player.toPlaybackPositionState()
         if (remapQueue) {
             retainQueueLookups(player)
-            updateState(_playbackQueue, player.toPlaybackQueueState())
+            val mappedQueue = player.toPlaybackQueueState()
+            updateState(_playbackQueue, mappedQueue)
+            // Share the already mapped rows instead of retaining a second full queue copy.
+            persistenceQueueCache.snapshot(player, player.currentTimeline, player.mediaItemCount,
+                readQueue = { mappedQueue }, readShuffleOrder = { player.queueShuffleOrder() })
         } else {
             val currentQueue = _playbackQueue.value
             val newIndex = player.currentMediaItemIndex.takeIf { it in 0 until player.mediaItemCount } ?: -1
@@ -1294,16 +1302,19 @@ internal class PlaybackController(
         persistBecauseOfSeek: Boolean = false,
     ) {
         val mediaController = controller ?: return
-        val playerMediaIds = (0 until mediaController.mediaItemCount).map { index ->
-            mediaController.getMediaItemAt(index).let { it.queueContext()?.entryId ?: it.mediaId }
-        }
+        val queueSnapshot = persistenceQueueCache.snapshot(
+            mediaController, mediaController.currentTimeline, mediaController.mediaItemCount,
+            readQueue = { mediaController.toPlaybackQueueState() },
+            readShuffleOrder = { mediaController.queueShuffleOrder() },
+        )
         val currentIndex = mediaController.currentMediaItemIndex
             .takeIf { it in 0 until mediaController.mediaItemCount }
             ?: -1
         val signature = playbackSessionPersistSignature(
             currentIndex = currentIndex,
             playWhenReady = mediaController.playWhenReady,
-            mediaIds = playerMediaIds,
+            // This signature is an in-memory deduplication key, not the saved queue identity.
+            mediaIds = listOf(queueSnapshot.revision.toString()),
             shuffleEnabled = mediaController.shuffleModeEnabled,
             repeatMode = mediaController.repeatMode,
             playbackSpeed = mediaController.playbackParameters.speed,
@@ -1330,17 +1341,7 @@ internal class PlaybackController(
         ) {
             return
         }
-        val cachedQueue = _playbackQueue.value
-        val queue = if (
-            PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(
-                cachedMediaIds = cachedQueue.items.map { it.queueContext?.entryId ?: it.id },
-                playerMediaIds = playerMediaIds,
-            )
-        ) {
-            cachedQueue.copy(currentIndex = currentIndex)
-        } else {
-            mediaController.toPlaybackQueueState()
-        }
+        val queue = queueSnapshot.queue.copy(currentIndex = currentIndex)
         val currentTrack = mediaController.currentMediaItem?.toEchoTrackRef(
             durationMs = mediaController.duration.takeIf { it > 0L } ?: 0L,
         )
@@ -1356,7 +1357,7 @@ internal class PlaybackController(
                 repeatMode = mediaController.repeatMode.toEchoRepeatMode(),
                 playbackSpeed = mediaController.playbackParameters.speed,
                 playbackPitch = mediaController.playbackParameters.pitch,
-                shuffleOrder = mediaController.queueShuffleOrder(),
+                shuffleOrder = queueSnapshot.shuffleOrder,
             )
         }
         if (
@@ -1470,16 +1471,17 @@ internal class PlaybackController(
         val detachedSettingsStore = settingsStore
         var lastSignature: String? = null
         var lastPositionBucket: Long? = null
-        var cachedMediaIds: List<String> = emptyList()
-        var cachedQueue = PlaybackQueueState()
+        val queueCache = PlaybackPersistenceQueueCache()
         EchoPlaybackProcessRuntime.startProgress(PERSIST_POSITION_BUCKET_MS) { player ->
             if (player !== mediaController) return@startProgress
-            val mediaIds = (0 until player.mediaItemCount).map { index -> player.getMediaItemAt(index).let { it.queueContext()?.entryId ?: it.mediaId } }
+            val snapshot = queueCache.snapshot(player, player.currentTimeline, player.mediaItemCount,
+                readQueue = { player.toPlaybackQueueState() },
+                readShuffleOrder = { player.queueShuffleOrder() })
             val currentIndex = player.currentMediaItemIndex.takeIf { it in 0 until player.mediaItemCount } ?: -1
             val signature = playbackSessionPersistSignature(
                 currentIndex = currentIndex,
                 playWhenReady = player.playWhenReady,
-                mediaIds = mediaIds,
+                mediaIds = listOf(snapshot.revision.toString()),
                 shuffleEnabled = player.shuffleModeEnabled,
                 repeatMode = player.repeatMode,
                 playbackSpeed = player.playbackParameters.speed,
@@ -1487,15 +1489,8 @@ internal class PlaybackController(
             )
             val positionBucket = player.currentPosition.coerceAtLeast(0L) / PERSIST_POSITION_BUCKET_MS
             if (signature == lastSignature && positionBucket == lastPositionBucket) return@startProgress
-            val queue = if (PlaybackSessionPolicy.shouldReuseCachedQueueSnapshot(cachedMediaIds, mediaIds)) {
-                cachedQueue.copy(currentIndex = currentIndex)
-            } else {
-                player.toPlaybackQueueState().also {
-                    cachedMediaIds = mediaIds
-                    cachedQueue = it
-                }
-            }
-            val session = player.toSavedPlaybackSession(queue)
+            val queue = snapshot.queue.copy(currentIndex = currentIndex)
+            val session = player.toSavedPlaybackSession(queue, snapshot.shuffleOrder)
             withContext(Dispatchers.IO) {
                 detachedSettingsStore.savePlaybackSession(session)
             }
@@ -1574,7 +1569,7 @@ internal class PlaybackController(
     }
 }
 
-private fun Player.toSavedPlaybackSession(queue: PlaybackQueueState): EchoSavedPlaybackSession? {
+private fun Player.toSavedPlaybackSession(queue: PlaybackQueueState, shuffleOrder: List<Int>): EchoSavedPlaybackSession? {
     if (queue.items.isEmpty() || queue.currentIndex !in queue.items.indices || currentMediaItem == null) return null
     return EchoSavedPlaybackSession(
         queue = queue.items,
@@ -1585,6 +1580,6 @@ private fun Player.toSavedPlaybackSession(queue: PlaybackQueueState): EchoSavedP
         repeatMode = repeatMode.toEchoRepeatMode(),
         playbackSpeed = playbackParameters.speed,
         playbackPitch = playbackParameters.pitch,
-        shuffleOrder = queueShuffleOrder(),
+        shuffleOrder = shuffleOrder,
     )
 }

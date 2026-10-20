@@ -25,7 +25,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryBookmarkEntity::class,
         LibraryRepairArchiveEntity::class,
     ],
-    version = 22,
+    version = 24,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -68,6 +68,8 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         Migration19To20,
                         Migration20To21,
                         Migration21To22,
+                        LibraryTitleSortMigration,
+                        LibrarySearchSpeedMigration,
                     )
                     .build()
                     .also { instance = it }

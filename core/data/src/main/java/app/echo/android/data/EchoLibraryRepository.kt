@@ -127,8 +127,7 @@ class EchoLibraryRepository(
         flow {
             val dao = database.trackDao()
             val trimmedQuery = query?.trim().orEmpty()
-            val matchQuery = sanitizeFtsQuery(trimmedQuery)
-            val rankQuery = ftsRankQuery(trimmedQuery)
+            val matchQuery = substringFtsQuery(trimmedQuery)
             val useFts = matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)
 
             emitAll(
@@ -139,7 +138,6 @@ class EchoLibraryRepository(
                             trackPagingQuery(
                                 query = trimmedQuery,
                                 matchQuery = matchQuery,
-                                rankQuery = rankQuery,
                                 useFts = useFts,
                                 sort = sort,
                             ),
@@ -260,13 +258,11 @@ class EchoLibraryRepository(
         val albums = async { dao.searchAlbums(trimmedQuery, limitPerType) }
         val remoteAlbums = async { dao.searchRemoteAlbumSummaries(trimmedQuery) }
         val artists = async { dao.searchArtists(trimmedQuery, limitPerType) }
-        val matchQuery = sanitizeFtsQuery(trimmedQuery)
-        val rankQuery = ftsRankQuery(trimmedQuery)
-        val tracks = if (matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)) {
-            dao.searchTracksByFts(matchQuery, rankQuery, limitPerType)
-        } else {
-            dao.searchTracks(trimmedQuery, limitPerType)
-        }
+        val matchQuery = substringFtsQuery(trimmedQuery)
+        val useFts = matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)
+        val tracks = dao.queryTracks(LibraryTrackQueryBuilder.boundQuery(
+            trimmedQuery, matchQuery.takeIf { useFts }, LibraryTrackSortMode.Title, limit = limitPerType,
+        ))
         LocalLibrarySearchResults(
             tracks = tracks,
             albums = albums.await() + remoteAlbums.await(),
@@ -2105,9 +2101,9 @@ class EchoLibraryRepository(
     suspend fun localTrackIndex(trackId: String, query: String, sort: LibraryTrackSortMode): Int? =
         withContext(Dispatchers.IO) {
             val trimmed = query.trim()
-            val match = sanitizeFtsQuery(trimmed)
+            val match = substringFtsQuery(trimmed)
             val useFts = match != null && canUseFts(database.trackDao(), match, trimmed)
-            val orderedIds = trackPagingQuery(trimmed, match, ftsRankQuery(trimmed), useFts, sort, idsOnly = true)
+            val orderedIds = trackPagingQuery(trimmed, match, useFts, sort, idsOnly = true)
             findLibraryTrackIndex(database, orderedIds, trackId)
         }
 
@@ -2123,7 +2119,14 @@ class EchoLibraryRepository(
 
     private suspend fun canUseFts(dao: LibraryTrackDao, matchQuery: String, rawQuery: String): Boolean {
         if (matchQuery.isBlank() || rawQuery.isBlank()) return false
-        return runCatching { dao.validateFtsQuery(matchQuery) }.isSuccess
+        return try {
+            dao.validateFtsQuery(matchQuery)
+            true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private suspend fun trackQueueCandidates(
@@ -2134,55 +2137,26 @@ class EchoLibraryRepository(
         sort: LibraryTrackSortMode,
     ): List<LibraryTrackEntity> {
         val trimmedQuery = query?.trim().orEmpty()
-        val matchQuery = sanitizeFtsQuery(trimmedQuery)
-        val rankQuery = ftsRankQuery(trimmedQuery)
+        val matchQuery = substringFtsQuery(trimmedQuery)
         val useFts = matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)
-        val sql = LibraryTrackQueryBuilder.buildTrackQueueSql(
+        return dao.queryTracks(LibraryTrackQueryBuilder.boundQuery(
             query = trimmedQuery,
-            useFts = useFts,
+            matchQuery = matchQuery.takeIf { useFts },
+            sort = sort,
             localSources = LibraryPlaybackQueuePolicy.usesLocalTrackQueue(selectedLibrarySource),
             limit = limit,
-            sort = sort,
-        )
-        val args = mutableListOf<Any>()
-        if (useFts && matchQuery != null) {
-            args += matchQuery
-            repeat(3) { args += rankQuery }
-        } else if (trimmedQuery.isNotBlank()) {
-            val likeQuery = "%${trimmedQuery.lowercase()}%"
-            repeat(6) { args += likeQuery }
-            repeat(3) { args += rankQuery }
-        }
-        return dao.queryTracks(SimpleSQLiteQuery(sql, args.toTypedArray()))
+        ))
     }
 
     private fun trackPagingQuery(
         query: String,
         matchQuery: String?,
-        rankQuery: String,
         useFts: Boolean,
         sort: LibraryTrackSortMode,
         idsOnly: Boolean = false,
-    ): SimpleSQLiteQuery {
-        val trimmed = query.trim()
-        val sql = LibraryTrackQueryBuilder.buildTrackPagingSql(
-            query = trimmed,
-            useFts = useFts && matchQuery != null,
-            sort = sort,
-            idsOnly = idsOnly,
-        )
-        val args = mutableListOf<Any>()
-        if (trimmed.isNotBlank() && useFts && matchQuery != null) {
-            args += matchQuery
-            if (sort == LibraryTrackSortMode.Title) {
-                repeat(3) { args += rankQuery }
-            }
-        } else if (trimmed.isNotBlank()) {
-            val likeQuery = "%${trimmed.lowercase()}%"
-            repeat(6) { args += likeQuery }
-        }
-        return SimpleSQLiteQuery(sql, args.toTypedArray())
-    }
+    ): SimpleSQLiteQuery = LibraryTrackQueryBuilder.boundQuery(
+        query, matchQuery.takeIf { useFts }, sort, idsOnly = idsOnly,
+    )
 
     private fun LibraryTrackEntity.albumKey(): String =
         resolvedAlbumKey()

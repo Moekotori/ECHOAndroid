@@ -1,75 +1,16 @@
 package app.echo.android.data
 
+import androidx.sqlite.db.SimpleSQLiteQuery
 import app.echo.android.model.library.LibraryTrackSortMode
 
 internal object LibraryTrackQueryBuilder {
+    // A single query shape owns filtering and ordering for pages, locating and playback queues.
     fun buildTrackPagingSql(
         query: String,
         useFts: Boolean,
         sort: LibraryTrackSortMode,
         idsOnly: Boolean = false,
-    ): String {
-        val sql = StringBuilder()
-        sql.append(if (idsOnly) "SELECT library_tracks.id FROM library_tracks" else "SELECT library_tracks.* FROM library_tracks")
-        if (
-            sort == LibraryTrackSortMode.FrequentlyPlayed ||
-            sort == LibraryTrackSortMode.RecentlyPlayed
-        ) {
-            sql.appendLine()
-            sql.append(
-                """
-                LEFT JOIN library_playback_stats
-                    ON library_tracks.id = library_playback_stats.trackId
-                """.trimIndent(),
-            )
-        }
-        val trimmed = query.trim()
-        if (trimmed.isNotBlank() && useFts) {
-            sql.appendLine()
-            sql.append("JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId")
-            sql.appendLine()
-            sql.append("WHERE library_tracks_fts MATCH ?")
-            sql.append(" AND ")
-            sql.append(LibraryScanPolicy.LocalSourceSql)
-        } else if (trimmed.isNotBlank()) {
-            sql.appendLine()
-            sql.append(
-                """
-                WHERE (library_tracks.normalizedTitle LIKE ?
-                   OR library_tracks.normalizedArtist LIKE ?
-                   OR library_tracks.normalizedAlbum LIKE ?
-                   OR library_tracks.pinyinTitle LIKE ?
-                   OR library_tracks.pinyinArtist LIKE ?
-                   OR library_tracks.pinyinAlbum LIKE ?)
-                """.trimIndent(),
-            )
-            sql.append(" AND ")
-            sql.append(LibraryScanPolicy.LocalSourceSql)
-        } else {
-            sql.appendLine()
-            sql.append("WHERE ")
-            sql.append(LibraryScanPolicy.LocalSourceSql)
-        }
-        sql.appendLine()
-        sql.append("ORDER BY ")
-        if (trimmed.isNotBlank() && sort == LibraryTrackSortMode.Title && useFts) {
-            sql.append(
-                """
-                CASE
-                    WHEN library_tracks.normalizedTitle LIKE ? THEN 0
-                    WHEN library_tracks.normalizedArtist LIKE ? THEN 1
-                    WHEN library_tracks.normalizedAlbum LIKE ? THEN 2
-                    ELSE 3
-                END,
-                """.trimIndent(),
-            )
-            sql.appendLine()
-        }
-        sql.append(trackSortOrder(sort))
-        // Paging and locating must agree even when titles and other sort keys tie.
-        sql.append(", library_tracks.id ASC")
-        return sql.toString()
-    }
+    ): String = buildSql(query, useFts, sort, idsOnly, localSources = true)
 
     fun buildTrackQueueSql(
         query: String,
@@ -77,97 +18,86 @@ internal object LibraryTrackQueryBuilder {
         localSources: Boolean,
         limit: Int,
         sort: LibraryTrackSortMode = LibraryTrackSortMode.Title,
-    ): String {
-        val sql = StringBuilder()
-        sql.append("SELECT library_tracks.* FROM library_tracks")
-        if (
-            sort == LibraryTrackSortMode.FrequentlyPlayed ||
-            sort == LibraryTrackSortMode.RecentlyPlayed
-        ) {
-            sql.appendLine()
-            sql.append(
-                """
-                LEFT JOIN library_playback_stats
-                    ON library_tracks.id = library_playback_stats.trackId
-                """.trimIndent(),
-            )
+    ): String = buildSql(query, useFts, sort, idsOnly = false, localSources) + " LIMIT ${limit.coerceAtLeast(1)}"
+
+    fun boundQuery(
+        query: String,
+        matchQuery: String?,
+        sort: LibraryTrackSortMode,
+        localSources: Boolean = true,
+        idsOnly: Boolean = false,
+        limit: Int? = null,
+    ): SimpleSQLiteQuery {
+        val useFts = matchQuery != null
+        val args = mutableListOf<Any>()
+        if (query.isNotBlank() && useFts) args += requireNotNull(matchQuery)
+        librarySearchTerms(query).forEach { term -> repeat(SearchFields.size) { args += term } }
+        if (query.isNotBlank() && sort == LibraryTrackSortMode.Title) {
+            repeat(3) { args += query.trim().lowercase() }
         }
-        val trimmed = query.trim()
-        val sourceSql = if (localSources) {
-            LibraryScanPolicy.LocalSourceSql
-        } else {
-            LibraryScanPolicy.RemoteSourceSql
-        }
-        if (trimmed.isNotBlank() && useFts) {
-            sql.appendLine()
-            sql.append("JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId")
-            sql.appendLine()
-            sql.append("WHERE library_tracks_fts MATCH ?")
-            sql.append(" AND ")
-            sql.append(sourceSql)
-            sql.appendLine()
-            sql.append(
-                """
-                ORDER BY
-                    CASE
-                        WHEN library_tracks.normalizedTitle LIKE ? THEN 0
-                        WHEN library_tracks.normalizedArtist LIKE ? THEN 1
-                        WHEN library_tracks.normalizedAlbum LIKE ? THEN 2
-                        ELSE 3
-                    END,
-                    ${trackSortOrder(sort)}
-                """.trimIndent(),
-            )
-        } else if (trimmed.isNotBlank()) {
-            sql.appendLine()
-            sql.append(
-                """
-                WHERE (library_tracks.normalizedTitle LIKE ?
-                   OR library_tracks.normalizedArtist LIKE ?
-                   OR library_tracks.normalizedAlbum LIKE ?
-                   OR library_tracks.pinyinTitle LIKE ?
-                   OR library_tracks.pinyinArtist LIKE ?
-                   OR library_tracks.pinyinAlbum LIKE ?)
-                """.trimIndent(),
-            )
-            sql.append(" AND ")
-            sql.append(sourceSql)
-            sql.appendLine()
-            sql.append(
-                """
-                ORDER BY
-                    CASE
-                        WHEN library_tracks.normalizedTitle LIKE ? THEN 0
-                        WHEN library_tracks.normalizedArtist LIKE ? THEN 1
-                        WHEN library_tracks.normalizedAlbum LIKE ? THEN 2
-                        ELSE 3
-                    END,
-                    ${trackSortOrder(sort)}
-                """.trimIndent(),
-            )
-        } else {
-            sql.appendLine()
-            sql.append("WHERE ")
-            sql.append(sourceSql)
-            sql.appendLine()
-            sql.append("ORDER BY ")
-            sql.append(trackSortOrder(sort))
-        }
-        sql.appendLine()
-        sql.append("LIMIT ")
-        sql.append(limit.coerceAtLeast(1))
-        return sql.toString()
+        val sql = buildSql(query, useFts, sort, idsOnly, localSources) +
+            (limit?.let { " LIMIT ${it.coerceAtLeast(1)}" } ?: "")
+        return SimpleSQLiteQuery(sql, args.toTypedArray())
     }
 
-    fun usesFtsMatchWithoutLeadingWildcardOr(sql: String): Boolean {
-        val compact = sql.replace(Regex("\\s+"), " ")
-        if (!compact.contains("MATCH ?", ignoreCase = true)) return false
-        if (Regex("OR\\s+[^\\s]+\\s+LIKE\\s+'%", RegexOption.IGNORE_CASE).containsMatchIn(compact)) return false
-        if (Regex("OR\\s+library_tracks\\.[A-Za-z]+\\s+LIKE\\s+\\?", RegexOption.IGNORE_CASE).containsMatchIn(compact)) {
-            return false
+    private val SearchFields = listOf(
+        "COALESCE(library_tracks.normalizedTitle, lower(library_tracks.title))",
+        "COALESCE(library_tracks.normalizedArtist, lower(library_tracks.artist))",
+        "COALESCE(library_tracks.normalizedAlbum, lower(library_tracks.album), '')",
+        "COALESCE(library_tracks.normalizedAlbumArtist, lower(library_tracks.albumArtist), '')",
+        "COALESCE(library_tracks.pinyinTitle, '')",
+        "COALESCE(library_tracks.pinyinArtist, '')",
+        "COALESCE(library_tracks.pinyinAlbum, '')",
+    )
+
+    private fun buildSql(
+        query: String,
+        useFts: Boolean,
+        sort: LibraryTrackSortMode,
+        idsOnly: Boolean,
+        localSources: Boolean,
+    ): String = buildString {
+        append(if (idsOnly) "SELECT library_tracks.id" else "SELECT library_tracks.*")
+        // CROSS JOIN keeps the inverted index as the outer loop. Otherwise SQLite may
+        // prefer the source index and evaluate the FTS match once per library row.
+        if (query.isNotBlank() && useFts) {
+            append(" FROM library_tracks_fts CROSS JOIN library_tracks")
+            append(" ON library_tracks.id = library_tracks_fts.trackId")
+        } else {
+            append(" FROM library_tracks")
         }
-        return true
+        // Walk matching order indexes for unfiltered pages, instead of sorting the entire library.
+        if (query.isBlank()) {
+            val index = when (sort) {
+                LibraryTrackSortMode.Title -> "index_library_tracks_title_id"
+                LibraryTrackSortMode.Duration -> "index_library_tracks_durationMs_title_id"
+                LibraryTrackSortMode.RecentlyUpdated -> "index_library_tracks_dateModifiedSeconds_title_id"
+                else -> null
+            }
+            index?.let { append(" INDEXED BY $it") }
+        }
+        if (sort == LibraryTrackSortMode.FrequentlyPlayed || sort == LibraryTrackSortMode.RecentlyPlayed) {
+            append(" LEFT JOIN library_playback_stats ON library_tracks.id = library_playback_stats.trackId")
+        }
+        append(" WHERE ")
+        append(if (localSources) LibraryScanPolicy.LocalSourceSql else LibraryScanPolicy.RemoteSourceSql)
+        if (query.isNotBlank() && useFts) append(" AND library_tracks_fts MATCH ?")
+        librarySearchTerms(query).forEach {
+            append(" AND ")
+            append(SearchFields.joinToString(" OR ", "(", ")") { field -> "instr($field, ?) > 0" })
+        }
+        append(" ORDER BY ")
+        if (query.isNotBlank() && sort == LibraryTrackSortMode.Title) {
+            append("CASE WHEN instr(${SearchFields[0]}, ?) > 0 THEN 0 ")
+            append("WHEN instr(${SearchFields[1]}, ?) > 0 THEN 1 ")
+            append("WHEN instr(${SearchFields[2]}, ?) > 0 THEN 2 ELSE 3 END, ")
+        }
+        append(trackSortOrder(sort))
+        append(", library_tracks.id ASC")
     }
+
+    fun usesFtsMatchWithoutLeadingWildcardOr(sql: String): Boolean =
+        sql.contains("MATCH ?") && !sql.contains(" LIKE ")
 
     private fun trackSortOrder(sort: LibraryTrackSortMode): String =
         when (sort) {
