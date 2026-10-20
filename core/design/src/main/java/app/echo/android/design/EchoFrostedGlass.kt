@@ -54,8 +54,8 @@ fun Modifier.echoFrostedGlass(shape: Shape, elevation: Dp = 8.dp): Modifier {
                 elevation = elevation,
                 shape = shape,
                 clip = false,
-                ambientColor = Color.Black.copy(alpha = if (dark) 0.22f else 0.06f),
-                spotColor = scheme.primary.copy(alpha = if (dark) 0.12f else 0.10f),
+                ambientColor = Color.Black.copy(alpha = 0.22f),
+                spotColor = scheme.primary.copy(alpha = 0.12f),
             ),
         )
         .clip(shape)

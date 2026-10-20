@@ -563,7 +563,7 @@ internal object AudioFileTagRewriter {
         return Id3Frame("USLT", byteArrayOf(0, 0), payload)
     }
 
-    private fun apicFrame(@Suppress("UNUSED_PARAMETER") version: Int, image: ByteArray, mime: String): Id3Frame {
+    private fun apicFrame(version: Int, image: ByteArray, mime: String): Id3Frame {
         val mimeBytes = mime.ifBlank { "image/jpeg" }.toByteArray(StandardCharsets.ISO_8859_1)
         val payload = byteArrayOf(0) + mimeBytes + 0 + 3 + 0 + image
         return Id3Frame("APIC", byteArrayOf(0, 0), payload)
@@ -745,7 +745,6 @@ internal object AudioFileTagRewriter {
             val length = ((header[1].toInt() and 0xFF) shl 16) or
                 ((header[2].toInt() and 0xFF) shl 8) or
                 (header[3].toInt() and 0xFF)
-            if (length !in 0..MAX_BLOCK_BYTES) return null
             total += length
             if (total > MAX_METADATA_BYTES) return null
             val payload = input.readExact(length) ?: return null
@@ -1062,7 +1061,6 @@ internal object AudioFileTagRewriter {
     private const val MAX_WAV_CHUNKS = 256
     private const val MAX_INFO_BYTES = 64 * 1024
     private const val MAX_TAG_BYTES = 2 * 1024 * 1024
-    private const val MAX_BLOCK_BYTES = 16 * 1024 * 1024
     private const val MAX_METADATA_BYTES = 32 * 1024 * 1024
     private const val MAX_FRAMES = 512
     private const val MAX_FLAC_BLOCKS = 64

@@ -1233,7 +1233,7 @@ internal class FakeEchoLinkTransport(
     override suspend fun sendCommand(
         endpoint: EchoRemoteEndpoint,
         command: EchoRemoteCommand,
-    ): EchoLinkStatusResponse? {
+    ): EchoLinkStatusResponse {
         commands += command
         commandBlocker?.await()
         if (failCommand) throw EchoLinkHttpException("command failed", commandErrorCode)

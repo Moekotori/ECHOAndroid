@@ -147,7 +147,6 @@ internal fun PlaylistHero(
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
 ) {
-    val colors = rememberPlaylistDetailColors()
     val fontScale = LocalDensity.current.fontScale
     val compact = app.echo.android.design.LocalEchoLayout.current.compactHeader &&
         app.echo.android.design.LocalEchoLayout.current.heightDp < 600f

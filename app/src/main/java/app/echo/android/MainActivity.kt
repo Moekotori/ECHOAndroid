@@ -129,8 +129,7 @@ class MainActivity : ComponentActivity() {
             else -> return super.onKeyDown(keyCode, event)
         }
         val session = (application as? EchoApplication)?.echoLinkSession
-        if (session != null && session.adjustCastVolume(delta)) return true
-        return super.onKeyDown(keyCode, event)
+        return session != null && session.adjustCastVolume(delta) || super.onKeyDown(keyCode, event)
     }
 
     override fun onNewIntent(intent: Intent) {

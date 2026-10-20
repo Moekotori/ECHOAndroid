@@ -19,6 +19,7 @@ import app.echo.android.design.EchoArtworkImageLoader
 import app.echo.android.design.EchoArtworkUrlRewriteRegistry
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import java.io.File
 import app.echo.android.library.EchoLibraryPlaybackCatalog
 import app.echo.android.playback.EchoPlaybackCachePolicy
 import app.echo.android.playback.EchoPlaybackProcessRuntime
@@ -35,7 +36,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
     private var setlistFmApiKey: String? = null
     val artistOnlineInfo by lazy {
         app.echo.android.data.ArtistOnlineInfoRepository(
-            java.io.File(cacheDir, "artist-online-info"),
+            File(cacheDir, "artist-online-info"),
             BuildConfig.VERSION_NAME,
             musicBrainzGate,
             setlistApiKey = {
@@ -45,7 +46,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
         )
     }
     val albumOnlineInfo by lazy {
-        app.echo.android.data.AlbumOnlineInfoRepository(java.io.File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate)
+        app.echo.android.data.AlbumOnlineInfoRepository(File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate)
     }
     val echoLinkSession by lazy { EchoLinkSession(this) }
     val listening by lazy { app.echo.android.listening.EchoListeningRuntime(this) }
@@ -160,7 +161,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         EchoArtworkImageLoader.trimMemory(level)
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+        if (level >= TRIM_MEMORY_BACKGROUND) {
             EchoPlaybackCachePolicy.bindDeviceConstraints(this)
         }
     }

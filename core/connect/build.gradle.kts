@@ -26,7 +26,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation("com.google.android.gms:play-services-cast-framework:22.3.1")
-    implementation("androidx.mediarouter:mediarouter:1.8.1")
+    implementation(libs.androidx.mediarouter)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.json)
     implementation(libs.okhttp)

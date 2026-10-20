@@ -12,7 +12,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
 import app.echo.android.design.echoDrag
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import app.echo.android.design.echoClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -71,7 +70,6 @@ private val MiniPlayerSwipeReturnSpring = spring<Float>(
 )
 
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
 fun MiniPlayer(
     status: EchoPlaybackStatus,
     onPlayPause: () -> Unit,
@@ -98,7 +96,7 @@ fun MiniPlayer(
     val dragOffset = remember { mutableFloatStateOf(0f) }
     var settleJob by remember { mutableStateOf<Job?>(null) }
     val trackEntrance = remember { Animatable(1f) }
-    var widthPx by remember { mutableStateOf(1f) }
+    var widthPx by remember { mutableFloatStateOf(1f) }
     val canSwitch = onNext != null && onPrevious != null && status.track != null
     val density = LocalDensity.current
     val flingThresholdPx = with(density) { 780.dp.toPx() }

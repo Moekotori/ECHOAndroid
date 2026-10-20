@@ -138,7 +138,7 @@ class PluginEngineTest {
             engine.flushForTest()
             engine.dispatchPlayback(snapshot)
             engine.flushForTest()
-            val stored = java.io.File(folder.root, "plugins/$id/storage.json").readText()
+            val stored = File(folder.root, "plugins/$id/storage.json").readText()
             assertTrue(stored.contains("\"count\":\"1\""))
         }
     }

@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import app.echo.android.model.settings.EchoAppLanguage
 import java.util.Locale
 
@@ -315,9 +314,9 @@ internal fun settingsSearchAnchorResource(item: SettingsSearchItem, availability
 
 @Composable
 internal fun rememberSettingsSearchResults(availability: SettingsSearchAvailability): List<SettingsSearchResult> {
-    val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val configuration = LocalConfiguration.current
-    return remember(context, configuration, availability) {
+    return remember(resources, configuration, availability) {
         availableSettingsSearchItems(availability).map { item ->
             val titleRes = when {
                 item.titleRes == R.string.settings_import_font && availability.importedFont ->
@@ -328,12 +327,12 @@ internal fun rememberSettingsSearchResults(availability: SettingsSearchAvailabil
             }
             SettingsSearchResult(
                 item = item,
-                title = context.getString(titleRes),
-                categoryTitle = item.category?.let { context.getString(it.title) }
-                    ?: context.getString(R.string.settings_group_app),
-                anchorTitle = context.getString(settingsSearchAnchorResource(item, availability)),
+                title = resources.getString(titleRes),
+                categoryTitle = item.category?.let { resources.getString(it.title) }
+                    ?: resources.getString(R.string.settings_group_app),
+                anchorTitle = resources.getString(settingsSearchAnchorResource(item, availability)),
                 keywords = buildString {
-                    append(item.keywords.joinToString(" ") { context.getString(it) })
+                    append(item.keywords.joinToString(" ") { resources.getString(it) })
                     if (item.titleRes == R.string.settings_language) {
                         append(' ')
                         append(EchoAppLanguage.supported.joinToString(" ") { it.nativeName })

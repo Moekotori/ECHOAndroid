@@ -7,7 +7,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /** Ignore a stale enabled callback, and commit navigation only if its owner is still active. */
 suspend fun collectEchoBackGesture(
@@ -17,8 +16,7 @@ suspend fun collectEchoBackGesture(
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    if (!isActive()) return
-    var lostOwnership = false
+    var lostOwnership = !isActive()
     try {
         progress.collect {
             if (!isActive()) lostOwnership = true
@@ -57,8 +55,17 @@ fun EchoOverlayBackHandler(
         val gestureUpdate = update.value
         val gestureCancel = cancel.value
         val gestureDismiss = dismiss.value
-        collectEchoBackGesture(progress.map { it.progress },
-            { active.value && currentOwnership.value === gestureOwner },
-            gestureUpdate, gestureCancel, gestureDismiss)
+        fun ownerActive() = active.value && currentOwnership.value === gestureOwner
+        var lostOwnership = !ownerActive()
+        try {
+            progress.collect { event ->
+                if (!ownerActive()) lostOwnership = true
+                if (!lostOwnership) gestureUpdate(event.progress.coerceIn(0f, 1f))
+            }
+            if (!lostOwnership && ownerActive()) gestureDismiss()
+        } catch (cancelled: CancellationException) {
+            if (!lostOwnership && ownerActive()) gestureCancel()
+            throw cancelled
+        }
     }
 }

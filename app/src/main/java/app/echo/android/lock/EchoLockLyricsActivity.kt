@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
@@ -33,8 +34,13 @@ class EchoLockLyricsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setShowWhenLocked(true)
-        setTurnScreenOn(false)
+        if (Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(false)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+        }
         ContextCompat.registerReceiver(
             this,
             dismissReceiver,
@@ -71,6 +77,5 @@ class EchoLockLyricsActivity : ComponentActivity() {
 
 fun Context.isEchoKeyguardLocked(): Boolean {
     val keyguard = getSystemService(KeyguardManager::class.java) ?: return false
-    return if (Build.VERSION.SDK_INT >= 22) keyguard.isDeviceLocked || keyguard.isKeyguardLocked
-    else keyguard.isKeyguardLocked
+    return keyguard.isDeviceLocked || keyguard.isKeyguardLocked
 }

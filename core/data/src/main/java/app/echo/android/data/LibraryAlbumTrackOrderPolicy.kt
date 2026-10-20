@@ -10,8 +10,7 @@ object LibraryAlbumTrackOrderPolicy {
     fun discKey(discNumber: Int?): Int = discNumber?.takeIf { it > 0 } ?: 1
 
     fun canMove(tracks: List<AlbumTrackOrderRow>, fromIndex: Int, toIndex: Int): Boolean {
-        if (fromIndex !in tracks.indices || toIndex !in tracks.indices || fromIndex == toIndex) return false
-        return discKey(tracks[fromIndex].discNumber) == discKey(tracks[toIndex].discNumber)
+        return !(fromIndex !in tracks.indices || toIndex !in tracks.indices || fromIndex == toIndex) && discKey(tracks[fromIndex].discNumber) == discKey(tracks[toIndex].discNumber)
     }
 
     fun reorder(

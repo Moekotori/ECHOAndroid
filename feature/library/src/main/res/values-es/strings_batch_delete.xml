@@ -9,10 +9,12 @@
     <string name="batch_delete_partial">Quitadas: %1$d · Sin quitar: %2$d</string>
     <plurals name="batch_delete_confirm">
         <item quantity="one">¿Eliminar %1$d canción?</item>
+        <item quantity="many">¿Eliminar %1$d canciones?</item>
         <item quantity="other">¿Eliminar %1$d canciones?</item>
     </plurals>
     <plurals name="batch_delete_done">
         <item quantity="one">Se quitó %1$d canción</item>
+        <item quantity="many">Se quitaron %1$d canciones</item>
         <item quantity="other">Se quitaron %1$d canciones</item>
     </plurals>
 </resources>

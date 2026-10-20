@@ -65,7 +65,7 @@ internal fun LyricsSettingsPreview(
             } else if (alignment == "vertical") {
                 VerticalLyricText(
                     line = app.echo.android.model.lyrics.EchoLyricLine(-1, text = stringResource(R.string.lyrics_vertical_preview)),
-                    lineEndMs = null, active = false, position = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0L) },
+                    lineEndMs = null, active = false, position = androidx.compose.runtime.remember { androidx.compose.runtime.mutableLongStateOf(0L) },
                     wordHighlight = false, estimatedHighlight = false, fontFamily = fontFamily, fontScale = fontScale * 0.7f,
                     spacing = lineSpacing, color = accent, highlight = accent,
                     modifier = Modifier.fillMaxWidth().height(64.dp),

@@ -7,8 +7,7 @@ object LibraryPlaybackSupport {
         val haystack = listOfNotNull(mimeType, uriOrFileName)
             .joinToString(" ")
             .lowercase()
-        if (haystack.isBlank()) return false
-        return DsdTokens.any { it in haystack }
+        return haystack.isNotBlank() && DsdTokens.any { it in haystack }
     }
 
     private val DsdTokens = listOf(

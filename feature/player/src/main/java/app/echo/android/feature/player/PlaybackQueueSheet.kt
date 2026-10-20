@@ -270,7 +270,6 @@ private fun QueueSheetSurface(
     onHandleDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dark = LocalEchoDarkTheme.current
     val empty = queueState.items.isEmpty()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val contentLiftPx = with(LocalDensity.current) { 16.dp.toPx() }
@@ -389,7 +388,6 @@ private fun Modifier.queueSheetHandleDrag(
 
 @Composable
 private fun QueueEmptyState() {
-    val dark = LocalEchoDarkTheme.current
     val titleColor = app.echo.android.design.echoIconColor()
     val mutedColor = titleColor.copy(alpha = 0.58f)
     Column(

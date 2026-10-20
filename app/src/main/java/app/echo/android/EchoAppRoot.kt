@@ -4,6 +4,7 @@ import app.echo.android.i18n.refreshEchoAppLocale
 import app.echo.android.feature.listening.ListeningScreen
 import app.echo.android.feature.home.ListeningStatsScreen
 import app.echo.android.model.playback.EchoPlaybackState
+import app.echo.android.model.playback.PlaybackQueueState
 import app.echo.android.plugin.EchoPluginsOverlay
 import androidx.compose.ui.res.stringResource
 
@@ -18,6 +19,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
+import android.view.WindowManager
 import android.provider.MediaStore
 import androidx.activity.result.IntentSenderRequest
 import android.graphics.Color as AndroidColor
@@ -55,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
@@ -216,7 +219,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         }
     }
     var hasOverlayPermission by remember {
-        mutableStateOf(android.provider.Settings.canDrawOverlays(context))
+        mutableStateOf(Settings.canDrawOverlays(context))
     }
     val bluetoothPermName = remember { bluetoothConnectPermissionName() }
     var hasBluetoothConnectPermission by remember {
@@ -381,13 +384,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             mediaStoreTagWriteLauncher.launch(IntentSenderRequest.Builder(sender).build())
         }
     }
+    val tagWriteSavedToFile = stringResource(R.string.tag_write_saved_to_file)
+    val tagWriteIndexOnly = stringResource(R.string.tag_write_saved_index_only)
+    val tagWriteUnsupported = stringResource(R.string.tag_write_unsupported_format)
+    val tagWriteFailed = stringResource(R.string.tag_write_failed)
     LaunchedEffect(embeddedTagWriteMessage) {
         val message = embeddedTagWriteMessage ?: return@LaunchedEffect
         val text = when (message) {
-            EmbeddedTagWriteUserMessage.Written -> context.getString(R.string.tag_write_saved_to_file)
-            EmbeddedTagWriteUserMessage.IndexOnly -> context.getString(R.string.tag_write_saved_index_only)
-            EmbeddedTagWriteUserMessage.UnsupportedFormat -> context.getString(R.string.tag_write_unsupported_format)
-            EmbeddedTagWriteUserMessage.Failed -> context.getString(R.string.tag_write_failed)
+            EmbeddedTagWriteUserMessage.Written -> tagWriteSavedToFile
+            EmbeddedTagWriteUserMessage.IndexOnly -> tagWriteIndexOnly
+            EmbeddedTagWriteUserMessage.UnsupportedFormat -> tagWriteUnsupported
+            EmbeddedTagWriteUserMessage.Failed -> tagWriteFailed
         }
         android.widget.Toast.makeText(context, text, android.widget.Toast.LENGTH_SHORT).show()
         viewModel.consumeEmbeddedTagWriteMessage()
@@ -544,7 +551,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
                     hasNotifPermission = notifPermName == null ||
                         ContextCompat.checkSelfPermission(context, notifPermName) == PackageManager.PERMISSION_GRANTED
-                    hasOverlayPermission = android.provider.Settings.canDrawOverlays(context)
+                    hasOverlayPermission = Settings.canDrawOverlays(context)
                 }
                 Lifecycle.Event.ON_STOP -> appVisible = false
                 else -> Unit
@@ -557,8 +564,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     DisposableEffect(appVisible) {
-        app.echo.android.playback.EchoPlaybackProcessRuntime.setUiVisible(appVisible)
-        onDispose { app.echo.android.playback.EchoPlaybackProcessRuntime.setUiVisible(false) }
+        EchoPlaybackProcessRuntime.setUiVisible(appVisible)
+        onDispose { EchoPlaybackProcessRuntime.setUiVisible(false) }
     }
     DisposableEffect(echoLinkSession, appVisible) {
         echoLinkSession.setUiVisible(appVisible)
@@ -568,7 +575,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         viewModel.setEffectivePerformanceMode(effectivePerformanceMode)
     }
     fun connectEchoLinkEndpoint(endpoint: EchoRemoteEndpoint) {
-        localNetwork.runForAddress(app.echo.android.connect.EchoLinkCastPolicy.advertisedBaseUrl(endpoint.host, endpoint.port)) {
+        localNetwork.runForAddress(EchoLinkCastPolicy.advertisedBaseUrl(endpoint.host, endpoint.port)) {
             remoteClient.connect(
                 nextEndpoint = endpoint,
                 refreshLibraryOnConnect = appSettings.echoLinkPreferLinkedLibrary,
@@ -602,6 +609,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         echoLinkSession.stopCastPlayback()
     }
 
+    val resources = LocalResources.current
     fun dlnaErrorMessage(error: Throwable): String {
         val code = (error as? EchoDlnaException)?.message
         val res = when (code) {
@@ -612,7 +620,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             "no_lan" -> R.string.echo_link_cast_no_lan
             else -> R.string.echo_link_cast_tv_failed
         }
-        return context.getString(res)
+        return resources.getString(res)
     }
 
     fun performDlnaCast(renderer: EchoLanRenderer) {
@@ -769,9 +777,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val bottomDockInset = with(LocalDensity.current) { bottomDockHeightPx.toDp() }
     var nowPlayingExpanded by rememberSaveable { mutableStateOf(false) }
     var nowPlayingDragProgress by remember { mutableFloatStateOf(0f) }
+    var suppressPlayerArtworkFlight by remember { mutableStateOf(false) }
     val nowPlayingBack = rememberEchoBackProgress(effectivePerformanceMode.isLightweight)
     fun expandNowPlaying() {
         nowPlayingBack.restore()
+        suppressPlayerArtworkFlight = false
         nowPlayingExpanded = true
     }
     var lyricsLaunchToken by rememberSaveable { mutableIntStateOf(0) }
@@ -1151,7 +1161,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         enabled = nowPlayingExpanded && !queueSheetVisible && !castSheetVisible && !pluginsVisible,
         onProgress = nowPlayingBack::update,
         onCancel = { nowPlayingBack.restore() },
-        onDismiss = { nowPlayingExpanded = false },
+        onDismiss = {
+            suppressPlayerArtworkFlight = true
+            nowPlayingExpanded = false
+        },
     )
     EchoOverlayBackHandler(
         enabled = addMusicVisible && !pluginsVisible,
@@ -1207,6 +1220,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     ) {
         EchoPlayerTransitionRoot(
             expanded = nowPlayingExpanded,
+            suppressArtworkFlight = suppressPlayerArtworkFlight,
             // The current record-sleeve cover is square; the compact dock keeps rounded corners.
             expandedArtworkCornerRadius = if (appSettings.playerPageStyle == "classic") 24.dp else 0.dp,
             modifier = Modifier
@@ -1222,10 +1236,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 modifier = Modifier.fillMaxSize(),
                 onLoadError = { failedUri ->
                     if (appSettings.customBackgroundUri == failedUri) {
-                        android.widget.Toast.makeText(context, R.string.background_load_error, android.widget.Toast.LENGTH_LONG).show()
+                        val backgroundLoadError = resources.getString(R.string.background_load_error)
+                        android.widget.Toast.makeText(context, backgroundLoadError, android.widget.Toast.LENGTH_LONG).show()
                         EchoErrorLog.record(
                             EchoErrorSource.Other,
-                            context.getString(R.string.background_load_error),
+                            backgroundLoadError,
                             detail = failedUri,
                         )
                         viewModel.setCustomBackground(EchoBackgroundMode.Default, null)
@@ -1468,7 +1483,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                     runCatching {
                                         context.startActivity(
                                             Intent(
-                                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                                 AndroidUri.parse("package:${context.packageName}"),
                                             ),
                                         )
@@ -1923,7 +1938,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
 
             EchoExpandedPlayer(
                 visible = nowPlayingExpanded,
-                onHidden = { nowPlayingBack.reset() },
+                onHidden = {
+                    nowPlayingBack.reset()
+                    suppressPlayerArtworkFlight = false
+                },
             ) {
                 EchoNowPlayingHost(
                     viewModel = viewModel,
@@ -1935,6 +1953,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     predictiveBackProgress = { nowPlayingBack.value },
                     presentationExpanded = nowPlayingExpanded,
                     onDragProgress = { nowPlayingDragProgress = it },
+                    onSuppressArtworkFlight = { suppressPlayerArtworkFlight = it },
                     onOpenQueue = { queueSheetVisible = true },
                     onCast = ::onNowPlayingCast,
                     castActive = castSessionActive,
@@ -2039,13 +2058,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             }
             // 队列 sheet 关闭时不收集队列流,避免曲目切换/队列变更触发根作用域重组;
             // 关闭后保留最后一次快照,退出动画期间内容不跳变
-            val playbackQueue by produceState(
-                initialValue = viewModel.playbackQueue.value,
-                key1 = queueSheetVisible,
-            ) {
-                if (queueSheetVisible) {
-                    viewModel.playbackQueue.collect { value = it }
-                }
+            var playbackQueue by remember { mutableStateOf(PlaybackQueueState()) }
+            LaunchedEffect(queueSheetVisible) {
+                if (queueSheetVisible) viewModel.playbackQueue.collect { playbackQueue = it }
             }
             PlaybackQueueSheet(
                     visible = queueSheetVisible,
@@ -2163,7 +2178,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 ListeningScreen(
                     state = listeningState,
                     initialInput = listeningDraft,
-                    defaultName = app.echo.android.listening.EchoListeningCodes.sanitizeName(android.os.Build.MODEL) ?: "ECHO",
+                    defaultName = app.echo.android.listening.EchoListeningCodes.sanitizeName(Build.MODEL) ?: "ECHO",
                     onBack = { listeningVisible = false },
                     onConnect = { input, name, serverPassword ->
                         appScope.launch {
@@ -2219,19 +2234,27 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 onVisibleChange = { pluginsVisible = it },
                 back = pluginsBack,
             )
+            val audioPermissionLabel = stringResource(R.string.permission_audio_label)
+            val audioPermissionDescription = stringResource(R.string.permission_audio_description)
+            val notificationPermissionLabel = stringResource(R.string.permission_notification_label)
+            val notificationPermissionDescription = stringResource(R.string.permission_notification_description)
             val permissionEntries = remember(
                 permissionActivity,
                 audioPermissionRequested,
                 hasAudioPermission,
                 hasNotifPermission,
                 notificationPermissionRequested,
+                audioPermissionLabel,
+                audioPermissionDescription,
+                notificationPermissionLabel,
+                notificationPermissionDescription,
             ) {
                 buildList {
                     add(
                         PermissionEntry(
                             permission = audioPermissionName(),
-                            label = context.getString(R.string.permission_audio_label),
-                            description = context.getString(R.string.permission_audio_description),
+                            label = audioPermissionLabel,
+                            description = audioPermissionDescription,
                             icon = Icons.Rounded.AudioFile,
                             granted = hasAudioPermission,
                             canRequest = !audioPermissionRequested ||
@@ -2244,8 +2267,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                         add(
                             PermissionEntry(
                                 permission = perm,
-                                label = context.getString(R.string.permission_notification_label),
-                                description = context.getString(R.string.permission_notification_description),
+                                label = notificationPermissionLabel,
+                                description = notificationPermissionDescription,
                                 icon = Icons.Rounded.Notifications,
                                 granted = hasNotifPermission,
                                 canRequest = !notificationPermissionRequested ||
@@ -2269,13 +2292,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 playbackStatus.isPlaying,
                 lyricSnapshot.current?.text,
             ) {
-                activity?.setShowWhenLocked(
-                    EchoLockLyricsPolicy.shouldKeepShowWhenLocked(
-                        enabled = appSettings.lockScreenLyricsEnabled,
-                        isPlaying = playbackStatus.isPlaying,
-                        hasCurrentLine = lyricSnapshot.current != null,
-                    ),
+                val showOverLock = EchoLockLyricsPolicy.shouldKeepShowWhenLocked(
+                    enabled = appSettings.lockScreenLyricsEnabled,
+                    isPlaying = playbackStatus.isPlaying,
+                    hasCurrentLine = lyricSnapshot.current != null,
                 )
+                if (Build.VERSION.SDK_INT >= 27) {
+                    activity?.setShowWhenLocked(showOverLock)
+                } else {
+                    val window = activity?.window ?: return@LaunchedEffect
+                    @Suppress("DEPRECATION")
+                    if (showOverLock) window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                    else window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                }
             }
             if (showLockLyrics) {
                 LockLyricsScene(
@@ -2405,7 +2434,7 @@ private fun Context.findActivity(): Activity? {
         if (current is Activity) return current
         current = current.baseContext
     }
-    return current as? Activity
+    return null
 }
 
 private const val ECHO_AUDIO_PERMISSION_REQUESTED_KEY = "echo_audio_permission_requested_v1"

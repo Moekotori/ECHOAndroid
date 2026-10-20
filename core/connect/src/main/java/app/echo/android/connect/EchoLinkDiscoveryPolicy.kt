@@ -122,8 +122,7 @@ object EchoLinkDiscoveryPolicy {
 
     private fun isIpv4(host: String): Boolean {
         val parts = host.split('.')
-        if (parts.size != 4) return false
-        return parts.all { part -> part.toIntOrNull()?.let { it in 0..255 } == true }
+        return parts.size == 4 && parts.all { part -> part.toIntOrNull()?.let { it in 0..255 } == true }
     }
 
     private fun isLinkLocalIpv6(host: String): Boolean {

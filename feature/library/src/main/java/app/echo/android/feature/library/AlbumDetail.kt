@@ -40,7 +40,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -686,7 +685,7 @@ internal fun AlbumInformation(
     tracks: List<EchoTrack>,
     onOpenArtist: (() -> Unit)? = null,
 ) {
-    val context = LocalContext.current
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     val colors = rememberDetailGlassColors()
     val facts = remember(album, tracks) {
         AlbumFileFacts(
@@ -700,9 +699,10 @@ internal fun AlbumInformation(
             knownSampleRates = tracks.count { (it.sampleRateHz ?: 0) > 0 },
         )
     }
-    val addedDate = remember(album.addedAtSeconds, context.resources.configuration) {
+    val addedDate = remember(album.addedAtSeconds, locale) {
         album.addedAtSeconds.takeIf { it > 0L }?.let {
-            android.text.format.DateFormat.getDateFormat(context).format(java.util.Date(it * 1000L))
+            java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT, locale)
+                .format(java.util.Date(it * 1000L))
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -1071,7 +1071,7 @@ private fun formatSampleRate(hz: Int): String =
     if (hz % 1000 == 0) {
         "${hz / 1000} kHz"
     } else {
-        String.format("%.1f kHz", hz / 1000.0)
+        String.format(java.util.Locale.ROOT, "%.1f kHz", hz / 1000.0)
     }
 
 private fun formatFileSize(bytes: Long): String {
@@ -1086,7 +1086,7 @@ private fun formatFileSize(bytes: Long): String {
     return if (value >= 100.0) {
         "${value.toInt()} ${units[unitIndex]}"
     } else {
-        String.format("%.1f %s", value, units[unitIndex])
+        String.format(java.util.Locale.ROOT, "%.1f %s", value, units[unitIndex])
     }
 }
 

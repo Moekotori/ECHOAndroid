@@ -109,7 +109,6 @@ class LibraryAggregationBackfillTest {
                     val updated = args[0] as List<LibraryTrackEntity>
                     writeSizes += updated.size
                     updated.forEach { rows[it.id] = it }
-                    Unit
                 }
                 else -> error("Unexpected DAO call: ${method.name}")
             }

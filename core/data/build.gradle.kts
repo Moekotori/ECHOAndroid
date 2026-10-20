@@ -3,6 +3,10 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "app.echo.android.data"
     compileSdk = 37
@@ -10,9 +14,6 @@ android {
     defaultConfig {
         minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        ksp {
-            arg("room.schemaLocation", "$projectDir/schemas")
-        }
     }
 
     compileOptions {

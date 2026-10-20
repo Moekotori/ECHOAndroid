@@ -31,7 +31,6 @@ import app.echo.android.model.playback.*
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiagnosticsScreen(
     status: EchoPlaybackStatus,

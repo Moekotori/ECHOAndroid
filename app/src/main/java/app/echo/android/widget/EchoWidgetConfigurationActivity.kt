@@ -92,7 +92,8 @@ class EchoWidgetConfigurationActivity : ComponentActivity() {
                             catch (_: Exception) { failed = true }
                             finally { busy = false }
                         } }, onCancel = { finish() }, title = snapshot.title.ifBlank { getString(app.echo.android.R.string.app_name) },
-                        artist = snapshot.artist, lyric = EchoPlaybackProcessRuntime.notificationLyricLine.value)
+                        artist = snapshot.artist,
+                        lyric = EchoPlaybackProcessRuntime.notificationLyricLine.collectAsState().value)
                 }
             }
         }

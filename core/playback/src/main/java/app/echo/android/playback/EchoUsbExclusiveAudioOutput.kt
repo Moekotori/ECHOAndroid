@@ -216,7 +216,7 @@ internal class EchoUsbExclusiveAudioOutput(
         if (written <= 0) return false
         if (written >= pendingBytes) {
             pendingBytes = 0
-            if (written > 0) maybeReportPositionAdvancing()
+            maybeReportPositionAdvancing()
             return true
         }
         System.arraycopy(pendingPacked, written, pendingPacked, 0, pendingBytes - written)

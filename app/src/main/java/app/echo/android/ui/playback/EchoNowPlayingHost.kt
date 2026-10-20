@@ -38,6 +38,7 @@ internal fun EchoNowPlayingHost(
     predictiveBackProgress: () -> Float = { 0f },
     presentationExpanded: Boolean = true,
     onDragProgress: (Float) -> Unit = {},
+    onSuppressArtworkFlight: (Boolean) -> Unit = {},
     /** 投送到 DLNA / Chromecast 时换成远端进度。 */
     positionFlow: StateFlow<PlaybackPositionState> = viewModel.playbackPosition,
     onOpenArtist: (ArtistSummary) -> Unit = {},
@@ -185,6 +186,7 @@ internal fun EchoNowPlayingHost(
         predictiveBackProgress = predictiveBackProgress,
         presentationExpanded = presentationExpanded,
         onDragProgress = onDragProgress,
+        onSuppressArtworkFlight = onSuppressArtworkFlight,
         modifier = modifier.fillMaxSize(),
     )
 }

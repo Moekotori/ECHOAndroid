@@ -120,10 +120,10 @@ object EchoEqualizerShareCodec {
         }
 
     private fun encodeToken(value: String): String =
-        URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
+        URLEncoder.encode(value, StandardCharsets.UTF_8.name()).replace("+", "%20")
 
     private fun decodeToken(value: String): String =
-        runCatching { URLDecoder.decode(value, StandardCharsets.UTF_8) }.getOrDefault(value)
+        runCatching { URLDecoder.decode(value, StandardCharsets.UTF_8.name()) }.getOrDefault(value)
 
     private fun formatNumber(value: Float): String {
         if (!value.isFinite()) return "0"

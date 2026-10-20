@@ -299,7 +299,7 @@ private fun buildUrl(base: String, params: List<Pair<String, String>>): String =
     }
 
 private fun String.urlEncode(): String =
-    URLEncoder.encode(this, StandardCharsets.UTF_8)
+    URLEncoder.encode(this, StandardCharsets.UTF_8.name())
 
 private fun JSONArray.objects(): Sequence<JSONObject> =
     sequence {

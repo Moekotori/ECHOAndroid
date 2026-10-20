@@ -46,11 +46,11 @@ plugins {
 }
 
 val echoBuildDate = LocalDate.parse(providers.of(EchoCalendarDateSource::class) {}.get())
-val echoVersionName = providers.gradleProperty("echoVersionName").orNull ?: echoCalendarVersionName(echoBuildDate)
+val echoVersionName: String = providers.gradleProperty("echoVersionName").orNull ?: echoCalendarVersionName(echoBuildDate)
 require(echoVersionName.matches(Regex("[0-9]{2}\\.[1-9][0-9]?\\.[1-9][0-9]?")))
 val echoVersionParts = echoVersionName.split(".").map(String::toInt)
 val echoVersionDate = LocalDate.of(2000 + echoVersionParts[0], echoVersionParts[1], echoVersionParts[2])
-val echoVersionCode = providers.gradleProperty("echoVersionCode").orNull?.toInt()
+val echoVersionCode: Int = providers.gradleProperty("echoVersionCode").orNull?.toInt()
     ?: (echoCalendarVersionCode(echoVersionDate) * 100)
 require(echoVersionCode in 1..2_100_000_000)
 
@@ -134,6 +134,13 @@ android {
             )
         }
     }
+
+    bundle {
+        // Languages switch at runtime via localeConfig; per-language split APKs would ship without them.
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 extensions.configure<BasePluginExtension>("base") {
@@ -169,6 +176,7 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.mediarouter)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.paging.compose)
     implementation(platform(libs.androidx.compose.bom))

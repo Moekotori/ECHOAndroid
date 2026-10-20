@@ -26,7 +26,7 @@ internal class EchoTrackTransitionController(
     private val optionsJob: Job
 
     init {
-        player.setPreloadConfiguration(ExoPlayer.PreloadConfiguration(5_000_000L))
+        player.preloadConfiguration = ExoPlayer.PreloadConfiguration(5_000_000L)
         player.addListener(this)
         optionsJob = scope.launch {
             combine(EchoPlaybackRuntimeOptionsStore.options.map { it.trackTransitions }.distinctUntilChanged(),

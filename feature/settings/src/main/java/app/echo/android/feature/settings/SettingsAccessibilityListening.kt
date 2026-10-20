@@ -91,7 +91,7 @@ internal fun SettingsAccessibilityListening(
 
 /** Keep the user's gain, routing, delay and EQ adjustments when editing these two controls. */
 internal fun EchoChannelBalanceState.withAccessibilityMono(enabled: Boolean): EchoChannelBalanceState =
-    copy(enabled = if (enabled) true else this.enabled,
+    copy(enabled = enabled || this.enabled,
         monoMode = if (enabled) EchoChannelBalanceMonoMode.Sum else EchoChannelBalanceMonoMode.Off)
 
 internal fun EchoChannelBalanceState.withAccessibilityBalance(value: Float): EchoChannelBalanceState =

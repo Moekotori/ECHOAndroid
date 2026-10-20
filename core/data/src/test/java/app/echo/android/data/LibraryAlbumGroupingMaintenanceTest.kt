@@ -33,7 +33,6 @@ class LibraryAlbumGroupingMaintenanceTest {
                 }
                 "upsertBatchWithFts" -> {
                     (args[0] as List<LibraryTrackEntity>).forEach { store[it.id] = it }
-                    Unit
                 }
                 else -> error("Unexpected DAO call: ${method.name}")
             }

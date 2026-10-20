@@ -135,10 +135,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
                 mixPcm32(inputBuffer, output, format.channelCount, mix)
             C.ENCODING_PCM_FLOAT ->
                 mixPcmFloat(inputBuffer, output, format.channelCount, mix)
-            else -> {
-                output.put(inputBuffer)
-                false
-            }
+            else -> output.put(inputBuffer)
         }
         output.flip()
         mix.mixedFrames = mix.readFrame

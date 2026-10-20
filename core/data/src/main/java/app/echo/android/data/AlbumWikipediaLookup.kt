@@ -213,8 +213,7 @@ internal class AlbumWikipediaLookup(private val json: suspend (HttpUrl) -> JSONO
 
         private fun mentionsPhrase(text: String, phrase: String): Boolean {
             val needle = phraseTokens(phrase)
-            if (needle.length < 2) return false
-            return " ${phraseTokens(text)} ".contains(" $needle ")
+            return needle.length >= 2 && " ${phraseTokens(text)} ".contains(" $needle ")
         }
 
         private fun phraseTokens(value: String): String {

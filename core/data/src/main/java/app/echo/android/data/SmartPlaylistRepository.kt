@@ -30,7 +30,7 @@ suspend fun EchoLibraryRepository.saveSmartPlaylist(id: String?, name: String, r
     withContext(Dispatchers.IO) {
         require(name.trim().length in 1..100 && rule.isValid)
         val key = id?.takeIf { it.startsWith(EchoSmartPlaylistRule.IdPrefix) }
-            ?: EchoSmartPlaylistRule.IdPrefix + UUID.randomUUID()
+            ?: (EchoSmartPlaylistRule.IdPrefix + UUID.randomUUID())
         val now = System.currentTimeMillis()
         database.withTransaction {
             val pinned = database.experienceDao().rule(key)?.pinned ?: false

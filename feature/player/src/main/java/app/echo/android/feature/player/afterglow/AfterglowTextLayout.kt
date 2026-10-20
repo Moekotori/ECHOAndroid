@@ -1,5 +1,6 @@
 package app.echo.android.feature.player.afterglow
 
+import android.annotation.SuppressLint
 import android.graphics.Typeface
 import android.graphics.Path
 import android.graphics.RectF
@@ -126,6 +127,8 @@ internal class AfterglowTextLayout(
                 if (direction == AfterglowTypography.Focus) AfterglowTypography.emphasis(line.text) else null)
         }
 
+        // Layout and LineBreaker use the same break-strategy integers. LineBreaker is API 29.
+        @SuppressLint("WrongConstant")
         private fun paragraph(text: String, paint: TextPaint, width: Int, spacing: Float, alignment: Layout.Alignment): StaticLayout {
             val metrics = paint.fontMetrics
             val fontHeight = (metrics.descent - metrics.ascent + metrics.leading).coerceAtLeast(1f)

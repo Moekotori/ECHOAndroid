@@ -47,8 +47,7 @@ internal object EchoDspNative {
         delayedRight: FloatArray,
         limiting: Boolean,
     ): Boolean {
-        if (!available || linkFailed || !samples.isDirect || samples.order() != ByteOrder.nativeOrder()) return false
-        return call { nativeProcessKernel(
+        return !(!available || linkFailed || !samples.isDirect || samples.order() != ByteOrder.nativeOrder()) && call { nativeProcessKernel(
             samples,
             samples.position(),
             frames,

@@ -88,10 +88,9 @@ object EchoListeningCodes {
         val parts = host.split('.')
         if (parts.size != 4) return false
         val numbers = parts.map { it.toIntOrNull() ?: return false }
-        if (numbers.any { it !in 0..255 }) return false
-        return numbers[0] == 10 ||
-            (numbers[0] == 192 && numbers[1] == 168) ||
-            (numbers[0] == 172 && numbers[1] in 16..31)
+        return !numbers.any { it !in 0..255 } && (numbers[0] == 10 ||
+                (numbers[0] == 192 && numbers[1] == 168) ||
+                (numbers[0] == 172 && numbers[1] in 16..31))
     }
 
     private val ROOM_ID = Regex("^[A-Za-z0-9-]{1,64}$")

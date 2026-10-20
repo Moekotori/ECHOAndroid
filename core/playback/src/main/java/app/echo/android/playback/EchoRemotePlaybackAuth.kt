@@ -411,8 +411,7 @@ fun webDavPlaybackUriRequiresCredential(uri: String): Boolean {
 fun webDavCredentialCoversUri(uri: String, normalizedBaseUrl: String): Boolean {
     val clean = stripHttpUserInfo(uri.trim())
     val base = normalizedBaseUrl.trim().trimEnd('/')
-    if (base.isBlank() || clean.isBlank()) return false
-    return clean == base || clean.startsWith("$base/")
+    return !(base.isBlank() || clean.isBlank()) && (clean == base || clean.startsWith("$base/"))
 }
 
 fun webDavAuthReadyForQueue(
@@ -422,8 +421,7 @@ fun webDavAuthReadyForQueue(
     val needing = uris.filter(::webDavPlaybackUriRequiresCredential)
     if (needing.isEmpty()) return true
     val bases = credentialBaseUrls.map { it.trim().trimEnd('/') }.filter { it.isNotBlank() }
-    if (bases.isEmpty()) return false
-    return needing.all { uri -> bases.any { webDavCredentialCoversUri(uri, it) } }
+    return bases.isNotEmpty() && needing.all { uri -> bases.any { webDavCredentialCoversUri(uri, it) } }
 }
 
 fun queueRequiresWebDavAuth(uris: Iterable<String>): Boolean =
@@ -455,8 +453,7 @@ fun jellyfinAuthReadyForQueue(
     val needing = uris.filter(::jellyfinPlaybackUriRequiresCredential)
     if (needing.isEmpty()) return true
     val bases = credentialBaseUrls.map { it.trim().trimEnd('/') }.filter { it.isNotBlank() }
-    if (bases.isEmpty()) return false
-    return needing.all { uri -> bases.any { webDavCredentialCoversUri(uri, it) } }
+    return bases.isNotEmpty() && needing.all { uri -> bases.any { webDavCredentialCoversUri(uri, it) } }
 }
 
 fun subsonicAuthReadyForQueue(
@@ -466,8 +463,7 @@ fun subsonicAuthReadyForQueue(
     val needing = uris.filter(::subsonicPlaybackUriRequiresCredential)
     if (needing.isEmpty()) return true
     val bases = credentialBaseUrls.map { it.trim().trimEnd('/') }.filter { it.isNotBlank() }
-    if (bases.isEmpty()) return false
-    return needing.all { uri -> bases.any { webDavCredentialCoversUri(uri, it) } }
+    return bases.isNotEmpty() && needing.all { uri -> bases.any { webDavCredentialCoversUri(uri, it) } }
 }
 
 private fun stripHttpUserInfo(uri: String): String {
@@ -666,16 +662,12 @@ internal object EchoRemotePlaybackCachePolicy {
     const val CacheKeyPrefix = "echo-remote-v3:"
 
     fun shouldBypassCache(uri: String, usbBitPerfectEnabled: Boolean): Boolean {
-        if (!usbBitPerfectEnabled) return false
-        return EchoLinkPlaybackUri.isOneShotStreamUri(uri)
+        return usbBitPerfectEnabled && EchoLinkPlaybackUri.isOneShotStreamUri(uri)
     }
 
     fun isCacheablePlaybackUri(uri: String): Boolean {
         val trimmed = uri.trim()
-        if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
-            return true
-        }
-        return EchoLinkPlaybackUri.trackIdFromPersistUri(trimmed) != null
+        return trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true) || EchoLinkPlaybackUri.trackIdFromPersistUri(trimmed) != null
     }
 
     fun resourceKey(uri: String, explicitKey: String?): String {

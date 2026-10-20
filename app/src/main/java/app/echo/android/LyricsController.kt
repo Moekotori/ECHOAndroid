@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
-@Suppress("SpellCheckingInspection", "ConstPropertyName")
+@Suppress("SpellCheckingInspection")
 internal class LyricsController(
     private val trackForLyrics: suspend (String) -> LibraryTrackEntity?,
     private val lyricsResolver: LocalLyricsResolver,

@@ -19,11 +19,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
@@ -89,9 +91,15 @@ internal fun UsbOutputDetails(d: EchoPlaybackDiagnostics, output: UsbOutputPrese
         appendLine(evidenceNote)
         append(ratesNote)
     }
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val clipboardScope = rememberCoroutineScope()
     var copied by remember(report) { mutableStateOf(false) }
-    TextButton(onClick = { clipboard.setText(AnnotatedString(report)); copied = true },
+    TextButton(onClick = {
+        clipboardScope.launch {
+            clipboard.setClipEntry(ClipEntry(android.content.ClipData.newPlainText("ECHO", report)))
+        }
+        copied = true
+    },
         contentPadding = PaddingValues(horizontal = 0.dp, vertical = 12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             EchoIcon(if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy, null,

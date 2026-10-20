@@ -133,7 +133,7 @@ object EchoEqualizerPresets {
         val preset = presets.firstOrNull { it.id == id } ?: presets.first()
         return frequenciesHz.map { frequencyHz ->
             val sourceIndex = defaultFrequenciesHz.indices.minByOrNull { index ->
-                kotlin.math.abs(defaultFrequenciesHz[index] - frequencyHz)
+                abs(defaultFrequenciesHz[index] - frequencyHz)
             } ?: 0
             preset.gainsDb.getOrElse(sourceIndex) { 0f }
         }

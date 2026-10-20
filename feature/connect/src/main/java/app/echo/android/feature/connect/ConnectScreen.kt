@@ -37,7 +37,6 @@ import app.echo.android.model.connect.EchoRemoteLibraryState
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.LibraryScanProgress
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectScreen(
     remoteState: EchoRemoteConnectionState,
@@ -372,7 +371,6 @@ fun ConnectScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TabIndicatorScope.ConnectPagerIndicator(pagerState: PagerState) {
     TabRowDefaults.SecondaryIndicator(

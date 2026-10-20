@@ -21,10 +21,7 @@ internal fun resolveEchoDarkTheme(
     scheduledEndMinute: Int,
     currentMinute: Int,
 ): Boolean {
-    if (scheduledDarkModeEnabled && isMinuteInScheduledWindow(currentMinute, scheduledStartMinute, scheduledEndMinute)) {
-        return true
-    }
-    return when (themeMode) {
+    return scheduledDarkModeEnabled && isMinuteInScheduledWindow(currentMinute, scheduledStartMinute, scheduledEndMinute) || when (themeMode) {
         EchoThemeMode.Light -> false
         EchoThemeMode.Dark -> true
         EchoThemeMode.System -> systemDarkTheme

@@ -71,7 +71,7 @@ suspend fun EchoLibraryRepository.relinkLibraryTrack(oldId: String, candidate: E
             val uri = android.net.Uri.parse(CueSheetPolicy.playbackUri(candidate.uri))
             val documentId = runCatching { android.provider.DocumentsContract.getDocumentId(uri) }.getOrNull()
             val baseId = documentId?.let { "saf:${android.net.Uri.encode(it)}" }
-                ?: "saf:relinked:" + java.security.MessageDigest.getInstance("SHA-256").digest(uri.toString().toByteArray()).joinToString("") { "%02x".format(it) }
+                ?: ("saf:relinked:" + java.security.MessageDigest.getInstance("SHA-256").digest(uri.toString().toByteArray()).joinToString("") { "%02x".format(it) })
             val newId = if (old.clipEndMs > old.clipStartMs) "$baseId#cue:${oldId.substringAfterLast("#cue:", old.clipStartMs.toString())}" else baseId
             val updated = old.copy(id = newId, contentUri = replacementUri, source = LibrarySource.Saf.id,
                 sizeBytes = candidate.sizeBytes, dateModifiedSeconds = candidate.dateModifiedSeconds,

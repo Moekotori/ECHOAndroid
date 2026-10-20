@@ -1462,7 +1462,7 @@ internal class PlaybackController(
             if (index != currentIndex || !EchoLinkPlaybackUri.requiresStreamResolve(track.id, track.uri)) {
                 track
             } else {
-                try { resolver(track) } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { track }
+                try { resolver(track) } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { track }
             }
         }
     }

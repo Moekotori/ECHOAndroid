@@ -48,8 +48,8 @@ abstract class EchoPlaybackSurfaceWidget internal constructor(internal val style
         val artwork = if (options.showArtwork) EchoWidgetArtwork.load(localized, snapshot, allowRemote = live.hasTrack) else null
         provideContent {
             androidx.compose.runtime.CompositionLocalProvider(LocalWidgetOptions provides options) {
-                androidx.glance.layout.Column(androidx.glance.GlanceModifier.fillMaxSize()) {
-                    androidx.glance.layout.Box(androidx.glance.GlanceModifier.fillMaxWidth().defaultWeight()) {
+                Column(androidx.glance.GlanceModifier.fillMaxSize()) {
+                    Box(androidx.glance.GlanceModifier.fillMaxWidth().defaultWeight()) {
                         val size = LocalSize.current
                         val contentHeight = size.height.value - if (options.playlistMediaId != null && size.height.value >= 120) 40 else 0
                         when (style) {

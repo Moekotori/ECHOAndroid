@@ -39,7 +39,7 @@ internal class EchoSmartTransitionController(
                 EchoPlaybackProcessRuntime.bitPerfectStates,
                 EchoPlaybackCachePolicy.transitionModes,
                 EchoPlaybackProcessRuntime.sleepTransitionModes,
-                EchoPlaybackProcessRuntime.abLoop) { _, _, _, _, _ -> Unit }
+                EchoPlaybackProcessRuntime.abLoop) { _, _, _, _, _ -> }
                 .collect { refresh() }
         }
     }

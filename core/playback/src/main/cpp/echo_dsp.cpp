@@ -32,7 +32,7 @@ float* directFloats(JNIEnv* env, jobject buffer, jint byteOffset, jint floatCoun
 extern "C" JNIEXPORT jboolean JNICALL
 Java_app_echo_android_playback_EchoDspNative_nativeProcessEq(
         JNIEnv* env,
-        jobject /* clazz */,
+        jclass /* clazz */,
         jobject input,
         jint inputOffset,
         jobject output,
@@ -91,7 +91,7 @@ Java_app_echo_android_playback_EchoDspNative_nativeProcessEq(
 extern "C" JNIEXPORT jboolean JNICALL
 Java_app_echo_android_playback_EchoDspNative_nativeProcessKernel(
         JNIEnv* env,
-        jobject /* clazz */,
+        jclass /* clazz */,
         jobject samples,
         jint byteOffset,
         jint frames,

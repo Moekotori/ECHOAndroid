@@ -14,11 +14,9 @@
     <string name="artist_tracks">曲目</string>
     <string name="artist_clear_search">清空搜索</string>
     <plurals name="artist_album_count">
-        <item quantity="one">%1$d 张专辑</item>
         <item quantity="other">%1$d 张专辑</item>
     </plurals>
     <plurals name="artist_track_count">
-        <item quantity="one">%1$d 首</item>
         <item quantity="other">%1$d 首</item>
     </plurals>
 </resources>

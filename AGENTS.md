@@ -35,9 +35,12 @@ git config core.hooksPath .githooks
 git config core.autocrlf false
 gradlew checkModules --no-configuration-cache
 gradlew testDebugUnitTest assembleDebug
+gradlew lintDebug
 ```
 
 CI（`.github/workflows/ci.yml`）跑同样的 `checkModules`、单元测试和 `assembleDebug`。不要把仪器测试塞进默认 CI。`AGENTS.md` 要入库，不要写进 `.gitignore`。
+
+`lintDebug` 是改动收尾时看一次的参考，不是交付门禁，也不进 CI。不要求把 lint 结果清完：只处理本次改动引入的、或核对后确认是真实缺陷的条目；其余保持现状，不要为了压掉告警而加 `@SuppressLint` / 改 `lint.xml` 放行，也不要顺手扩大重构。判断不了是否真实的，在结论里列出来交给用户看，别自己猜着改。全模块 lint 很慢，改动集中在个别模块时优先跑 `gradlew :<模块>:lintDebug`。
 
 改语言资源时加跑 `checkLocalization`；新增语言走 `docs/localization.md`。
 

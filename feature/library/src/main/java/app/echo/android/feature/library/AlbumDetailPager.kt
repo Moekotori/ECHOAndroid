@@ -12,9 +12,11 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,17 +61,50 @@ internal fun AlbumDetailPager(
         Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
             AlbumDetailTopBar(onBack)
         }
-        TabRow(selectedTabIndex = pager.currentPage, containerColor = Color.Transparent) {
-            listOf(R.string.album_page_tracks, R.string.album_page_information).forEachIndexed { index, label ->
-                Tab(
-                    selected = pager.currentPage == index,
-                    onClick = {
-                        scope.launch { pager.animateSilkToPage(index, lightweight) }
+        SecondaryTabRow(
+            selectedTabIndex = pager.currentPage,
+            modifier = Modifier,
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            indicator = {
+                TabRowDefaults.SecondaryIndicator(
+                    Modifier.tabIndicatorLayout { measurable, constraints, positions ->
+                        val index = pager.currentPage
+                        if (positions.isEmpty() || index !in positions.indices) {
+                            layout(0, 0) {}
+                        } else {
+                            val position = positions[index]
+                            val placeable = measurable.measure(
+                                Constraints.fixed(
+                                    position.width.roundToPx().coerceAtLeast(0),
+                                    3.dp.roundToPx(),
+                                ),
+                            )
+                            layout(constraints.maxWidth, constraints.maxHeight) {
+                                placeable.placeRelative(
+                                    position.left.roundToPx(),
+                                    constraints.maxHeight - placeable.height,
+                                )
+                            }
+                        }
                     },
-                    text = { Text(stringResource(label)) },
                 )
+            },
+            divider = { HorizontalDivider() },
+        ) {
+                listOf(
+                    R.string.album_page_tracks,
+                    R.string.album_page_information
+                ).forEachIndexed { index, label ->
+                    Tab(
+                        selected = pager.currentPage == index,
+                        onClick = {
+                            scope.launch { pager.animateSilkToPage(index, lightweight) }
+                        },
+                        text = { Text(stringResource(label)) },
+                    )
+                }
             }
-        }
         HorizontalPager(
             state = pager,
             modifier = Modifier

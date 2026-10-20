@@ -69,7 +69,7 @@ fun Player.applyPlaybackSessionSnapshot(
         if (EchoRadioStation.isRadio(snapshot.queue[snapshot.currentIndex].id)) C.TIME_UNSET else snapshot.positionMs.coerceAtLeast(0L),
     )
     if (this is androidx.media3.exoplayer.ExoPlayer && NextUpQueuePolicy.validOrder(snapshot.shuffleOrder, mediaItemCount)) {
-        setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(snapshot.shuffleOrder.toIntArray(), 0L))
+        shuffleOrder = androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(snapshot.shuffleOrder.toIntArray(), 0L)
     }
     shuffleModeEnabled = snapshot.shuffleEnabled
     repeatMode = snapshot.repeatMode.toPlayerRepeatMode()

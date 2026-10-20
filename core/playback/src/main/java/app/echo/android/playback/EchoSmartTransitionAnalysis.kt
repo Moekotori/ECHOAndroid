@@ -144,7 +144,7 @@ internal object EchoSmartTransitionAnalysisMath {
 
 internal class EchoSmartTransitionDownsampler(
     private val inputRate: Int,
-    private val channels: Int,
+    channels: Int,
     private val targetRate: Int,
     maxSamples: Int,
 ) {

@@ -230,11 +230,10 @@ internal object TagTextDecoder {
     }
 
     private fun String.isReadableText(): Boolean {
-        if (isEmpty()) return true
-        return none { char ->
+        return isEmpty() || none { char ->
             char == '\u0000' ||
-                char == '\uFFFD' ||
-                (char.isISOControl() && char != '\n' && char != '\r' && char != '\t')
+                    char == '\uFFFD' ||
+                    (char.isISOControl() && char != '\n' && char != '\r' && char != '\t')
         }
     }
 

@@ -901,8 +901,7 @@ internal fun shouldFollowSameHostRedirect(fromUrl: String, toUrl: String): Boole
     if (fromHost != toHost) return false
     val fromHttps = from.scheme.equals("https", ignoreCase = true)
     val toHttps = to.scheme.equals("https", ignoreCase = true)
-    if (fromHttps && !toHttps) return false
-    return to.scheme.equals("http", ignoreCase = true) || toHttps
+    return !(fromHttps && !toHttps) && (to.scheme.equals("http", ignoreCase = true) || toHttps)
 }
 
 internal fun sameHostRedirectInterceptor(): Interceptor =

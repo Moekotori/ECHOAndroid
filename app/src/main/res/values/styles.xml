@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <style name="EchoAndroidBaseTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">@font/outfit</item>
         <item name="android:windowNoTitle">true</item>

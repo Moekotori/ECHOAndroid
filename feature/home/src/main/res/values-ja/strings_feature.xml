@@ -97,7 +97,7 @@
     <string name="feature_home_scan_to_generate_recommendations_16383a">"スキャンするとおすすめが作られます"</string>
     <string name="feature_home_scanning_library_d0b14c">"ライブラリをスキャン中"</string>
     <string name="feature_home_search_local_music_albums_and_artists_443a4f">"端末の曲、アルバム、アーティストを検索"</string>
-    <string name="feature_home_search_local_music_b9c195">"端末の音楽を検索..."</string>
+    <string name="feature_home_search_local_music_b9c195">"端末の音楽を検索&#8230;"</string>
     <string name="feature_home_search_songs_albums_and_artists_c46634">"曲、アルバム、アーティストを検索"</string>
     <string name="feature_home_seeking_ea77e5">"シーク中"</string>
     <string name="feature_home_shuffle_957ce0">"シャッフル"</string>

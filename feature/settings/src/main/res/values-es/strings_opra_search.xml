@@ -5,6 +5,7 @@
     <string name="opra_catalog_summary">%1$d modelos · %2$d correcciones</string>
     <plurals name="opra_model_curves">
         <item quantity="one">%1$d curva</item>
+        <item quantity="many">%1$d curvas</item>
         <item quantity="other">%1$d curvas</item>
     </plurals>
 </resources>

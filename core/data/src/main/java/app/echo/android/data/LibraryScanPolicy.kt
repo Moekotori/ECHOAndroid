@@ -75,12 +75,8 @@ object LibraryScanPolicy {
         cueChildIds: Collection<String>,
         hasCueSheet: Boolean,
     ): List<String>? {
-        if (hasCueSheet) return null
-        if (!hasCueSheet && cueChildIds.isNotEmpty()) return null
-        return ArrayList<String>(cueChildIds.size + 1).apply {
-            add(trackId)
-            addAll(cueChildIds)
-        }
+        if (hasCueSheet || cueChildIds.isNotEmpty()) return null
+        return listOf(trackId)
     }
 
     /** Map a SAF id onto the MediaStore row emitted for the same file, including cue movements. */
@@ -268,10 +264,9 @@ object LibraryScanPolicy {
 
     fun isPrimaryMediaStoreVolume(volumeName: String?): Boolean {
         val volume = volumeName?.trim().orEmpty()
-        if (volume.isEmpty()) return true
-        return volume.equals(MediaStorePrimaryVolume, ignoreCase = true) ||
-            volume.equals(MediaStoreExternalVolume, ignoreCase = true) ||
-            volume.equals("primary", ignoreCase = true)
+        return volume.isEmpty() || volume.equals(MediaStorePrimaryVolume, ignoreCase = true) ||
+                volume.equals(MediaStoreExternalVolume, ignoreCase = true) ||
+                volume.equals("primary", ignoreCase = true)
     }
 
     fun resolvedMediaStoreVolumeName(

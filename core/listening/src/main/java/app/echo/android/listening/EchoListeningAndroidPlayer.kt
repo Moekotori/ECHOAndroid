@@ -114,7 +114,6 @@ internal class EchoListeningAndroidPlayer(
     }
 
     private fun pump(codec: MediaCodec, audioTrack: AudioTrack) {
-        val info = MediaCodec.BufferInfo()
         var pending: EchoListeningOutput? = null
         var receiving = false
         while (running) {

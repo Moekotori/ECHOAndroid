@@ -2,7 +2,6 @@ package app.echo.android.feature.library
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -18,7 +17,6 @@ private val ScanExtensions = listOf(
     "ac3", "eac3", "dts", "amr", "wma", "asf",
 )
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun LibraryScanFormatOptions(
     selectedExtensions: Set<String>,

@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -23,12 +24,11 @@ import app.echo.android.design.EchoIcon
 import app.echo.android.model.playback.EchoMonthlyRecap
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 fun MonthlyRecapScreen(report: EchoMonthlyRecap?, error: Boolean, onLoad: (Int, Int) -> Unit,
     onBack: () -> Unit, modifier: Modifier = Modifier) {
-    val locale = androidx.compose.ui.platform.LocalContext.current.resources.configuration.locales[0]
+    val locale = LocalConfiguration.current.locales[0]
     val today = remember { YearMonth.now() }
     var year by rememberSaveable { mutableIntStateOf(today.year) }
     var month by rememberSaveable { mutableIntStateOf(today.monthValue) }

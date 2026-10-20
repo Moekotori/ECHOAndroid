@@ -4,7 +4,7 @@ import kotlin.math.exp
 import kotlin.math.sqrt
 
 internal data class EchoSmartTransitionVocal(
-    val curve: FloatArray = FloatArray(Buckets) { 0f },
+    val curve: FloatArray = FloatArray(Buckets),
     val confidence: Float = 0f,
 ) {
     val usable: Boolean
@@ -17,7 +17,7 @@ internal data class EchoSmartTransitionVocal(
 }
 
 internal class EchoSmartTransitionVocalAccumulator(
-    private val sampleRate: Int,
+    sampleRate: Int,
     private val channels: Int,
 ) {
     private val frameSize = maxOf(1, (sampleRate * 0.1f).toInt())

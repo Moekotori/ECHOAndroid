@@ -800,7 +800,7 @@ fun LibraryScreen(
     val linkedPageOpen = selectedSource == LibrarySourceMode.PcEcho
     val linkedDetailOpen = linkedPageOpen &&
         (linkedAlbumDetail != null || linkedArtistDetail != null || linkedPlaylistDetail != null)
-    val reportLinkedPage = androidx.compose.runtime.rememberUpdatedState(onLinkedLibraryPageOpenChanged)
+    val reportLinkedPage = rememberUpdatedState(onLinkedLibraryPageOpenChanged)
     // The PC browser (including the playlist list) owns its gestures before a detail opens.
     androidx.compose.runtime.DisposableEffect(linkedPageOpen) {
         reportLinkedPage.value(linkedPageOpen)

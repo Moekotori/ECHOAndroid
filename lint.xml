@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- 缺译回退到默认 values。不要编造译文。见 docs/localization.md。 -->
+    <issue id="MissingTranslation" severity="ignore" />
+    <!-- Media3 播放 API 标了 @UnstableApi，源文件已 @file:OptIn。
+         当前 Lint 仍把 opt-in 声明那一行报成 Error。 -->
+    <issue id="UnsafeOptInUsageError" severity="ignore" />
+</lint>

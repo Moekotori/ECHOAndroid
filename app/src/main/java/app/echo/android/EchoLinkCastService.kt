@@ -87,7 +87,7 @@ class EchoLinkCastService : Service() {
     @Suppress("DEPRECATION")
     private fun acquireWifiLock() {
         if (wifiLock?.isHeld == true) return
-        val manager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return
+        val manager = applicationContext.getSystemService(WIFI_SERVICE) as? WifiManager ?: return
         wifiLock = manager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "echo-link-cast").apply {
             setReferenceCounted(false)
             acquire()

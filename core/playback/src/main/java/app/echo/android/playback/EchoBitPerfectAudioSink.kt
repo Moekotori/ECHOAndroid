@@ -49,8 +49,8 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
     override fun setListener(listener: AudioSink.Listener) { this.listener = listener }
     override fun getFormatSupport(format: Format): Int =
         if (format.sampleMimeType == MimeTypes.AUDIO_RAW && format.pcmEncoding in INTEGER_ENCODINGS)
-            AudioSink.SINK_FORMAT_SUPPORTED_DIRECTLY else AudioSink.SINK_FORMAT_UNSUPPORTED
-    override fun supportsFormat(format: Format): Boolean = getFormatSupport(format) != AudioSink.SINK_FORMAT_UNSUPPORTED
+            SINK_FORMAT_SUPPORTED_DIRECTLY else SINK_FORMAT_UNSUPPORTED
+    override fun supportsFormat(format: Format): Boolean = getFormatSupport(format) != SINK_FORMAT_UNSUPPORTED
     override fun getFormatOffloadSupport(format: Format): AudioOffloadSupport = AudioOffloadSupport.DEFAULT_UNSUPPORTED
 
     override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
@@ -167,7 +167,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
 
     private fun completedFrames(): Long = session?.completedFrames()?.coerceAtMost(submittedFrames) ?: 0
     override fun getCurrentPositionUs(sourceEnded: Boolean): Long =
-        if (firstPts == C.TIME_UNSET) AudioSink.CURRENT_POSITION_NOT_SET
+        if (firstPts == C.TIME_UNSET) CURRENT_POSITION_NOT_SET
         else firstPts + completedFrames() * 1_000_000L / format!!.sampleRate
     override fun hasPendingData(): Boolean = pendingEnd > pendingStart || completedFrames() < submittedFrames
     override fun isEnded(): Boolean = ended && !hasPendingData()

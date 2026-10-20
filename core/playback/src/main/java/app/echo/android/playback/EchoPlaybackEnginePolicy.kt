@@ -478,7 +478,7 @@ class EchoPlaybackEnginePolicy(
         }
     }
 
-    private fun openRemoteReplayGainStream(uri: android.net.Uri): InputStream? {
+    private fun openRemoteReplayGainStream(uri: android.net.Uri): InputStream {
         val dataSource = echoRemoteAuthDataSourceFactory(appContext).createDataSource()
         val dataSpec = DataSpec.Builder()
             .setUri(uri)
