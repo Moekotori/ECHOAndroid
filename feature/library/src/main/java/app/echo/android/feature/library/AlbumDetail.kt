@@ -157,7 +157,7 @@ internal fun AlbumDetailPage(
                             onShuffle = onShuffle,
                             onPinShortcut = onPinShortcut,
                         )
-                        if (albumHasCueMovements(loadedTracks)) {
+                        if (remember(loadedTracks) { albumHasCueMovements(loadedTracks) }) {
                             Spacer(Modifier.height(10.dp))
                             AlbumCueBanner()
                         }

@@ -8,6 +8,7 @@ import org.json.JSONObject
 /** Retains user references before a completed local scan removes a missing file from the index. */
 internal suspend fun EchoLibraryRepository.archiveMissingLocalTracks(ids: List<String>) {
     val tracks = database.trackDao().getTracksByIds(ids).filter { it.source in listOf("mediastore", "saf") }
+    if (tracks.isEmpty()) return
     val sql = database.openHelper.readableDatabase
     for (track in tracks) {
         val json = encodeRepairTrack(track)
@@ -24,7 +25,13 @@ internal suspend fun EchoLibraryRepository.archiveMissingLocalTracks(ids: List<S
         json.put("playlists", refs)
         database.experienceDao().archive(LibraryRepairArchiveEntity(track.id, json.toString(), System.currentTimeMillis()))
     }
+    // Archives carry full JSON snapshots; without a retention cap repeated rescans of a
+    // churned library would grow the table forever.
+    database.experienceDao().pruneArchives(MaxRepairArchives)
 }
+
+/** Keeps the newest snapshots; matches the page size the repair UI reads. */
+internal const val MaxRepairArchives = 500
 
 internal suspend fun EchoLibraryRepository.restoreRepairReferences(archive: LibraryRepairArchiveEntity) {
     val json = JSONObject(archive.payload)

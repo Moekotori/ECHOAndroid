@@ -161,6 +161,9 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
     }
 
     private fun mixPcm16(input: ByteBuffer, output: ByteBuffer, channels: Int, mix: MixSession): Boolean {
+        // Views follow the input order; big-endian sources must not be written native.
+        val order = input.order()
+        output.order(order)
         val shortIn = input.asShortBuffer()
         val shortOut = output.asShortBuffer()
         val frames = shortIn.remaining() / channels
@@ -181,6 +184,9 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
     }
 
     private fun mixPcm32(input: ByteBuffer, output: ByteBuffer, channels: Int, mix: MixSession): Boolean {
+        // Views follow the input order; big-endian sources must not be written native.
+        val order = input.order()
+        output.order(order)
         val intIn = input.asIntBuffer()
         val intOut = output.asIntBuffer()
         val frames = intIn.remaining() / channels

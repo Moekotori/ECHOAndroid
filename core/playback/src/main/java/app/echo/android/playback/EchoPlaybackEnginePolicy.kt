@@ -33,6 +33,10 @@ class EchoPlaybackEnginePolicy(
     private var attachedPlayer: Player? = null
     private var usbTransitionJob: Job? = null
     private var usbMuteInProgress: Boolean = false
+
+    // Bumped before cancelling a transition job: a superseded job's finally block must not
+    // clear the next transition's mute window or restore volume inside it.
+    private var usbTransitionGeneration: Int = 0
     private var consecutiveErrorSkips: Int = 0
     private var activeReplayGainTrackId: String? = null
     var activeReplayGainTrackGainDb: Float? = null
@@ -84,6 +88,7 @@ class EchoPlaybackEnginePolicy(
     fun detach() {
         attachedPlayer?.removeListener(this)
         attachedPlayer = null
+        usbTransitionGeneration += 1
         usbTransitionJob?.cancel()
         usbMuteInProgress = false
         echoLinkPrefetchJob?.cancel()
@@ -318,11 +323,13 @@ class EchoPlaybackEnginePolicy(
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
             // The sink drains/reuses the real output format. Metadata can be missing or late;
             // it must never introduce an artificial mute into an automatic queue boundary.
+            usbTransitionGeneration += 1
             usbTransitionJob?.cancel()
             usbMuteInProgress = false
             return
         }
         if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+            usbTransitionGeneration += 1
             usbTransitionJob?.cancel()
             usbMuteInProgress = false
             return // The strict sink drains and reopens the DAC itself; never change its digital gain.
@@ -346,6 +353,7 @@ class EchoPlaybackEnginePolicy(
             )
         ) {
             // 同采样率的 USB 会话可直接复用，静音反而会打断 gapless。
+            usbTransitionGeneration += 1
             usbTransitionJob?.cancel()
             if (usbMuteInProgress) {
                 usbMuteInProgress = false
@@ -356,17 +364,21 @@ class EchoPlaybackEnginePolicy(
             }
             return
         }
+        usbTransitionGeneration += 1
         usbTransitionJob?.cancel()
         usbMuteInProgress = true
         player.volume = 0f
+        val generation = usbTransitionGeneration
         usbTransitionJob = EchoPlaybackProcessRuntime.scope.launch {
             try {
                 usbAudioMonitor.prepareForTrack(sampleRateHz)
                 delay(USB_MUTE_MS.milliseconds)
             } finally {
-                usbMuteInProgress = false
-                if (attachedPlayer === player) {
-                    applyReplayGain()
+                if (generation == usbTransitionGeneration) {
+                    usbMuteInProgress = false
+                    if (attachedPlayer === player) {
+                        applyReplayGain()
+                    }
                 }
             }
         }

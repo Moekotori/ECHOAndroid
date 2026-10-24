@@ -109,11 +109,7 @@ internal object MediaStoreCueCatalog {
                     return CueSheetCatalog(emptyMap(), files, discoveryFailed = true)
                 if (size > CueSheetPolicy.MaxCueBytes) { uncertainFolders += folder.lowercase(java.util.Locale.ROOT); continue }
                 val document = Uri.withAppendedPath(uri, id.toString())
-                val sheet = try {
-                    contentResolver.openInputStream(document)?.use(::readCueSheet)
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) { null }
+                val sheet = cachedSheet(contentResolver, id, document, size)
                 if (sheet == null) { uncertainFolders += folder.lowercase(java.util.Locale.ROOT); continue }
                 trackCount += sheet.tracks.size
                 sheet.forLocalDirectories().forEach { (descendant, localized) ->
@@ -170,6 +166,30 @@ internal object MediaStoreCueCatalog {
         return CueSheetCatalog(sheets, files, uncertainFolders)
     }
 
+    private class CachedSheet(val sizeBytes: Long, val sheet: CueSheet)
+
+    // Every scan walks the whole CUE listing; only files whose (id, size) changed are re-read.
+    private val sheetCache = object : LinkedHashMap<Long, CachedSheet>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, CachedSheet>): Boolean = size > MaxCachedSheets
+    }
+
+    private fun cachedSheet(contentResolver: ContentResolver, id: Long, document: Uri, sizeBytes: Long): CueSheet? {
+        synchronized(sheetCache) {
+            val cached = sheetCache[id]
+            if (cached != null && cached.sizeBytes == sizeBytes) return cached.sheet
+        }
+        val sheet = try {
+            contentResolver.openInputStream(document)?.use(::readCueSheet)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) { null }
+        // Failed reads are not cached: a transient provider error must not stick until the
+        // file changes.
+        if (sheet != null) synchronized(sheetCache) { sheetCache[id] = CachedSheet(sizeBytes, sheet) }
+        return sheet
+    }
+
+    private const val MaxCachedSheets = 256
 }
 
 internal fun cueFolderKey(folder: String, name: String): String =

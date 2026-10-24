@@ -19,7 +19,7 @@ class RemoteLibraryWriteback(
         .map { rows -> rows.map { it.toEchoPlaylist() } }
 
     fun candidates(source: String, query: String) = Pager(PagingConfig(pageSize = 50)) {
-        database.trackDao().pageRemoteWritebackCandidates(source, query.trim())
+        database.trackDao().pageRemoteWritebackCandidates(source, escapeSqlLikeArgument(query.trim()))
     }.flow
 
     suspend fun create(endpoint: SubsonicEndpoint, name: String): EchoPlaylist = withContext(Dispatchers.IO) {

@@ -354,34 +354,39 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         if (requestId != null) viewModel.onEmbeddedTagWriteAccessResult(requestId, granted)
     }
     LaunchedEffect(pendingEmbeddedTagWrite, launchedTagWriteRequestId) {
-        val pending = pendingEmbeddedTagWrite ?: return@LaunchedEffect
-        if (launchedTagWriteRequestId != null) return@LaunchedEffect
-        launchedTagWriteRequestId = pending.requestId
-        if (pending.needsStoragePermission) {
-            val permission = writeStoragePermissionName()
-            if (permission == null) {
-                launchedTagWriteRequestId = null
-                viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
-            } else {
-                storageTagWriteLauncher.launch(permission)
+        val pending = pendingEmbeddedTagWrite
+        when (tagWriteConsentLaunchDecision(pending?.requestId, launchedTagWriteRequestId)) {
+            TagWriteConsentLaunchDecision.Idle, TagWriteConsentLaunchDecision.DialogInFlight -> Unit
+            TagWriteConsentLaunchDecision.ClearLaunchedId -> launchedTagWriteRequestId = null
+            TagWriteConsentLaunchDecision.LaunchDialog -> if (pending != null) {
+                launchedTagWriteRequestId = pending.requestId
+                if (pending.needsStoragePermission) {
+                    val permission = writeStoragePermissionName()
+                    if (permission == null) {
+                        launchedTagWriteRequestId = null
+                        viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
+                    } else {
+                        storageTagWriteLauncher.launch(permission)
+                    }
+                    return@LaunchedEffect
+                }
+                val sender = pending.intentSender ?: runCatching {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        MediaStore.createWriteRequest(
+                            context.contentResolver,
+                            listOf(AndroidUri.parse(pending.contentUri)),
+                        ).intentSender
+                    } else {
+                        null
+                    }
+                }.getOrNull()
+                if (sender == null) {
+                    launchedTagWriteRequestId = null
+                    viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
+                } else {
+                    mediaStoreTagWriteLauncher.launch(IntentSenderRequest.Builder(sender).build())
+                }
             }
-            return@LaunchedEffect
-        }
-        val sender = pending.intentSender ?: runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                MediaStore.createWriteRequest(
-                    context.contentResolver,
-                    listOf(AndroidUri.parse(pending.contentUri)),
-                ).intentSender
-            } else {
-                null
-            }
-        }.getOrNull()
-        if (sender == null) {
-            launchedTagWriteRequestId = null
-            viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
-        } else {
-            mediaStoreTagWriteLauncher.launch(IntentSenderRequest.Builder(sender).build())
         }
     }
     val tagWriteSavedToFile = stringResource(R.string.tag_write_saved_to_file)

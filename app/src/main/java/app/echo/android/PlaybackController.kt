@@ -1472,8 +1472,20 @@ internal class PlaybackController(
         var lastSignature: String? = null
         var lastPositionBucket: Long? = null
         val queueCache = PlaybackPersistenceQueueCache()
-        EchoPlaybackProcessRuntime.startProgress(PERSIST_POSITION_BUCKET_MS) { player ->
-            if (player !== mediaController) return@startProgress
+        var job: Job? = null
+        job = EchoPlaybackProcessRuntime.startProgress(PERSIST_POSITION_BUCKET_MS) { player ->
+            if (player !== mediaController) {
+                // A new session rebound the runtime; its own persistence tick owns the duty now.
+                job?.cancel()
+                return@startProgress
+            }
+            if (!mediaController.isConnected) {
+                // The playback service died while the UI was detached; this loop and the
+                // controller it holds must not outlive it.
+                job?.cancel()
+                runCatching { mediaController.release() }
+                return@startProgress
+            }
             val snapshot = queueCache.snapshot(player, player.currentTimeline, player.mediaItemCount,
                 readQueue = { player.toPlaybackQueueState() },
                 readShuffleOrder = { player.queueShuffleOrder() })
@@ -1491,6 +1503,11 @@ internal class PlaybackController(
             if (signature == lastSignature && positionBucket == lastPositionBucket) return@startProgress
             val queue = snapshot.queue.copy(currentIndex = currentIndex)
             val session = player.toSavedPlaybackSession(queue, snapshot.shuffleOrder)
+            // Match the attached path: never overwrite a saved session with null unless the
+            // queue itself emptied out.
+            if (session == null && !PlaybackSessionPolicy.shouldPersistNullSavedSession(player.mediaItemCount)) {
+                return@startProgress
+            }
             withContext(Dispatchers.IO) {
                 detachedSettingsStore.savePlaybackSession(session)
             }

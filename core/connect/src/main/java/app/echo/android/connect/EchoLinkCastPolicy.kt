@@ -57,6 +57,8 @@ object EchoLinkCastPolicy {
     const val CopyBufferBytes = 128 * 1024
     const val SendBufferBytes = 256 * 1024
     const val HeaderSniffBytes = 256
+    /** soTimeout cannot bound writes; a peer that stops reading for this long is closed by a watchdog. */
+    const val WriteStallTimeoutMs = 30L * 1000L
     const val QualityOriginal = "original"
 
     fun kind(id: String, uri: String, sourceId: String?): EchoLinkCastKind {

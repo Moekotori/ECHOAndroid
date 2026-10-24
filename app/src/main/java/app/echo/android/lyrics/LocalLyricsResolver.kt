@@ -216,10 +216,11 @@ class LocalLyricsResolver(
     private fun String.normalizedLyricsName(): String =
         trim()
             .lowercase()
-            .replace(Regex("""[\s._\-]+"""), "")
+            .replace(NormalizedNameSeparatorsRegex, "")
 
     private companion object {
         val LYRICS_EXTENSIONS = EchoLyricsParser.fileExtensions
+        val NormalizedNameSeparatorsRegex = Regex("""[\s._\-]+""")
     }
 }
 

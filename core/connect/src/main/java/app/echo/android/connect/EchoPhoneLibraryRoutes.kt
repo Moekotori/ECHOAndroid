@@ -65,6 +65,9 @@ class EchoPhoneLibraryRoutes(
                 .put("totalCount", result.totalCount).toString())
         } catch (_: IllegalArgumentException) {
             EchoLinkHttpReply(400, "{\"error\":\"invalid_library_query\"}")
+        } catch (_: java.net.URISyntaxException) {
+            // Malformed query strings (unencoded |, {, < …) are client errors, not server ones.
+            EchoLinkHttpReply(400, "{\"error\":\"invalid_library_query\"}")
         } catch (_: Exception) {
             EchoLinkHttpReply(500, "{\"error\":\"library_unavailable\"}")
         }
