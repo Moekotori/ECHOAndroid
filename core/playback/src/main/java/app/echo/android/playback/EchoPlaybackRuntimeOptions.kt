@@ -458,15 +458,16 @@ object EchoPlaybackProcessRuntime {
         ensureSleepTimer()
     }
 
-    fun startProgress(intervalMs: Long, onTick: suspend (Player) -> Unit) {
+    fun startProgress(intervalMs: Long, onTick: suspend (Player) -> Unit): Job? {
         progressJob?.cancel()
-        if (intervalMs <= 0L) return
+        if (intervalMs <= 0L) return null
         progressJob = scope.launch {
             while (true) {
                 delay(intervalMs)
                 mediaController?.let { player -> onTick(player) }
             }
         }
+        return progressJob
     }
 
     fun launchIo(block: suspend () -> Unit): Job =

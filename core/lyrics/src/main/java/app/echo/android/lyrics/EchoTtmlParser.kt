@@ -76,7 +76,7 @@ internal object EchoTtmlParser {
                 val raw = node.nodeValue.orEmpty()
                 // Formatting indentation is not a sung space. Explicit inline spaces are preserved.
                 if (raw.isBlank() && (raw.contains('\n') || raw.contains('\r'))) return
-                val value = raw.replace(Regex("[\\t\\r\\n ]+"), " ")
+                val value = raw.replace(TtmlWhitespaceRegex, " ")
                 if (value.isEmpty()) return
                 fullText.append(value)
                 if (wordStart != null && value.isNotBlank()) {
@@ -127,4 +127,6 @@ internal object EchoTtmlParser {
             yieldAll(child.descendants())
         }
     }
+
+    private val TtmlWhitespaceRegex = Regex("[\\t\\r\\n ]+")
 }

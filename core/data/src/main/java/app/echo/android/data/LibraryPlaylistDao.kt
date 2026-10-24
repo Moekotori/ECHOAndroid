@@ -53,7 +53,7 @@ interface LibraryPlaylistDao {
     @Query("UPDATE library_playlists SET name = :name, updatedAtEpochMs = :now WHERE id = :id")
     suspend fun setName(id: String, name: String, now: Long)
 
-    @Query("SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs FROM library_playlists WHERE name LIKE '%' || :query || '%' ORDER BY name COLLATE NOCASE LIMIT 30")
+    @Query("SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs FROM library_playlists WHERE name LIKE '%' || :query || '%' ESCAPE '\\' ORDER BY name COLLATE NOCASE LIMIT 30")
     suspend fun searchEveryPlaylist(query: String): List<PlaylistSummaryRow>
     @Query(
         """
@@ -174,9 +174,9 @@ interface LibraryPlaylistDao {
         SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs
         FROM library_playlists
         WHERE source = :source
-          AND name LIKE '%' || :query || '%'
+          AND name LIKE '%' || :query || '%' ESCAPE '\\'
         ORDER BY
-            CASE WHEN name LIKE :query || '%' THEN 0 ELSE 1 END,
+            CASE WHEN name LIKE :query || '%' ESCAPE '\\' THEN 0 ELSE 1 END,
             name COLLATE NOCASE ASC
         LIMIT :limit
         """,

@@ -32,6 +32,10 @@ object EchoSmbConnections {
     private val entries = ConcurrentHashMap<String, Entry>()
     private val credentials = ConcurrentHashMap<String, EchoSmbCredential>()
 
+    // One lock per share key: a handshake to an unreachable NAS (20s timeout) must not
+    // stall playback or scans that talk to other shares.
+    private val connectLocks = ConcurrentHashMap<String, Any>()
+
     /** 播放时按共享键找凭据；由应用在读取设置后登记。 */
     fun replaceCredentials(endpoints: List<EchoSmbEndpoint>) {
         val next = endpoints.associate { it.shareKey to it.credential }
@@ -50,32 +54,34 @@ object EchoSmbConnections {
     fun share(endpoint: EchoSmbEndpoint): DiskShare =
         share(endpoint.normalizedHost, endpoint.port, endpoint.normalizedShare, endpoint.credential)
 
-    @Synchronized
     private fun share(host: String, port: Int, shareName: String, credential: EchoSmbCredential): DiskShare {
         closeIdle()
         val key = EchoSmbPaths.shareKey(host, port, shareName) + "|" + credential.username.lowercase()
-        entries[key]?.let { entry ->
-            if (entry.share.isConnected) {
-                entry.lastUsedAtMs = System.currentTimeMillis()
-                return entry.share
+        val lock = connectLocks.computeIfAbsent(key) { Any() }
+        synchronized(lock) {
+            entries[key]?.let { entry ->
+                if (entry.share.isConnected) {
+                    entry.lastUsedAtMs = System.currentTimeMillis()
+                    return entry.share
+                }
+                entries.remove(key)
+                runCatching { entry.session.close() }
             }
-            entries.remove(key)
-            runCatching { entry.session.close() }
-        }
-        val connection = client.connect(host, port)
-        val auth = if (credential.username.isBlank()) {
-            AuthenticationContext.guest()
-        } else {
-            AuthenticationContext(credential.username, credential.password.toCharArray(), credential.domain.ifBlank { null })
-        }
-        val session = connection.authenticate(auth)
-        val share = session.connectShare(shareName) as? DiskShare
-            ?: run {
-                runCatching { session.close() }
-                throw IOException("SMB share \"$shareName\" is not a disk share")
+            val connection = client.connect(host, port)
+            val auth = if (credential.username.isBlank()) {
+                AuthenticationContext.guest()
+            } else {
+                AuthenticationContext(credential.username, credential.password.toCharArray(), credential.domain.ifBlank { null })
             }
-        entries[key] = Entry(session, share)
-        return share
+            val session = connection.authenticate(auth)
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: run {
+                    runCatching { session.close() }
+                    throw IOException("SMB share \"$shareName\" is not a disk share")
+                }
+            entries[key] = Entry(session, share)
+            return share
+        }
     }
 
     /** 共享失效（例如 NAS 重启）时丢掉缓存的会话，下次重新连接。 */
@@ -87,10 +93,13 @@ object EchoSmbConnections {
 
     private fun closeIdle() {
         val now = System.currentTimeMillis()
+        val stale = ArrayList<Entry>(0)
         entries.entries.removeIf { (_, entry) ->
             val idle = now - entry.lastUsedAtMs > IdleCloseMs
-            if (idle) runCatching { entry.session.close() }
+            if (idle) stale += entry
             idle
         }
+        // Closing is a network round trip; keep it off any shared lock.
+        stale.forEach { entry -> runCatching { entry.session.close() } }
     }
 }

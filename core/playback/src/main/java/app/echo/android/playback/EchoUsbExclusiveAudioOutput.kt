@@ -52,7 +52,9 @@ internal class EchoUsbExclusiveAudioOutput(
         playing = true
         if (!session.openResult.isReady) return
         session.setKeepAlive(false)
-        runCatching { drainPending() }
+        // Propagate per the AudioOutput contract: a failed drain must surface now instead
+        // of corrupting position state until the next write.
+        drainPending()
         EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(
             EchoUsbExclusiveSinkStatus(
                 streaming = true,

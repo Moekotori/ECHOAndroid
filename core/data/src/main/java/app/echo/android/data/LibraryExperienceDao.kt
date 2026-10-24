@@ -102,6 +102,9 @@ interface LibraryExperienceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun archive(row: LibraryRepairArchiveEntity)
 
+    @Query("DELETE FROM library_repair_archive WHERE id IN (SELECT id FROM library_repair_archive ORDER BY archivedAt DESC, id LIMIT -1 OFFSET :keep)")
+    suspend fun pruneArchives(keep: Int)
+
     @Query("SELECT * FROM library_repair_archive WHERE id = :id")
     suspend fun archived(id: String): LibraryRepairArchiveEntity?
 

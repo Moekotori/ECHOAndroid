@@ -43,8 +43,10 @@ class EchoListeningController internal constructor(
     private var socketUrl: String? = null
     private var displayName: String = "ECHO"
     private var pendingInvitation: String? = null
-    private var audioEpoch = 0L
-    private var yielded = false
+
+    // onBinary reads these from the OkHttp WebSocket thread while the main thread writes them.
+    @Volatile private var audioEpoch = 0L
+    @Volatile private var yielded = false
     private var acceptLocalYield = true
     private var localActive = false
     private var refreshJob: Job? = null

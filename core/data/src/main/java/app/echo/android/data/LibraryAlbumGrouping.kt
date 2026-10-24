@@ -7,18 +7,53 @@ import java.security.MessageDigest
  * incomplete credits and disc suffixes; inferred compilations carry a folder
  * scope so unrelated releases with the same title cannot share a synthetic owner.
  */
+/** Projection carrying only the fields regrouping reads, for full-library passes. */
+data class LibraryAlbumRegroupRow(
+    val id: String,
+    val source: String,
+    val albumKey: String,
+    val artistKey: String,
+    val genreKey: String,
+    val artist: String,
+    val album: String?,
+    val albumArtist: String?,
+    val normalizedAlbum: String?,
+    val normalizedAlbumArtist: String?,
+    val normalizedArtist: String?,
+    val relativePath: String?,
+    val artworkUri: String?,
+    val metadataEditedAtEpochMs: Long?,
+)
+
 internal object LibraryAlbumGrouping {
-    fun reconcile(tracks: List<LibraryTrackEntity>): List<LibraryTrackEntity> {
-        val changed = ArrayList<LibraryTrackEntity>()
-        val previousKeys = tracks.associate { it.id to it.albumKey }
-        val desired = tracks
+    internal fun LibraryTrackEntity.toRegroupRow(): LibraryAlbumRegroupRow = LibraryAlbumRegroupRow(
+        id = id,
+        source = source,
+        albumKey = albumKey,
+        artistKey = artistKey,
+        genreKey = genreKey,
+        artist = artist,
+        album = album,
+        albumArtist = albumArtist,
+        normalizedAlbum = normalizedAlbum,
+        normalizedAlbumArtist = normalizedAlbumArtist,
+        normalizedArtist = normalizedArtist,
+        relativePath = relativePath,
+        artworkUri = artworkUri,
+        metadataEditedAtEpochMs = metadataEditedAtEpochMs,
+    )
+
+    fun reconcileRows(rows: List<LibraryAlbumRegroupRow>): List<LibraryAlbumRegroupRow> {
+        val changed = ArrayList<LibraryAlbumRegroupRow>()
+        val previousKeys = rows.associate { it.id to it.albumKey }
+        val desired = rows
             .filter { LibraryScanPolicy.isLocalLibrarySource(it.source) }
-            .map { track -> track.copy(albumKey = libraryAlbumKey(
-                albumNameForKey(track.normalizedAlbum ?: track.album?.normalizedForSearch()),
-                track.normalizedAlbumArtist ?: track.albumArtist?.normalizedForSearch(),
-                track.normalizedArtist ?: track.artist.normalizedForSearch(),
+            .map { row -> row.copy(albumKey = libraryAlbumKey(
+                albumNameForKey(row.normalizedAlbum ?: row.album?.normalizedForSearch()),
+                row.normalizedAlbumArtist ?: row.albumArtist?.normalizedForSearch(),
+                row.normalizedArtist ?: row.artist.normalizedForSearch(),
             )) }
-            .groupBy(::groupingIdentity)
+            .groupBy { groupingIdentity(it.normalizedAlbum, it.album, it.relativePath) }
             .flatMap { (identity, group) ->
                 if (!identity.canReconcile || group.size < 2) group else {
                     val winner = winningAlbumKey(identity, group, previousKeys)
@@ -30,10 +65,17 @@ internal object LibraryAlbumGrouping {
                 }
             }
             .associateBy { it.id }
-        tracks.forEach { track ->
-            desired[track.id]?.takeIf { it.albumKey != track.albumKey }?.let(changed::add)
+        rows.forEach { row ->
+            desired[row.id]?.takeIf { it.albumKey != row.albumKey }?.let(changed::add)
         }
         return changed
+    }
+
+    fun reconcile(tracks: List<LibraryTrackEntity>): List<LibraryTrackEntity> {
+        val changedRows = reconcileRows(tracks.map { it.toRegroupRow() })
+        if (changedRows.isEmpty()) return emptyList()
+        val byId = tracks.associateBy { it.id }
+        return changedRows.mapNotNull { row -> byId[row.id]?.copy(albumKey = row.albumKey) }
     }
 
     fun albumNameForKey(normalizedAlbum: String?): String? =
@@ -62,10 +104,7 @@ internal object LibraryAlbumGrouping {
         }
     }
 
-    private fun groupingIdentity(track: LibraryTrackEntity): GroupIdentity =
-        groupingIdentity(track.normalizedAlbum, track.album, track.relativePath)
-
-    internal fun groupingIdentity(normalizedAlbum: String?, albumName: String?, relativePath: String?): GroupIdentity {
+        internal fun groupingIdentity(normalizedAlbum: String?, albumName: String?, relativePath: String?): GroupIdentity {
         val album = albumNameForKey(normalizedAlbum ?: albumName?.normalizedForSearch())
             .orEmpty()
         return GroupIdentity(
@@ -76,7 +115,7 @@ internal object LibraryAlbumGrouping {
 
     private fun winningAlbumKey(
         identity: GroupIdentity,
-        group: List<LibraryTrackEntity>,
+        group: List<LibraryAlbumRegroupRow>,
         previousKeys: Map<String, String>,
     ): String? {
         val album = identity.album
@@ -142,12 +181,12 @@ internal object LibraryAlbumGrouping {
             (parts.size <= 2 && parts.first() == "removable")
     }
 
-    private fun sharedArtwork(group: List<LibraryTrackEntity>): Boolean {
+    private fun sharedArtwork(group: List<LibraryAlbumRegroupRow>): Boolean {
         val artwork = group.first().artworkUri?.takeIf { it.isNotBlank() } ?: return false
         return group.all { it.artworkUri == artwork }
     }
 
-    private fun commonCreditedArtist(group: List<LibraryTrackEntity>): String? {
+    private fun commonCreditedArtist(group: List<LibraryAlbumRegroupRow>): String? {
         val credited = group.map { LibraryArtistPolicy.keys(it.artist) }
         val common = credited.reduce { first, next -> first.intersect(next) }
             .filterNot(LibraryMetadataSentinels::isUnknown)

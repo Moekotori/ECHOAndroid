@@ -127,6 +127,9 @@ class EchoChannelBalanceAudioProcessor(
         channelCount: Int,
         state: EchoChannelBalanceState,
     ) {
+        // Views follow the input order; big-endian sources must not be written native.
+        val order = inputBuffer.order()
+        output.order(order)
         val shortIn = inputBuffer.asShortBuffer()
         val shortOut = output.asShortBuffer()
         val frameCount = shortIn.remaining() / channelCount.coerceAtLeast(1)
@@ -173,6 +176,9 @@ class EchoChannelBalanceAudioProcessor(
         channelCount: Int,
         state: EchoChannelBalanceState,
     ) {
+        // Views follow the input order; big-endian sources must not be written native.
+        val order = inputBuffer.order()
+        output.order(order)
         val intIn = inputBuffer.asIntBuffer()
         val intOut = output.asIntBuffer()
         val frameCount = intIn.remaining() / channelCount.coerceAtLeast(1)
