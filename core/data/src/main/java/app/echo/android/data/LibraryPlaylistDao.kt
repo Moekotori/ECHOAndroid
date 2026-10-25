@@ -16,11 +16,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LibraryPlaylistDao {
     @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryPlaylistTrackEntity::class,
-        LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class, LibrarySmartRuleEntity::class])
+        LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class, LibrarySmartRuleEntity::class, LibraryHiddenTrackEntity::class])
     fun observeStats(query: SupportSQLiteQuery): Flow<app.echo.android.model.library.PlaylistStats>
 
     @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryPlaylistTrackEntity::class,
-        LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class])
+        LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class, LibraryHiddenTrackEntity::class])
     fun pageOrderedTracks(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
 
     @Query("SELECT * FROM library_playlist_tracks WHERE playlistId = :id AND trackId = :trackId LIMIT 1")
@@ -34,6 +34,9 @@ interface LibraryPlaylistDao {
 
     @Query("UPDATE library_playlist_tracks SET position = :position WHERE playlistId = :id AND trackId = :trackId")
     suspend fun setPosition(id: String, trackId: String, position: Int)
+
+    @Query("UPDATE library_playlist_tracks SET position = position + :delta WHERE playlistId = :id AND position >= :from AND position <= :to")
+    suspend fun shiftPositions(id: String, from: Int, to: Int, delta: Int)
 
     @Query("SELECT COALESCE(MAX(position), -1) FROM library_playlist_tracks WHERE playlistId = :id")
     suspend fun lastPosition(id: String): Int
@@ -55,6 +58,9 @@ interface LibraryPlaylistDao {
 
     @Query("SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs FROM library_playlists WHERE name LIKE '%' || :query || '%' ORDER BY name COLLATE NOCASE LIMIT 30")
     suspend fun searchEveryPlaylist(query: String): List<PlaylistSummaryRow>
+
+    @Query("SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs FROM library_playlists WHERE name LIKE '%' || :query || '%' ORDER BY name COLLATE NOCASE, id")
+    fun pageSearchPlaylists(query: String): PagingSource<Int, PlaylistSummaryRow>
     @Query(
         """
         SELECT id, name, source, trackCount, artworkUri, updatedAtEpochMs
@@ -84,7 +90,7 @@ interface LibraryPlaylistDao {
 
     @Query(
         """
-        SELECT library_tracks.* FROM library_tracks
+        SELECT library_tracks.* FROM visible_library_tracks AS library_tracks
         JOIN library_playlist_tracks ON library_tracks.id = library_playlist_tracks.trackId
         WHERE library_playlist_tracks.playlistId = :playlistId
         ORDER BY library_playlist_tracks.position ASC
@@ -189,7 +195,7 @@ interface LibraryPlaylistDao {
 
     @Query(
         """
-        SELECT library_tracks.* FROM library_tracks
+        SELECT library_tracks.* FROM visible_library_tracks AS library_tracks
         JOIN library_playlist_tracks ON library_tracks.id = library_playlist_tracks.trackId
         WHERE library_playlist_tracks.playlistId = :playlistId
         ORDER BY library_playlist_tracks.position ASC
@@ -204,7 +210,7 @@ interface LibraryPlaylistDao {
 
     @Query(
         """
-        SELECT library_tracks.* FROM library_tracks
+        SELECT library_tracks.* FROM visible_library_tracks AS library_tracks
         INNER JOIN library_favorites f ON f.trackId = library_tracks.id
         ORDER BY f.favoritedAtEpochMs DESC
         LIMIT :limit OFFSET :offset
@@ -214,7 +220,7 @@ interface LibraryPlaylistDao {
 
     @Query(
         """
-        SELECT library_tracks.* FROM library_tracks
+        SELECT library_tracks.* FROM visible_library_tracks AS library_tracks
         INNER JOIN library_favorites f ON f.trackId = library_tracks.id
         ORDER BY f.favoritedAtEpochMs DESC
         """,
@@ -232,7 +238,7 @@ interface LibraryPlaylistDao {
         SELECT s.albumKey, s.title, s.albumArtist, s.artist, s.artworkUri,
                s.trackCount, s.durationMs, s.year, s.addedAtSeconds
         FROM library_album_summaries s
-        INNER JOIN library_tracks t ON t.albumKey = s.albumKey
+        INNER JOIN visible_library_tracks t ON t.albumKey = s.albumKey
         INNER JOIN library_favorites f ON f.trackId = t.id
         WHERE s.isRemote = 0
         GROUP BY s.albumKey

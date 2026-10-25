@@ -10,6 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [
         LibraryTrackEntity::class,
+        LibraryHiddenTrackEntity::class,
         LibraryTrackArtistEntity::class,
         LibraryTrackFtsEntity::class,
         LibraryPlaylistEntity::class,
@@ -25,10 +26,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryBookmarkEntity::class,
         LibraryRepairArchiveEntity::class,
     ],
-    version = 24,
+    views = [VisibleLibraryTrackView::class],
+    version = 25,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
+    abstract fun hiddenTrackDao(): LibraryHiddenTrackDao
     abstract fun trackDao(): LibraryTrackDao
     abstract fun playlistDao(): LibraryPlaylistDao
     abstract fun playEventDao(): LibraryPlayEventDao
@@ -70,6 +73,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         Migration21To22,
                         LibraryTitleSortMigration,
                         LibrarySearchSpeedMigration,
+                        LibraryHiddenTrackMigration,
                     )
                     .build()
                     .also { instance = it }
@@ -372,9 +376,9 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     )
                     """.trimIndent(),
                 )
-                db.execSQL(RebuildAlbumSummariesSql)
-                db.execSQL(RebuildArtistSummariesSql)
-                db.execSQL(RebuildFolderSummariesSql)
+                db.execSQL(RebuildAlbumSummariesSql.replace("visible_library_tracks AS library_tracks", "library_tracks").replace("visible_library_tracks", "library_tracks"))
+                db.execSQL(RebuildArtistSummariesSql.replace("visible_library_tracks AS library_tracks", "library_tracks").replace("visible_library_tracks", "library_tracks"))
+                db.execSQL(RebuildFolderSummariesSql.replace("visible_library_tracks AS library_tracks", "library_tracks").replace("visible_library_tracks", "library_tracks"))
             }
         }
 
@@ -472,9 +476,9 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                     }
                 }
                 db.execSQL("DELETE FROM library_artist_summaries")
-                db.execSQL(LibraryArtistIndexSql.Rebuild)
+                db.execSQL(LibraryArtistIndexSql.Rebuild.replace("visible_library_tracks AS library_tracks", "library_tracks").replace("visible_library_tracks", "library_tracks"))
                 db.execSQL("DELETE FROM library_genre_summaries")
-                db.execSQL(RebuildGenreSummariesSql)
+                db.execSQL(RebuildGenreSummariesSql.replace("visible_library_tracks AS library_tracks", "library_tracks").replace("visible_library_tracks", "library_tracks"))
             }
         }
 
@@ -560,7 +564,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 MAX(dateModifiedSeconds),
                 MAX(pinyinAlbum),
                 MAX(pinyinArtist)
-            FROM library_tracks
+            FROM visible_library_tracks AS library_tracks
             WHERE albumKey IS NOT NULL AND trim(albumKey) != ''
             GROUP BY
                 CASE
@@ -582,7 +586,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 COUNT(*),
                 COALESCE(SUM(durationMs), 0),
                 MAX(pinyinArtist)
-            FROM library_tracks
+            FROM visible_library_tracks AS library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
               AND artistKey IS NOT NULL AND trim(artistKey) != ''
             GROUP BY artistKey
@@ -604,7 +608,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 COALESCE(SUM(durationMs), 0),
                 COALESCE(SUM(sizeBytes), 0),
                 MAX(dateModifiedSeconds)
-            FROM library_tracks
+            FROM visible_library_tracks AS library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
             GROUP BY COALESCE(NULLIF(relativePath, ''), '')
             """
@@ -637,7 +641,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 MAX(dateModifiedSeconds),
                 MAX(pinyinAlbum),
                 MAX(pinyinArtist)
-            FROM library_tracks
+            FROM visible_library_tracks AS library_tracks
             WHERE albumKey IS NOT NULL AND trim(albumKey) != ''
               AND (
                 CASE
@@ -665,7 +669,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 COUNT(*),
                 COALESCE(SUM(durationMs), 0),
                 MAX(pinyinArtist)
-            FROM library_tracks
+            FROM visible_library_tracks AS library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
               AND artistKey IS NOT NULL AND trim(artistKey) != ''
               AND artistKey IN (:keys)
@@ -688,7 +692,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 COALESCE(SUM(durationMs), 0),
                 COALESCE(SUM(sizeBytes), 0),
                 MAX(dateModifiedSeconds)
-            FROM library_tracks
+            FROM visible_library_tracks AS library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
               AND COALESCE(NULLIF(relativePath, ''), '') IN (:keys)
             GROUP BY COALESCE(NULLIF(relativePath, ''), '')
@@ -707,7 +711,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 COUNT(*),
                 COALESCE(SUM(durationMs), 0),
                 MAX(genreKey)
-            FROM library_tracks
+            FROM visible_library_tracks AS library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
               AND genreKey IS NOT NULL AND trim(genreKey) != ''
             GROUP BY genreKey
@@ -726,7 +730,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 COUNT(*),
                 COALESCE(SUM(durationMs), 0),
                 MAX(genreKey)
-            FROM library_tracks
+            FROM visible_library_tracks AS library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
               AND genreKey IS NOT NULL AND trim(genreKey) != ''
               AND genreKey IN (:keys)

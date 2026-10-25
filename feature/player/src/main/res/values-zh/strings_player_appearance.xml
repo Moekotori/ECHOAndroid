@@ -10,4 +10,10 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">像素掌机</string>
     <string name="player_appearance_type_poster">字排海报</string>
+    <string name="player_appearance_holo_prism">极光棱镜</string>
+    <string name="player_appearance_starlight_orbit">星轨</string>
+    <string name="player_appearance_sakura_letter">樱花信笺</string>
+    <string name="player_appearance_neon_rain">霓虹夜行</string>
+    <string name="player_appearance_soda_pop">海盐汽水</string>
+    <string name="player_appearance_amber_film">琥珀胶片</string>
 </resources>

@@ -4,6 +4,15 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NextUpQueuePolicyTest {
+    @Test fun roundBoundaryFollowsShuffleTraversalForNaturalAndSmartAdvances() {
+        val traversal = listOf(3, 1, 4, 0, 2)
+        assertTrue(NextUpQueuePolicy.startsShuffleRound(traversal, from = 2, to = 3))
+        assertFalse(NextUpQueuePolicy.startsShuffleRound(traversal, from = 1, to = 4))
+        assertFalse(NextUpQueuePolicy.startsShuffleRound(traversal, from = 4, to = 0))
+        assertFalse(NextUpQueuePolicy.startsShuffleRound(emptyList(), from = 0, to = 0))
+        assertTrue(NextUpQueuePolicy.startsShuffleRound(listOf(0), from = 0, to = 0))
+    }
+
     @Test fun appendKeepsRequestOrderWhilePlayNextPrepends() {
         assertEquals(2, NextUpQueuePolicy.insertionIndex(1, 4, emptyList(), false))
         assertEquals(3, NextUpQueuePolicy.insertionIndex(1, 5, listOf(2), false))

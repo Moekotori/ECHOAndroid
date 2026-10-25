@@ -39,6 +39,11 @@ fun MomentsScreen(query: String, moments: LazyPagingItems<EchoSavedMoment>, onQu
                 }
                 HorizontalDivider()
             } }
+            if (moments.loadState.append is androidx.paging.LoadState.Loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            if (moments.loadState.append is androidx.paging.LoadState.Error) item {
+                Text(stringResource(R.string.search_results_failed))
+                TextButton(onClick = moments::retry) { Text(stringResource(R.string.search_retry)) }
+            }
         }
     }
     deleting?.let { moment -> AlertDialog(onDismissRequest = { deleting = null }, title = { Text(stringResource(R.string.moments_delete)) },

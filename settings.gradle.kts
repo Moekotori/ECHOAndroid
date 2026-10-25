@@ -34,5 +34,7 @@ include(":feature:connect")
 include(":feature:settings")
 include(":feature:plugins")
 include(":feature:listening")
+include(":feature:radio")
+include(":feature:podcasts")
 
 include(":core:i18n")

@@ -202,10 +202,12 @@ class EchoPlaybackEnginePolicy(
             trackDurationKnown = durationMs > 0L,
         )
         player.volume = (
-            EchoPlaybackProcessRuntime.trackFadeGain *
+            EchoPlaybackProcessRuntime.audioFocusGain * EchoPlaybackProcessRuntime.trackFadeGain *
                 EchoSleepTimerPolicy.fadeMultiplier(
                     remainingMs,
                     mode = EchoPlaybackProcessRuntime.sleepTimerMode,
+                    allowFade = EchoPlaybackProcessRuntime.sleepTimerMode != app.echo.android.model.playback.EchoSleepTimerMode.Timed ||
+                        !EchoPlaybackRuntimeOptionsStore.options.value.sleepTimerFinishTrack,
                 )
             ).coerceIn(0f, 1f)
         // Gain now precedes the DSP limiter on both normal and processed USB output.

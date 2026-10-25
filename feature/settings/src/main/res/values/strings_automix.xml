@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automix_on">Enabled · automatic blending</string>
+    <string name="automix_off">Off</string>
+    <string name="automix_standby">Saved · unavailable on this output</string>
+    <string name="automix_illustration">Overlap illustration</string>
+    <string name="automix_current">Current track</string>
+    <string name="automix_next">Next track</string>
+    <string name="automix_description">Beta. Two tracks, one smooth handover. AutoMix finds the transition points and blends local tracks at normal speed. When fading is enabled, its duration also limits the overlap.</string>
+</resources>

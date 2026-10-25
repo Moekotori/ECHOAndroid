@@ -1,0 +1,7 @@
+AutoMix (original Java package dev.t1m3.qplayer)
+Licensed under the Apache License, Version 2.0; see automix-Apache-2.0.txt.
+
+Source supplied to ECHOAndroid in automix (1).zip on 2026-10-25.
+Android changes: scoped decoder and preparation budget, sequential analysis,
+host window cap, cancellation checks and bounded harmonic cache.
+CLI, JCodec, prebuilt binaries and model weights are not distributed here.

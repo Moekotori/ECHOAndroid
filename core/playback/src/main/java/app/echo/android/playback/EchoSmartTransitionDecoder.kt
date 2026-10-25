@@ -97,7 +97,9 @@ internal class EchoSmartTransitionDecoder(context: Context) {
         if (!success || written != pcm.size || written == 0) return@withContext null
         if (nativeRate == expectedRateHz && nativeChannels == expectedChannels) return@withContext pcm
         withContext(Dispatchers.Default) {
-            EchoSmartTransitionPcm.resampleInterleaved(pcm, nativeRate, nativeChannels, expectedRateHz, expectedChannels)
+            // Converting a floored native frame count floors twice and may lose one output frame.
+            EchoSmartTransitionPcm.resampleInterleaved(pcm, nativeRate, nativeChannels, expectedRateHz,
+                expectedChannels, expectedFrames = outputFrames.toInt())
         }
     }
 

@@ -12,6 +12,13 @@ import kotlin.math.abs
 
 class EchoSmartTransitionPolicyTest {
     @Test
+    fun repeatAllWithNoDistinctNextQueueEntryUsesTheNormalRepeatEvent() {
+        val sameEntry = candidate(options = enabled()).copy(hasNext = false, repeatOne = false)
+        assertEquals(EchoSmartTransitionPolicy.BypassReason.NextMissing,
+            EchoSmartTransitionPolicy.bypassReason(sameEntry))
+    }
+
+    @Test
     fun defaultOffAndLightweightAndUsbNeverMix() {
         assertEquals(
             EchoSmartTransitionPolicy.BypassReason.Disabled,

@@ -83,6 +83,8 @@ data class EchoAppSettings(
     val usbBitPerfectEnabled: Boolean = false,
     val usbOutputOptions: app.echo.android.model.playback.EchoUsbOutputOptions = app.echo.android.model.playback.EchoUsbOutputOptions(),
     val usbExclusiveAutoRequestOnStartup: Boolean = true,
+    val audioInterruptionPolicy: String = "duck",
+    val sleepTimerFinishTrack: Boolean = true,
     val pauseOnAudioDisconnect: Boolean = true,
     val resumeOnAudioReconnect: Boolean = false,
     val dsp: app.echo.android.model.playback.EchoDspSettings = app.echo.android.model.playback.EchoDspSettings(),
@@ -289,6 +291,8 @@ class EchoSettingsStore(
                     smartEnabled = preferences[Keys.TrackSmartTransitionEnabled] ?: false,
                 ).normalized(),
                 usbExclusiveAutoRequestOnStartup = preferences[Keys.UsbExclusiveAutoRequestOnStartup] ?: true,
+                audioInterruptionPolicy = app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(preferences[Keys.AudioInterruptionPolicy]).id,
+                sleepTimerFinishTrack = preferences[Keys.SleepTimerFinishTrack] ?: true,
                 pauseOnAudioDisconnect = preferences[Keys.PauseOnAudioDisconnect] ?: true,
                 resumeOnAudioReconnect = preferences[Keys.ResumeOnAudioReconnect] ?: false,
                 dsp = app.echo.android.model.playback.EchoDspSettings(
@@ -1220,6 +1224,14 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun setAudioInterruptionPolicy(value: String) {
+        context.echoSettings.edit { it[Keys.AudioInterruptionPolicy] = app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(value).id }
+    }
+
+    suspend fun setSleepTimerFinishTrack(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.SleepTimerFinishTrack] = enabled }
+    }
+
     suspend fun setPauseOnAudioDisconnect(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.PauseOnAudioDisconnect] = enabled }
     }
@@ -1436,13 +1448,14 @@ class EchoSettingsStore(
     ) {
         context.echoSettings.edit {
             val normalizedUrl = serverUrl.trim().trimEnd('/')
-            if (normalizedUrl.isBlank() || username.isBlank() || password.isBlank()) {
+            if (normalizedUrl.isBlank()) {
                 secrets.set(EchoSecretKeys.WebDavPassword, null)
                 it.remove(Keys.WebDavServerUrl)
                 it.remove(Keys.WebDavUsername)
                 it.remove(Keys.WebDavPassword)
             } else {
-                secrets.set(EchoSecretKeys.WebDavPassword, password)
+                require(username.isBlank() && password.isBlank() || username.isNotBlank() && password.isNotBlank())
+                secrets.set(EchoSecretKeys.WebDavPassword, password.takeIf { it.isNotBlank() })
                 it[Keys.WebDavServerUrl] = normalizedUrl
                 it[Keys.WebDavUsername] = username.trim()
                 it.remove(Keys.WebDavPassword)
@@ -1701,6 +1714,8 @@ class EchoSettingsStore(
         val TrackFadeDurationMs = intPreferencesKey("track_fade_duration_ms")
         val TrackSmartTransitionEnabled = booleanPreferencesKey("track_smart_transition")
         val UsbExclusiveAutoRequestOnStartup = booleanPreferencesKey("usb_exclusive_auto_request_on_startup")
+        val AudioInterruptionPolicy = stringPreferencesKey("audio_interruption_policy")
+        val SleepTimerFinishTrack = booleanPreferencesKey("sleep_timer_finish_track")
         val PauseOnAudioDisconnect = booleanPreferencesKey("pause_on_audio_disconnect")
         val ResumeOnAudioReconnect = booleanPreferencesKey("resume_on_audio_reconnect")
         val DspLimiterEnabled = booleanPreferencesKey("dsp_limiter_enabled")

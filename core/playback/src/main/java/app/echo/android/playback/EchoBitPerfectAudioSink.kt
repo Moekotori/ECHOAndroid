@@ -63,7 +63,10 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
     }
 
     override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
-        if (buffer.hasRemaining()) ended = false
+        if (buffer.hasRemaining()) {
+            if (ended) session?.setPlaybackActive(playing)
+            ended = false
+        }
         val wanted = nextFormat ?: format ?: return false
         if (!EchoPlaybackProcessRuntime.usbExclusiveEnabled) initializationFailure(EchoBitPerfectState.UsbUnavailable, wanted)
         if (volume != 1f) initializationFailure(EchoBitPerfectState.VolumeChanged, wanted)
@@ -92,6 +95,12 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
                 initializationFailure(state, wanted, opened.openResult.message)
             }
             session = opened
+            opened.setPlaybackActive(playing)
+            EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(EchoUsbExclusiveSinkStatus(
+                false, opened.transport?.name?.lowercase(), wanted.sampleRate, opened.bitResolution,
+                "Strict USB initialized", opened.capacityFrames(), opened::transportEvidence,
+                opened.compatibilityEvidence(),
+            ))
             format = wanted
             sourceBits = nextSourceBits
             dsdDop = nextDsdDop
@@ -156,6 +165,8 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
                 true, "isochronous", format!!.sampleRate, current.bitResolution,
                 if (dsdDop) "Strict DSD DoP" else "Strict integer PCM",
                 current.capacityFrames(),
+                transferEvidence = current::transportEvidence,
+                compatibilityRules = current.compatibilityEvidence(),
             ))
             EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot(
                 EchoBitPerfectState.Direct, sourceBits, pcmBytes(format!!.pcmEncoding) * 8,
@@ -171,9 +182,9 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         else firstPts + completedFrames() * 1_000_000L / format!!.sampleRate
     override fun hasPendingData(): Boolean = pendingEnd > pendingStart || completedFrames() < submittedFrames
     override fun isEnded(): Boolean = ended && !hasPendingData()
-    override fun playToEndOfStream() { ended = true; drain(endOfStream = true) }
-    override fun play() { playing = true; session?.setKeepAlive(false) }
-    override fun pause() { playing = false; session?.setKeepAlive(true); waiting() }
+    override fun playToEndOfStream() { ended = true; session?.setPlaybackActive(false); drain(endOfStream = true) }
+    override fun play() { playing = true; session?.setPlaybackActive(true); session?.setKeepAlive(false) }
+    override fun pause() { playing = false; session?.setPlaybackActive(false); session?.setKeepAlive(true); waiting() }
     override fun handleDiscontinuity() { discontinuity = true }
     override fun setVolume(volume: Float) { this.volume = volume }
     override fun setPlaybackParameters(playbackParameters: PlaybackParameters) = Unit

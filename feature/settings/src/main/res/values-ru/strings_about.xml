@@ -6,4 +6,8 @@
     <string name="settings_about_website">Официальный сайт</string>
     <string name="settings_about_bug_report">Сообщить об ошибке</string>
     <string name="settings_about_link_error">Нет приложения для открытия этой ссылки</string>
+    <string name="settings_about_github">Исходный код на GitHub</string>
+    <string name="settings_about_steam">Откройте ECHO в Steam</string>
+    <string name="settings_about_steam_detail">Слушайте любимую музыку и на компьютере. Откройте темы и моды Мастерской и получайте регулярные обновления. Подробнее в магазине Steam.</string>
+    <string name="settings_about_afdian">Поддержать ECHO на Afdian</string>
 </resources>

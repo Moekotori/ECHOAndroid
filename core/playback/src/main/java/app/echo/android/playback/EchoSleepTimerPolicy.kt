@@ -6,6 +6,10 @@ object EchoSleepTimerPolicy {
     const val FadeMs = 8_000L
     const val UnknownRemainingMs = Long.MAX_VALUE
 
+    fun shouldFinishCurrentTrack(enabled: Boolean, playWhenReady: Boolean, durationMs: Long,
+        positionMs: Long, live: Boolean): Boolean = enabled && playWhenReady && !live &&
+        durationMs > 0L && positionMs >= 0L && positionMs < durationMs
+
     fun remainingMs(
         mode: EchoSleepTimerMode,
         nowEpochMs: Long,

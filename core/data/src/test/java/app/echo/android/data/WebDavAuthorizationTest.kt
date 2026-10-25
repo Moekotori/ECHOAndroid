@@ -9,6 +9,31 @@ import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 class WebDavAuthorizationTest {
+    @Test fun publicWebDavScanDoesNotSendAnEmptyBasicCredential() = kotlinx.coroutines.runBlocking {
+        val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
+        var authorization: String? = "not requested"
+        server.createContext("/music") { exchange ->
+            authorization = exchange.requestHeaders.getFirst("Authorization")
+            val body = """<D:multistatus xmlns:D="DAV:"><D:response><D:href>/music/song.flac</D:href>
+                <D:propstat><D:prop><D:getcontentlength>128</D:getcontentlength><D:getcontenttype>audio/flac</D:getcontenttype></D:prop>
+                <D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response></D:multistatus>""".toByteArray()
+            exchange.sendResponseHeaders(207, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        server.start()
+        try {
+            val endpoint = WebDavEndpoint("http://127.0.0.1:${server.address.port}/music", "", "")
+            val files = mutableListOf<WebDavAudioFile>()
+            WebDavClient(endpoint).scanAudioFiles(onFile = { files += it })
+            assertEquals(null, authorization)
+            assertEquals("song", files.single().title)
+        } finally { server.stop(0) }
+    }
+    @Test fun anonymousFoldersOmitAuthenticationAndNamedFoldersRetainIt() {
+        assertEquals(null, WebDavEndpoint("https://dav.example/music", "", "").authorizationHeader())
+        assertEquals(webDavBasicAuthorization("user", "pass"),
+            WebDavEndpoint("https://dav.example/music", " user ", "pass").authorizationHeader())
+    }
     @Test
     fun readsPropertiesFromSuccessfulPropstatInsteadOfTheFirstPropstat() {
         val entries = parseWebDavEntries(

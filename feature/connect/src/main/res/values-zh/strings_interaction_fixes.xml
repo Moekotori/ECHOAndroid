@@ -1,0 +1,4 @@
+<resources>
+    <string name="connect_webdav_anonymous">匿名访问</string>
+    <string name="connect_webdav_anonymous_hint">无需用户名或密码，访问公开的 WebDAV 目录。</string>
+</resources>

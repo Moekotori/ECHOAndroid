@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_automix_ready">即将接入</string>
+    <string name="player_automix_mixing">正在交接</string>
+    <string name="player_automix_paused">等待继续</string>
+</resources>

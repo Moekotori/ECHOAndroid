@@ -35,6 +35,7 @@ internal class EchoPlaybackLibrarySessionCallback(
     private val restorer: EchoPlaybackSessionRestorer,
     private val nextUpQueue: () -> NextUpQueueController? = { null },
     private val abLoop: () -> EchoAbLoopController? = { null },
+    private val onUserCommand: (Int) -> Unit = {},
 ) : MediaLibrarySession.Callback {
     @Volatile
     private var currentFavorite = false
@@ -59,6 +60,12 @@ internal class EchoPlaybackLibrarySessionCallback(
             }
             applyButtons(player)
         }
+    }
+
+    @Deprecated("Media3 compatibility callback")
+    override fun onPlayerCommandRequest(session: MediaSession, controller: MediaSession.ControllerInfo, playerCommand: Int): Int {
+        onUserCommand(playerCommand)
+        return SessionResult.RESULT_SUCCESS
     }
 
     override fun onConnect(

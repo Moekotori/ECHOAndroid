@@ -1,7 +1,7 @@
 package app.echo.android.feature.player
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
@@ -43,7 +43,7 @@ internal fun LyricsSettingsPreview(
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val previewScale = animateFloatAsState(
         targetValue = when (motionMode) { "stage" -> 1.025f; "calm" -> 1f; else -> 1.012f },
-        animationSpec = tween(if (lightweight) 0 else 240, easing = EchoMotion.Silk),
+        animationSpec = if (lightweight) snap() else EchoMotion.silkFloat(240),
         label = "lyrics-preview-scale",
     )
     LyricsPageTheme(pageStyle) {

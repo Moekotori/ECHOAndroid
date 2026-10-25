@@ -58,7 +58,8 @@ fun Modifier.echoEdgeLight(
     }
     val light = animateFloatAsState(
         if (pressed) 1f else 0f,
-        tween(if (pressed) 100 else 340, easing = EchoMotion.Silk),
+        // Fast attack, slow release; both spring so a quick re-press continues from the current glow.
+        EchoMotion.silkFloat(if (pressed) 120 else 340),
         label = "edge-light",
     )
     drawWithCache {

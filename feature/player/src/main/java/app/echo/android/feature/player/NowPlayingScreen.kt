@@ -23,7 +23,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.MutableTransitionState
@@ -121,6 +120,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -226,6 +228,7 @@ fun NowPlayingScreen(
     onResetLyricsOffset: () -> Unit,
     modifier: Modifier = Modifier,
     positionState: State<PlaybackPositionState>? = null,
+    smartTransitionState: State<app.echo.android.model.playback.EchoSmartTransitionVisual?>? = null,
     lyricsFontFamily: FontFamily? = null,
     lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
     lyricsBackdrop: String = EchoLyricsBackdrop.Fluid.id,
@@ -740,6 +743,14 @@ fun NowPlayingScreen(
             }
             }
             }
+            SmartTransitionOverlay(
+                state = smartTransitionState, positionState = positionState,
+                currentTrackId = track?.id, currentArtwork = track?.artworkUri,
+                isPlaying = status.isPlaying,
+                visible = presentationExpanded && !overlayBlocking && !isRadio && !castActive,
+                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding()
+                    .padding(top = 64.dp).widthIn(max = 420.dp).padding(horizontal = 18.dp),
+            )
             LyricsSettingsDrawer(
                 visible = lyricsSettingsVisible,
                 lyricsFontFamily = styledLyricsFont,
@@ -961,17 +972,26 @@ private fun NowPlayingTopBar(
             ) {
                 repeat(pageCount) { index ->
                     val selected = index == currentPage
-                    val dotWidth by animateDpAsState(
-                        targetValue = if (selected) 16.dp else 6.dp,
-                        animationSpec = EchoMotion.silkDp(260),
+                    val dot = animateFloatAsState(
+                        targetValue = if (selected) 1f else 0f,
+                        animationSpec = EchoMotion.silkFloat(260),
                         label = "now-playing-page-dot",
                     )
+                    val dotColor = OnArt
+                    // Width is resolved in layout and tint in draw, so the dots never recompose mid-swipe.
                     Box(
                         modifier = Modifier
-                            .width(dotWidth)
-                            .height(6.dp)
+                            .layout { measurable, _ ->
+                                val width = (6.dp + 10.dp * dot.value.coerceIn(0f, 1f)).roundToPx()
+                                val height = 6.dp.roundToPx()
+                                val placeable = measurable.measure(Constraints.fixed(width, height))
+                                layout(width, height) { placeable.place(0, 0) }
+                            }
                             .clip(CircleShape)
-                            .background(OnArt.copy(alpha = if (selected) 0.90f else 0.26f)),
+                            .drawBehind {
+                                val amount = dot.value.coerceIn(0f, 1f)
+                                drawRect(dotColor.copy(alpha = 0.26f + 0.64f * amount))
+                            },
                     )
                 }
             }

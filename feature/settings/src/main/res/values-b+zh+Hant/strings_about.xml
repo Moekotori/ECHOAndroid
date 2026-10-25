@@ -6,4 +6,8 @@
     <string name="settings_about_website">官方網站</string>
     <string name="settings_about_bug_report">回報問題</string>
     <string name="settings_about_link_error">沒有可開啟這個連結的應用程式</string>
+    <string name="settings_about_github">GitHub 開源網址</string>
+    <string name="settings_about_steam">在 Steam 遇見 ECHO</string>
+    <string name="settings_about_steam_detail">讓好音樂從手機延續到桌面。探索工作坊造型與模組，體驗持續更新的 ECHO。前往 Steam 商店了解更多。</string>
+    <string name="settings_about_afdian">在愛發電支持 ECHO</string>
 </resources>

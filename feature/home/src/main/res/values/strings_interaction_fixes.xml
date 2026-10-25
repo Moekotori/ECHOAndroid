@@ -1,0 +1,18 @@
+<resources>
+    <string name="search_view_all">View all</string>
+    <string name="search_clear">Clear search</string>
+    <string name="search_results_failed">Could not load results. Try again.</string>
+    <string name="search_play_next">Play next</string>
+    <string name="search_add_next_up">Add to next up</string>
+    <string name="search_enqueue">Add to queue</string>
+    <string name="search_add_to_playlist">Add to playlist</string>
+    <string name="search_track_actions">Song actions</string>
+    <string name="search_action_failed">Could not complete the action. Try again.</string>
+    <string name="search_action_added">Added</string>
+    <string name="search_no_playlists">Create a playlist in Library first.</string>
+    <string name="search_replace_queue_title">Replace the current queue?</string>
+    <string name="search_replace_queue_body">Playing this song now replaces the current queue. To keep it, cancel and use the song menu to add this song instead.</string>
+    <string name="search_play_now">Play now</string>
+    <string name="search_cancel">Cancel</string>
+    <string name="search_on_phone">%1$s on phone</string>
+</resources>

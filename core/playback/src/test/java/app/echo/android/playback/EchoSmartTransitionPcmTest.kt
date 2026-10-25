@@ -10,6 +10,19 @@ import kotlin.math.abs
 
 class EchoSmartTransitionPcmTest {
     @Test
+    fun fractionalMillisecondRateConversionKeepsTheRequestedWindowFrames() {
+        val durationMs = 1501L
+        val input = FloatArray((durationMs * 44_100 / 1000).toInt() * 2) { 0.25f }
+        val expected = (durationMs * 48_000 / 1000).toInt()
+        val oldRounded = EchoSmartTransitionPcm.resampleInterleaved(input, 44_100, 2, 48_000, 2)
+        assertEquals(expected - 1, oldRounded.size / 2)
+        val output = EchoSmartTransitionPcm.resampleInterleaved(input, 44_100, 2, 48_000, 2,
+            expectedFrames = expected)
+        assertEquals(expected * 2, output.size)
+        assertTrue(output.all { it == 0.25f })
+    }
+
+    @Test
     fun identityResampleCopiesInterleavedFrames() {
         val input = floatArrayOf(0.1f, -0.2f, 0.3f, -0.4f)
         val output = EchoSmartTransitionPcm.resampleInterleaved(input, 48_000, 2, 48_000, 2)

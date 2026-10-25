@@ -449,6 +449,10 @@ private inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T?
 @UnstableApi
 fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): EchoPlaybackDiagnostics {
     val exclusive = EchoPlaybackProcessRuntime.usbExclusiveSinkStatus
+    val transfer = (exclusive?.transferEvidence?.invoke() ?: EchoPlaybackProcessRuntime.lastUsbTransferEvidence)
+        ?.takeIf { status.connected && it.vendorId == status.vendorId && it.productId == status.productId }
+    val rules = if (exclusive != null) exclusive.compatibilityRules
+        else if (transfer != null) EchoPlaybackProcessRuntime.lastUsbCompatibilityRules else emptyList()
     val strict = EchoPlaybackProcessRuntime.bitPerfectStatus
     val exclusiveStreaming = exclusive?.streaming == true
     val exclusiveRoute = exclusive
@@ -492,6 +496,8 @@ fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): Echo
         usbOutputSampleRateHz = exclusive?.sampleRateHz,
         usbOutputBitDepth = exclusive?.bitDepth,
         usbBufferCapacityFrames = exclusive?.bufferCapacityFrames,
+        usbTransfer = transfer,
+        usbCompatibilityRules = rules,
         usbLastRequestedSampleRateHz = exclusive?.sampleRateHz ?: EchoPlaybackProcessRuntime.usbOutputOptions.sampleRateHz
             .takeIf { status.exclusiveEnabled && !EchoPlaybackProcessRuntime.usbBitPerfectEnabled && it > 0 }
             ?: status.lastRequestedSampleRateHz,

@@ -1,8 +1,10 @@
 package app.echo.android.feature.player
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import app.echo.android.design.EchoMotion
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -48,14 +50,13 @@ internal fun LyricsLineItem(
     onClick: (() -> Unit)?,
     onLongClick: () -> Unit,
 ) {
-    val transitionDuration = if (animateFocus) 320 else 0
     val contextMotion = if (animateFocus) spring<Float>(dampingRatio = 1f,
         stiffness = motion.focusStiffness, visibilityThreshold = 0.001f)
     else tween(0)
     val textAlign = lyricsTextAlign(lyricsAlignment)
     val horizontalAlignment = lyricsHorizontalAlignment(lyricsAlignment)
     val markerAlpha = animateFloatAsState(if (focused) 1f else 0f,
-        tween(transitionDuration, easing = LyricsSettingsMotionEasing), label = "lyrics-focus-marker")
+        if (animateFocus) EchoMotion.silkFloat(320) else snap(), label = "lyrics-focus-marker")
     val primaryAlpha = when (focusDistance) {
         0 -> 1f
         else -> if (immersive) 0.08f else when (focusDistance) {

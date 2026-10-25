@@ -128,13 +128,9 @@ internal fun SettingsPlaybackContent(
         )
         val smartBypassed = usbExclusiveEnabled || usbBitPerfectEnabled ||
             effectivePerformanceMode == EchoEffectivePerformanceMode.Lightweight.id
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_smart_transition),
-            detail = stringResource(
-                if (smartBypassed) R.string.settings_smart_transition_bypass
-                else R.string.settings_smart_transition_detail,
-            ),
+        SettingsAutoMixCard(
             checked = trackTransitions.smartEnabled,
+            bypassed = smartBypassed,
             onCheckedChange = { onTrackTransitionsChange(trackTransitions.copy(smartEnabled = it)) },
         )
     }

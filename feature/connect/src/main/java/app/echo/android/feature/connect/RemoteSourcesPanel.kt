@@ -81,6 +81,7 @@ internal fun RemoteSourcesPanel(
                 savedUrl = webDavServerUrl, savedUsername = webDavUsername, savedPassword = webDavPassword,
                 expanded = expandedSource == "webdav", onExpand = { expandedSource = if (expandedSource == "webdav") null else "webdav" },
                 busy = scanState.isScanning, onSave = onSaveWebDav, onSync = onSyncWebDav, onClear = onClearWebDav,
+                allowAnonymous = true,
             )
             SourceEditor(
                 modifier = Modifier.weight(1f),
@@ -125,22 +126,26 @@ private fun SourceEditor(
     /** SMB 可以访客访问：用户名、密码都可以留空。 */
     credentialsOptional: Boolean = false,
     usernameHint: String? = null,
+    allowAnonymous: Boolean = false,
 ) {
     var url by rememberSaveable(savedUrl) { mutableStateOf(savedUrl.orEmpty()) }
     var username by rememberSaveable(savedUsername) { mutableStateOf(savedUsername.orEmpty()) }
     var password by rememberSaveable(savedPassword) { mutableStateOf(savedPassword.orEmpty()) }
+    var anonymous by rememberSaveable(savedUrl, savedUsername) { mutableStateOf(allowAnonymous && !savedUrl.isNullOrBlank() && savedUsername.isNullOrBlank()) }
     var confirmingRemoval by rememberSaveable { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
     val saved = !savedUrl.isNullOrBlank() &&
-        (credentialsOptional || (!savedUsername.isNullOrBlank() && !savedPassword.isNullOrBlank()))
+        (credentialsOptional || (allowAnonymous && savedUsername.isNullOrBlank()) || (!savedUsername.isNullOrBlank() && !savedPassword.isNullOrBlank()))
     val hasSaved = !savedUrl.isNullOrBlank() || !savedUsername.isNullOrBlank() || !savedPassword.isNullOrBlank()
-    val dirty = url != savedUrl.orEmpty() || username != savedUsername.orEmpty() || password != savedPassword.orEmpty()
+    val effectiveUsername = if (anonymous) "" else username.trim()
+    val effectivePassword = if (anonymous) "" else password
+    val dirty = url != savedUrl.orEmpty() || effectiveUsername != savedUsername.orEmpty() || effectivePassword != savedPassword.orEmpty()
     val validUrl = isValidUrl(url.trim())
     val ready = validUrl && (
-        if (credentialsOptional) username.isBlank() || password.isNotBlank()
+        if (anonymous) true else if (credentialsOptional) username.isBlank() || password.isNotBlank()
         else username.isNotBlank() && password.isNotBlank()
     )
-    val submit = { if (ready && !busy) { keyboard?.hide(); onSync(url.trim(), username.trim(), password) } }
+    val submit = { if (ready && !busy) { keyboard?.hide(); onSync(url.trim(), effectiveUsername, effectivePassword) } }
     Column(modifier) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(Modifier.fillMaxWidth().echoClickable(role = Role.Button) { keyboard?.hide(); onExpand() }.padding(vertical = 20.dp),
@@ -161,16 +166,21 @@ private fun SourceEditor(
                     error = if (url.isNotBlank() && !validUrl) {
                         invalidUrlMessage ?: stringResource(L10nR.string.feature_connect_enter_a_full_http_or_https_address_3c7370)
                     } else null)
+                if (allowAnonymous) ConnectPreference(stringResource(L10nR.string.connect_webdav_anonymous),
+                    stringResource(L10nR.string.connect_webdav_anonymous_hint), anonymous, enabled = !busy,
+                    onChange = { anonymous = it })
+                if (!anonymous) {
                 ConnectInput(stringResource(L10nR.string.feature_connect_username_dfb030), username, { username = it },
                     usernameHint ?: "", enabled = !busy)
                 ConnectInput(stringResource(L10nR.string.feature_connect_password_2eaf7d), password, { password = it },
                     secret = true, enabled = !busy, onDone = submit)
+                }
                 Button(onClick = submit, enabled = ready && !busy, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
                     Text(if (dirty || !saved) stringResource(L10nR.string.feature_connect_save_and_sync_957e87)
                         else stringResource(L10nR.string.feature_connect_sync_library_03a0c6))
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = { keyboard?.hide(); onSave(url.trim(), username.trim(), password) }, enabled = ready && dirty && !busy) {
+                    TextButton(onClick = { keyboard?.hide(); onSave(url.trim(), effectiveUsername, effectivePassword) }, enabled = ready && dirty && !busy) {
                         Text(stringResource(L10nR.string.feature_connect_save_only_831a4d))
                     }
                     if (!hasSaved && dirty) TextButton(onClick = { url = ""; username = ""; password = "" }, enabled = !busy) {

@@ -10,6 +10,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.draw.alpha
+import androidx.paging.LoadState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +47,8 @@ import app.echo.android.model.library.PlaylistStats
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import app.echo.android.feature.library.R as L10nR
 
 private val PlaylistDetailBottomPadding = 168.dp
@@ -87,22 +97,53 @@ internal fun PlaylistDetailPage(
     var actionFailed by remember(playlist.id) { mutableStateOf(false) }
     var addedCount by remember(playlist.id) { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
+    val mutation = remember(playlist.id) { Mutex() }
+    val snackbar = remember(playlist.id) { SnackbarHostState() }
+    val removedMessage = stringResource(L10nR.string.playlist_removed)
+    val undoLabel = stringResource(L10nR.string.playlist_undo)
+    val actionFailedMessage = stringResource(L10nR.string.playlist_action_error)
+    androidx.compose.runtime.LaunchedEffect(actionFailed) {
+        if (actionFailed) snackbar.showSnackbar(actionFailedMessage)
+    }
     val orderFlow = remember(playlist.id, management) { management?.order?.invoke(playlist.id) ?: flowOf(PlaylistTrackOrder()) }
     val order by orderFlow.collectAsState(initial = PlaylistTrackOrder())
     val statsFlow = remember(playlist.id, management) {
         management?.stats?.invoke(playlist.id) ?: flowOf(PlaylistStats(playlist.trackCount, 0L))
     }
     val stats by statsFlow.collectAsState(initial = PlaylistStats(playlist.trackCount, 0L))
-    fun perform(operation: suspend () -> Unit) {
-        if (busy) return
+    fun perform(queueIfBusy: Boolean = false, operation: suspend () -> Unit) {
+        if (busy && !queueIfBusy) return
         busy = true; actionFailed = false
         scope.launch {
+            mutation.withLock {
+            busy = true
             try { operation() }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { actionFailed = true }
             finally { busy = false }
+            }
         }
     }
+    fun removeTrack(track: EchoTrack) {
+        val undoable = management?.removeUndoable
+        if (undoable == null) {
+            if (management != null) perform { check(management.remove(playlist.id, track.id)) } else onRemoveTrack(track)
+            return
+        }
+        perform {
+            val undo = checkNotNull(undoable(playlist.id, track.id))
+            scope.launch {
+                snackbar.currentSnackbarData?.dismiss()
+                if (snackbar.showSnackbar(removedMessage, undoLabel, withDismissAction = true, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) {
+                    perform(queueIfBusy = true) { check(undo()) }
+                }
+            }
+        }
+    }
+    val listState = rememberLazyListState()
+    val loadedIds = remember(loadedTracks) { loadedTracks.mapTo(hashSetOf()) { it.id } }
+    val reorder = editing && playlist.canEdit && order.isManual && management?.moveTo != null && !busy
+    val drag = rememberPlaylistDragState(listState, reorder, loadedIds)
     val colors = rememberPlaylistDetailColors()
     // A paging snapshot is not the whole playlist; only show a complete duration.
     val durationMs = stats.durationMs.takeIf { it > 0L } ?: remember(loadedTracks, playlist.trackCount) {
@@ -111,8 +152,9 @@ internal fun PlaylistDetailPage(
         } else 0L
     }
 
+    Box(modifier.fillMaxSize()) {
     Column(
-        modifier = modifier.fillMaxSize().background(colors.surface)
+        modifier = Modifier.fillMaxSize().background(colors.surface)
             .detailBackSwipe(onBack).statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -130,7 +172,11 @@ internal fun PlaylistDetailPage(
             )
         }
         LazyColumn(
-            modifier = Modifier.weight(1f).widthIn(max = EchoContentMaxWidth).fillMaxWidth(),
+            state = listState,
+            modifier = Modifier.weight(1f).widthIn(max = EchoContentMaxWidth).fillMaxWidth()
+                .playlistDragReorder(drag, reorder, loadedIds) { from, to ->
+                    perform { check(checkNotNull(management?.moveTo).invoke(playlist.id, from, to)) }
+                },
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = PlaylistDetailBottomPadding),
         ) {
             item(key = "playlist-hero", contentType = "header") {
@@ -149,6 +195,7 @@ internal fun PlaylistDetailPage(
                     onEdit = management?.takeIf { playlist.canRemoveTracks }?.let { { editing = !editing } },
                     onAdd = management?.takeIf { playlist.canEdit }?.let { { adding = true } })
                 if (actionFailed) PlaylistDetailNotice(stringResource(L10nR.string.playlist_action_error))
+                if (reorder) Text(stringResource(L10nR.string.playlist_drag_hint), style = MaterialTheme.typography.bodySmall)
                 addedCount?.let { PlaylistDetailNotice(pluralStringResource(L10nR.plurals.playlist_added, it, it)) }
             }
             when {
@@ -157,6 +204,7 @@ internal fun PlaylistDetailPage(
                 }
                 tracks.isInitialPagingError() -> item(key = "playlist-error") {
                     PlaylistDetailNotice(stringResource(L10nR.string.feature_library_failed_to_load_playlist_tracks_9130da))
+                    TextButton(onClick = tracks::retry) { Text(stringResource(L10nR.string.playlist_retry)) }
                 }
                 tracks.itemCount == 0 -> item(key = "playlist-empty") {
                     PlaylistDetailNotice(playlistEmptyMessage(playlist))
@@ -169,7 +217,13 @@ internal fun PlaylistDetailPage(
                     val track = tracks[index]
                     if (track == null) PlaylistTrackPlaceholder(editing) else {
                         PlaylistTrackRow(
-                            modifier = libraryTrackItemMotion(),
+                            modifier = libraryTrackItemMotion().then(
+                                when {
+                                    drag.source == track.id -> Modifier.alpha(0.45f)
+                                    drag.target == track.id && drag.source != null ->
+                                        Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                                    else -> Modifier
+                                }),
                             track = track,
                             accent = colors.muted,
                             onClick = { onPlayTrack(track) },
@@ -181,10 +235,7 @@ internal fun PlaylistDetailPage(
                             onPlayNext = onPlayNext,
                             onAddNextUp = onAddNextUp,
                             onEnqueue = onEnqueue,
-                            onRemoveFromPlaylist = if (!playlist.canRemoveTracks) null else { selected ->
-                                if (management != null) perform { check(management.remove(playlist.id, selected.id)) }
-                                else onRemoveTrack(selected)
-                            },
+                            onRemoveFromPlaylist = if (!playlist.canRemoveTracks) null else ::removeTrack,
                             onMoveUp = if (playlist.canEdit && order.isManual && index > 0) ({
                                 if (management != null) perform { check(management.move(playlist.id, track.id, -1)) }
                                 else onMoveTrack(index, index - 1)
@@ -197,11 +248,30 @@ internal fun PlaylistDetailPage(
                             onOpenAlbum = onOpenAlbum,
                             editing = editing,
                             editBusy = busy,
+                            reorderHandle = if (!reorder) null else ({
+                                PlaylistDragHandle(track.id, drag)
+                            }),
                         )
                     }
                 }
             }
+            when (tracks.loadState.append) {
+                is LoadState.Loading -> item("playlist-append-loading") {
+                    Text(stringResource(L10nR.string.playlist_loading_more))
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+                is LoadState.Error -> item("playlist-append-error") {
+                    PlaylistDetailNotice(stringResource(L10nR.string.playlist_load_more_failed))
+                    TextButton(onClick = tracks::retry) { Text(stringResource(L10nR.string.playlist_retry)) }
+                }
+                else -> Unit
+            }
+            if (tracks.itemCount > 0 && tracks.loadState.refresh is LoadState.Error) item("playlist-refresh-error") {
+                TextButton(onClick = tracks::retry) { Text(stringResource(L10nR.string.playlist_retry)) }
+            }
         }
+    }
+    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = LibraryBottomControlsPadding))
     }
 
     if (adding && management != null) PlaylistAddTracksSheet(playlist.id, management,

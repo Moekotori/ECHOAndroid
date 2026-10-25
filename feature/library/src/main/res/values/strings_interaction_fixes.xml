@@ -1,0 +1,9 @@
+<resources>
+    <string name="playlist_retry">Retry</string>
+    <string name="playlist_loading_more">Loading more songs…</string>
+    <string name="playlist_load_more_failed">Could not load more songs.</string>
+    <string name="playlist_removed">Removed from playlist</string>
+    <string name="playlist_undo">Undo</string>
+    <string name="playlist_drag_hint">Drag a song to reorder it.</string>
+    <string name="playlist_drag_handle">Drag to reorder</string>
+</resources>

@@ -40,6 +40,18 @@ internal class PlaylistManagementController(
         return withContext(Dispatchers.IO) { repository.removeTrackFromLocalPlaylist(id, trackId) }
     }
     suspend fun move(id: String, trackId: String, direction: Int) = repository.movePlaylistTrack(id, trackId, direction)
+    suspend fun moveTo(id: String, trackId: String, targetId: String) = repository.movePlaylistTrackTo(id, trackId, targetId)
+    suspend fun removeUndoable(id: String, trackId: String): (suspend () -> Boolean)? {
+        if (id == EchoPlaylist.LikedSongsId) {
+            if (!remove(id, trackId)) return null
+            return {
+                if (trackId.startsWith("subsonic:") && remoteFavorite != null) remoteFavorite.invoke(trackId, true)
+                else { repository.batchFavorites(listOf(trackId), true); true }
+            }
+        }
+        val removed = repository.removePlaylistTrackUndoable(id, trackId) ?: return null
+        return { repository.restorePlaylistTrack(removed) }
+    }
     suspend fun copy(id: String, name: String) = repository.copyPlaylist(id, name)
 
     fun setArtwork(id: String, uri: Uri) {

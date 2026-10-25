@@ -95,6 +95,78 @@ private fun pageStyleThumbnail(style: EchoPlayerPageStyle): DrawScope.(Color) ->
         }
         textBars(Offset(size.width * 0.14f, size.height * 0.42f), size.width * 0.40f, Color.White)
     }
+    EchoPlayerPageStyle.HoloPrism -> { _ ->
+        drawRect(Color(0xFF0B0A16))
+        blob(Color(0xFFB9A6FF).copy(alpha = 0.55f), Offset(size.width * 0.22f, size.height * 0.30f), size.height * 0.85f)
+        blob(Color(0xFF6FF3E0).copy(alpha = 0.40f), Offset(size.width * 0.80f, size.height * 0.70f), size.height * 0.80f)
+        val card = Size(size.height * 0.48f, size.height * 0.70f)
+        val topLeft = Offset(size.width * 0.5f - card.width / 2f, size.height * 0.15f)
+        drawRoundRect(Color(0xFF15102B), topLeft, card, CornerRadius(7f))
+        drawRoundRect(
+            Brush.linearGradient(listOf(Color(0xFFB9A6FF), Color(0xFF6FF3E0), Color(0xFFFF8FD8)), topLeft, topLeft + Offset(card.width, card.height)),
+            topLeft, card, CornerRadius(7f), style = Stroke(2.4f),
+        )
+    }
+    EchoPlayerPageStyle.StarlightOrbit -> { _ ->
+        drawRect(Brush.verticalGradient(listOf(Color(0xFF070B1F), Color(0xFF131C45))))
+        val center = Offset(size.width * 0.5f, size.height * 0.5f)
+        val ring = size.height * 0.40f
+        drawCircle(Color.White.copy(alpha = 0.18f), ring, center, style = Stroke(1.4f))
+        drawArc(Color(0xFFFFD98A), -90f, 250f, false, center - Offset(ring, ring), Size(ring * 2f, ring * 2f), style = Stroke(2.4f, cap = StrokeCap.Round))
+        drawCircle(Color(0xFF8FB4FF).copy(alpha = 0.75f), ring * 0.70f, center)
+        listOf(0.12f to 0.22f, 0.86f to 0.18f, 0.78f to 0.82f, 0.20f to 0.78f).forEach { (x, y) ->
+            drawCircle(Color.White.copy(alpha = 0.8f), 1.4f, Offset(size.width * x, size.height * y))
+        }
+    }
+    EchoPlayerPageStyle.SakuraLetter -> { _ ->
+        drawRect(Brush.verticalGradient(listOf(Color(0xFFFFF4F1), Color(0xFFFFE3E6))))
+        val paper = Size(size.height * 0.62f, size.height * 0.72f)
+        val topLeft = Offset(size.width * 0.5f - paper.width / 2f, size.height * 0.14f)
+        drawRoundRect(Color.White, topLeft, paper, CornerRadius(3f))
+        drawRoundRect(Color(0xFFF6B8C8), topLeft + Offset(paper.width * 0.1f, paper.height * 0.1f),
+            Size(paper.width * 0.8f, paper.width * 0.8f), CornerRadius(2f))
+        drawCircle(Color(0xFFC9456B), size.height * 0.09f, topLeft + Offset(paper.width, paper.height))
+        listOf(0.16f to 0.30f, 0.84f to 0.24f, 0.22f to 0.78f).forEach { (x, y) ->
+            drawCircle(Color(0xFFF6B8C8), 5f, Offset(size.width * x, size.height * y))
+        }
+    }
+    EchoPlayerPageStyle.NeonRain -> { _ ->
+        drawRect(Brush.verticalGradient(listOf(Color(0xFF09060F), Color(0xFF1A0B2B))))
+        val horizon = size.height * 0.64f
+        drawCircle(Brush.verticalGradient(listOf(Color(0xFFFFC857), Color(0xFFFF3CAC)), size.height * 0.2f, horizon),
+            size.height * 0.34f, Offset(size.width * 0.5f, horizon - size.height * 0.04f))
+        drawRect(Color(0xFF09060F), Offset(0f, horizon), Size(size.width, size.height - horizon))
+        drawLine(Color(0xFF2DE2E6), Offset(0f, horizon), Offset(size.width, horizon), 2f)
+        for (i in 1..3) {
+            val y = horizon + (size.height - horizon) * (i / 3f) * (i / 3f)
+            drawLine(Color(0xFF2DE2E6).copy(alpha = 0.5f), Offset(0f, y), Offset(size.width, y), 1.2f)
+        }
+    }
+    EchoPlayerPageStyle.SodaPop -> { _ ->
+        drawRect(Brush.verticalGradient(listOf(Color(0xFFE9F8F6), Color(0xFFD3EEF6))))
+        val side = size.height * 0.62f
+        val topLeft = Offset(size.width * 0.5f - side / 2f, size.height * 0.16f)
+        drawRoundRect(Color.White, topLeft, Size(side, side), CornerRadius(side * 0.30f))
+        drawRoundRect(Color(0xFF0A7E8A).copy(alpha = 0.75f), topLeft + Offset(side * 0.07f, side * 0.07f),
+            Size(side * 0.86f, side * 0.86f), CornerRadius(side * 0.26f))
+        listOf(0.30f to 0.26f to 5f, 0.72f to 0.74f to 7f, 0.64f to 0.22f to 3f).forEach { (pos, r) ->
+            drawCircle(Color.White.copy(alpha = 0.85f), r, Offset(size.width * pos.first, size.height * pos.second), style = Stroke(1.4f))
+        }
+    }
+    EchoPlayerPageStyle.AmberFilm -> { _ ->
+        drawRect(Brush.verticalGradient(listOf(Color(0xFF150F0A), Color(0xFF241711))))
+        val strip = Size(size.height * 0.74f, size.height * 0.80f)
+        val topLeft = Offset(size.width * 0.5f - strip.width / 2f, size.height * 0.10f)
+        drawRect(Color(0xFF0B0705), topLeft, strip)
+        val hole = strip.width * 0.07f
+        for (i in 0 until 6) {
+            val x = topLeft.x + strip.width * (0.10f + i * 0.15f)
+            drawRect(Color(0xFFF6E7CF).copy(alpha = 0.85f), Offset(x, topLeft.y + 3f), Size(hole, hole * 1.1f))
+            drawRect(Color(0xFFF6E7CF).copy(alpha = 0.85f), Offset(x, topLeft.y + strip.height - 3f - hole * 1.1f), Size(hole, hole * 1.1f))
+        }
+        drawRect(Brush.linearGradient(listOf(Color(0xFFFFB347), Color(0xFFD2622F))),
+            topLeft + Offset(strip.width * 0.08f, strip.height * 0.18f), Size(strip.width * 0.84f, strip.height * 0.60f))
+    }
 }
 
 private fun backdropThumbnail(style: EchoLyricsBackdrop): DrawScope.(Color) -> Unit = when (style) {

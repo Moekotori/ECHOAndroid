@@ -16,7 +16,7 @@ import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import app.echo.android.model.radio.EchoRadioStation
 
-/** Radio playlists and segments always go upstream, never through the song disk cache. */
+/** Live radio and podcast bytes go upstream without creating an offline song cache. */
 @UnstableApi
 internal class EchoRadioMediaSourceFactory(context: Context) : MediaSource.Factory {
     private val songs = DefaultMediaSourceFactory(echoPlaybackDataSourceFactory(context),
@@ -35,6 +35,7 @@ internal class EchoRadioMediaSourceFactory(context: Context) : MediaSource.Facto
 
     override fun createMediaSource(mediaItem: MediaItem): MediaSource =
         if (EchoRadioStation.isRadio(mediaItem.mediaId)) RadioSource(radio.createMediaSource(mediaItem))
+        else if (mediaItem.mediaId.startsWith("podcast:")) radio.createMediaSource(mediaItem)
         else songs.createMediaSource(mediaItem)
 
     override fun getSupportedTypes(): IntArray = songs.supportedTypes

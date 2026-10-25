@@ -59,6 +59,20 @@ internal object UsbIsochronousNative {
         if (handle != 0L) nativeClose(handle)
     }
 
+    fun setPlaybackActive(handle: Long, active: Boolean) {
+        if (handle != 0L) nativeSetPlaybackActive(handle, active)
+    }
+
+    fun snapshot(handle: Long, target: LongArray) {
+        if (handle != 0L) nativeSnapshot(handle, target)
+    }
+
+    @JvmStatic
+    private external fun nativeSetPlaybackActive(handle: Long, active: Boolean)
+
+    @JvmStatic
+    private external fun nativeSnapshot(handle: Long, target: LongArray)
+
     @JvmStatic
     private external fun nativeCreate(
         fd: Int,

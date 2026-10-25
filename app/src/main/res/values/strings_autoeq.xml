@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="autoeq_load_failed">Could not read the bundled AutoEQ catalog. Try reopening this page or updating the app.</string>
+</resources>

@@ -86,7 +86,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         ORDER BY title COLLATE NOCASE ASC
         """,
     )
@@ -94,7 +94,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT library_tracks.* FROM library_tracks
+        SELECT library_tracks.* FROM visible_library_tracks AS library_tracks
         JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId
         WHERE library_tracks_fts MATCH :matchQuery
         ORDER BY
@@ -111,7 +111,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'
         ORDER BY
             CASE
@@ -129,7 +129,7 @@ interface LibraryTrackDao {
     suspend fun validateFtsQuery(matchQuery: String): String?
 
     @Query("""
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE source IN ('mediastore', 'saf')
           AND (contentUri LIKE 'content:%' OR contentUri LIKE 'file:%')
           AND (:query = '' OR title LIKE :pattern ESCAPE '\' OR artist LIKE :pattern ESCAPE '\' OR album LIKE :pattern ESCAPE '\')
@@ -138,7 +138,7 @@ interface LibraryTrackDao {
     suspend fun sharedLocalTracks(query: String, pattern: String, limit: Int, offset: Int): List<LibraryTrackEntity>
 
     @Query("""
-        SELECT COUNT(*) FROM library_tracks
+        SELECT COUNT(*) FROM visible_library_tracks AS library_tracks
         WHERE source IN ('mediastore', 'saf')
           AND (contentUri LIKE 'content:%' OR contentUri LIKE 'file:%')
           AND (:query = '' OR title LIKE :pattern ESCAPE '\' OR artist LIKE :pattern ESCAPE '\' OR album LIKE :pattern ESCAPE '\')
@@ -199,7 +199,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT COUNT(*) FROM library_tracks
+        SELECT COUNT(*) FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND title COLLATE NOCASE < :letter
         """,
@@ -211,7 +211,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
         ORDER BY title COLLATE NOCASE ASC
         LIMIT :limit
@@ -221,7 +221,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT library_tracks.* FROM library_tracks
+        SELECT library_tracks.* FROM visible_library_tracks AS library_tracks
         JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId
         WHERE library_tracks_fts MATCH :matchQuery
         ORDER BY
@@ -243,7 +243,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'
         ORDER BY
             CASE
@@ -264,7 +264,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
         ORDER BY dateModifiedSeconds DESC, title COLLATE NOCASE ASC
         LIMIT :limit
@@ -324,7 +324,7 @@ interface LibraryTrackDao {
             COALESCE(MAX(stats.lastPlayedAtEpochMs), 0) AS lastPlayedAtEpochMs,
             COALESCE(MAX(f.favoritedAtEpochMs), 0) AS favoritedAtEpochMs
         FROM library_album_summaries s
-        INNER JOIN library_tracks t ON t.albumKey = s.albumKey
+        INNER JOIN visible_library_tracks t ON t.albumKey = s.albumKey
         LEFT JOIN library_playback_stats stats ON stats.trackId = t.id
         LEFT JOIN library_favorites f ON f.trackId = t.id
         WHERE s.isRemote = 0
@@ -356,7 +356,7 @@ interface LibraryTrackDao {
         SELECT composerKey AS genreKey, composer AS name, MAX(artworkUri) AS artworkUri,
                COUNT(DISTINCT albumKey) AS albumCount, COUNT(*) AS trackCount,
                COALESCE(SUM(durationMs), 0) AS durationMs
-        FROM library_tracks
+        FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND composerKey IS NOT NULL AND trim(composerKey) != ''
           AND (:query IS NULL OR composer LIKE '%' || :query || '%' OR composerKey LIKE '%' || :query || '%')
@@ -371,7 +371,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE composerKey = :composerKey AND (source = 'mediastore' OR source = 'saf')
         ORDER BY album COLLATE NOCASE ASC, discNumber ASC, trackNumber ASC, title COLLATE NOCASE ASC
         """,
@@ -439,7 +439,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND albumKey = :albumKey
         ORDER BY
@@ -452,7 +452,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE source = :source
           AND albumKey = :albumKey
         ORDER BY
@@ -465,7 +465,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE source IN ('mediastore', 'saf') AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey)
           AND (:query IS NULL OR instr(lower(title), lower(:query)) > 0
                OR instr(lower(COALESCE(album, '')), lower(:query)) > 0)
@@ -488,7 +488,7 @@ interface LibraryTrackDao {
         SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds
         FROM library_album_summaries
         WHERE isRemote = 0 AND albumKey IN (
-            SELECT DISTINCT albumKey FROM library_tracks
+            SELECT DISTINCT albumKey FROM visible_library_tracks AS library_tracks
             WHERE id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey) AND source IN ('mediastore', 'saf')
         )
         ORDER BY year DESC, title COLLATE NOCASE ASC, albumKey ASC
@@ -501,7 +501,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND genreKey = :genreKey
         ORDER BY
@@ -515,7 +515,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND (
             (:folderKey = '' AND (relativePath IS NULL OR trim(relativePath) = ''))
@@ -532,7 +532,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND albumKey = :albumKey
         ORDER BY
@@ -566,7 +566,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
         ORDER BY dateModifiedSeconds DESC, title COLLATE NOCASE ASC
         LIMIT :limit OFFSET :offset
@@ -576,7 +576,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND albumKey = :albumKey
         ORDER BY
@@ -594,7 +594,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey)
         ORDER BY
@@ -634,7 +634,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND genreKey = :genreKey
         ORDER BY
@@ -653,7 +653,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND (
             (:folderKey = '' AND (relativePath IS NULL OR trim(relativePath) = ''))
@@ -675,7 +675,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE source = :source
           AND albumKey = :albumKey
         ORDER BY
@@ -691,7 +691,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey)
         ORDER BY
@@ -705,7 +705,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND genreKey = :genreKey
         ORDER BY
@@ -720,7 +720,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND composerKey = :composerKey
         ORDER BY
@@ -735,7 +735,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND (
             (:folderKey = '' AND (relativePath IS NULL OR trim(relativePath) = ''))
@@ -757,39 +757,39 @@ interface LibraryTrackDao {
     @Query(
         """
         SELECT
-          (SELECT COUNT(*) FROM library_tracks t
+          (SELECT COUNT(*) FROM visible_library_tracks t
              INNER JOIN library_playback_stats s ON s.trackId = t.id
              WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0)
             AS recentCount,
-          (SELECT COUNT(*) FROM library_tracks t
+          (SELECT COUNT(*) FROM visible_library_tracks t
              INNER JOIN library_playback_stats s ON s.trackId = t.id
              WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0)
             AS frequentCount,
-          (SELECT COUNT(*) FROM library_tracks t
+          (SELECT COUNT(*) FROM visible_library_tracks t
              LEFT JOIN library_playback_stats s ON s.trackId = t.id
              WHERE (t.source = 'mediastore' OR t.source = 'saf')
                AND (s.trackId IS NULL OR s.playCount = 0))
             AS neverCount,
-          (SELECT COUNT(*) FROM library_tracks t
+          (SELECT COUNT(*) FROM visible_library_tracks t
              WHERE t.source = 'mediastore' OR t.source = 'saf')
             AS addedCount,
-          (SELECT t.artworkUri FROM library_tracks t
+          (SELECT t.artworkUri FROM visible_library_tracks t
              INNER JOIN library_playback_stats s ON s.trackId = t.id
              WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
              ORDER BY s.lastPlayedAtEpochMs DESC LIMIT 1)
             AS recentArtworkUri,
-          (SELECT t.artworkUri FROM library_tracks t
+          (SELECT t.artworkUri FROM visible_library_tracks t
              INNER JOIN library_playback_stats s ON s.trackId = t.id
              WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0
              ORDER BY s.playCount DESC, s.lastPlayedAtEpochMs DESC LIMIT 1)
             AS frequentArtworkUri,
-          (SELECT t.artworkUri FROM library_tracks t
+          (SELECT t.artworkUri FROM visible_library_tracks t
              LEFT JOIN library_playback_stats s ON s.trackId = t.id
              WHERE (t.source = 'mediastore' OR t.source = 'saf')
                AND (s.trackId IS NULL OR s.playCount = 0)
              ORDER BY t.title COLLATE NOCASE ASC LIMIT 1)
             AS neverArtworkUri,
-          (SELECT t.artworkUri FROM library_tracks t
+          (SELECT t.artworkUri FROM visible_library_tracks t
              WHERE t.source = 'mediastore' OR t.source = 'saf'
              ORDER BY t.dateModifiedSeconds DESC, t.title COLLATE NOCASE ASC LIMIT 1)
             AS addedArtworkUri
@@ -799,7 +799,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         INNER JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
         ORDER BY s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
@@ -809,7 +809,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         INNER JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0
         ORDER BY s.playCount DESC, s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
@@ -819,7 +819,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         LEFT JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf')
           AND (s.trackId IS NULL OR s.playCount = 0)
@@ -830,7 +830,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         WHERE t.source = 'mediastore' OR t.source = 'saf'
         ORDER BY t.dateModifiedSeconds DESC, t.title COLLATE NOCASE ASC
         """,
@@ -839,7 +839,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         INNER JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
         ORDER BY s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
@@ -850,7 +850,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         INNER JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
         ORDER BY s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
@@ -861,7 +861,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         INNER JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0
         ORDER BY s.playCount DESC, s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
@@ -872,7 +872,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         LEFT JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf')
           AND (s.trackId IS NULL OR s.playCount = 0)
@@ -884,7 +884,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         WHERE t.source = 'mediastore' OR t.source = 'saf'
         ORDER BY t.dateModifiedSeconds DESC, t.title COLLATE NOCASE ASC
         LIMIT :limit
@@ -894,7 +894,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         INNER JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.lastPlayedAtEpochMs > 0
         ORDER BY s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
@@ -905,7 +905,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         INNER JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf') AND s.playCount > 0
         ORDER BY s.playCount DESC, s.lastPlayedAtEpochMs DESC, t.title COLLATE NOCASE ASC
@@ -916,7 +916,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         LEFT JOIN library_playback_stats s ON s.trackId = t.id
         WHERE (t.source = 'mediastore' OR t.source = 'saf')
           AND (s.trackId IS NULL OR s.playCount = 0)
@@ -928,7 +928,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT t.* FROM library_tracks t
+        SELECT t.* FROM visible_library_tracks t
         WHERE t.source = 'mediastore' OR t.source = 'saf'
         ORDER BY t.dateModifiedSeconds DESC, t.title COLLATE NOCASE ASC
         LIMIT :limit OFFSET :offset
@@ -936,10 +936,10 @@ interface LibraryTrackDao {
     )
     suspend fun listRecentlyAddedTracksForBrowse(limit: Int, offset: Int): List<LibraryTrackEntity>
 
-    @Query("SELECT COUNT(*) FROM library_tracks")
+    @Query("SELECT COUNT(*) FROM visible_library_tracks AS library_tracks")
     suspend fun countTracks(): Int
 
-    @Query("SELECT COUNT(*) FROM library_tracks WHERE source = :source")
+    @Query("SELECT COUNT(*) FROM visible_library_tracks AS library_tracks WHERE source = :source")
     suspend fun countTracksFromSource(source: String): Int
 
     @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
@@ -1241,14 +1241,20 @@ interface LibraryTrackDao {
     suspend fun searchAlbums(query: String, limit: Int): List<AlbumSummary> =
         searchAlbumsIndexed(LibrarySummarySearchQuery.searchAlbums(query, limit))
 
-    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class])
+    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class, LibraryHiddenTrackEntity::class])
     suspend fun searchAlbumsIndexed(query: SupportSQLiteQuery): List<AlbumSummary>
 
     suspend fun searchArtists(query: String, limit: Int): List<ArtistSummary> =
         searchArtistsIndexed(LibrarySummarySearchQuery.searchArtists(query, limit))
 
-    @RawQuery(observedEntities = [LibraryArtistSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class, LibraryTrackArtistEntity::class])
+    @RawQuery(observedEntities = [LibraryArtistSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class, LibraryTrackArtistEntity::class, LibraryHiddenTrackEntity::class])
     suspend fun searchArtistsIndexed(query: SupportSQLiteQuery): List<ArtistSummary>
+
+    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class, LibraryHiddenTrackEntity::class])
+    fun pageSearchAlbums(query: SupportSQLiteQuery): PagingSource<Int, AlbumSummary>
+
+    @RawQuery(observedEntities = [LibraryArtistSummaryEntity::class, LibraryTrackEntity::class, LibraryTrackFtsEntity::class, LibraryTrackArtistEntity::class, LibraryHiddenTrackEntity::class])
+    fun pageSearchArtists(query: SupportSQLiteQuery): PagingSource<Int, ArtistSummary>
 
     @Transaction
     suspend fun upsertBatchWithFts(tracks: List<LibraryTrackEntity>) {
@@ -1335,6 +1341,12 @@ interface LibraryTrackDao {
     @Query("DELETE FROM library_bookmarks WHERE trackId = :oldId")
     suspend fun deleteMergedBookmarks(oldId: String)
 
+    @Query("INSERT OR IGNORE INTO library_hidden_tracks (trackId, title, artist, album, hiddenAtEpochMs) SELECT :targetId, title, artist, album, hiddenAtEpochMs FROM library_hidden_tracks WHERE trackId = :oldId")
+    suspend fun mergeHiddenReference(oldId: String, targetId: String)
+
+    @Query("DELETE FROM library_hidden_tracks WHERE trackId = :oldId")
+    suspend fun deleteMergedHiddenReference(oldId: String)
+
     /** Identity and all user-owned references move together, or roll back together. */
     @Transaction
     suspend fun mergeScanDuplicate(oldId: String, targetId: String) {
@@ -1344,6 +1356,8 @@ interface LibraryTrackDao {
         val edited = if ((old.metadataEditedAtEpochMs ?: 0L) > (target.metadataEditedAtEpochMs ?: 0L)) old else target
         val merged = target.copy(artworkUri = target.artworkUri ?: old.artworkUri)
             .withPreservedUserMetadata(edited).withScanMetadata(preserveGroupingFrom = edited)
+        mergeHiddenReference(oldId, targetId)
+        deleteMergedHiddenReference(oldId)
         mergeFavoriteReference(oldId, targetId)
         deleteMergedFavorite(oldId)
         mergePlaylistReferences(oldId, targetId)

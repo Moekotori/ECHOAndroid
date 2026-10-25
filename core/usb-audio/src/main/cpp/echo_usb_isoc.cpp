@@ -7,6 +7,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <time.h>
+#include "usb_transfer_metrics.h"
 
 #define LOG_TAG "EchoUsbIsoc"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -55,7 +57,14 @@ struct Writer {
     int64_t submitted_frames;
     int64_t completed_frames;
     int64_t audio_completed_frames;
+    UsbTransferMetrics metrics;
 };
+
+static int64_t monotonic_ns() {
+    struct timespec now{};
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return (int64_t)now.tv_sec * 1000000000LL + now.tv_nsec;
+}
 
 static int bytes_per_frame(const Writer* writer) {
     return writer->channels * writer->bytes_per_sample;
@@ -83,7 +92,11 @@ static int is_fatal_urb_status(int status) {
 }
 
 static void apply_feedback(Writer* writer, const uint8_t* data, int length) {
-    if (data == nullptr || length < 3) return;
+    if (data == nullptr || length < 3) {
+        ++writer->metrics.invalid_feedback;
+        writer->metrics.error(7, EPROTO);
+        return;
+    }
     int64_t measured;
     if (writer->high_speed && length >= 4) {
         measured = (int64_t)data[0] |
@@ -95,20 +108,31 @@ static void apply_feedback(Writer* writer, const uint8_t* data, int length) {
                     ((int64_t)data[1] << 8) |
                     ((int64_t)data[2] << 16)) << 2;
     }
-    if (measured <= 0) return;
+    if (measured <= 0) {
+        ++writer->metrics.invalid_feedback;
+        writer->metrics.error(7, ERANGE);
+        return;
+    }
     const int64_t slack = 1LL << 16;
     int64_t minv = writer->nominal_q16 - slack;
     if (minv < 1) minv = 1;
     int64_t maxv = writer->nominal_q16 + slack;
+    if (measured < minv || measured > maxv) {
+        ++writer->metrics.invalid_feedback;
+        writer->metrics.error(7, ERANGE);
+    }
     if (measured < minv) measured = minv;
     if (measured > maxv) measured = maxv;
     writer->feedback_q16 = (writer->feedback_q16 * 3 + measured) / 4;
 }
 
-static int submit_urb(int fd, struct usbdevfs_urb* urb) {
-    int rc = ioctl(fd, USBDEVFS_SUBMITURB, urb);
+static int submit_urb(Writer* writer, struct usbdevfs_urb* urb) {
+    int rc = ioctl(writer->fd, USBDEVFS_SUBMITURB, urb);
     if (rc < 0) {
-        LOGE("SUBMITURB failed: %s", strerror(errno));
+        const int err = errno;
+        ++writer->metrics.submit_failures;
+        writer->metrics.error(1, err);
+        if (is_fatal_errno(err)) writer->fatal = 1;
         return -1;
     }
     return 0;
@@ -126,7 +150,7 @@ static int submit_feedback(Writer* writer, int index) {
     urb->buffer_length = writer->feedback_max;
     urb->number_of_packets = 1;
     urb->iso_frame_desc[0].length = (unsigned int)writer->feedback_max;
-    if (submit_urb(writer->fd, urb) != 0) return -1;
+    if (submit_urb(writer, urb) != 0) return -1;
     slot->in_flight = 1;
     slot->is_feedback = 1;
     return 0;
@@ -134,7 +158,18 @@ static int submit_feedback(Writer* writer, int index) {
 
 static void mark_completed(Writer* writer, UrbSlot* slot) {
     writer->completed_frames += slot->frames;
-    if (!slot->is_silence) {
+    if (!writer->metrics.discarding) {
+        ++writer->metrics.audio_urbs;
+        if (slot->urb->status != 0) writer->metrics.error(3, slot->urb->status);
+        for (int p = 0; p < slot->urb->number_of_packets; ++p) {
+            const auto& packet = slot->urb->iso_frame_desc[p];
+            if (packet.status != 0 || packet.actual_length != packet.length) {
+                ++writer->metrics.audio_packet_errors;
+                writer->metrics.error(4, packet.status != 0 ? packet.status : -EPROTO);
+            }
+        }
+    }
+    if (!slot->is_silence && !writer->metrics.discarding) {
         if (slot->urb->status != 0) writer->transfer_error = 1;
         for (int p = 0; p < slot->urb->number_of_packets; ++p) {
             const auto& packet = slot->urb->iso_frame_desc[p];
@@ -153,13 +188,16 @@ static void reap(Writer* writer) {
         int rc = ioctl(writer->fd, USBDEVFS_REAPURBNDELAY, &urb);
         if (rc < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) return;
-            if (is_fatal_errno(errno)) writer->fatal = 1;
-            LOGE("REAPURB failed: %s", strerror(errno));
+            if (!writer->metrics.discarding && is_fatal_errno(errno)) writer->fatal = 1;
+            if (!writer->metrics.discarding) {
+                ++writer->metrics.reap_failures;
+                writer->metrics.error(2, errno);
+            }
             return;
         }
         for (int i = 0; i < writer->urb_count; ++i) {
             if (writer->slots[i].urb == urb) {
-                if (is_fatal_urb_status(urb->status)) writer->fatal = 1;
+                if (!writer->metrics.discarding && is_fatal_urb_status(urb->status)) writer->fatal = 1;
                 mark_completed(writer, &writer->slots[i]);
                 urb = nullptr;
                 break;
@@ -169,14 +207,25 @@ static void reap(Writer* writer) {
         for (int i = 0; i < FEEDBACK_URB_COUNT; ++i) {
             if (writer->feedback_slots[i].urb == urb) {
                 writer->feedback_slots[i].in_flight = 0;
+                if (writer->metrics.discarding) break;
+                ++writer->metrics.feedback_urbs;
+                if (urb->status != 0) writer->metrics.error(5, urb->status);
+                if (urb->iso_frame_desc[0].status != 0 || urb->status != 0) {
+                    ++writer->metrics.feedback_packet_errors;
+                    writer->metrics.error(6, urb->iso_frame_desc[0].status != 0 ?
+                        urb->iso_frame_desc[0].status : urb->status);
+                }
                 if (is_fatal_urb_status(urb->status)) {
                     writer->fatal = 1;
                     break;
                 }
                 int actual = (int)urb->iso_frame_desc[0].actual_length;
                 if (actual <= 0) actual = urb->actual_length;
-                if (actual > 0 && urb->iso_frame_desc[0].status == 0) {
+                if (actual > 0 && urb->status == 0 && urb->iso_frame_desc[0].status == 0) {
                     apply_feedback(writer, writer->feedback_slots[i].buffer, actual);
+                } else if (actual <= 0 && urb->status == 0 && urb->iso_frame_desc[0].status == 0) {
+                    ++writer->metrics.invalid_feedback;
+                    writer->metrics.error(7, EPROTO);
                 }
                 submit_feedback(writer, i);
                 break;
@@ -197,6 +246,8 @@ static int inflight_count(const Writer* writer) {
 }
 
 static void discard_inflight(Writer* writer) {
+    writer->metrics.discarding = true;
+    writer->metrics.set_active(false);
     for (int i = 0; i < writer->urb_count; ++i) {
         if (writer->slots[i].in_flight && writer->slots[i].urb != nullptr) {
             ioctl(writer->fd, USBDEVFS_DISCARDURB, writer->slots[i].urb);
@@ -251,7 +302,7 @@ static int submit_filled_urb(Writer* writer, int slot_index, int used_bytes, int
     urb->error_count = 0;
     urb->signr = 0;
     urb->usercontext = writer;
-    if (submit_urb(writer->fd, urb) != 0) {
+    if (submit_urb(writer, urb) != 0) {
         if (is_fatal_errno(errno)) writer->fatal = 1;
         return -1;
     }
@@ -356,6 +407,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
     }
     auto* writer = (Writer*)calloc(1, sizeof(Writer));
     if (writer == nullptr) return 0;
+    writer->metrics = UsbTransferMetrics{};
     writer->urb_count = transfer_count == 8 || transfer_count == 32 ? transfer_count : 16;
     writer->fd = fd;
     writer->endpoint = (uint8_t)endpoint_address;
@@ -416,6 +468,10 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
     if (writer->fatal) return WRITE_FATAL;
     reap(writer);
     if (writer->fatal) return WRITE_FATAL;
+    if (end_of_stream) writer->metrics.set_active(false);
+    const int64_t write_now_ns = writer->metrics.active ? monotonic_ns() : 0;
+    writer->metrics.before_audio(write_now_ns,
+        writer->submitted_frames - writer->completed_frames, writer->sample_rate);
     jbyte* src = env->GetByteArrayElements(packed, nullptr);
     if (src == nullptr) return -1;
     int consumed = 0;
@@ -478,6 +534,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
             return consumed > 0 ? consumed : -1;
         }
         writer->submitted_frames += frames_this_urb;
+        writer->metrics.submitted_audio(write_now_ns, frames_this_urb, writer->sample_rate);
     }
     env->ReleaseByteArrayElements(packed, src, JNI_ABORT);
     return consumed;
@@ -521,6 +578,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeFlush(JNIEnv*, jclass,
     auto* writer = reinterpret_cast<Writer*>(handle);
     if (writer == nullptr) return;
     discard_inflight(writer);
+    writer->metrics.discarding = false;
     writer->acc_q16 = 0;
     writer->feedback_q16 = writer->nominal_q16;
     writer->submitted_frames = 0;
@@ -549,4 +607,29 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeClose(JNIEnv*, jclass,
     auto* writer = reinterpret_cast<Writer*>(handle);
     if (writer == nullptr) return;
     free_writer(writer);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeSetPlaybackActive(
+        JNIEnv*, jclass, jlong handle, jboolean active) {
+    auto* writer = reinterpret_cast<Writer*>(handle);
+    if (writer != nullptr) writer->metrics.set_active(active);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeSnapshot(
+        JNIEnv* env, jclass, jlong handle, jlongArray target) {
+    auto* writer = reinterpret_cast<Writer*>(handle);
+    if (writer == nullptr || target == nullptr || env->GetArrayLength(target) < 17) return;
+    const auto& m = writer->metrics;
+    const int64_t queued = writer->submitted_frames - writer->completed_frames;
+    const jlong values[17] = {
+        queued > 0 ? queued : 0, m.min_queued_frames,
+        Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCapacityFrames(env, nullptr, handle),
+        writer->sample_rate, bytes_per_frame(writer), m.audio_urbs, m.feedback_urbs,
+        m.audio_packet_errors, m.feedback_packet_errors, m.submit_failures, m.reap_failures,
+        m.supply_gap_count, m.supply_gap_frames, m.invalid_feedback,
+        m.last_error_source, m.last_error_code, writer->fatal
+    };
+    env->SetLongArrayRegion(target, 0, 17, values);
 }

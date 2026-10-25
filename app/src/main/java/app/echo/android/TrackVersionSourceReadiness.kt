@@ -11,7 +11,9 @@ internal fun trackVersionSourceReadiness(settings: EchoAppSettings, echoLinkConn
     val subsonic = subsonicEndpointFrom(settings)?.sourceId
     val jellyfin = settings.jellyfinServerUrl?.takeIf { it.isNotBlank() && !settings.jellyfinAccessToken.isNullOrBlank() }
         ?.let { JellyfinEndpoint(it, settings.jellyfinUsername.orEmpty(), settings.jellyfinPassword.orEmpty()).sourceId }
-    val webdav = settings.webDavServerUrl?.takeIf { it.isNotBlank() && !settings.webDavUsername.isNullOrBlank() && !settings.webDavPassword.isNullOrBlank() }
+    val webdav = settings.webDavServerUrl?.takeIf { it.isNotBlank() &&
+        (settings.webDavUsername.isNullOrBlank() && settings.webDavPassword.isNullOrBlank() ||
+            !settings.webDavUsername.isNullOrBlank() && !settings.webDavPassword.isNullOrBlank()) }
         ?.let { WebDavEndpoint(it, settings.webDavUsername.orEmpty(), settings.webDavPassword.orEmpty()).sourceId }
     val smb = smbEndpointFrom(settings.smbServerUrl, settings.smbUsername, settings.smbPassword)?.sourceId
     return { track -> when {

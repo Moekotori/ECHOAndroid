@@ -4,23 +4,26 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 
 /** Preserve category matching/ranking while indexing the song-to-category lookup. */
 internal object LibrarySummarySearchQuery {
-    fun searchAlbums(query: String, limit: Int): SimpleSQLiteQuery = bind(AlbumSql, query, limit)
-    fun searchArtists(query: String, limit: Int): SimpleSQLiteQuery = bind(ArtistSql, query, limit)
+    fun searchAlbums(query: String, limit: Int? = null): SimpleSQLiteQuery = bind(AlbumSql, query, limit)
+    fun searchAllAlbums(query: String, limit: Int? = null): SimpleSQLiteQuery =
+        bind(AlbumSql.replace("WHERE isRemote = 0\n          AND (", "WHERE ("), query, limit)
+    fun searchArtists(query: String, limit: Int? = null): SimpleSQLiteQuery = bind(ArtistSql, query, limit)
 
     private val Parameters = Regex(":(query|limit|candidate)\\b")
 
-    private fun bind(template: String, query: String, limit: Int): SimpleSQLiteQuery {
+    private fun bind(template: String, query: String, limit: Int?): SimpleSQLiteQuery {
         val candidate = substringFtsQuery(query)
-        val indexed = if (candidate == null) template else template.replace(
-            "FROM library_tracks AS matched_track",
-            "FROM library_tracks_fts CROSS JOIN library_tracks AS matched_track " +
+        val bounded = if (limit == null) template.replace("LIMIT :limit", "") else template
+        val indexed = if (candidate == null) bounded else bounded.replace(
+            "FROM visible_library_tracks AS matched_track",
+            "FROM library_tracks_fts CROSS JOIN visible_library_tracks AS matched_track " +
                 "ON matched_track.id = library_tracks_fts.trackId AND library_tracks_fts MATCH :candidate",
         )
         val args = mutableListOf<Any>()
         val sql = Parameters.replace(indexed) { match ->
             args += when (match.groupValues[1]) {
                 "candidate" -> requireNotNull(candidate)
-                "limit" -> limit
+                "limit" -> requireNotNull(limit)
                 else -> query
             }
             "?"
@@ -40,7 +43,7 @@ SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs,
             OR pinyinArtist LIKE '%' || lower(:query) || '%'
             OR albumKey IN (
                 SELECT matched_track.albumKey
-                FROM library_tracks AS matched_track
+                FROM visible_library_tracks AS matched_track
                 WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
                   AND (
                     matched_track.normalizedTitle LIKE '%' || lower(:query) || '%'
@@ -61,7 +64,7 @@ SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs,
                 WHEN pinyinArtist LIKE lower(:query) || '%' THEN 3
                 ELSE 4
             END,
-            title COLLATE NOCASE ASC
+            title COLLATE NOCASE ASC, albumKey ASC
         LIMIT :limit
     """
     private const val ArtistSql = """
@@ -71,7 +74,7 @@ SELECT artistKey, name, artworkUri, albumCount, trackCount, durationMs
            OR pinyinName LIKE '%' || lower(:query) || '%'
            OR artistKey IN (
                 SELECT credits.artistKey
-                FROM library_tracks AS matched_track
+                FROM visible_library_tracks AS matched_track
                 JOIN library_track_artists AS credits ON credits.trackId = matched_track.id
                 WHERE (matched_track.source = 'mediastore' OR matched_track.source = 'saf')
                   AND (
@@ -90,7 +93,7 @@ SELECT artistKey, name, artworkUri, albumCount, trackCount, durationMs
                 WHEN pinyinName LIKE lower(:query) || '%' THEN 1
                 ELSE 2
             END,
-            name COLLATE NOCASE ASC
+            name COLLATE NOCASE ASC, artistKey ASC
         LIMIT :limit
     """
 }

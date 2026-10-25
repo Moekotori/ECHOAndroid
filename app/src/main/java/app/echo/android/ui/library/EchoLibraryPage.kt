@@ -62,6 +62,11 @@ internal fun EchoLibraryPage(
     onOpenConnect: () -> Unit,
     pageInteractive: Boolean,
 ) {
+    var broadcastPage by rememberSaveable { mutableStateOf<String?>(null) }
+    broadcastPage?.let { page ->
+        EchoBroadcastHost(viewModel, page, pageInteractive, onBack = { broadcastPage = null })
+        return
+    }
     val experienceActions = rememberLibraryExperienceActions(viewModel) { onScanFolder(appSettings.libraryScanOptions) }
     val shortcutContext = androidx.compose.ui.platform.LocalContext.current
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
@@ -88,6 +93,7 @@ internal fun EchoLibraryPage(
         app.echo.android.feature.library.PlaylistManagementActions(
             order = tools::order, stats = tools::stats, sort = tools::sort, candidates = tools::candidates,
             add = tools::add, remove = tools::remove, move = tools::move, copy = tools::copy,
+            moveTo = tools::moveTo, removeUndoable = tools::removeUndoable,
             pickArtwork = { id -> playlistCoverTarget = id; playlistCoverPicker.launch(arrayOf("image/*")) },
         )
     }
@@ -234,6 +240,8 @@ internal fun EchoLibraryPage(
             radioStations = radioStations,
             radioLoadFailed = radioLoadFailed,
             onRetryRadio = viewModel.radioController::reload,
+            onOpenRadio = { broadcastPage = "radio" },
+            onOpenPodcasts = { broadcastPage = "podcasts" },
             onPlayRadio = { viewModel.play(it.toTrack()) },
             onSaveRadio = viewModel.radioController::save,
             onDeleteRadio = viewModel.radioController::delete,

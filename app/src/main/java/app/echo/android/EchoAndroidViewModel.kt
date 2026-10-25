@@ -112,10 +112,12 @@ import kotlinx.coroutines.withContext
 @Suppress("SpellCheckingInspection", "unused")
 class EchoAndroidViewModel(application: Application) : AndroidViewModel(application) {
     val radioController = app.echo.android.radio.EchoRadioController(
-        app.echo.android.data.EchoRadioStore(application),
-        app.echo.android.data.RadioBrowserClient(BuildConfig.VERSION_NAME),
+        (application as EchoApplication).radioSession.store,
+        app.echo.android.data.RadioBrowserClient(BuildConfig.VERSION_NAME,
+            discoverMirrors = app.echo.android.data.RadioBrowserMirrorDiscovery::discover),
         viewModelScope,
     )
+    internal val podcasts = app.echo.android.podcasts.PodcastController((application as EchoApplication).podcasts, viewModelScope)
     private val database = EchoLibraryDatabase.create(application)
     private val repository = EchoLibraryRepository(
         database = database,
@@ -128,7 +130,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     internal val remoteLibraryTools = RemoteLibraryWritebackController(repository) { EchoSubsonicEndpointRef.get() }
     internal val libraryExperience = LibraryExperienceController(repository, application, remoteLibraryTools::setFavorite)
     internal val playlistTools = PlaylistManagementController(application, repository, viewModelScope, remoteLibraryTools::setFavorite)
-    internal val unifiedSearch = UnifiedSearchController(repository)
+    internal val unifiedSearch = UnifiedSearchController(repository, viewModelScope)
     internal val librarySync = LibrarySyncController(repository)
     internal val personalStateSync = PersonalStateSyncController(application, repository)
     internal fun resumePersonalTrack(track: EchoTrack, positionMs: Long) {
@@ -173,6 +175,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     android.widget.Toast.LENGTH_LONG).show()
             }
         })
+    internal val broadcastPlayback by lazy { BroadcastPlaybackController(application as EchoApplication, playbackController, preferredPlayback, radioController) }
     internal fun cancelPendingPlaybackSelection() = preferredPlayback.invalidate()
     internal suspend fun trackVersions(track: EchoTrack) = repository.trackVersions(track)
     internal suspend fun setPreferredTrackVersion(track: EchoTrack, id: String?) = repository.setPreferredTrackVersion(track, id)
@@ -1427,6 +1430,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
         updateSettings { setTrackTransitions(options) }
+    }
+
+    fun setAudioInterruptionPolicy(value: String) {
+        viewModelScope.launch { settingsStore.setAudioInterruptionPolicy(value) }
+    }
+
+    fun setSleepTimerFinishTrack(enabled: Boolean) {
+        viewModelScope.launch { settingsStore.setSleepTimerFinishTrack(enabled) }
     }
 
     fun setPauseOnAudioDisconnect(enabled: Boolean) {

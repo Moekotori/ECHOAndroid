@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_automix_ready">Up next</string>
+    <string name="player_automix_mixing">Blending</string>
+    <string name="player_automix_paused">Waiting</string>
+</resources>

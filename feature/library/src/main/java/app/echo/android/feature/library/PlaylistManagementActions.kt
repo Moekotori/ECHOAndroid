@@ -18,6 +18,8 @@ class PlaylistManagementActions(
     val move: suspend (String, String, Int) -> Boolean,
     val copy: suspend (String, String) -> EchoPlaylist?,
     val pickArtwork: (String) -> Unit,
+    val moveTo: (suspend (String, String, String) -> Boolean)? = null,
+    val removeUndoable: (suspend (String, String) -> (suspend () -> Boolean)?)? = null,
 )
 
 enum class PlaylistImportFailure { Read, TooLarge, TooMany, Empty, NoMatches, Save, Export, Cover }

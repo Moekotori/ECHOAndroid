@@ -31,6 +31,11 @@ import kotlinx.coroutines.launch
 
 @UnstableApi
 class EchoApplication : Application(), ImageLoaderFactory {
+    internal val radioSession by lazy { app.echo.android.radio.EchoRadioSession(EchoRadioStore(this)) }
+    internal val podcasts by lazy {
+        app.echo.android.data.PodcastRepository(app.echo.android.data.PodcastStore(this),
+            app.echo.android.data.PodcastHttpClient(BuildConfig.VERSION_NAME))
+    }
     private val musicBrainzGate by lazy { app.echo.android.data.MusicBrainzRequestGate() }
     @Volatile
     private var setlistFmApiKey: String? = null
@@ -64,6 +69,8 @@ class EchoApplication : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        app.echo.android.podcasts.startPodcastProgressRecorder(EchoPlaybackProcessRuntime.scope, podcasts.store)
+        radioSession.start(EchoPlaybackProcessRuntime.scope, EchoPlaybackProcessRuntime.surface)
         configureEchoBridgeNotificationArtwork()
         initializeEchoAppLocale(readEchoStartupThemeSnapshot().appLanguage)
         installUncaughtExceptionHandler()
@@ -89,7 +96,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
             EchoLibraryPlaybackCatalog(
                 database = EchoLibraryDatabase.create(this),
                 context = this,
-                loadRadioStations = EchoRadioStore(this)::load,
+                loadRadioStations = radioSession.store::load,
             ),
         )
         val settingsStore = EchoSettingsStore(this)
@@ -147,6 +154,13 @@ class EchoApplication : Application(), ImageLoaderFactory {
                 .collect { (_, settings) ->
                     applyRemotePlaybackCredentials(settings, allowClearIfEmpty = true)
                     EchoPlaybackProcessRuntime.notifyRemoteAuthReady()
+                }
+        }
+        EchoPlaybackProcessRuntime.scope.launch {
+            settingsStore.appSettings.map { it.audioInterruptionPolicy to it.sleepTimerFinishTrack }
+                .distinctUntilChanged().collect { (policy, finishTrack) ->
+                    app.echo.android.playback.EchoPlaybackRuntimeOptionsStore.setListeningOptions(
+                        app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(policy), finishTrack)
                 }
         }
         EchoSubsonicListen.startFromSurface()

@@ -37,8 +37,10 @@ class EchoPlaybackService : MediaLibraryService() {
     private var sessionRestorer: EchoPlaybackSessionRestorer? = null
     private var statusLyricsOverlay: EchoStatusLyricsOverlay? = null
     private var notificationLyrics: EchoNotificationLyricController? = null
+    private var audioFocus: EchoAudioFocusController? = null
     private var audioRoutePlayback: EchoAudioRoutePlaybackController? = null
     private var surfaceProgressJob: Job? = null
+    private var podcastProgress: EchoPodcastProgressBinding? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun attachBaseContext(base: Context) {
@@ -46,6 +48,10 @@ class EchoPlaybackService : MediaLibraryService() {
     }
 
     private val playerListener = object : Player.Listener {
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM)
+                EchoPlaybackProcessRuntime.onSleepTimerEndOfMediaItem()
+        }
         override fun onEvents(player: Player, events: Player.Events) {
             if (!events.containsAny(
                     Player.EVENT_IS_PLAYING_CHANGED,
@@ -131,7 +137,7 @@ class EchoPlaybackService : MediaLibraryService() {
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                     .setUsage(C.USAGE_MEDIA)
                     .build(),
-                true,
+                false,
             )
             .setHandleAudioBecomingNoisy(false)
             .setWakeMode(C.WAKE_MODE_NETWORK)
@@ -151,6 +157,9 @@ class EchoPlaybackService : MediaLibraryService() {
             }
 
         player = exoPlayer
+        audioFocus = EchoAudioFocusController(this, exoPlayer, serviceScope,
+            EchoPlaybackProcessRuntime::canContinueAudioInteraction)
+        podcastProgress = EchoPodcastProgressBinding(exoPlayer, serviceScope).also(exoPlayer::addListener)
         abLoop = EchoAbLoopController(exoPlayer, serviceScope)
         audioRoutePlayback = EchoAudioRoutePlaybackController(this, exoPlayer, serviceScope,
             canInteractWithAudio = EchoPlaybackProcessRuntime::canContinueAudioInteraction,
@@ -161,11 +170,9 @@ class EchoPlaybackService : MediaLibraryService() {
             player = exoPlayer,
             scope = serviceScope,
             mixer = smartMixer,
-            analyzer = EchoSmartTransitionAnalyzer(
-                decoder = decoder,
-                cache = EchoSmartTransitionCache(java.io.File(cacheDir, "echo-smart-transition")),
-            ),
+            autoMix = EchoAutoMixEngine(this),
             decoder = decoder,
+            onAutomaticAdvance = { from, to -> nextUpQueue?.prepareAutomaticAdvance(from, to) },
         )
         val restorer = EchoPlaybackSessionRestorer(
             scope = serviceScope,
@@ -184,6 +191,7 @@ class EchoPlaybackService : MediaLibraryService() {
             restorer = restorer,
             nextUpQueue = { nextUpQueue },
             abLoop = { abLoop },
+            onUserCommand = { audioFocus?.onUserCommand(it) },
         )
         sessionCallback = callback
         val buttons = callback.currentButtons(exoPlayer)
@@ -271,6 +279,8 @@ class EchoPlaybackService : MediaLibraryService() {
         statusLyricsOverlay = null
         notificationLyrics?.close()
         notificationLyrics = null
+        audioFocus?.close()
+        audioFocus = null
         audioRoutePlayback?.stop()
         audioRoutePlayback = null
         EchoPlaybackProcessRuntime.setNotificationLyrics(null)
@@ -279,6 +289,8 @@ class EchoPlaybackService : MediaLibraryService() {
         EchoPlaybackProcessRuntime.setRemoteAuthReadyListener(null)
         sessionRestorer?.persistFromPlayer(force = true)
         player?.removeListener(playerListener)
+        podcastProgress?.close()
+        podcastProgress = null
         EchoPlaybackProcessRuntime.enginePolicyOrNull()?.detach()
         mediaSession?.run {
             player.release()

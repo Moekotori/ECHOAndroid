@@ -26,7 +26,10 @@ internal fun LyricsPageBackdrop(
     colorGrid: ArtworkColorGrid? = null,
     link: BackdropLink? = null,
 ) {
-    if (LocalLyricsPageStyle.current == EchoLyricsPageStyle.Paper || LocalLyricsPageStyle.current.isAfterglow) {
+    val gacha = GachaThemes.of(LocalPlayerPageStyle.current)
+    if (gacha != null) {
+        GachaBackdrop(gacha, animationsVisible, modifier)
+    } else if (LocalLyricsPageStyle.current == EchoLyricsPageStyle.Paper || LocalLyricsPageStyle.current.isAfterglow) {
         Box(modifier.background(LocalEchoTheme.current.bgTop))
     } else {
         Box(modifier) {

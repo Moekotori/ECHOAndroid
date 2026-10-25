@@ -6,4 +6,8 @@
     <string name="settings_about_website">Official website</string>
     <string name="settings_about_bug_report">Report a bug</string>
     <string name="settings_about_link_error">No app available to open this link</string>
+    <string name="settings_about_github">GitHub source code</string>
+    <string name="settings_about_steam">Discover ECHO on Steam</string>
+    <string name="settings_about_steam_detail">Bring your music to desktop: explore Workshop skins and mods, and enjoy frequent updates. Visit the Steam store to learn more.</string>
+    <string name="settings_about_afdian">Support ECHO on Afdian</string>
 </resources>

@@ -2,7 +2,6 @@ package app.echo.android.feature.player
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -38,6 +37,12 @@ import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.radio.EchoRadioStation
 
+/**
+ * Height of the seek strip along the dock's top edge. It equals the row's top padding, so the strip
+ * never overlaps the title, cover or play button, which keep their own taps.
+ */
+internal val MiniPlayerProgressTouchHeight = 7.dp
+
 /** Thin dock rail with a separate touch target; position ticks are read only during drawing. */
 @Composable
 internal fun MiniPlayerProgress(
@@ -63,9 +68,7 @@ internal fun MiniPlayerProgress(
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val alpha = animateFloatAsState(
         targetValue = if (durationMs > 0L) 1f else 0.42f,
-        animationSpec = if (!motionEnabled) snap() else tween(
-            durationMillis = miniPlayerMotionDuration(220, lightweight), easing = EchoMotion.Silk,
-        ),
+        animationSpec = if (!motionEnabled) snap() else EchoMotion.silkFloat(miniPlayerMotionDuration(220, lightweight)),
         label = "mini-player-progress-alpha",
     )
     fun shownFraction(): Float = preview ?: progressFraction(
@@ -77,7 +80,7 @@ internal fun MiniPlayerProgress(
         haptics.endSeek(committed = true)
     })
     Canvas(
-        modifier.fillMaxWidth().height(24.dp)
+        modifier.fillMaxWidth().height(MiniPlayerProgressTouchHeight)
             .graphicsLayer { this.alpha = alpha.value }
             .semantics {
                 progressBarRangeInfo = ProgressBarRangeInfo(shownFraction(), 0f..1f)

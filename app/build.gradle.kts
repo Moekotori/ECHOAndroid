@@ -165,6 +165,8 @@ dependencies {
     implementation(project(":feature:connect"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:plugins"))
+    implementation(project(":feature:radio"))
+    implementation(project(":feature:podcasts"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)

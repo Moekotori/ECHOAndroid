@@ -54,6 +54,7 @@ internal fun PlaylistTrackRow(
     modifier: Modifier = Modifier,
     editing: Boolean = false,
     editBusy: Boolean = false,
+    reorderHandle: (@Composable () -> Unit)? = null,
 ) {
     val colors = rememberPlaylistDetailColors()
     TrackContextMenu(
@@ -85,6 +86,7 @@ internal fun PlaylistTrackRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            reorderHandle?.invoke()
             ArtworkTile(
                 artworkUri = track.artworkUri,
                 modifier = Modifier.size(44.dp),

@@ -124,11 +124,17 @@ class EchoRemoteClient internal constructor(
 
     private var endpoint: EchoRemoteEndpoint? = null
     suspend fun searchTracksSnapshot(query: String): List<EchoRemoteTrack> {
-        val target = endpoint ?: return emptyList()
+        return searchTracksPage(query, 1, 30).first
+    }
+
+    /** Read-only search pages, independent of the library browser's query/state. */
+    suspend fun searchTracksPage(query: String, page: Int, pageSize: Int): Pair<List<EchoRemoteTrack>, Int> {
+        require(page > 0 && pageSize in 1..100)
+        val target = checkNotNull(endpoint)
         check(status.value.connectionState == EchoRemoteConnectionState.Connected)
-        val result = transport.fetchTracks(target, query.trim(), 1, 30).tracks
-        check(endpoint?.id == target.id)
-        return result
+        val result = transport.fetchTracks(target, query.trim(), page, pageSize)
+        check(endpoint == target && status.value.connectionState == EchoRemoteConnectionState.Connected)
+        return result.tracks to result.totalCount
     }
     fun librarySyncSession(): EchoLibrarySyncSession {
         val target = endpoint ?: error("PC is not connected")
@@ -1334,6 +1340,14 @@ class EchoRemoteClient internal constructor(
             .getOrNull()
             ?.streamUrl
             ?.takeIf { it.isNotBlank() }
+    }
+
+    suspend fun resolveSearchTrackOnPhone(track: EchoRemoteTrack): EchoTrack {
+        val target = checkNotNull(endpoint)
+        check(status.value.connectionState == EchoRemoteConnectionState.Connected)
+        val stream = resolveCachedStream(target, checkNotNull(track.id).also { check(it.isNotBlank()) })
+        check(endpoint == target && status.value.connectionState == EchoRemoteConnectionState.Connected)
+        return track.toPhonePlaybackTrack(checkNotNull(stream.streamUrl).also { check(it.isNotBlank()) }, stream.sourceRange)
     }
 
     private suspend fun resolveCachedStream(

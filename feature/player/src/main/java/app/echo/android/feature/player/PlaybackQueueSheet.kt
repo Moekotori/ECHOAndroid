@@ -73,8 +73,6 @@ import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.PlaybackQueueState
 import kotlinx.coroutines.launch
 
-private val QueueSheetMotionEasing = EchoMotion.Silk
-private val QueueSheetExitEasing = EchoMotion.SilkExit
 
 @Composable
 fun PlaybackQueueSheet(
@@ -139,9 +137,9 @@ fun PlaybackQueueSheet(
                 if (lightweight) {
                     tween(durationMillis = 90)
                 } else if (targetState == EnterExitState.Visible) {
-                    tween(durationMillis = 280, easing = QueueSheetMotionEasing)
+                    EchoMotion.silkFloat(280)
                 } else {
-                    tween(durationMillis = 180, easing = QueueSheetExitEasing)
+                    EchoMotion.silkFloat(180)
                 }
             },
             label = "queue-sheet-scrim",

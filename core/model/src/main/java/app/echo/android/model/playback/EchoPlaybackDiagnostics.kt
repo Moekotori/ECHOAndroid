@@ -44,6 +44,8 @@ data class EchoPlaybackDiagnostics(
     val usbOutputSampleRateHz: Int? = null,
     val usbOutputBitDepth: Int? = null,
     val usbBufferCapacityFrames: Long? = null,
+    val usbTransfer: EchoUsbTransportDiagnostics? = null,
+    val usbCompatibilityRules: List<EchoUsbCompatibilityRule> = emptyList(),
     val usbLastRequestedSampleRateHz: Int? = null,
     val usbLastRequestError: EchoPlaybackError? = null,
     val bufferedMs: Long = 0L,

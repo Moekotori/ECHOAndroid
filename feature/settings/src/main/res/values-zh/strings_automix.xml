@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automix_on">已开启 · 让下一首自然接入</string>
+    <string name="automix_off">未开启</string>
+    <string name="automix_standby">已保存 · 当前输出下暂不生效</string>
+    <string name="automix_illustration">交叠示意</string>
+    <string name="automix_current">当前歌曲</string>
+    <string name="automix_next">下一首</string>
+    <string name="automix_description">Beta。两首歌，一次自然交接。AutoMix 自动寻找衔接点，混合正常倍速的本地歌曲；开启淡化后，淡化时长也会限制交叠。</string>
+</resources>

@@ -7,7 +7,7 @@ object EchoParametricEq {
     const val MinFrequencyHz = 20f
     const val MaxFrequencyHz = 20_000f
     const val MinGainDb = -24f
-    const val MaxGainDb = 18f
+    const val MaxGainDb = 20f // Preserve AutoEQ filters up to +20 dB without silently truncating them.
     const val MinQ = 0.1f
     const val MaxQ = 100f
     val PassSlopesDb: List<Float> = listOf(6f, 12f, 18f, 24f, 30f, 36f)

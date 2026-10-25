@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="autoeq_load_failed">无法读取内置 AutoEQ 目录，请尝试重新打开此页或更新应用。</string>
+</resources>

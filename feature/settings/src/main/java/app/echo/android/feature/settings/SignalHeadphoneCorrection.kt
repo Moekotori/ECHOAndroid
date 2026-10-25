@@ -40,11 +40,15 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
+import app.echo.android.model.playback.HeadphoneCorrectionCatalog
+import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.text.style.TextOverflow
@@ -100,10 +104,27 @@ internal fun SignalHeadphoneCorrection(
         value = withContext(Dispatchers.Default) {
             val needle = state.query.trim()
             if (state.selectedBrandId == null || needle.isEmpty()) state.results
-            else state.results.filter { it.productName.contains(needle, ignoreCase = true) || it.productId.contains(needle, ignoreCase = true) }
+            else {
+                val compactNeedle = needle.filter(Char::isLetterOrDigit).lowercase(java.util.Locale.ROOT)
+                state.results.filter { product ->
+                    product.productName.filter(Char::isLetterOrDigit).lowercase(java.util.Locale.ROOT).contains(compactNeedle) ||
+                        product.productId.contains(needle, ignoreCase = true)
+                }
+            }
         }
     }
+    val autoEq = state.catalog == HeadphoneCorrectionCatalog.AutoEq
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = autoEq, onClick = { if (!autoEq) onBrandSelected("catalog:autoeq") },
+                label = { Text(stringResource(L10nR.string.autoeq_offline_source)) })
+            FilterChip(selected = !autoEq, onClick = { if (autoEq) onBrandSelected("catalog:opra") },
+                label = { Text("OPRA") })
+        }
+        if (autoEq) {
+            SignalNote(stringResource(L10nR.string.autoeq_catalog_note))
+            state.status.revision?.let { SignalNote(stringResource(L10nR.string.autoeq_revision, it.take(12))) }
+        }
         TextField(
             value = state.query,
             onValueChange = {
@@ -147,8 +168,11 @@ internal fun SignalHeadphoneCorrection(
                 modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSurfaceVariant,
             )
-            IconButton(onClick = onRefresh, enabled = !state.loading) {
-                EchoIcon(Icons.Default.Refresh, contentDescription = stringResource(L10nR.string.diag_refresh_library))
+            IconButton(onClick = {
+                if (autoEq) uriHandler.openUri("https://github.com/jaakkopasanen/AutoEq") else onRefresh()
+            }, enabled = !state.loading) {
+                EchoIcon(if (autoEq) Icons.AutoMirrored.Rounded.OpenInNew else Icons.Default.Refresh, contentDescription = stringResource(
+                    if (autoEq) L10nR.string.autoeq_check_updates else L10nR.string.diag_refresh_library))
             }
         }
         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -194,9 +218,9 @@ internal fun SignalHeadphoneCorrection(
             onPresetSelected(it)
         }
         HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
-        TextButton(onClick = { uriHandler.openUri("https://github.com/opra-project/OPRA") },
+        TextButton(onClick = { uriHandler.openUri(if (autoEq) "https://github.com/jaakkopasanen/AutoEq" else "https://github.com/opra-project/OPRA") },
             contentPadding = PaddingValues(0.dp)) {
-            Text(stringResource(L10nR.string.opra_attribution), style = MaterialTheme.typography.labelSmall,
+            Text(stringResource(if (autoEq) L10nR.string.autoeq_attribution else L10nR.string.opra_attribution), style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant)
         }
     }

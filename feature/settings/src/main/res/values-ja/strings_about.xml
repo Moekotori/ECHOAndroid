@@ -6,4 +6,8 @@
     <string name="settings_about_website">公式サイト</string>
     <string name="settings_about_bug_report">不具合を報告</string>
     <string name="settings_about_link_error">このリンクを開けるアプリがありません</string>
+    <string name="settings_about_github">GitHub ソースコード</string>
+    <string name="settings_about_steam">Steam で ECHO を見つけよう</string>
+    <string name="settings_about_steam_detail">お気に入りの音楽をデスクトップでも。ワークショップのスキンや MOD、継続的なアップデートを楽しめます。詳しくは Steam ストアへ。</string>
+    <string name="settings_about_afdian">Afdian で ECHO を応援</string>
 </resources>

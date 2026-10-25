@@ -135,7 +135,7 @@ fun MiniPlayer(
             .defaultMinSize(minHeight = 64.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 7.dp, bottom = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = MiniPlayerProgressTouchHeight, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -271,7 +271,7 @@ fun MiniPlayer(
                 )
             }
         }
-        // Overlay only the upper edge; the dock keeps its existing height and row gestures.
+        // Overlay only the strip above the row content; the dock keeps its height and row gestures.
         MiniPlayerProgress(
             status = status,
             positionState = positionState,

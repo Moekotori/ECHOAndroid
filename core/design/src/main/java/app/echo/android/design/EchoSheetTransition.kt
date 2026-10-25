@@ -53,7 +53,10 @@ fun EchoSheetOverlay(
             label = "echo-sheet-position",
         ) { if (it == EnterExitState.Visible) 1f else 0f }
         val scrim = transition.animateFloat(
-            transitionSpec = { tween(if (lightweight) 90 else if (targetState == EnterExitState.Visible) 220 else 180) },
+            transitionSpec = {
+                if (lightweight) tween(90)
+                else EchoMotion.silkFloat(if (targetState == EnterExitState.Visible) 220 else 180)
+            },
             label = "echo-sheet-scrim",
         ) { if (it == EnterExitState.Visible) 1f else 0f }
         val reveal = transition.animateFloat(

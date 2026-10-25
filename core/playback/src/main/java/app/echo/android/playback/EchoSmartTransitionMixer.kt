@@ -7,10 +7,15 @@ import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 @UnstableApi
 internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
     internal var preserveFloatHeadroom = false
+    data class StreamFormat(val rate: Int, val channels: Int, val epoch: Long)
+    private val mutableStreamFormat = MutableStateFlow<StreamFormat?>(null)
+    val streamFormats = mutableStreamFormat.asStateFlow()
 
     data class MixSession(
         val pcm: FloatArray,
@@ -23,6 +28,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         val startFrame: Long?,
         val epoch: Long,
         val sampleRateHz: Int,
+        val rendered: Boolean,
     ) {
         var readFrame: Int = 0
         @Volatile var mixedFrames: Int = 0
@@ -60,7 +66,10 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
     fun setEnabled(enabled: Boolean): Boolean {
         if (this.enabled == enabled) return false
         this.enabled = enabled
-        if (!enabled) cancel()
+        if (!enabled) {
+            cancel()
+            mutableStreamFormat.value = null
+        }
         return true
     }
 
@@ -73,6 +82,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         bassSwap: Boolean = false,
         startPositionMs: Long? = null,
         expectedEpoch: Long = streamEpoch,
+        rendered: Boolean = false,
     ): MixSession? {
         if (frames <= 0 || channels !in 1..2 || frames > pcm.size / channels || expectedEpoch != streamEpoch) {
             cancel()
@@ -91,6 +101,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
             startFrame = startPositionMs?.let { it * rate / 1000L },
             epoch = expectedEpoch,
             sampleRateHz = rate,
+            rendered = rendered,
         )
         lastSession = armed
         session.set(armed)
@@ -147,6 +158,9 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
         session.set(null)
         lastSession = null
         anchorPosition(streamMetadata.positionOffsetUs)
+        mutableStreamFormat.value = outputSampleRateHz?.takeIf { enabled }?.let {
+            StreamFormat(it, outputChannelCount, streamEpoch)
+        }
     }
 
     /** Called only by the audio thread when the enclosing DSP stream starts. */
@@ -158,6 +172,7 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
 
     override fun onReset() {
         cancel()
+        mutableStreamFormat.value = null
     }
 
     private fun mixPcm16(input: ByteBuffer, output: ByteBuffer, channels: Int, mix: MixSession): Boolean {
@@ -259,6 +274,15 @@ internal class EchoSmartTransitionMixer : BaseAudioProcessor() {
             // Never resurrect the outgoing song after it has faded out. Flush opens the next stream.
             for (channel in 0 until channels) { incoming(); outgoing(channel, 0f) }
             return false
+        }
+        if (mix.rendered) {
+            // AutoMix has already rendered both decks and limited the overlap off the audio thread.
+            for (channel in 0 until channels) {
+                incoming()
+                outgoing(channel, mix.pcm[read * mix.channels + channel.coerceAtMost(mix.channels - 1)])
+            }
+            mix.readFrame = read + 1
+            return mix.readFrame < mix.frames
         }
         val progress = if (mix.frames <= 1) 1f else (read.toFloat() / (mix.frames - 1).toFloat())
         val outGain = EchoSmartTransitionPolicy.equalPowerOut(progress)

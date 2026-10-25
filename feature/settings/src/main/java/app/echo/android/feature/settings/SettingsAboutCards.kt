@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material3.*
@@ -61,11 +64,24 @@ internal fun SettingsAboutPanel(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 internal fun SettingsAboutLinks(openLink: (String) -> Unit) {
     SettingsAboutPanel {
+        AboutLinkRow(
+            Icons.Rounded.Computer,
+            stringResource(R.string.settings_about_steam),
+            stringResource(R.string.settings_about_steam_detail),
+        ) {
+            openLink("https://store.steampowered.com/app/5105090/ECHO/")
+        }
+        AboutLinkRow(Icons.Rounded.FavoriteBorder, stringResource(R.string.settings_about_afdian), "afdian.com/a/echonext") {
+            openLink("https://afdian.com/a/echonext")
+        }
         AboutLinkRow(Icons.Rounded.Forum, stringResource(R.string.settings_about_qq_group), null) {
             openLink("https://qm.qq.com/q/j1qdjGfGKc")
         }
         AboutLinkRow(Icons.Rounded.Language, stringResource(R.string.settings_about_website), "echonext.moe") {
             openLink("https://echonext.moe")
+        }
+        AboutLinkRow(Icons.Rounded.Code, stringResource(R.string.settings_about_github), "github.com/moekotori/echoandroid") {
+            openLink("https://github.com/moekotori/echoandroid")
         }
         AboutLinkRow(Icons.Rounded.BugReport, stringResource(R.string.settings_about_bug_report), "GitHub Issues") {
             openLink("https://github.com/moekotori/echoandroid/issues")

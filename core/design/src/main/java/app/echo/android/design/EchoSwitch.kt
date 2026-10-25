@@ -1,7 +1,7 @@
 package app.echo.android.design
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -40,7 +40,8 @@ fun EchoSwitch(
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val progress = animateFloatAsState(
         if (checked) 1f else 0f,
-        tween(if (lightweight) 0 else 180), label = "echo-switch-position",
+        // A spring keeps the thumb's velocity when the switch is toggled again mid-flight.
+        if (lightweight) snap() else EchoMotion.silkFloat(180), label = "echo-switch-position",
     )
     val haptics = rememberEchoHapticPerformer()
     val input = if (onCheckedChange == null) Modifier else Modifier.toggleable(

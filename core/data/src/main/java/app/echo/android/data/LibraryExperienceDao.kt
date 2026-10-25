@@ -71,14 +71,14 @@ interface LibraryExperienceDao {
     // Keep the large smart-rule predicate out of Room's compile-time SQL parser.
     // These are exactly the tables read by SmartPlaylistSummarySql, including its subqueries.
     @RawQuery(observedEntities = [LibrarySmartRuleEntity::class, LibraryPlaylistEntity::class,
-        LibraryTrackEntity::class, LibraryPlaybackStatsEntity::class, LibraryFavoriteEntity::class])
+        LibraryTrackEntity::class, LibraryPlaybackStatsEntity::class, LibraryFavoriteEntity::class, LibraryHiddenTrackEntity::class])
     fun observeSmartPlaylistRows(query: SupportSQLiteQuery): Flow<List<PlaylistSummaryRow>>
 
     @RawQuery
     suspend fun querySmartPlaylist(query: SupportSQLiteQuery): PlaylistSummaryRow?
 
     @RawQuery(observedEntities = [LibraryTrackEntity::class, LibrarySmartRuleEntity::class,
-        LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class])
+        LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class, LibraryHiddenTrackEntity::class])
     fun pageRuleTracks(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -87,7 +87,7 @@ interface LibraryExperienceDao {
     @Query("SELECT * FROM library_bookmarks WHERE trackId = :trackId ORDER BY positionMs, id")
     fun bookmarks(trackId: String): Flow<List<LibraryBookmarkEntity>>
 
-    @RawQuery(observedEntities = [LibraryBookmarkEntity::class, LibraryTrackEntity::class])
+    @RawQuery(observedEntities = [LibraryBookmarkEntity::class, LibraryTrackEntity::class, LibraryHiddenTrackEntity::class])
     fun pageMoments(query: SupportSQLiteQuery): PagingSource<Int, LibraryMomentRow>
 
     @RawQuery

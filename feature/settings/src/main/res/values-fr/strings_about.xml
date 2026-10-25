@@ -6,4 +6,8 @@
     <string name="settings_about_website">Site officiel</string>
     <string name="settings_about_bug_report">Signaler un bug</string>
     <string name="settings_about_link_error">Aucune application disponible pour ouvrir ce lien</string>
+    <string name="settings_about_github">Code source sur GitHub</string>
+    <string name="settings_about_steam">Découvrez ECHO sur Steam</string>
+    <string name="settings_about_steam_detail">Retrouvez votre musique sur ordinateur : découvrez les thèmes et mods du Workshop et profitez de mises à jour régulières. Rendez-vous sur Steam pour en savoir plus.</string>
+    <string name="settings_about_afdian">Soutenir ECHO sur Afdian</string>
 </resources>

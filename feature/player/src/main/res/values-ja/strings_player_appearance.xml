@@ -10,4 +10,10 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">ピクセル</string>
     <string name="player_appearance_type_poster">文字ポスター</string>
+    <string name="player_appearance_holo_prism">オーロラプリズム</string>
+    <string name="player_appearance_starlight_orbit">星の軌道</string>
+    <string name="player_appearance_sakura_letter">桜の便箋</string>
+    <string name="player_appearance_neon_rain">ネオンレイン</string>
+    <string name="player_appearance_soda_pop">ソーダポップ</string>
+    <string name="player_appearance_amber_film">アンバーフィルム</string>
 </resources>

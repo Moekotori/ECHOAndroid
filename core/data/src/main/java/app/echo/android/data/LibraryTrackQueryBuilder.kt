@@ -81,6 +81,7 @@ internal object LibraryTrackQueryBuilder {
         }
         append(" WHERE ")
         append(if (localSources) LibraryScanPolicy.LocalSourceSql else LibraryScanPolicy.RemoteSourceSql)
+        append(" AND library_tracks.id NOT IN (SELECT trackId FROM library_hidden_tracks)")
         if (query.isNotBlank() && useFts) append(" AND library_tracks_fts MATCH ?")
         librarySearchTerms(query).forEach {
             append(" AND ")

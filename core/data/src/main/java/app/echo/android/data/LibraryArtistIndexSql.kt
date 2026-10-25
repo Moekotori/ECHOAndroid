@@ -6,7 +6,7 @@ internal object LibraryArtistIndexSql {
             (artistKey, name, artworkUri, albumCount, trackCount, durationMs, pinyinName)
         SELECT a.artistKey, MIN(a.name), MAX(t.artworkUri), COUNT(DISTINCT t.albumKey),
                COUNT(*), COALESCE(SUM(t.durationMs), 0), MAX(a.pinyinName)
-        FROM library_track_artists a JOIN library_tracks t ON t.id = a.trackId
+        FROM library_track_artists a JOIN visible_library_tracks t ON t.id = a.trackId
         WHERE t.source IN ('mediastore', 'saf')
         GROUP BY a.artistKey
     """
@@ -16,7 +16,7 @@ internal object LibraryArtistIndexSql {
             (artistKey, name, artworkUri, albumCount, trackCount, durationMs, pinyinName)
         SELECT a.artistKey, MIN(a.name), MAX(t.artworkUri), COUNT(DISTINCT t.albumKey),
                COUNT(*), COALESCE(SUM(t.durationMs), 0), MAX(a.pinyinName)
-        FROM library_track_artists a JOIN library_tracks t ON t.id = a.trackId
+        FROM library_track_artists a JOIN visible_library_tracks t ON t.id = a.trackId
         WHERE t.source IN ('mediastore', 'saf') AND a.artistKey IN (:keys)
         GROUP BY a.artistKey
     """

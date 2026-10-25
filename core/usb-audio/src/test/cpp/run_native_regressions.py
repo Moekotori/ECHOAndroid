@@ -23,6 +23,7 @@ preamble = r'''
 #include <cassert>
 #include <cerrno>
 #include <vector>
+#include <time.h>
 #define URB_COUNT 32
 #define FEEDBACK_URB_COUNT 4
 #define WRITE_FATAL -2
@@ -102,6 +103,27 @@ static void preserves_stream(int rate,int interval,int sample_bytes) {
 }
 int main() {
  {
+  UsbTransferMetrics m{};
+  m.set_active(true);
+  m.before_audio(1000000000LL,0,48000);
+  assert(m.supply_gap_count==0 && m.min_queued_frames==-1);
+  m.submitted_audio(1000000000LL,480,48000);
+  m.before_audio(1005000000LL,240,48000);
+  assert(m.supply_gap_count==0 && m.min_queued_frames==240);
+  m.before_audio(1020000000LL,0,48000);
+  assert(m.supply_gap_count==1 && m.supply_gap_frames==480);
+  m.before_audio(1030000000LL,0,48000);
+  assert(m.supply_gap_count==1); // One incident, not one per retry.
+  m.submitted_audio(1030000000LL,480,48000);
+  m.set_active(false);
+  m.before_audio(5000000000LL,0,48000);
+  assert(m.supply_gap_count==1); // Pause/EOS/flush cannot accumulate gaps.
+  m.set_active(true);
+  m.before_audio(6000000000LL,0,48000);
+  assert(m.supply_gap_count==1); // Resume starts a fresh queue clock.
+ }
+
+ {
   Fixture f(48000,1);
   std::vector<jbyte> data(32768,0x55);
   int consumed=0;
@@ -154,7 +176,7 @@ int main() {
  puts("PASS: tail/EOS, backpressure, exact PCM bytes, interval 1-4, feedback, bus speed and 8/16/32 transfer capacity");
 }
 '''
-code = (preamble + section('struct UrbSlot', 'static size_t urb_alloc_size') + stubs
+code = (preamble + (Path(__file__).resolve().parents[2] / 'main/cpp/usb_transfer_metrics.h').read_text().replace('#pragma once', '') + section('struct UrbSlot', 'static size_t urb_alloc_size') + stubs
         + section('static void apply_feedback', 'static int submit_urb')
         + section('static void apply_bus_speed', 'extern "C" JNIEXPORT jlong JNICALL')
         + section('extern "C" JNIEXPORT jint JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite',

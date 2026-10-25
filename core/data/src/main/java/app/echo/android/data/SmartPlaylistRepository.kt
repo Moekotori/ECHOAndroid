@@ -12,7 +12,7 @@ fun smartPlaylistQuery(id: String, limit: Int? = null, anchorId: String? = null,
     playlistOrder: PlaylistTrackOrder = PlaylistTrackOrder(),
 ): SimpleSQLiteQuery {
     val order = "CASE r.sort WHEN 'RecentlyAdded' THEN -t.dateModifiedSeconds WHEN 'LeastPlayed' THEN COALESCE(s.playCount,0) WHEN 'MostPlayed' THEN -COALESCE(s.playCount,0) ELSE 0 END, t.title COLLATE NOCASE, t.id"
-    val from = "library_tracks t JOIN library_smart_rules r LEFT JOIN library_playback_stats s ON s.trackId = t.id"
+    val from = "visible_library_tracks t JOIN library_smart_rules r LEFT JOIN library_playback_stats s ON s.trackId = t.id"
     if (!playlistOrder.isManual) {
         return PlaylistOrderingQuery.build(from, "r.playlistId = ? AND ($SmartRuleMatchSql)",
             listOf(id), playlistOrder, limit, anchorId)
@@ -63,7 +63,7 @@ suspend fun EchoLibraryRepository.previewSmartPlaylist(rule: EchoSmartPlaylistRu
         val args = arrayOf<Any>(rule.artist.trim(), rule.genre.trim(), if (rule.favoriteOnly) 1 else 0,
             rule.notPlayedDays, rule.minimumYear, rule.maximumYear, rule.sort.name, if (rule.matchAny) 1 else 0,
             rule.album.trim(), rule.folder.trim(), rule.format.trim(), rule.minimumDurationSeconds, rule.maximumDurationSeconds, rule.excludeText.trim())
-        val from = "FROM library_tracks t CROSS JOIN $relation LEFT JOIN library_playback_stats s ON s.trackId = t.id WHERE $SmartRuleMatchSql"
+        val from = "FROM visible_library_tracks t CROSS JOIN $relation LEFT JOIN library_playback_stats s ON s.trackId = t.id WHERE $SmartRuleMatchSql"
         val count = database.openHelper.readableDatabase.query(SimpleSQLiteQuery("SELECT COUNT(*) $from", args)).use {
             if (it.moveToFirst()) it.getInt(0) else 0
         }

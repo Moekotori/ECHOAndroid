@@ -9,9 +9,19 @@ data class EchoRadioDirectoryStation(
     val tags: String? = null,
     val bitrateKbps: Int? = null,
     val codec: String? = null,
+    val artworkUrl: String? = null,
+    val countryCode: String = "", val language: String = "", val homepage: String? = null,
 ) {
-    fun toStation(): EchoRadioStation = EchoRadioStation(id = id, name = name, url = url)
+    fun toStation(): EchoRadioStation = EchoRadioStation(id = id, name = name, url = url, artworkUrl = artworkUrl,
+        genre = tags.orEmpty(), codec = codec, bitrateKbps = bitrateKbps, countryCode = countryCode, language = language, homepage = homepage)
 }
+
+data class RadioDirectoryQuery(
+    val name: String = "", val countryCode: String = "", val language: String = "",
+    val tag: String = "", val page: Int = 0,
+)
+
+data class RadioDirectoryPage(val stations: List<EchoRadioDirectoryStation>, val hasNext: Boolean)
 
 data class EchoRadioDirectorySearch(
     val query: String = "",

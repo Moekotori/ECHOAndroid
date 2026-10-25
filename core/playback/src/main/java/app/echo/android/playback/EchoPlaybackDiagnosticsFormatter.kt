@@ -34,6 +34,28 @@ fun EchoPlaybackDiagnostics.toReadableLines(): List<String> = buildList {
     }
     usbLastRequestedSampleRateHz?.let { add("usbLastRequestedSampleRateHz=$it") }
     usbLastRequestError?.let { add("usbLastRequestError=${it.kind}:${it.message}") }
+    usbTransfer?.let { t ->
+        add("usbTransfer.sessionClosed=${t.sessionClosed}")
+        add("usbTransfer.sampledAtElapsedMs=${t.sampledAtElapsedMs}")
+        add("usbTransfer.queuedFrames=${t.queuedFrames}")
+        add("usbTransfer.queuedBytes=${t.queuedBytes}")
+        add("usbTransfer.minQueuedFrames=${t.minQueuedFrames}")
+        add("usbTransfer.capacityFrames=${t.capacityFrames}")
+        add("usbTransfer.audioUrbs=${t.audioUrbs}")
+        add("usbTransfer.feedbackUrbs=${t.feedbackUrbs}")
+        add("usbTransfer.audioPacketErrors=${t.audioPacketErrors}")
+        add("usbTransfer.feedbackPacketErrors=${t.feedbackPacketErrors}")
+        add("usbTransfer.submitFailures=${t.submitFailures}")
+        add("usbTransfer.reapFailures=${t.reapFailures}")
+        add("usbTransfer.estimatedSupplyGaps=${t.supplyGapCount}")
+        add("usbTransfer.estimatedSupplyGapBytes=${t.supplyGapBytes}")
+        add("usbTransfer.invalidFeedback=${t.invalidFeedbackCount}")
+        add("usbTransfer.lastError=${t.lastErrorSource}:${t.lastErrorCode}")
+        add("usbTransfer.fatal=${t.fatal}")
+    }
+    usbCompatibilityRules.forEach { rule ->
+        add("usbCompatibilityRule=${rule.id}: ${rule.reason} ${rule.verification}")
+    }
     add("bufferedMs=$bufferedMs")
     add("requestToken=$requestToken")
     codec?.let { add("codec=$it") }

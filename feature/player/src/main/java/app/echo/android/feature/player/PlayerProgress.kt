@@ -1,7 +1,7 @@
 package app.echo.android.feature.player
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -103,7 +103,7 @@ internal fun LinearPlayerSeekBar(
     // Read the animated thickness only while drawing, without changing hit geometry.
     val thickness = animateDpAsState(
         targetValue = if (enabled && (pressed || engaged)) engagedThickness else restingThickness,
-        animationSpec = tween(if (lightweight) 0 else 140, easing = EchoMotion.Silk),
+        animationSpec = if (lightweight) snap() else EchoMotion.silkDp(140),
         label = "player-seek-thickness",
     )
     Canvas(Modifier.fillMaxWidth().height(48.dp)

@@ -28,6 +28,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 data class EchoPlaybackRuntimeOptions(
+    val audioInterruptionPolicy: app.echo.android.model.playback.EchoAudioInterruptionPolicy = app.echo.android.model.playback.EchoAudioInterruptionPolicy.Duck,
+    val sleepTimerFinishTrack: Boolean = true,
     val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
     val shuffleOptions: app.echo.android.model.playback.EchoShuffleOptions = app.echo.android.model.playback.EchoShuffleOptions(),
 )
@@ -35,6 +37,10 @@ data class EchoPlaybackRuntimeOptions(
 object EchoPlaybackRuntimeOptionsStore {
     private val _options = MutableStateFlow(EchoPlaybackRuntimeOptions())
     val options: StateFlow<EchoPlaybackRuntimeOptions> = _options.asStateFlow()
+
+    fun setListeningOptions(policy: app.echo.android.model.playback.EchoAudioInterruptionPolicy, finishTrack: Boolean) {
+        _options.update { it.copy(audioInterruptionPolicy = policy, sleepTimerFinishTrack = finishTrack) }
+    }
 
     fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
         _options.update { it.copy(trackTransitions = options.normalized()) }
@@ -74,6 +80,14 @@ object EchoPlaybackProcessRuntime {
 
     @Volatile internal var smartFadeInMediaId: String? = null
     internal val sleepTransitionModes = MutableStateFlow(EchoSleepTimerMode.Off)
+
+    @Volatile internal var audioFocusGain: Float = 1f
+        private set
+
+    internal fun setAudioFocusGain(gain: Float) {
+        audioFocusGain = gain.coerceIn(0f, 1f)
+        enginePolicy?.applyReplayGain()
+    }
 
     internal fun setTrackFadeGain(gain: Float) {
         trackFadeGain = gain.coerceIn(0f, 1f)
@@ -142,6 +156,10 @@ object EchoPlaybackProcessRuntime {
 
     @Volatile
     var sleepTimerRequestedMinutes: Int? = null
+        private set
+
+    @Volatile
+    var sleepTimerFinishingCurrentTrack: Boolean = false
         private set
 
     @Volatile
@@ -220,6 +238,11 @@ object EchoPlaybackProcessRuntime {
     private val _surface = MutableStateFlow(EchoPlaybackSurfaceSnapshot())
     private val _abLoop = MutableStateFlow(app.echo.android.model.playback.EchoAbLoopState())
     val abLoop = _abLoop.asStateFlow()
+    private val _smartTransitionVisual = MutableStateFlow<app.echo.android.model.playback.EchoSmartTransitionVisual?>(null)
+    val smartTransitionVisual = _smartTransitionVisual.asStateFlow()
+    internal fun publishSmartTransitionVisual(value: app.echo.android.model.playback.EchoSmartTransitionVisual?) {
+        _smartTransitionVisual.value = value
+    }
     internal fun publishAbLoop(value: app.echo.android.model.playback.EchoAbLoopState) { _abLoop.value = value }
     val surface: StateFlow<EchoPlaybackSurfaceSnapshot> = _surface.asStateFlow()
 
@@ -294,7 +317,22 @@ object EchoPlaybackProcessRuntime {
         }
     }
 
+    @Volatile
+    internal var lastUsbTransferEvidence: app.echo.android.model.playback.EchoUsbTransportDiagnostics? = null
+        private set
+
+    @Volatile
+    internal var lastUsbCompatibilityRules: List<app.echo.android.model.playback.EchoUsbCompatibilityRule> = emptyList()
+        private set
+
     fun setUsbExclusiveSinkStatus(status: EchoUsbExclusiveSinkStatus?) {
+        if (status == null && usbExclusiveSinkStatus != null) {
+            lastUsbTransferEvidence = usbExclusiveSinkStatus?.transferEvidence?.invoke()?.copy(sessionClosed = true)
+            lastUsbCompatibilityRules = usbExclusiveSinkStatus?.compatibilityRules.orEmpty()
+        } else if (status != null) {
+            lastUsbTransferEvidence = null
+            lastUsbCompatibilityRules = emptyList()
+        }
         usbExclusiveSinkStatus = status
         if (status?.streaming != true) {
             exclusiveMakeupGain = 1f
@@ -477,6 +515,7 @@ object EchoPlaybackProcessRuntime {
             cancelSleepTimer()
             return
         }
+        sleepTimerFinishingCurrentTrack = false
         sleepTimerMode = EchoSleepTimerMode.Timed
         sleepTimerRequestedMinutes = minutes.coerceAtMost(maxMinutes)
         sleepTimerEndTimeEpochMs =
@@ -487,6 +526,7 @@ object EchoPlaybackProcessRuntime {
     }
 
     fun setSleepTimerEndOfTrack() {
+        sleepTimerFinishingCurrentTrack = false
         sleepTimerMode = EchoSleepTimerMode.EndOfTrack
         sleepTimerRequestedMinutes = null
         sleepTimerEndTimeEpochMs = null
@@ -539,7 +579,19 @@ object EchoPlaybackProcessRuntime {
         }
     }
 
+    fun onSleepTimerUserCommand() {
+        if (sleepTimerFinishingCurrentTrack) cancelSleepTimer()
+    }
+
+    fun onSleepTimerEndOfMediaItem() {
+        if (sleepTimerMode == EchoSleepTimerMode.EndOfTrack) {
+            cancelSleepTimer()
+            enginePolicy?.applyReplayGain()
+        }
+    }
+
     fun cancelSleepTimer() {
+        sleepTimerFinishingCurrentTrack = false
         sleepTimerMode = EchoSleepTimerMode.Off
         sleepTimerRequestedMinutes = null
         sleepTimerEndTimeEpochMs = null
@@ -573,6 +625,19 @@ object EchoPlaybackProcessRuntime {
                     trackRemainingMs = (durationMs - (player?.currentPosition ?: 0L)).coerceAtLeast(0L),
                     trackDurationKnown = durationMs > 0L,
                 )
+                if (sleepTimerMode == EchoSleepTimerMode.Timed && remainingMs <= 0L &&
+                    EchoSleepTimerPolicy.shouldFinishCurrentTrack(
+                        EchoPlaybackRuntimeOptionsStore.options.value.sleepTimerFinishTrack,
+                        player?.playWhenReady == true, durationMs, player?.currentPosition ?: 0L,
+                        player?.isCurrentMediaItemLive == true,
+                    )) {
+                    sleepTimerFinishingCurrentTrack = true
+                    sleepTimerMode = EchoSleepTimerMode.EndOfTrack
+                    (player as? ExoPlayer)?.pauseAtEndOfMediaItems = true
+                    enginePolicy?.setPauseAtEndOfMediaItems(true)
+                    enginePolicyOrNull()?.applyReplayGain()
+                    continue
+                }
                 enginePolicyOrNull()?.applyReplayGain()
                 if (EchoSleepTimerPolicy.shouldPause(sleepTimerMode, remainingMs)) {
                     player?.pause()

@@ -61,8 +61,8 @@ object EchoMotion {
     )
 
     fun stateChange(): ContentTransform = ContentTransform(
-        targetContentEnter = fadeIn(tween(FadeMs, easing = Silk)),
-        initialContentExit = fadeOut(tween(FadeExitMs, easing = SilkExit)),
+        targetContentEnter = fadeIn(silkFloat(FadeMs)),
+        initialContentExit = fadeOut(silkFloat(FadeExitMs)),
         sizeTransform = null,
     )
 
@@ -136,7 +136,7 @@ object EchoMotion {
         enterMs: Int = OverlayMs,
         fadeMs: Int = OverlayFadeMs,
     ): EnterTransition =
-        fadeIn(tween(durationMillis = fadeMs, easing = Silk)) +
+        fadeIn(silkFloat(fadeMs)) +
             slideInVertically(silkOffset(enterMs)) { it / 10 } +
             scaleIn(
                 initialScale = 0.975f,
@@ -147,7 +147,7 @@ object EchoMotion {
         exitMs: Int = OverlayExitMs,
         fadeMs: Int = 180,
     ): ExitTransition =
-        fadeOut(tween(durationMillis = fadeMs, easing = SilkExit)) +
+        fadeOut(silkFloat(fadeMs)) +
             slideOutVertically(silkOffset(exitMs)) { it / 12 } +
             scaleOut(
                 targetScale = 0.975f,
@@ -158,7 +158,7 @@ object EchoMotion {
         enterMs: Int = 520,
         fadeMs: Int = 260,
     ): EnterTransition =
-        fadeIn(tween(durationMillis = fadeMs, delayMillis = 24, easing = Silk)) +
+        fadeIn(silkFloat(fadeMs)) +
             slideInVertically(silkOffset(enterMs)) { it } +
             scaleIn(
                 initialScale = 0.96f,
@@ -169,7 +169,7 @@ object EchoMotion {
         exitMs: Int = 380,
         fadeMs: Int = 200,
     ): ExitTransition =
-        fadeOut(tween(durationMillis = fadeMs, easing = SilkExit)) +
+        fadeOut(silkFloat(fadeMs)) +
             slideOutVertically(silkOffset(exitMs)) { it } +
             scaleOut(
                 targetScale = 0.97f,
@@ -180,7 +180,7 @@ object EchoMotion {
         enterMs: Int = 420,
         fadeMs: Int = 240,
     ): EnterTransition =
-        fadeIn(tween(durationMillis = fadeMs, easing = Silk)) +
+        fadeIn(silkFloat(fadeMs)) +
             scaleIn(
                 initialScale = 0.94f,
                 animationSpec = silkFloat(enterMs),
@@ -190,7 +190,7 @@ object EchoMotion {
         exitMs: Int = 240,
         fadeMs: Int = 160,
     ): ExitTransition =
-        fadeOut(tween(durationMillis = fadeMs, easing = SilkExit)) +
+        fadeOut(silkFloat(fadeMs)) +
             scaleOut(
                 targetScale = 0.96f,
                 animationSpec = silkFloat(exitMs),
@@ -201,7 +201,7 @@ object EchoMotion {
         exitMs: Int = PageExitMs,
     ): ContentTransform {
         val enter = slideInHorizontally(silkOffset(enterMs)) { it } +
-            fadeIn(tween(durationMillis = 220, easing = Silk), initialAlpha = 0.92f)
+            fadeIn(silkFloat(220), initialAlpha = 0.92f)
         val exit = fadeOut(silkFloat(exitMs), targetAlpha = PageDepthAlpha) +
             scaleOut(
                 targetScale = PageDepthScale,
@@ -219,7 +219,7 @@ object EchoMotion {
         enterMs: Int = PageMs,
         exitMs: Int = PageMs,
     ): ContentTransform {
-        val enter = fadeIn(tween(durationMillis = 240, easing = Silk), initialAlpha = PageDepthAlpha) +
+        val enter = fadeIn(silkFloat(240), initialAlpha = PageDepthAlpha) +
             scaleIn(
                 initialScale = PageDepthScale,
                 animationSpec = silkFloat(enterMs),
@@ -239,13 +239,13 @@ object EchoMotion {
     ): ContentTransform {
         val direction = if (forward) 1 else -1
         val enter = slideInHorizontally(silkOffset(durationMs)) { direction * it / 9 } +
-            fadeIn(tween(durationMillis = 220, easing = Silk)) +
+            fadeIn(silkFloat(220)) +
             scaleIn(
                 initialScale = 0.988f,
                 animationSpec = silkFloat(durationMs),
             )
         val exit = slideOutHorizontally(silkOffset(durationMs - 80)) { -direction * it / 11 } +
-            fadeOut(tween(durationMillis = 160, easing = SilkExit))
+            fadeOut(silkFloat(160))
         return ContentTransform(
             targetContentEnter = enter,
             initialContentExit = exit,

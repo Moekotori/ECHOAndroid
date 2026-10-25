@@ -27,6 +27,10 @@ data class WebDavEndpoint(
         "${LibrarySource.WebDav.id}:${webDavStableHash("${normalizedBaseUrl.lowercase(Locale.ROOT)}|${username.trim()}")}"
 }
 
+/** Public folders send no Authorization header, including during tag range reads. */
+internal fun WebDavEndpoint.authorizationHeader(): String? =
+    if (username.isBlank() && password.isBlank()) null else webDavBasicAuthorization(username.trim(), password)
+
 internal data class WebDavAudioFile(
     val id: String,
     val url: String,
@@ -99,7 +103,7 @@ internal class WebDavClient(
         val request = Request.Builder()
             .url(uri.toString())
             .header("Depth", "1")
-            .header("Authorization", webDavBasicAuthorization(endpoint.username.trim(), endpoint.password))
+            .apply { endpoint.authorizationHeader()?.let { header("Authorization", it) } }
             .method("PROPFIND", PropfindBody)
             .build()
         client.newCall(request).execute().use { response ->

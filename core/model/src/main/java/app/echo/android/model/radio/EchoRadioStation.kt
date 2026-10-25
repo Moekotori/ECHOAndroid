@@ -5,13 +5,23 @@ import app.echo.android.model.library.LibrarySource
 import java.net.URI
 
 /** Radio IDs survive queue/session persistence without changing the song database. */
-data class EchoRadioStation(val id: String, val name: String, val url: String) {
-    fun toTrack(): EchoTrack = EchoTrack(
+data class EchoRadioStation(
+    val id: String, val name: String, val url: String,
+    val artworkUrl: String? = null, val favorite: Boolean = false, val lastPlayedMs: Long = 0,
+    val description: String = "", val genre: String = "", val homepage: String? = null,
+    val codec: String? = null, val bitrateKbps: Int? = null, val countryCode: String = "", val language: String = "",
+    val streams: List<EchoRadioStream> = emptyList(), val defaultStreamUrl: String? = null, val videoUrl: String? = null,
+) {
+    fun toTrack(streamUrl: String? = null): EchoTrack = EchoTrack(
         id = MediaIdPrefix + id,
-        uri = url,
+        uri = streamUrl?.takeIf { it == url || streams.any { stream -> stream.url == it } }
+            ?: defaultStreamUrl?.takeIf { it == url || streams.any { stream -> stream.url == it } } ?: url,
         title = name,
         artist = URI(url).host.orEmpty(),
         source = LibrarySource("radio"),
+        artworkUri = artworkUrl,
+        genre = genre.takeIf { it.isNotBlank() },
+        mimeType = if (codec.equals("HLS", ignoreCase = true)) "application/x-mpegURL" else null,
     )
 
     companion object {
@@ -28,3 +38,5 @@ data class EchoRadioStation(val id: String, val name: String, val url: String) {
         } catch (_: Exception) { false }
     }
 }
+
+data class EchoRadioStream(val url: String, val codec: String? = null, val bitrateKbps: Int? = null)

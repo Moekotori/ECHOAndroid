@@ -140,12 +140,8 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
         newPosition: Player.PositionInfo,
         reason: Int,
     ) {
-        if (reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION && player.shuffleModeEnabled &&
-            player.repeatMode == Player.REPEAT_MODE_ALL && shuffleMode == EchoShuffleMode.PseudoRandom) {
-            val order = player.queueShuffleOrder()
-            if (oldPosition.mediaItemIndex == order.lastOrNull() && newPosition.mediaItemIndex == order.firstOrNull()) {
-                reshuffle = true
-            }
+        if (reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) {
+            prepareAutomaticAdvance(oldPosition.mediaItemIndex, newPosition.mediaItemIndex)
         }
         val old = oldPosition.mediaItem?.queueContext() ?: return
         if (!old.nextUp || old.entryId == newPosition.mediaItem?.queueContext()?.entryId) return
@@ -160,6 +156,13 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
     override fun onTimelineChanged(timeline: Timeline, reason: Int) {
         if (!changing && reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) spreadUpcoming = true
         reconcile()
+    }
+
+    /** Called before AutoMix's seek so the normal transition reconciliation starts the next round. */
+    fun prepareAutomaticAdvance(from: Int, to: Int) {
+        if (player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_ALL &&
+            shuffleMode == EchoShuffleMode.PseudoRandom &&
+            NextUpQueuePolicy.startsShuffleRound(player.queueShuffleOrder(), from, to)) reshuffle = true
     }
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
         pureRandom.reset()

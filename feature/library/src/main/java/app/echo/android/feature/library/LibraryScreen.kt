@@ -348,6 +348,8 @@ fun LibraryScreen(
     radioDirectorySearch: app.echo.android.model.radio.EchoRadioDirectorySearch =
         app.echo.android.model.radio.EchoRadioDirectorySearch(),
     onRadioDirectoryQuery: (String) -> Unit = {},
+    onOpenRadio: (() -> Unit)? = null,
+    onOpenPodcasts: () -> Unit = {},
     onPinAlbumShortcut: ((AlbumSummary, Boolean) -> Unit)? = null,
     onPinPlaylistShortcut: ((EchoPlaylist, Boolean) -> Unit)? = null,
     libraryLayout: EchoLibraryLayout = EchoLibraryLayout(),
@@ -683,12 +685,14 @@ fun LibraryScreen(
                     onSelectSource = ::selectSource,
                     radioSelected = selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Radio,
                     onSelectRadio = {
-                        if (selectedSource != LibrarySourceMode.Local || selectedMode != LibraryViewMode.Radio) {
+                        if (onOpenRadio != null) onOpenRadio()
+                        else if (selectedSource != LibrarySourceMode.Local || selectedMode != LibraryViewMode.Radio) {
                             selectSource(LibrarySourceMode.Local)
                             onLibraryQueryChange("")
                             selectedModeIndex = LibraryViewMode.Radio.ordinal
                         }
                     },
+                    onSelectPodcasts = onOpenPodcasts,
                 )
             },
             actions = {

@@ -9,7 +9,7 @@ internal object LibraryCollectionPlaybackQuery {
     fun build(origin: LibraryPlaybackOrigin, anchorId: String?, limit: Int?,
         playlistOrder: app.echo.android.model.library.PlaylistTrackOrder = app.echo.android.model.library.PlaylistTrackOrder(),
     ): SimpleSQLiteQuery {
-        var from = "library_tracks t"
+        var from = "visible_library_tracks t"
         val args = ArrayList<Any>()
         val local = "t.source IN ('mediastore', 'saf')"
         val albumOrder = listOf("COALESCE(t.discNumber, 0)", "COALESCE(t.trackNumber, 0)", "t.title COLLATE NOCASE", "t.id")

@@ -83,7 +83,12 @@ internal fun OpraModelResults(
                             )
                             Column(Modifier.weight(1f)) {
                                 Text(product.productName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-                                SignalNote(product.vendorName + " · " + pluralStringResource(L10nR.plurals.opra_model_curves, product.presets.size, product.presets.size))
+                                val summary = if (state.catalog == app.echo.android.model.playback.HeadphoneCorrectionCatalog.AutoEq && product.presets.size == 1) {
+                                    product.presets.first().author
+                                } else {
+                                    pluralStringResource(L10nR.plurals.opra_model_curves, product.presets.size, product.presets.size)
+                                }
+                                SignalNote(product.vendorName + " · " + summary)
                             }
                             EchoIcon(
                                 if (product.presets.size == 1) Icons.AutoMirrored.Rounded.KeyboardArrowRight else Icons.Default.ExpandMore,

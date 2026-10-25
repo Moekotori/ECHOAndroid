@@ -2,6 +2,9 @@ package app.echo.android.playback
 
 /** Pure ordering policy. Indices refer to the physical Media3 playlist. */
 internal object NextUpQueuePolicy {
+    fun startsShuffleRound(order: List<Int>, from: Int, to: Int): Boolean =
+        order.isNotEmpty() && from == order.last() && to == order.first()
+
     fun insertionIndex(current: Int, size: Int, pending: List<Int>, first: Boolean): Int =
         if (size == 0) 0 else if (first) (current + 1).coerceIn(0, size)
         else ((pending.lastOrNull() ?: current) + 1).coerceIn(0, size)

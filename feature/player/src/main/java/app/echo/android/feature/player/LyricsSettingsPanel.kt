@@ -16,7 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import app.echo.android.design.EchoMotion
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
@@ -111,7 +113,7 @@ internal fun LyricsSettingsPanel(
         val sheetMaxHeight by animateDpAsState(
             targetValue = if (category == LyricsSettingsCategory.WordStyle) minOf(maxHeight * 0.88f, 780.dp)
             else minOf(maxHeight * 0.72f, 600.dp),
-            animationSpec = tween(if (LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 260, easing = LyricsSettingsMotionEasing),
+            animationSpec = if (LocalEchoEffectivePerformanceMode.current.isLightweight) snap() else EchoMotion.silkDp(260),
             label = "lyrics-settings-sheet-height",
         )
         Column(

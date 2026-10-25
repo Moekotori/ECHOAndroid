@@ -1,0 +1,9 @@
+<resources>
+    <string name="playlist_retry">重试</string>
+    <string name="playlist_loading_more">正在加载更多歌曲…</string>
+    <string name="playlist_load_more_failed">更多歌曲加载失败。</string>
+    <string name="playlist_removed">已移出歌单</string>
+    <string name="playlist_undo">撤销</string>
+    <string name="playlist_drag_hint">拖动歌曲可调整顺序。</string>
+    <string name="playlist_drag_handle">拖动调整顺序</string>
+</resources>

@@ -38,6 +38,7 @@ data class OpraDatabaseStatus(
     val vendorCount: Int = 0,
     val productCount: Int = 0,
     val eqCount: Int = 0,
+    val revision: String? = null,
 )
 
 data class OpraHeadphoneBrand(
@@ -47,7 +48,11 @@ data class OpraHeadphoneBrand(
     val logoUrl: String? = null,
 )
 
+/** Catalog choice is UI state; persisted EQ IDs keep their existing wire shape. */
+enum class HeadphoneCorrectionCatalog { AutoEq, Opra }
+
 data class OpraHeadphoneCorrectionState(
+    val catalog: HeadphoneCorrectionCatalog = HeadphoneCorrectionCatalog.AutoEq,
     val query: String = "",
     val brands: List<OpraHeadphoneBrand> = emptyList(),
     val selectedBrandId: String? = null,

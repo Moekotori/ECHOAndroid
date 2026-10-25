@@ -54,7 +54,7 @@ internal fun NowPlayingArtworkLight(
         else if (lightweight) presence.snapTo(1f)
         else presence.animateTo(
             if (expanded) 1f else 0f,
-            tween(if (expanded) 460 else 300, easing = EchoMotion.Silk),
+            EchoMotion.silkFloat(if (expanded) 460 else 300),
         )
     }
     if (!enabled) {

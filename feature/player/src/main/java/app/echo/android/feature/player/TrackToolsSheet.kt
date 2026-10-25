@@ -60,6 +60,7 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
     var adding by remember { mutableStateOf<Long?>(null) }
     var label by remember { mutableStateOf("") }
     var sharing by remember { mutableStateOf(false) }
+    var deletingBookmark by remember(track.id) { mutableStateOf<EchoTrackBookmark?>(null) }
     EchoModalSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         EchoSheetHeader(
             title = stringResource(R.string.track_tools_title),
@@ -121,10 +122,9 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
                         if (bookmark.label != trackToolsTime(bookmark.positionMs)) Text(trackToolsTime(bookmark.positionMs), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { scope.launch {
-                        try { actions.deleteBookmark(bookmark.id) }
-                        catch (e: CancellationException) { throw e } catch (_: Exception) { error = true }
-                    } }) { EchoIcon(Icons.Rounded.DeleteOutline, stringResource(R.string.track_bookmark_delete)) }
+                    IconButton(onClick = { deletingBookmark = bookmark }, enabled = !busy) {
+                        EchoIcon(Icons.Rounded.DeleteOutline, stringResource(R.string.track_bookmark_delete))
+                    }
                 }
             }
             item {
@@ -145,5 +145,20 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
             finally { busy = false }
         } }, enabled = label.isNotBlank() && !busy) { Text(stringResource(R.string.track_tools_save)) } },
         dismissButton = { TextButton(onClick = { adding = null }, enabled = !busy) { Text(stringResource(R.string.track_tools_cancel)) } }) }
+    deletingBookmark?.let { bookmark -> AlertDialog(
+        onDismissRequest = { if (!busy) deletingBookmark = null },
+        title = { Text(stringResource(R.string.track_bookmark_delete)) },
+        text = { Text(bookmark.label) },
+        confirmButton = { TextButton(enabled = !busy, onClick = {
+            busy = true; error = false
+            scope.launch {
+                try { actions.deleteBookmark(bookmark.id); deletingBookmark = null }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { error = true; deletingBookmark = null }
+                finally { busy = false }
+            }
+        }) { Text(stringResource(R.string.track_bookmark_delete)) } },
+        dismissButton = { TextButton(enabled = !busy, onClick = { deletingBookmark = null }) { Text(stringResource(R.string.track_tools_cancel)) } },
+    ) }
     if (sharing && lyrics != null) LyricsCardSheet(track, lyrics) { sharing = false }
 }

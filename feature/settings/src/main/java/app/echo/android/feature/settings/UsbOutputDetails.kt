@@ -58,7 +58,11 @@ internal fun UsbOutputDetails(d: EchoPlaybackDiagnostics, output: UsbOutputPrese
             ?.takeIf { output.verified && it > 0 }?.let { "$it bit" } ?: unknown),
         stringResource(R.string.dac_reported_rates) to rates.ifBlank { unknown },
     )
+    val transportRows = usbTransportRows(d)
     rows.forEach { (label, value) -> SignalReadout(label, value) }
+    transportRows.forEach { (label, value) -> SignalReadout(label, value) }
+    if (d.usbTransfer != null) SignalNote(stringResource(R.string.usb_health_estimate_note))
+    if (d.usbCompatibilityRules.isNotEmpty()) SignalNote(stringResource(R.string.usb_health_teac_note))
     if (output.connected) {
         output.audioClass?.let { SignalReadout("UAC", it) }
         d.usbAudioEndpointSummary?.let { SignalReadout(stringResource(R.string.diag_endpoint), it) }
@@ -88,6 +92,8 @@ internal fun UsbOutputDetails(d: EchoPlaybackDiagnostics, output: UsbOutputPrese
         appendLine(title)
         appendLine(state)
         rows.forEach { (label, value) -> appendLine("$label: $value") }
+        transportRows.forEach { (label, value) -> appendLine("$label: $value") }
+        d.usbCompatibilityRules.forEach { appendLine("${it.id}: ${it.reason} ${it.verification}") }
         appendLine(evidenceNote)
         append(ratesNote)
     }

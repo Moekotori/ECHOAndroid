@@ -108,10 +108,10 @@ fun EchoExpand(
     AnimatedVisibility(
         visible = expanded,
         modifier = modifier,
-        enter = fadeIn(tween(EchoMotion.FadeMs)) + expandVertically(
+        enter = fadeIn(EchoMotion.silkFloat(EchoMotion.FadeMs)) + expandVertically(
             animationSpec = if (lightweight) snap() else EchoMotion.silkSize(EchoMotion.ExpandMs),
         ),
-        exit = fadeOut(tween(EchoMotion.FadeExitMs)) + shrinkVertically(
+        exit = fadeOut(EchoMotion.silkFloat(EchoMotion.FadeExitMs)) + shrinkVertically(
             animationSpec = if (lightweight) snap() else EchoMotion.silkSize(EchoMotion.CollapseMs),
         ),
     ) { content() }

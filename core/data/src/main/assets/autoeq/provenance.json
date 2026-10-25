@@ -1,0 +1,8 @@
+{
+  "source": "https://github.com/jaakkopasanen/AutoEq",
+  "revision": "7ae0f56d53074872b028649617a22bbb4232feb7",
+  "profiles": 8850,
+  "numericalProfilesMatchedUpstreamGitBlobs": 8850,
+  "uncompressedSha256": "5c15800d34b8a178e36481138e32b9447a8c3d33388396cecb49b24cb609542e",
+  "license": "MIT"
+}

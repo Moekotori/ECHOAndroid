@@ -15,7 +15,7 @@ internal fun playbackHistoryQuery(query: String, fromEpochMs: Long): SimpleSQLit
         repeat(3) { args.add(pattern) }
     }
     return SimpleSQLiteQuery("""
-        SELECT e.*, EXISTS(SELECT 1 FROM library_tracks t
+        SELECT e.*, EXISTS(SELECT 1 FROM visible_library_tracks t
             WHERE t.id = e.trackId AND TRIM(t.contentUri) != '') AS canReplay
         FROM library_play_events e
         WHERE e.playedAtEpochMs >= ? $search

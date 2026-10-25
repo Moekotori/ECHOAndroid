@@ -40,6 +40,7 @@ class UsbExclusivePcmOutput(context: Context) {
             ))
         }
 
+        val quirks = UsbDeviceQuirks.resolve(device.vendorId, device.productId)
         val snapshot = probe.snapshot()
         val selectedFormat = (if (bitPerfect) UsbPcmFormatSelector.chooseBitPerfectFormat(snapshot.descriptor, spec)
             else UsbPcmFormatSelector.chooseClosestFormat(snapshot.descriptor, spec))
@@ -92,8 +93,7 @@ class UsbExclusivePcmOutput(context: Context) {
             val clock = UsbAudioClock.configureSampleRate(
                 UsbAudioControlTransfer(connection::controlTransfer), selectedFormat, spec.sampleRateHz,
             ) {
-                // TEAC needs the streaming alternate setting reapplied after changing rate.
-                if (device.vendorId == 0x0644 && !connection.setInterface(audioInterface)) {
+                if (quirks.reselectStreamingAfterRateChange && !connection.setInterface(audioInterface)) {
                     error("Unable to reselect TEAC USB streaming interface after setting sample rate")
                 }
             }
@@ -114,6 +114,9 @@ class UsbExclusivePcmOutput(context: Context) {
                 transferCount = transferCount.coerceIn(8, 32),
                 keepAliveOnPause = keepAliveOnPause,
                 dop = dopDeviceLimits != null,
+                quirks = quirks,
+                vendorId = device.vendorId,
+                productId = device.productId,
                 openResult = UsbExclusiveOpenResult(
                     state = UsbExclusiveOutputState.Ready,
                     selectedFormat = selectedFormat,
@@ -180,6 +183,9 @@ class UsbExclusivePcmSession internal constructor(
     private val transferCount: Int = 16,
     private val keepAliveOnPause: Boolean = true,
     private val dop: Boolean = false,
+    val quirks: UsbDeviceQuirkProfile = UsbDeviceQuirkProfile(),
+    val vendorId: Int? = null,
+    val productId: Int? = null,
     val openResult: UsbExclusiveOpenResult,
 ) : AutoCloseable {
     private val lock = Any()
@@ -190,6 +196,31 @@ class UsbExclusivePcmSession internal constructor(
     @Volatile
     private var disconnected = false
     private var keepAliveThread: Thread? = null
+    private val snapshotBuffer = LongArray(17)
+    private var nextSnapshotMs = 0L
+    @Volatile
+    var transferSnapshot: UsbTransferSnapshot? = null
+        private set
+    @Volatile
+    var snapshotAtElapsedMs: Long = 0L
+        private set
+    @Volatile
+    var sessionClosed: Boolean = false
+        private set
+
+    private fun updateSnapshot(force: Boolean = false) {
+        if (nativeHandle == 0L) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!force && now < nextSnapshotMs) return
+        UsbIsochronousNative.snapshot(nativeHandle, snapshotBuffer)
+        transferSnapshot = UsbTransferSnapshot.fromNative(snapshotBuffer)
+        snapshotAtElapsedMs = now
+        nextSnapshotMs = now + 1_000L
+    }
+
+    fun setPlaybackActive(active: Boolean) = synchronized(lock) {
+        if (!closed) UsbIsochronousNative.setPlaybackActive(nativeHandle, active)
+    }
 
     val state: UsbExclusiveOutputState
         get() = openResult.state
@@ -244,6 +275,7 @@ class UsbExclusivePcmSession internal constructor(
         }
         // DoP starts with real marked audio; PCM zero prefill must never enter it.
         if (!dop) UsbIsochronousNative.prime(nativeHandle)
+        updateSnapshot(force = true)
     }
 
     fun prime() {
@@ -305,6 +337,7 @@ class UsbExclusivePcmSession internal constructor(
         val safeLength = length.coerceIn(0, buffer.size - safeOffset)
         if (endpoint.type == UsbConstants.USB_ENDPOINT_XFER_ISOC) {
             val written = UsbIsochronousNative.write(nativeHandle, buffer, safeOffset, safeLength, endOfStream)
+            updateSnapshot(force = written < 0 || endOfStream)
             return when {
                 written == UsbIsochronousNative.FATAL -> {
                     disconnected = true
@@ -329,7 +362,11 @@ class UsbExclusivePcmSession internal constructor(
         }
     }
 
-    fun hasTransferError(): Boolean = synchronized(lock) { closed || UsbIsochronousNative.hasTransferError(nativeHandle) }
+    fun hasTransferError(): Boolean = synchronized(lock) {
+        val failed = closed || UsbIsochronousNative.hasTransferError(nativeHandle)
+        updateSnapshot(force = failed)
+        failed
+    }
 
     fun queuedFrames(): Long = synchronized(lock) { UsbIsochronousNative.queuedFrames(nativeHandle) }
 
@@ -347,9 +384,11 @@ class UsbExclusivePcmSession internal constructor(
         val thread = synchronized(lock) {
             if (closed) return
             closed = true
+            sessionClosed = true
             keepAlive = false
             val running = keepAliveThread
             keepAliveThread = null
+            updateSnapshot(force = true)
             UsbIsochronousNative.close(nativeHandle)
             nativeHandle = 0L
             val connection = connection

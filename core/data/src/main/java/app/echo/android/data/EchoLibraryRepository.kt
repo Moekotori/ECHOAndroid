@@ -254,8 +254,7 @@ class EchoLibraryRepository(
         if (trimmedQuery.isBlank()) return@coroutineScope LocalLibrarySearchResults()
         val dao = database.trackDao()
         // Independent Room reads can run concurrently; cancellation still belongs to this search.
-        val albums = async { dao.searchAlbums(trimmedQuery, limitPerType) }
-        val remoteAlbums = async { dao.searchRemoteAlbumSummaries(trimmedQuery) }
+        val albums = async { dao.searchAlbumsIndexed(LibrarySummarySearchQuery.searchAllAlbums(trimmedQuery, limitPerType)) }
         val artists = async { dao.searchArtists(trimmedQuery, limitPerType) }
         val matchQuery = substringFtsQuery(trimmedQuery)
         val useFts = matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)
@@ -264,7 +263,7 @@ class EchoLibraryRepository(
         ))
         LocalLibrarySearchResults(
             tracks = tracks,
-            albums = albums.await() + remoteAlbums.await(),
+            albums = albums.await(),
             artists = artists.await(),
         )
     }

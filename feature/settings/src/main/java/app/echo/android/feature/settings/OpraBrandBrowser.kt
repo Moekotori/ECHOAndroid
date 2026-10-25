@@ -84,7 +84,7 @@ internal fun OpraBrandBrowser(state: OpraHeadphoneCorrectionState, onBrandSelect
             }
         } else if (filteredBrands.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.opra_choose_brand), style = MaterialTheme.typography.titleSmall,
+                Text(stringResource(if (state.catalog == app.echo.android.model.playback.HeadphoneCorrectionCatalog.AutoEq) R.string.autoeq_choose_measurement else R.string.opra_choose_brand), style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),

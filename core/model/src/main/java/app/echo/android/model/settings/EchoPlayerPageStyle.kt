@@ -7,9 +7,15 @@ enum class EchoPlayerPageStyle(val id: String, val lyricsPreset: EchoLyricsPageS
     PixelHandheld("pixel_handheld", EchoLyricsPageStyle.Paper),
     TypePoster("type_poster", EchoLyricsPageStyle.Paper),
     AfterglowMist("afterglow_mist", EchoLyricsPageStyle.AfterglowMist),
-    AfterglowNight("afterglow_night", EchoLyricsPageStyle.AfterglowNight);
+    AfterglowNight("afterglow_night", EchoLyricsPageStyle.AfterglowNight),
+    Terminal("terminal", EchoLyricsPageStyle.Mist),
+    Scrapbook("scrapbook", EchoLyricsPageStyle.Paper);
 
-    val isLight: Boolean get() = this != Classic && this != AfterglowNight
+    val isLight: Boolean
+        get() = when (this) {
+            RecordSleeve, PixelHandheld, TypePoster, AfterglowMist, Scrapbook -> true
+            else -> false
+        }
     val defaultFontFamily: String get() = if (lyricsPreset.isAfterglow) lyricsPreset.defaultFontFamily else "system"
 
     companion object {

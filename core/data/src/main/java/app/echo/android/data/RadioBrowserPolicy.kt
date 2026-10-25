@@ -9,7 +9,7 @@ object RadioBrowserPolicy {
     const val MaxServerAttempts = 2
     const val MaxResults = 25
     const val MaxQueryLength = 80
-    const val MaxBodyBytes = 512_000L
+    const val MaxBodyBytes = 256 * 1024L
     const val DebounceMs = 350L
     const val SearchPath = "json/stations/search"
 

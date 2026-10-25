@@ -41,6 +41,7 @@ android {
 
 androidComponents.onVariants { variant ->
     variant.sources.java?.addStaticSourceDirectory("third_party/media3-ffmpeg/java")
+    variant.sources.java?.addStaticSourceDirectory("third_party/automix/java")
     variant.sources.assets?.addStaticSourceDirectory("third_party/licenses")
 }
 

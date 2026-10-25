@@ -37,7 +37,7 @@ internal class RemoteFileTagReader(
         val input = RandomAccessTagInput(track.sizeBytes, checkActive) { position, count ->
             val end = position + count - 1
             val request = Request.Builder().url(track.contentUri)
-                .header("Authorization", webDavBasicAuthorization(endpoint.username.trim(), endpoint.password))
+                .apply { endpoint.authorizationHeader()?.let { header("Authorization", it) } }
                 .header("Range", "bytes=$position-$end")
                 .header("Accept-Encoding", "identity").build()
             client.newCall(request).execute().use { response ->

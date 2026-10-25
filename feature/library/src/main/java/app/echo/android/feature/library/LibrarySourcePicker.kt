@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Podcasts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,6 +64,7 @@ internal fun LibrarySourcePicker(
     onSelectSource: (LibrarySourceMode) -> Unit,
     radioSelected: Boolean,
     onSelectRadio: () -> Unit,
+    onSelectPodcasts: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
     val sourceLabel = if (radioSelected) stringResource(R.string.radio_title) else selectedSource.label()
@@ -109,6 +111,12 @@ internal fun LibrarySourcePicker(
                     onSelectRadio()
                 },
                 leadingIcon = { EchoIcon(Icons.Rounded.Radio, contentDescription = null, Modifier.size(20.dp)) },
+            )
+            EchoDropdownMenuItem(
+                text = { Text(stringResource(R.string.podcast_source)) },
+                selected = false,
+                onClick = { expanded = false; onSelectPodcasts() },
+                leadingIcon = { EchoIcon(Icons.Rounded.Podcasts, contentDescription = null, Modifier.size(20.dp)) },
             )
         }
     }

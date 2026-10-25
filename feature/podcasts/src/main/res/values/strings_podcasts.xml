@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="podcast_title">Podcasts</string>
+    <string name="podcast_back">Back</string>
+    <string name="podcast_subscribe">Add podcast</string>
+    <string name="podcast_error">Could not complete the operation. Check the address or connection and retry.</string>
+    <string name="podcast_retry">Retry</string>
+    <string name="podcast_search_feeds">Search subscriptions</string>
+    <string name="podcast_welcome">Make room for a good story.</string>
+    <string name="podcast_notice">Add a creator-published public RSS feed. Feeds, covers and audio connect directly to their hosts. Refresh is manual; subscriptions and listening progress stay on this device.</string>
+    <string name="podcast_empty">No episodes or subscriptions match.</string>
+    <string name="podcast_search_episodes">Search episodes</string>
+    <string name="podcast_previous">Previous</string>
+    <string name="podcast_next">Next</string>
+    <string name="podcast_page">Page %1$d · %2$s</string>
+    <plurals name="podcast_episode_count">
+        <item quantity="one">%1$d episode</item>
+        <item quantity="other">%1$d episodes</item>
+    </plurals>
+    <string name="podcast_unfollow">Unfollow</string>
+    <string name="podcast_unfollow_notice">Remove this subscription and its saved progress? Queued and playing episodes keep playing.</string>
+    <string name="podcast_cancel">Cancel</string>
+    <string name="podcast_filter_all">All</string>
+    <string name="podcast_filter_unfinished">Unfinished</string>
+    <string name="podcast_filter_progress">In progress</string>
+    <string name="podcast_filter_played">Played</string>
+    <string name="podcast_collapse">Collapse description</string>
+    <string name="podcast_expand">Show description</string>
+    <string name="podcast_listen">Listen to show</string>
+    <string name="podcast_refresh">Refresh feed</string>
+    <string name="podcast_source">Open source</string>
+    <string name="podcast_pause">Pause</string>
+    <string name="podcast_play">Play / resume</string>
+    <string name="podcast_resume_position">Resume at %1$d min</string>
+    <string name="podcast_duration">%1$d min</string>
+    <string name="podcast_current">Now playing</string>
+    <string name="podcast_more">More actions</string>
+    <string name="podcast_restart">Restart from beginning</string>
+    <string name="podcast_play_next">Play next</string>
+    <string name="podcast_enqueue">Add to queue</string>
+    <string name="podcast_mark_unplayed">Mark unplayed</string>
+    <string name="podcast_mark_played">Mark played</string>
+    <string name="podcast_rss_url">Public RSS URL</string>
+    <string name="podcast_rewind">Back 15 seconds</string>
+    <string name="podcast_forward">Forward 30 seconds</string>
+    <string name="podcast_position">%1$s / %2$s</string>
+</resources>

@@ -10,4 +10,10 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">Pixel-Player</string>
     <string name="player_appearance_type_poster">Typoposter</string>
+    <string name="player_appearance_holo_prism">Holo-Prisma</string>
+    <string name="player_appearance_starlight_orbit">Sternenbahn</string>
+    <string name="player_appearance_sakura_letter">Kirschblütenbrief</string>
+    <string name="player_appearance_neon_rain">Neonregen</string>
+    <string name="player_appearance_soda_pop">Brause-Pop</string>
+    <string name="player_appearance_amber_film">Bernsteinfilm</string>
 </resources>

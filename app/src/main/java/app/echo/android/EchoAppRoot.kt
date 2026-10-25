@@ -11,6 +11,7 @@ import androidx.compose.ui.res.stringResource
 import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.playback.EchoOutputDeviceKind
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -762,6 +763,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     var selectedPlaylist by rememberSaveable(stateSaver = PlaylistNavigationSaver) { mutableStateOf<EchoPlaylist?>(null) }
     var detailReturnPage by rememberSaveable { mutableStateOf<EchoPagerPage?>(null) }
     var searchVisible by rememberSaveable { mutableStateOf(false) }
+    // Key of the album/artist/playlist opened from search; back returns to search only while that page is still open.
+    var searchDetailKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val searchStateHolder = rememberSaveableStateHolder()
     var listeningVisible by rememberSaveable { mutableStateOf(false) }
     var listeningStatsVisible by rememberSaveable { mutableStateOf(false) }
     var playbackHistoryVisible by rememberSaveable { mutableStateOf(false) }
@@ -1053,9 +1057,29 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         selectedFolder = null
         selectedPlaylist = null
     }
+    fun detailOpenedFromSearch(): Boolean {
+        val key = searchDetailKey ?: return false
+        return key == selectedAlbum?.let { "album:${it.albumKey}" } ||
+            key == selectedArtist?.let { "artist:${it.artistKey}" } ||
+            key == selectedPlaylist?.let { "playlist:${it.id}" }
+    }
+    LaunchedEffect(selectedAlbum, selectedArtist, selectedPlaylist, searchVisible) {
+        // The detail was left or replaced by other navigation; drop the search state kept for the return trip.
+        if (searchDetailKey != null && !searchVisible && !detailOpenedFromSearch()) {
+            viewModel.unifiedSearch.clearSession()
+            searchDetailKey = null; searchQuery = ""; searchStateHolder.removeState("search")
+        }
+    }
     fun closeLibraryDetail() {
         if (selectedAlbum != null && selectedArtist != null) {
             selectedAlbum = null
+            return
+        }
+        if (detailOpenedFromSearch()) {
+            clearLibraryDetail()
+            detailReturnPage = null
+            searchDetailKey = null
+            searchVisible = true
             return
         }
         val returnPage = detailReturnPage ?: EchoPagerPage.Library
@@ -2082,26 +2106,34 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             )
             EchoPageOverlay(
                 visible = searchVisible,
-                onHidden = { searchQuery = ""; searchBack.reset() },
+                onHidden = {
+                    if (searchDetailKey == null) {
+                        viewModel.unifiedSearch.clearSession()
+                        searchQuery = ""; searchStateHolder.removeState("search")
+                    }
+                    searchBack.reset()
+                },
                 backProgress = { searchBack.value },
             ) {
+                searchStateHolder.SaveableStateProvider("search") {
                 app.echo.android.ui.home.EchoUnifiedSearchHost(viewModel, remoteClient, echoLinkPlaybackRouter, searchQuery, searchVisible,
-                    "${remoteStatus.endpoint?.id}:${remoteStatus.connectionState}",
+                    "${remoteStatus.endpoint?.hashCode()}:${remoteStatus.connectionState}",
                     onQuery = { searchQuery = it }, onClose = { searchVisible = false },
                     onConnect = { searchVisible = false; openPcTabNonce++; selectDockTab(EchoTab.Connect) },
                     onAlbum = { album ->
-                        searchVisible = false; detailReturnPage = EchoPagerPage.Now
+                        searchDetailKey = "album:${album.albumKey}"; searchVisible = false; detailReturnPage = EchoPagerPage.Now
                         selectedArtist = null; selectedFolder = null; selectedPlaylist = null; selectedGenre = null
                         selectedAlbum = album; selectDockTab(EchoTab.Library)
                     }, onArtist = { artist ->
-                        searchVisible = false; detailReturnPage = EchoPagerPage.Now
+                        searchDetailKey = "artist:${artist.artistKey}"; searchVisible = false; detailReturnPage = EchoPagerPage.Now
                         selectedAlbum = null; selectedFolder = null; selectedPlaylist = null; selectedGenre = null
                         selectedArtist = artist; selectDockTab(EchoTab.Library)
                     }, onPlaylist = { playlist ->
-                        searchVisible = false; detailReturnPage = EchoPagerPage.Now
+                        searchDetailKey = "playlist:${playlist.id}"; searchVisible = false; detailReturnPage = EchoPagerPage.Now
                         selectedAlbum = null; selectedArtist = null; selectedFolder = null; selectedGenre = null
                         selectedPlaylist = playlist; selectDockTab(EchoTab.Library)
                     })
+                }
             }
             if (libraryRepairVisible) {
                 app.echo.android.ui.library.EchoLibraryRepairHost(

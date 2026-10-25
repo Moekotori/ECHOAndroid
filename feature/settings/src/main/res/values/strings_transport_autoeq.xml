@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_health_snapshot">Transport snapshot</string>
+    <string name="usb_health_current_session">Current session (sampled during writes)</string>
+    <string name="usb_health_last_session">Last closed session</string>
+    <string name="usb_health_queue">Queued audio</string>
+    <string name="usb_health_minimum">Lowest observed queue</string>
+    <string name="usb_health_capacity">Transfer queue capacity</string>
+    <string name="usb_health_completions">Completed URBs: audio / feedback</string>
+    <string name="usb_health_packet_errors">Packet errors: audio / feedback</string>
+    <string name="usb_health_io_errors">Failures: submit / reap</string>
+    <string name="usb_health_supply_gaps">Estimated supply gaps: count / bytes</string>
+    <string name="usb_health_bad_feedback">Invalid feedback values</string>
+    <string name="usb_health_error">Last transport error</string>
+    <string name="usb_health_fatal">Fatal transport error</string>
+    <string name="usb_health_quirks">Matched compatibility rules</string>
+    <string name="usb_health_estimate_note">Session totals, sampled at most once per second during writes. Supply gaps estimate host queue starvation, not DAC-confirmed underruns. Pause, stream end and flush are excluded. USB queue capacity is not total pipeline latency.</string>
+    <string name="usb_health_teac_note">TEAC compatibility: reselect the streaming interface after programming the rate. Preserves the existing workaround; not verified on every model.</string>
+    <string name="autoeq_offline_source">AutoEQ · Offline</string>
+    <string name="autoeq_catalog_note">Bundled AutoEQ corrections work on first use without a network connection. Browse measurement sources or search headphone models. Different measurements and targets are not interchangeable. Catalog updates ship with app updates; the update button opens the upstream project.</string>
+    <string name="autoeq_revision">AutoEQ data revision: %1$s</string>
+    <string name="autoeq_check_updates">View AutoEQ data updates</string>
+    <string name="autoeq_attribution">AutoEQ · Jaakko Pasanen · MIT license</string>
+    <string name="autoeq_choose_measurement">Choose a measurement source</string>
+    <string name="autoeq_all_measurements">All measurement sources</string>
+</resources>

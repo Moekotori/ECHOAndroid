@@ -10,4 +10,10 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">Pixel handheld</string>
     <string name="player_appearance_type_poster">Type poster</string>
+    <string name="player_appearance_holo_prism">Holo Prism</string>
+    <string name="player_appearance_starlight_orbit">Starlight Orbit</string>
+    <string name="player_appearance_sakura_letter">Sakura Letter</string>
+    <string name="player_appearance_neon_rain">Neon Rain</string>
+    <string name="player_appearance_soda_pop">Soda Pop</string>
+    <string name="player_appearance_amber_film">Amber Film</string>
 </resources>

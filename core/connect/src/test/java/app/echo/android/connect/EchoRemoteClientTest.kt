@@ -23,6 +23,26 @@ import org.junit.Before
 import org.junit.Test
 
 class EchoRemoteClientTest {
+    @Test
+    fun searchCanReadPastFirstPageWithoutChangingBrowserOrPlayback() = runBlocking {
+        val transport = FakeEchoLinkTransport(libraryPageSize = 30, libraryTotalCount = 65)
+        val client = EchoRemoteClient(this, transport)
+        try {
+            client.connect(endpoint, false)
+            delay(20)
+            val before = client.library.value
+            val first = client.searchTracksPage("song", 1, 30)
+            val second = client.searchTracksPage("song", 2, 30)
+            val last = client.searchTracksPage("song", 3, 30)
+            assertEquals("track-0", first.first.first().id)
+            assertEquals("track-30", second.first.first().id)
+            assertEquals(5, last.first.size)
+            assertEquals(65, last.second)
+            assertEquals(before, client.library.value)
+            assertTrue(transport.commands.isEmpty())
+            assertEquals(0, transport.streamCalls)
+        } finally { client.disconnect() }
+    }
     private lateinit var originalLocale: Locale
 
     @Before

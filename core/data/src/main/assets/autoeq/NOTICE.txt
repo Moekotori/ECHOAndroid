@@ -1,0 +1,17 @@
+AutoEq headphone equalization data
+Source: https://github.com/jaakkopasanen/AutoEq
+Revision: 7ae0f56d53074872b028649617a22bbb4232feb7
+Profiles: 8850
+License: MIT (LICENSE.txt)
+Data SHA-256 (uncompressed): 5c15800d34b8a178e36481138e32b9447a8c3d33388396cecb49b24cb609542e
+
+This package contains public AutoEq numerical presets, not code from Salt Player.
+The initial input catalog was obtained from the user-supplied Salt Player APK,
+whose AutoEq notice identifies the upstream revision above. ECHO recompresses it
+without changing any numerical filter values. Original measurement-rig folders
+were restored by matching every profile ID to the upstream Git tree at the pinned revision. The upstream license was independently verified.
+Use scripts/import-autoeq.py with an upstream checkout to rebuild/update data.
+Profiles from different measurement sources and targets are not interchangeable.
+
+Validation: all 8,850 reconstructed ParametricEQ.txt files matched the upstream
+Git blob SHA-1 IDs at the pinned revision (numerical values and ordering).

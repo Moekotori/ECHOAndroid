@@ -24,6 +24,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -84,16 +86,25 @@ fun EchoPlayerArtwork(
 ) {
     // The dock image is 40dp. The expanded 24dp radius turns it into a circle and
     // the shared overlay does not receive the row click while that radius animates.
-    val corner = if (expandedArtwork && !LocalEchoEffectivePerformanceMode.current.isLightweight) {
-        LocalPlayerArtworkCorner.current?.value ?: restingCornerRadius
+    val animatedCorner = if (expandedArtwork && !LocalEchoEffectivePerformanceMode.current.isLightweight) {
+        LocalPlayerArtworkCorner.current
     } else {
-        restingCornerRadius
+        null
     }
     EchoArtworkImage(
         artworkUri = artworkUri,
         contentDescription = contentDescription,
-        modifier = Modifier.echoSharedPlayerArtwork(trackId, expandedArtwork).then(modifier),
-        shape = RoundedCornerShape(corner),
+        modifier = Modifier.echoSharedPlayerArtwork(trackId, expandedArtwork)
+            .then(modifier)
+            // The radius changes every frame of the flight; clip it in the layer so the
+            // image request, gradient and placeholder are not recomposed 60 times a second.
+            .then(
+                if (animatedCorner == null) Modifier else Modifier.graphicsLayer {
+                    shape = RoundedCornerShape(animatedCorner.value.toPx())
+                    clip = true
+                },
+            ),
+        shape = if (animatedCorner == null) RoundedCornerShape(restingCornerRadius) else RectangleShape,
         sizeClass = if (expandedArtwork) EchoArtworkSize.Hero else echoMiniPlayerArtworkSize(),
     )
 }

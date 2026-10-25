@@ -1,0 +1,4 @@
+<resources>
+    <string name="connect_webdav_anonymous">Anonymous access</string>
+    <string name="connect_webdav_anonymous_hint">Use a public WebDAV folder without a username or password.</string>
+</resources>

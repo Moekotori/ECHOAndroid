@@ -48,6 +48,8 @@ internal fun HealthPanel(
         SignalReadout(stringResource(R.string.diag_buffer_remaining), "${d.bufferedMs / 1000}s")
         SignalReadout(stringResource(R.string.diag_decode_error), d.lastError?.message ?: stringResource(R.string.diag_none))
         SignalReadout(stringResource(R.string.diag_usb_fallback), d.usbLastRequestError?.message ?: stringResource(R.string.diag_none))
+        usbTransportRows(d).forEach { (label, value) -> SignalReadout(label, value) }
+        if (d.usbTransfer != null) SignalNote(stringResource(R.string.usb_health_estimate_note))
     }
 }
 

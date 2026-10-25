@@ -13,6 +13,42 @@ import java.nio.ByteOrder
 @UnstableApi
 class EchoSmartTransitionMixerTest {
     @Test
+    fun formatIsPublishedOnlyAfterAudioThreadFlushAndClearedOnDisable() {
+        val mixer = EchoSmartTransitionMixer()
+        assertEquals(null, mixer.streamFormats.value)
+        mixer.setEnabled(true)
+        mixer.configure(AudioProcessor.AudioFormat(48_000, 2, C.ENCODING_PCM_FLOAT))
+        assertEquals(null, mixer.streamFormats.value)
+        mixer.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        assertEquals(EchoSmartTransitionMixer.StreamFormat(48_000, 2, mixer.streamEpoch), mixer.streamFormats.value)
+        mixer.setEnabled(false)
+        assertEquals(null, mixer.streamFormats.value)
+    }
+
+    @Test
+    fun renderedAutoMixIsConsumedOnceAtScheduledPositionAndClearedOnSeek() {
+        val mixer = EchoSmartTransitionMixer()
+        mixer.setEnabled(true)
+        mixer.configure(AudioProcessor.AudioFormat(8_000, 1, C.ENCODING_PCM_FLOAT))
+        mixer.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        val session = mixer.arm(floatArrayOf(0.3f, -0.2f), 2, 1,
+            startPositionMs = 1, rendered = true)!!
+        val input = ByteBuffer.allocateDirect(12 * 4).order(ByteOrder.nativeOrder())
+        repeat(12) { input.putFloat(0.6f) }
+        input.flip()
+        mixer.queueInput(input)
+        val output = mixer.output.order(ByteOrder.nativeOrder())
+        repeat(8) { assertEquals(0.6f, output.float, 0f) }
+        assertEquals(0.3f, output.float, 0f)
+        assertEquals(-0.2f, output.float, 0f)
+        repeat(2) { assertEquals(0f, output.float, 0f) }
+        assertEquals(2, session.mixedFrames)
+        mixer.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        assertEquals(0, mixer.mixedIncomingFrames)
+        assertFalse(mixer.mixing)
+    }
+
+    @Test
     fun inactiveWhenDisabled() {
         val mixer = EchoSmartTransitionMixer()
         val format = mixer.configure(AudioProcessor.AudioFormat(48_000, 2, C.ENCODING_PCM_FLOAT))

@@ -41,16 +41,18 @@ internal object EchoSmartTransitionPcm {
         inputChannels: Int,
         outputRateHz: Int,
         outputChannels: Int,
+        expectedFrames: Int? = null,
     ): FloatArray {
         if (input.isEmpty() || inputRateHz <= 0 || outputRateHz <= 0) return FloatArray(0)
         val inCh = inputChannels.coerceAtLeast(1)
         val inFrames = input.size / inCh
         if (inFrames <= 0) return FloatArray(0)
         val outCh = outputChannels.coerceIn(1, 2)
-        if (inputRateHz == outputRateHz && inCh == outCh) {
+        val outFrames = expectedFrames ?: ((inFrames.toLong() * outputRateHz) / inputRateHz).toInt().coerceAtLeast(1)
+        require(outFrames > 0 && outFrames.toLong() * outCh * 4 <= EchoSmartTransitionPolicy.MaxMixBytes)
+        if (inputRateHz == outputRateHz && inCh == outCh && outFrames == inFrames) {
             return input.copyOf(inFrames * inCh)
         }
-        val outFrames = ((inFrames.toLong() * outputRateHz) / inputRateHz).toInt().coerceAtLeast(1)
         val output = FloatArray(outFrames * outCh)
         for (outFrame in 0 until outFrames) {
             val src = if (inFrames == 1) 0.0 else outFrame.toDouble() * inputRateHz / outputRateHz

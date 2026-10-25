@@ -53,7 +53,11 @@ internal fun PlayerCoverPage(
         onCast, onToggleShuffle, onCycleRepeatMode, onToggleFavorite, onOpenLyrics, onOpenArtist)
     // Only cover-page type scales. Lyrics, transport hit targets and the drawer do not.
     CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * appearance.textScale)) {
-        if (appearance.style == "pixel_handheld") {
+        val gacha = GachaThemes.of(EchoPlayerPageStyle.fromId(appearance.style))
+        if (gacha != null) {
+            GachaCoverPage(gacha, status, positionMsState, durationMsState, actions,
+                isCurrentTrackFavorite, castActive, appearance.artworkScale, presentationExpanded, modifier)
+        } else if (appearance.style == "pixel_handheld") {
             PixelHandheldCoverPage(status, positionMsState, durationMsState, actions,
                 isCurrentTrackFavorite, castActive, appearance.artworkScale, modifier)
         } else if (appearance.style == "type_poster") {

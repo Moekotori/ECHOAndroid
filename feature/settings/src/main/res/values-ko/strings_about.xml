@@ -6,4 +6,8 @@
     <string name="settings_about_website">공식 웹사이트</string>
     <string name="settings_about_bug_report">버그 신고</string>
     <string name="settings_about_link_error">이 링크를 열 수 있는 앱이 없습니다</string>
+    <string name="settings_about_github">GitHub 소스 코드</string>
+    <string name="settings_about_steam">Steam에서 ECHO 만나기</string>
+    <string name="settings_about_steam_detail">좋아하는 음악을 데스크톱에서도 즐겨 보세요. 창작마당 스킨과 모드, 꾸준한 업데이트를 만나 보세요. Steam 상점에서 자세히 알아보세요.</string>
+    <string name="settings_about_afdian">Afdian에서 ECHO 후원</string>
 </resources>

@@ -1,0 +1,18 @@
+<resources>
+    <string name="search_view_all">查看全部</string>
+    <string name="search_clear">清空搜索</string>
+    <string name="search_results_failed">结果加载失败，请重试。</string>
+    <string name="search_play_next">下一首播放</string>
+    <string name="search_add_next_up">加入待播</string>
+    <string name="search_enqueue">加入队列</string>
+    <string name="search_add_to_playlist">加入歌单</string>
+    <string name="search_track_actions">歌曲操作</string>
+    <string name="search_action_failed">操作失败，请重试。</string>
+    <string name="search_action_added">已添加</string>
+    <string name="search_no_playlists">请先在曲库创建歌单。</string>
+    <string name="search_replace_queue_title">替换当前播放队列？</string>
+    <string name="search_replace_queue_body">立即播放这首歌会替换当前队列。如需保留，请取消并通过歌曲菜单加入待播或队列。</string>
+    <string name="search_play_now">立即播放</string>
+    <string name="search_cancel">取消</string>
+    <string name="search_on_phone">在手机上%1$s</string>
+</resources>

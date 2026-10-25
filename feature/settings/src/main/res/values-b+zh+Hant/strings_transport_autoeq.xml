@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_health_snapshot">傳輸快照</string>
+    <string name="usb_health_current_session">目前工作階段（寫入時取樣）</string>
+    <string name="usb_health_last_session">上一次已結束的工作階段</string>
+    <string name="usb_health_queue">已排程音訊</string>
+    <string name="usb_health_minimum">最低觀測佇列</string>
+    <string name="usb_health_capacity">傳輸佇列容量</string>
+    <string name="usb_health_completions">完成 URB：音訊 / 回饋</string>
+    <string name="usb_health_packet_errors">封包錯誤：音訊 / 回饋</string>
+    <string name="usb_health_io_errors">失敗：提交 / 回收</string>
+    <string name="usb_health_supply_gaps">估算供給間隙：次數 / 位元組</string>
+    <string name="usb_health_bad_feedback">無效回饋值次數</string>
+    <string name="usb_health_error">最近傳輸錯誤</string>
+    <string name="usb_health_fatal">嚴重傳輸錯誤</string>
+    <string name="usb_health_quirks">套用的相容規則</string>
+    <string name="usb_health_estimate_note">依工作階段累計，寫入時最多每秒取樣一次。供給間隙為主機佇列耗盡的估算，並非 DAC 確認的欠載；排除暫停、串流結束與清空操作。USB 佇列容量不等於整條鏈路的延遲。</string>
+    <string name="usb_health_teac_note">TEAC 相容處理：設定取樣率後重新選擇串流介面。沿用既有處理，尚未驗證所有型號。</string>
+    <string name="autoeq_offline_source">AutoEQ · 離線</string>
+    <string name="autoeq_catalog_note">內建 AutoEQ 校正，首次使用無需連線。可依測量來源瀏覽或搜尋耳機型號。不同測量與目標不可視為等價。目錄隨應用程式版本更新；更新按鈕會開啟上游專案。</string>
+    <string name="autoeq_revision">AutoEQ 資料版本：%1$s</string>
+    <string name="autoeq_check_updates">檢視 AutoEQ 資料更新</string>
+    <string name="autoeq_attribution">AutoEQ · Jaakko Pasanen · MIT 授權</string>
+    <string name="autoeq_choose_measurement">選擇測量來源</string>
+    <string name="autoeq_all_measurements">全部測量來源</string>
+</resources>

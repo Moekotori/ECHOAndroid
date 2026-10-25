@@ -10,4 +10,10 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">Píxeles</string>
     <string name="player_appearance_type_poster">Cartel tipográfico</string>
+    <string name="player_appearance_holo_prism">Prisma holo</string>
+    <string name="player_appearance_starlight_orbit">Órbita estelar</string>
+    <string name="player_appearance_sakura_letter">Carta de sakura</string>
+    <string name="player_appearance_neon_rain">Lluvia de neón</string>
+    <string name="player_appearance_soda_pop">Soda pop</string>
+    <string name="player_appearance_amber_film">Película ámbar</string>
 </resources>

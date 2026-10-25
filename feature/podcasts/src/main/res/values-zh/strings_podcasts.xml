@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="podcast_title">播客</string>
+    <string name="podcast_back">返回</string>
+    <string name="podcast_subscribe">添加播客</string>
+    <string name="podcast_error">操作失败，请检查地址或网络后重试。</string>
+    <string name="podcast_retry">重试</string>
+    <string name="podcast_search_feeds">搜索订阅</string>
+    <string name="podcast_welcome">留一点时间，给好故事。</string>
+    <string name="podcast_notice">添加创作者公开发布的 RSS 地址。订阅、封面和音频直接连接原始服务器；手动刷新，订阅与收听进度保存在本机。</string>
+    <string name="podcast_empty">暂无匹配的节目或单集。</string>
+    <string name="podcast_search_episodes">搜索单集</string>
+    <string name="podcast_previous">上一页</string>
+    <string name="podcast_next">下一页</string>
+    <string name="podcast_page">第 %1$d 页 · %2$s</string>
+    <plurals name="podcast_episode_count">
+        <item quantity="other">共 %1$d 集</item>
+    </plurals>
+    <string name="podcast_unfollow">取消订阅</string>
+    <string name="podcast_unfollow_notice">移除此订阅及其收听进度？已排队或正在播放的单集会继续播放。</string>
+    <string name="podcast_cancel">取消</string>
+    <string name="podcast_filter_all">全部</string>
+    <string name="podcast_filter_unfinished">未听完</string>
+    <string name="podcast_filter_progress">继续收听</string>
+    <string name="podcast_filter_played">已听完</string>
+    <string name="podcast_collapse">收起简介</string>
+    <string name="podcast_expand">展开简介</string>
+    <string name="podcast_listen">收听节目</string>
+    <string name="podcast_refresh">刷新订阅</string>
+    <string name="podcast_source">打开来源</string>
+    <string name="podcast_pause">暂停</string>
+    <string name="podcast_play">播放 / 续播</string>
+    <string name="podcast_resume_position">已听 %1$d 分钟</string>
+    <string name="podcast_duration">%1$d 分钟</string>
+    <string name="podcast_current">正在收听</string>
+    <string name="podcast_more">更多操作</string>
+    <string name="podcast_restart">从头播放</string>
+    <string name="podcast_play_next">下一首播放</string>
+    <string name="podcast_enqueue">加入队列</string>
+    <string name="podcast_mark_unplayed">标为未听</string>
+    <string name="podcast_mark_played">标为已听</string>
+    <string name="podcast_rss_url">公开 RSS 地址</string>
+    <string name="podcast_rewind">后退 15 秒</string>
+    <string name="podcast_forward">前进 30 秒</string>
+    <string name="podcast_position">%1$s / %2$s</string>
+</resources>

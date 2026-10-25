@@ -45,6 +45,7 @@ internal fun EchoNowPlayingHost(
 ) {
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
     val playbackPosition = positionFlow.collectAsStateWithLifecycle()
+    val smartTransition = app.echo.android.playback.EchoPlaybackProcessRuntime.smartTransitionVisual.collectAsStateWithLifecycle()
     val artistNavigationScope = rememberCoroutineScope()
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
@@ -100,6 +101,7 @@ internal fun EchoNowPlayingHost(
     NowPlayingScreen(
         status = playbackStatus,
         positionState = playbackPosition,
+        smartTransitionState = smartTransition,
         lyricsState = lyricsState,
         showLyricsControlDeck = appSettings.showLyricsControlDeck,
         playerPageStyle = appSettings.playerPageStyle,

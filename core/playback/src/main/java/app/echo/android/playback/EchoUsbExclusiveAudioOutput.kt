@@ -50,12 +50,15 @@ internal class EchoUsbExclusiveAudioOutput(
 
     override fun play() {
         playing = true
+        session.setPlaybackActive(true)
         if (!session.openResult.isReady) return
         session.setKeepAlive(false)
         runCatching { drainPending() }
         EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(
             EchoUsbExclusiveSinkStatus(
                 streaming = true,
+                transferEvidence = session::transportEvidence,
+                compatibilityRules = session.compatibilityEvidence(),
                 transport = transport,
                 sampleRateHz = sampleRateHz,
                 bitDepth = session.bitResolution,
@@ -69,6 +72,7 @@ internal class EchoUsbExclusiveAudioOutput(
 
     override fun pause() {
         playing = false
+        session.setPlaybackActive(false)
         session.setKeepAlive(true)
     }
 
@@ -138,6 +142,7 @@ internal class EchoUsbExclusiveAudioOutput(
         pendingBytes = 0
         session.flush()
         if (playing) {
+            session.setPlaybackActive(true)
             session.prime()
         } else {
             session.setKeepAlive(true)
@@ -146,6 +151,7 @@ internal class EchoUsbExclusiveAudioOutput(
 
     override fun stop() {
         playing = false
+        session.setPlaybackActive(false)
         session.setKeepAlive(false)
     }
 
@@ -185,7 +191,7 @@ internal class EchoUsbExclusiveAudioOutput(
 
     override fun setOffloadDelayPadding(delayInFrames: Int, paddingInFrames: Int) = Unit
 
-    override fun setOffloadEndOfStream() = Unit
+    override fun setOffloadEndOfStream() { session.setPlaybackActive(false) }
 
     override fun setPlayerId(playerId: PlayerId) = Unit
 
@@ -268,4 +274,6 @@ data class EchoUsbExclusiveSinkStatus(
     val bitDepth: Int?,
     val message: String?,
     val bufferCapacityFrames: Long? = null,
+    val transferEvidence: (() -> app.echo.android.model.playback.EchoUsbTransportDiagnostics?)? = null,
+    val compatibilityRules: List<app.echo.android.model.playback.EchoUsbCompatibilityRule> = emptyList(),
 )

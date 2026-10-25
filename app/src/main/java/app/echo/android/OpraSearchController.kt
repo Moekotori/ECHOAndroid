@@ -1,6 +1,8 @@
 package app.echo.android
 
 import android.content.Context
+import app.echo.android.data.AutoEqHeadphoneCorrectionRepository
+import app.echo.android.model.playback.HeadphoneCorrectionCatalog
 import app.echo.android.data.OpraHeadphoneCorrectionRepository
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
@@ -21,6 +23,7 @@ internal class OpraSearchController(
 ) {
     private val mutableState = MutableStateFlow(OpraHeadphoneCorrectionState())
     val state = mutableState.asStateFlow()
+    private val autoEqRepository = AutoEqHeadphoneCorrectionRepository(context)
     private var searchJob: Job? = null
     private var generation = 0L
 
@@ -53,9 +56,18 @@ internal class OpraSearchController(
     fun browse(brandId: String?) {
         searchJob?.cancel()
         generation++
+        val catalog = when (brandId) {
+            "catalog:autoeq" -> HeadphoneCorrectionCatalog.AutoEq
+            "catalog:opra" -> HeadphoneCorrectionCatalog.Opra
+            else -> state.value.catalog
+        }
+        val sourceChanged = catalog != state.value.catalog
         mutableState.update {
             it.copy(
-                selectedBrandId = brandId,
+                catalog = catalog,
+                brands = if (sourceChanged) emptyList() else it.brands,
+                status = if (sourceChanged) app.echo.android.model.playback.OpraDatabaseStatus() else it.status,
+                selectedBrandId = brandId?.takeUnless { id -> id.startsWith("catalog:") },
                 query = "",
                 loading = false,
                 results = emptyList(),
@@ -70,11 +82,14 @@ internal class OpraSearchController(
     fun search(refresh: Boolean) {
         val query = state.value.query.trim()
         val brandId = state.value.selectedBrandId
+        val catalog = state.value.catalog
         searchJob?.cancel()
         val request = ++generation
         mutableState.update { it.copy(loading = true, message = null) }
         searchJob = scope.launch {
-            val result = repository.search(query, refresh, vendorId = brandId)
+            val result = if (catalog == HeadphoneCorrectionCatalog.AutoEq)
+                autoEqRepository.search(query, brandId)
+            else repository.search(query, refresh, vendorId = brandId)
             if (request != generation) return@launch
             result.onSuccess { found ->
                 val selected = found.products.asSequence().flatMap { it.presets.asSequence() }
@@ -89,9 +104,9 @@ internal class OpraSearchController(
                         else -> null
                     }) }
             }.onFailure { error ->
-                val message = context.getString(R.string.opra_load_failed)
+                val message = context.getString(if (catalog == HeadphoneCorrectionCatalog.AutoEq) R.string.autoeq_load_failed else R.string.opra_load_failed)
                 mutableState.update { state -> state.copy(loading = false, message = message) }
-                EchoErrorLog.record(EchoErrorSource.Network, message, throwable = error)
+                EchoErrorLog.record(if (catalog == HeadphoneCorrectionCatalog.AutoEq) EchoErrorSource.Other else EchoErrorSource.Network, message, throwable = error)
             }
         }
     }

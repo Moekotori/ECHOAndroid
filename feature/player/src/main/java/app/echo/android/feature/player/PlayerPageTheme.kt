@@ -17,36 +17,37 @@ internal val EchoPlayerPageStyle.displayFont: FontFamily?
         EchoPlayerPageStyle.PixelHandheld -> ExpressivePlayerStyle.PixelDisplay
         EchoPlayerPageStyle.TypePoster -> ExpressivePlayerStyle.PosterDisplay
         EchoPlayerPageStyle.AfterglowMist -> FontFamily.Serif
-        else -> null
+        else -> GachaThemes.of(this)?.display
     }
 
 internal val EchoPlayerPageStyle.bodyFont: FontFamily?
     get() = when (this) {
         EchoPlayerPageStyle.RecordSleeve -> RecordSleeveStyle.BodyFont
         EchoPlayerPageStyle.PixelHandheld -> ExpressivePlayerStyle.PixelBody
-        else -> null
+        else -> GachaThemes.of(this)?.body
     }
 
 internal fun playerPageTokens(style: EchoPlayerPageStyle): EchoThemeTokens {
     val base = echoThemeTokens(EchoColorTheme.Echo, !style.isLight)
     if (style == EchoPlayerPageStyle.Classic) return base
+    val gacha = GachaThemes.of(style)
     val afterglow = AfterglowPalette.forStyle(style.lyricsPreset, 0)
     val background = when (style) {
         EchoPlayerPageStyle.RecordSleeve -> RecordSleeveStyle.Paper
         EchoPlayerPageStyle.PixelHandheld -> ExpressivePlayerStyle.PixelPaper
         EchoPlayerPageStyle.TypePoster -> ExpressivePlayerStyle.PosterPaper
-        else -> Color(afterglow.background)
+        else -> gacha?.background ?: Color(afterglow.background)
     }
     val ink = when (style) {
         EchoPlayerPageStyle.RecordSleeve -> RecordSleeveStyle.Ink
         EchoPlayerPageStyle.PixelHandheld -> ExpressivePlayerStyle.PixelInk
         EchoPlayerPageStyle.TypePoster -> ExpressivePlayerStyle.PosterInk
-        else -> Color(afterglow.foreground)
+        else -> gacha?.ink ?: Color(afterglow.foreground)
     }
     val accent = when (style) {
         EchoPlayerPageStyle.RecordSleeve -> RecordSleeveStyle.Wine
         EchoPlayerPageStyle.PixelHandheld, EchoPlayerPageStyle.TypePoster -> ink
-        else -> Color(afterglow.accent)
+        else -> gacha?.accent ?: Color(afterglow.accent)
     }
     val muted = ink.copy(alpha = 0.62f)
     return base.copy(accent = accent, accentDeep = accent, accentText = accent,

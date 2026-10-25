@@ -2,6 +2,7 @@ package app.echo.android.feature.player
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -79,7 +80,8 @@ internal fun NowPlayingLyricsPage(
         val lyricAccent = lyricsColorForMode(lyricsColorMode)
         val lyricsDimAlpha = animateFloatAsState(
             targetValue = lyricsBackgroundDim.coerceIn(0f, 0.78f),
-            animationSpec = tween(durationMillis = if (lightweight) 0 else 240, easing = LyricsSettingsMotionEasing),
+            // The dim slider retargets every frame while dragged; a spring follows without restarting.
+            animationSpec = if (lightweight) snap() else EchoMotion.silkFloat(240),
             label = "lyrics-page-dim",
         )
         val dimColor = if (LocalEchoDarkTheme.current) Color.Black else MaterialTheme.colorScheme.surface

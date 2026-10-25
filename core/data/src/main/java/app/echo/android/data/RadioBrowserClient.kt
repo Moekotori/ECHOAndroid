@@ -1,12 +1,15 @@
 package app.echo.android.data
 
 import app.echo.android.model.radio.EchoRadioDirectoryStation
+import app.echo.android.model.radio.RadioDirectoryQuery
+import app.echo.android.model.radio.RadioDirectoryPage
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
@@ -21,8 +24,24 @@ class RadioBrowserClient(
     appVersion: String,
     private val client: OkHttpClient = defaultClient(),
     private val servers: List<String> = RadioBrowserPolicy.Servers,
+    private val discoverMirrors: (suspend () -> List<String>)? = null,
 ) {
     private val userAgent = "ECHOAndroid/$appVersion (https://github.com/moekotori/echoandroid)"
+
+    suspend fun browse(query: RadioDirectoryQuery): RadioDirectoryPage = withTimeout(14_000) {
+        withContext(Dispatchers.IO) {
+            var error: Exception? = null
+            val mirrors = ((discoverMirrors?.invoke() ?: emptyList()) + servers).distinct()
+            for (server in mirrors.take(RadioBrowserPolicy.MaxServerAttempts)) {
+                try {
+                    val rows = RadioBrowserParser.parseStations(fetch(browseUrl(server, query)))
+                    return@withContext RadioDirectoryPage(rows.take(20), rows.size > 20)
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) { error = failure }
+            }
+            throw error ?: IOException("Radio directory unavailable")
+        }
+    }
 
     suspend fun search(query: String): List<EchoRadioDirectoryStation> = withContext(Dispatchers.IO) {
         val normalized = RadioBrowserPolicy.normalizedQuery(query) ?: return@withContext emptyList()
@@ -69,6 +88,18 @@ class RadioBrowserClient(
     }
 
     companion object {
+        fun browseUrl(server: String, query: RadioDirectoryQuery): HttpUrl = server.trimEnd('/').toHttpUrl().newBuilder()
+            .addPathSegments(RadioBrowserPolicy.SearchPath)
+            .addQueryParameter("name", query.name.trim().take(80))
+            .addQueryParameter("countrycode", query.countryCode.trim().uppercase().takeIf { it.matches(Regex("[A-Z]{2}")) }.orEmpty())
+            .addQueryParameter("language", query.language.trim().take(80))
+            .addQueryParameter("tag", query.tag.trim().take(80))
+            .addQueryParameter("offset", (query.page.coerceIn(0, 1000) * 20).toString())
+            .addQueryParameter("limit", "21")
+            .addQueryParameter("hidebroken", "true")
+            .addQueryParameter("order", "clickcount")
+            .addQueryParameter("reverse", "true").build()
+
         fun searchUrl(server: String, query: String): HttpUrl {
             val origin = server.trim().trimEnd('/').toHttpUrl()
             return origin.newBuilder()
@@ -82,9 +113,9 @@ class RadioBrowserClient(
         }
 
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(8, TimeUnit.SECONDS)
-            .readTimeout(12, TimeUnit.SECONDS)
-            .callTimeout(18, TimeUnit.SECONDS)
+            .connectTimeout(6, TimeUnit.SECONDS)
+            .readTimeout(6, TimeUnit.SECONDS)
+            .callTimeout(6, TimeUnit.SECONDS)
             .followRedirects(true)
             .retryOnConnectionFailure(false)
             .build()

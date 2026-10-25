@@ -22,7 +22,7 @@ internal object EchoRadioDefaults {
     fun encode(stations: List<EchoRadioStation>): String {
         val entries = JSONArray()
         stations.forEach { station ->
-            entries.put(JSONObject().put("id", station.id).put("name", station.name).put("url", station.url))
+            entries.put(RadioStationJson.encode(station))
         }
         return JSONObject().put("stations", entries).toString()
     }

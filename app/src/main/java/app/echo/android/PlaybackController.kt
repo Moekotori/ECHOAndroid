@@ -1123,6 +1123,7 @@ internal class PlaybackController(
             sleepTimerRemainingMs = sleepTimerRemainingMs(),
             sleepTimerMode = EchoPlaybackProcessRuntime.sleepTimerMode,
             sleepTimerMinutes = EchoPlaybackProcessRuntime.sleepTimerRequestedMinutes,
+            sleepTimerFinishingCurrentTrack = EchoPlaybackProcessRuntime.sleepTimerFinishingCurrentTrack,
             replayGainEnabled = this@PlaybackController.replayGainEnabled,
             replayGainMode = EchoPlaybackProcessRuntime.replayGainMode,
             replayGainPreampDb = this@PlaybackController.replayGainPreampDb,
