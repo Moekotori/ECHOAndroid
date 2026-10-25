@@ -95,77 +95,124 @@ private fun pageStyleThumbnail(style: EchoPlayerPageStyle): DrawScope.(Color) ->
         }
         textBars(Offset(size.width * 0.14f, size.height * 0.42f), size.width * 0.40f, Color.White)
     }
-    EchoPlayerPageStyle.HoloPrism -> { _ ->
-        drawRect(Color(0xFF0B0A16))
-        blob(Color(0xFFB9A6FF).copy(alpha = 0.55f), Offset(size.width * 0.22f, size.height * 0.30f), size.height * 0.85f)
-        blob(Color(0xFF6FF3E0).copy(alpha = 0.40f), Offset(size.width * 0.80f, size.height * 0.70f), size.height * 0.80f)
-        val card = Size(size.height * 0.48f, size.height * 0.70f)
-        val topLeft = Offset(size.width * 0.5f - card.width / 2f, size.height * 0.15f)
-        drawRoundRect(Color(0xFF15102B), topLeft, card, CornerRadius(7f))
-        drawRoundRect(
-            Brush.linearGradient(listOf(Color(0xFFB9A6FF), Color(0xFF6FF3E0), Color(0xFFFF8FD8)), topLeft, topLeft + Offset(card.width, card.height)),
-            topLeft, card, CornerRadius(7f), style = Stroke(2.4f),
-        )
-    }
-    EchoPlayerPageStyle.StarlightOrbit -> { _ ->
-        drawRect(Brush.verticalGradient(listOf(Color(0xFF070B1F), Color(0xFF131C45))))
-        val center = Offset(size.width * 0.5f, size.height * 0.5f)
-        val ring = size.height * 0.40f
-        drawCircle(Color.White.copy(alpha = 0.18f), ring, center, style = Stroke(1.4f))
-        drawArc(Color(0xFFFFD98A), -90f, 250f, false, center - Offset(ring, ring), Size(ring * 2f, ring * 2f), style = Stroke(2.4f, cap = StrokeCap.Round))
-        drawCircle(Color(0xFF8FB4FF).copy(alpha = 0.75f), ring * 0.70f, center)
-        listOf(0.12f to 0.22f, 0.86f to 0.18f, 0.78f to 0.82f, 0.20f to 0.78f).forEach { (x, y) ->
-            drawCircle(Color.White.copy(alpha = 0.8f), 1.4f, Offset(size.width * x, size.height * y))
+    EchoPlayerPageStyle.Terminal -> { _ ->
+        val green = Color(0xFF7CFF9B)
+        drawRect(Color(0xFF060A07))
+        drawRect(green, Offset(size.width * 0.08f, size.height * 0.10f), Size(size.width * 0.84f, size.height * 0.16f), style = Stroke(1.4f))
+        drawRect(green, Offset(size.width * 0.08f, size.height * 0.34f), Size(size.height * 0.34f, size.height * 0.34f), style = Stroke(1.4f))
+        listOf(0.34f to 0.42f, 0.34f to 0.52f, 0.34f to 0.62f).forEachIndexed { i, (_, y) ->
+            drawRect(green.copy(alpha = if (i == 0) 0.95f else 0.55f), Offset(size.width * 0.42f, size.height * y), Size(size.width * (0.40f - i * 0.06f), size.height * 0.05f))
+        }
+        for (i in 0 until 10) {
+            drawRect(if (i < 4) green else green.copy(alpha = 0.22f), Offset(size.width * (0.08f + i * 0.085f), size.height * 0.78f), Size(size.width * 0.07f, size.height * 0.12f))
         }
     }
-    EchoPlayerPageStyle.SakuraLetter -> { _ ->
-        drawRect(Brush.verticalGradient(listOf(Color(0xFFFFF4F1), Color(0xFFFFE3E6))))
-        val paper = Size(size.height * 0.62f, size.height * 0.72f)
-        val topLeft = Offset(size.width * 0.5f - paper.width / 2f, size.height * 0.14f)
-        drawRoundRect(Color.White, topLeft, paper, CornerRadius(3f))
-        drawRoundRect(Color(0xFFF6B8C8), topLeft + Offset(paper.width * 0.1f, paper.height * 0.1f),
-            Size(paper.width * 0.8f, paper.width * 0.8f), CornerRadius(2f))
-        drawCircle(Color(0xFFC9456B), size.height * 0.09f, topLeft + Offset(paper.width, paper.height))
-        listOf(0.16f to 0.30f, 0.84f to 0.24f, 0.22f to 0.78f).forEach { (x, y) ->
-            drawCircle(Color(0xFFF6B8C8), 5f, Offset(size.width * x, size.height * y))
+    EchoPlayerPageStyle.Scrapbook -> { _ ->
+        drawRect(Color(0xFFF3E8D2))
+        for (i in 0..5) for (j in 0..2) drawCircle(Color(0xFFD3C3A3), 1.6f, Offset(size.width * (0.1f + i * 0.16f), size.height * (0.2f + j * 0.3f)))
+        val photo = Size(size.height * 0.52f, size.height * 0.62f)
+        val topLeft = Offset(size.width * 0.5f - photo.width / 2f, size.height * 0.12f)
+        drawRoundRect(Color.White, topLeft, photo, CornerRadius(2f))
+        drawRect(Brush.verticalGradient(listOf(Color(0xFF2B2F7A), Color(0xFFD9638A), Color(0xFFFFB06B)), topLeft.y, topLeft.y + photo.width),
+            topLeft + Offset(photo.width * 0.08f, photo.width * 0.08f), Size(photo.width * 0.84f, photo.width * 0.84f))
+        drawRect(Color(0xFFFFE27A).copy(alpha = 0.85f), topLeft + Offset(-6f, -4f), Size(photo.width * 0.4f, 8f))
+        drawCircle(Color(0xFFF9B3C6), size.height * 0.11f, Offset(size.width * 0.72f, size.height * 0.74f))
+        drawCircle(Color.White, size.height * 0.11f, Offset(size.width * 0.72f, size.height * 0.74f), style = Stroke(2.4f))
+    }
+    EchoPlayerPageStyle.MetroLine -> { _ ->
+        val line = Color(0xFFE4002B)
+        drawRect(Color(0xFFF3F4F6))
+        drawRoundRect(Color(0xFF0A0A0A), Offset(size.width * 0.06f, size.height * 0.10f), Size(size.width * 0.88f, size.height * 0.18f), CornerRadius(5f))
+        drawCircle(line, size.height * 0.07f, Offset(size.width * 0.13f, size.height * 0.19f))
+        drawRect(Color(0xFFFFB000), Offset(size.width * 0.24f, size.height * 0.17f), Size(size.width * 0.50f, size.height * 0.04f))
+        val x = size.width * 0.16f
+        drawLine(Color(0xFFCFD3DA), Offset(x, size.height * 0.40f), Offset(x, size.height * 0.92f), 5f, StrokeCap.Round)
+        drawLine(line, Offset(x, size.height * 0.40f), Offset(x, size.height * 0.68f), 5f, StrokeCap.Round)
+        for (i in 0..3) {
+            val y = size.height * (0.40f + i * 0.17f)
+            drawCircle(Color.White, 6f, Offset(x, y))
+            drawCircle(if (i <= 1) line else Color(0xFFAAB0BB), 6f, Offset(x, y), style = Stroke(2.4f))
+            drawRoundRect(Color(0xFF1C1E24).copy(alpha = if (i == 1) 0.9f else 0.35f), Offset(size.width * 0.26f, y - 3f), Size(size.width * (0.50f - i * 0.04f), 6f), CornerRadius(3f))
         }
     }
-    EchoPlayerPageStyle.NeonRain -> { _ ->
-        drawRect(Brush.verticalGradient(listOf(Color(0xFF09060F), Color(0xFF1A0B2B))))
-        val horizon = size.height * 0.64f
-        drawCircle(Brush.verticalGradient(listOf(Color(0xFFFFC857), Color(0xFFFF3CAC)), size.height * 0.2f, horizon),
-            size.height * 0.34f, Offset(size.width * 0.5f, horizon - size.height * 0.04f))
-        drawRect(Color(0xFF09060F), Offset(0f, horizon), Size(size.width, size.height - horizon))
-        drawLine(Color(0xFF2DE2E6), Offset(0f, horizon), Offset(size.width, horizon), 2f)
-        for (i in 1..3) {
-            val y = horizon + (size.height - horizon) * (i / 3f) * (i / 3f)
-            drawLine(Color(0xFF2DE2E6).copy(alpha = 0.5f), Offset(0f, y), Offset(size.width, y), 1.2f)
+    EchoPlayerPageStyle.ChatThread -> { _ ->
+        val violet = Color(0xFF6C5CE7)
+        drawRect(Color(0xFFECE9F5))
+        val bubble = CornerRadius(9f)
+        drawRoundRect(Color.White, Offset(size.width * 0.08f, size.height * 0.10f), Size(size.width * 0.46f, size.height * 0.34f), bubble)
+        drawRoundRect(Color.White, Offset(size.width * 0.08f, size.height * 0.50f), Size(size.width * 0.34f, size.height * 0.14f), bubble)
+        drawRoundRect(violet, Offset(size.width * 0.08f, size.height * 0.70f), Size(size.width * 0.62f, size.height * 0.20f), bubble)
+        for (i in 0 until 9) {
+            drawRect(Color.White.copy(alpha = if (i < 4) 1f else 0.45f), Offset(size.width * (0.20f + i * 0.050f), size.height * 0.76f), Size(size.width * 0.03f, size.height * (0.06f + (i % 3) * 0.025f)))
+        }
+        drawCircle(violet.copy(alpha = 0.55f), 3f, Offset(size.width * 0.76f, size.height * 0.30f))
+    }
+    EchoPlayerPageStyle.Halftone -> { _ ->
+        drawRect(Color(0xFF08080B))
+        val cols = 14
+        val rows = 5
+        val stepX = size.width / cols
+        val stepY = size.height / rows
+        for (c in 0 until cols) for (r in 0 until rows) {
+            val glow = 1f - kotlin.math.hypot((c - cols * 0.62f) / cols, (r - rows * 0.35f) / rows * 0.8f) * 1.7f
+            val k = glow.coerceIn(0.12f, 1f)
+            drawCircle(Color(0xFFF3D9A4).copy(alpha = 0.55f + 0.45f * k), stepX * 0.46f * k, Offset(stepX * (c + 0.5f), stepY * (r + 0.5f)))
         }
     }
-    EchoPlayerPageStyle.SodaPop -> { _ ->
-        drawRect(Brush.verticalGradient(listOf(Color(0xFFE9F8F6), Color(0xFFD3EEF6))))
-        val side = size.height * 0.62f
-        val topLeft = Offset(size.width * 0.5f - side / 2f, size.height * 0.16f)
-        drawRoundRect(Color.White, topLeft, Size(side, side), CornerRadius(side * 0.30f))
-        drawRoundRect(Color(0xFF0A7E8A).copy(alpha = 0.75f), topLeft + Offset(side * 0.07f, side * 0.07f),
-            Size(side * 0.86f, side * 0.86f), CornerRadius(side * 0.26f))
-        listOf(0.30f to 0.26f to 5f, 0.72f to 0.74f to 7f, 0.64f to 0.22f to 3f).forEach { (pos, r) ->
-            drawCircle(Color.White.copy(alpha = 0.85f), r, Offset(size.width * pos.first, size.height * pos.second), style = Stroke(1.4f))
+    EchoPlayerPageStyle.PixelMosaic -> { _ ->
+        drawRect(Color(0xFF08080B))
+        val cols = 18
+        val rows = 6
+        val stepX = size.width / cols
+        val stepY = size.height / rows
+        for (c in 0 until cols) for (r in 0 until rows) {
+            val hill = (r > 3 && (c + r) % 7 < 3)
+            val glow = 1f - kotlin.math.hypot((c - cols * 0.62f) / cols, (r - rows * 0.4f) / rows * 0.9f) * 2.2f
+            val color = when {
+                hill -> Color(0xFF1C1D4A)
+                glow > 0.4f -> Color(0xFFF3D9A4)
+                else -> androidx.compose.ui.graphics.lerp(Color(0xFF2B2F7A), Color(0xFFD9638A), r / (rows - 1f))
+            }
+            drawRect(color, Offset(c * stepX + 0.8f, r * stepY + 0.8f), Size(stepX - 1.6f, stepY - 1.6f))
         }
     }
-    EchoPlayerPageStyle.AmberFilm -> { _ ->
-        drawRect(Brush.verticalGradient(listOf(Color(0xFF150F0A), Color(0xFF241711))))
-        val strip = Size(size.height * 0.74f, size.height * 0.80f)
-        val topLeft = Offset(size.width * 0.5f - strip.width / 2f, size.height * 0.10f)
-        drawRect(Color(0xFF0B0705), topLeft, strip)
-        val hole = strip.width * 0.07f
-        for (i in 0 until 6) {
-            val x = topLeft.x + strip.width * (0.10f + i * 0.15f)
-            drawRect(Color(0xFFF6E7CF).copy(alpha = 0.85f), Offset(x, topLeft.y + 3f), Size(hole, hole * 1.1f))
-            drawRect(Color(0xFFF6E7CF).copy(alpha = 0.85f), Offset(x, topLeft.y + strip.height - 3f - hole * 1.1f), Size(hole, hole * 1.1f))
+    EchoPlayerPageStyle.Contours -> { _ ->
+        drawRect(Color(0xFF08080B))
+        val center = Offset(size.width * 0.58f, size.height * 0.46f)
+        for (i in 1..6) {
+            drawOval(
+                androidx.compose.ui.graphics.lerp(Color(0xFF8A7BFF), Color(0xFFFFE0B0), i / 6f).copy(alpha = 0.9f),
+                topLeft = center - Offset(size.height * 0.16f * i * 1.25f, size.height * 0.07f * i * 1.4f),
+                size = Size(size.height * 0.32f * i * 1.25f, size.height * 0.14f * i * 1.4f),
+                style = Stroke(1.6f),
+            )
         }
-        drawRect(Brush.linearGradient(listOf(Color(0xFFFFB347), Color(0xFFD2622F))),
-            topLeft + Offset(strip.width * 0.08f, strip.height * 0.18f), Size(strip.width * 0.84f, strip.height * 0.60f))
+    }
+    EchoPlayerPageStyle.Dither -> { _ ->
+        val dark = Color(0xFF1A1230)
+        val light = Color(0xFFF1D7B8)
+        drawRect(dark)
+        val bayer = intArrayOf(0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5)
+        val cols = 40
+        val rows = 12
+        val stepX = size.width / cols
+        val stepY = size.height / rows
+        for (c in 0 until cols) for (r in 0 until rows) {
+            val glow = (1f - kotlin.math.hypot((c - cols * 0.62f) / cols, (r - rows * 0.4f) / rows * 0.9f) * 2.4f).coerceIn(0f, 1f)
+            if (glow * 1.15f > (bayer[(r and 3) * 4 + (c and 3)] + 0.5f) / 16f) drawRect(light, Offset(c * stepX, r * stepY), Size(stepX, stepY))
+        }
+    }
+    EchoPlayerPageStyle.GlyphField -> { _ ->
+        drawRect(Color(0xFF08080B))
+        val cols = 16
+        val rows = 5
+        val stepX = size.width / cols
+        val stepY = size.height / rows
+        for (c in 0 until cols) for (r in 0 until rows) {
+            val glow = (1f - kotlin.math.hypot((c - cols * 0.62f) / cols, (r - rows * 0.4f) / rows * 0.9f) * 2.2f).coerceIn(0f, 1f)
+            if (glow > 0.12f) drawCircle(Color(0xFFF3D9A4).copy(alpha = 0.35f + 0.65f * glow), stepX * 0.12f + stepX * 0.2f * glow, Offset(stepX * (c + 0.5f), stepY * (r + 0.5f)))
+        }
+        for (c in 0 until cols) drawRect(Color(0xFF8A7BFF).copy(alpha = 0.5f), Offset(c * stepX + stepX * 0.35f, size.height * 0.9f), Size(stepX * 0.3f, 2f))
     }
 }
 

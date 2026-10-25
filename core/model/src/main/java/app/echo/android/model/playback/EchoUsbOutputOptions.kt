@@ -7,6 +7,14 @@ enum class EchoUsbBufferMode(val id: String, val transferCount: Int) {
     }
 }
 
+enum class EchoUsbVolumeMode(val id: String) {
+    Software("software"), Auto("auto"), Hardware("hardware");
+    companion object { fun fromId(id: String?) = entries.firstOrNull { it.id == id } ?: Software }
+}
+
+data class EchoUsbVolumeDiagnostics(val requested: String, val effective: String, val checked: Boolean,
+    val readbackVerified: Boolean, val hardwareDb: Float?, val handoff: Boolean, val reason: String?, val sessionClosed: Boolean = false)
+
 /** Zero means follow the source; strict playback overrides format and digital volume. */
 data class EchoUsbOutputOptions(
     val sampleRateHz: Int = 0,
@@ -17,6 +25,7 @@ data class EchoUsbOutputOptions(
     val keepAliveOnPause: Boolean = true,
     /** Explicit DoP opt-in per USB VID:PID; value is the highest DSD bit rate. */
     val dopDeviceLimits: Map<String, Int> = emptyMap(),
+    val volumeMode: EchoUsbVolumeMode = EchoUsbVolumeMode.Software,
 ) {
     val normalized: EchoUsbOutputOptions get() = copy(
         sampleRateHz = sampleRateHz.takeIf { it in SAMPLE_RATES } ?: 0,

@@ -468,8 +468,12 @@ internal class PlaybackController(
         if (currentTrackId == trackId) resume?.invoke()
     }
 
+    fun resumePlayback() {
+        withController(playWhenReady = true) { recoverAndPlay() }
+    }
+
     fun playPause() {
-        val playWhenReady = pendingControllerActions.playWhenReady ?: controller
+        val playWhenReady = pendingControllerActions.playWhenReady ?: EchoPlaybackProcessRuntime.manualPlayIntent ?: controller
             ?.takeIf { it.isConnected && !shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands) }
             ?.playWhenReady
             ?: (_playbackControls.value.isPlaying ||
@@ -552,6 +556,15 @@ internal class PlaybackController(
     fun playQueueItem(index: Int) = editQueue("play", index)
 
     fun removeQueueItem(index: Int) = editQueue("remove", index)
+
+    fun removeHiddenTracks(ids: Set<String>) {
+        ids.chunked(64).forEach { batch -> withController(changesPlaybackIntent = true) {
+            sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
+                putString("action", EchoPlaybackSessionCommands.EDIT_REMOVE_HIDDEN_TRACKS)
+                putStringArrayList("trackIds", ArrayList(batch))
+            })
+        } }
+    }
 
     fun moveQueueItem(fromIndex: Int, toIndex: Int) = editQueue("move", fromIndex, toIndex)
 
@@ -920,6 +933,7 @@ internal class PlaybackController(
     private fun startUsbAudioUpdates() {
         usbAudioJob?.cancel()
         usbAudioJob = scope.launch {
+            launch { EchoPlaybackProcessRuntime.autoMixStatus.collect { updatePlaybackStatusOptions() } }
             launch {
                 EchoPlaybackProcessRuntime.bitPerfectStates.collect {
                     updateUsbDiagnostics(usbAudioMonitor.status.value)
@@ -1099,14 +1113,9 @@ internal class PlaybackController(
         sleepTimerJob = EchoPlaybackProcessRuntime.scope.launch {
             while (EchoPlaybackProcessRuntime.sleepTimerMode != EchoSleepTimerMode.Off) {
                 val remaining = sleepTimerRemainingMs()
-                enginePolicy.applyReplayGain()
                 updatePlaybackStatusOptions()
-                if (EchoSleepTimerPolicy.shouldPause(EchoPlaybackProcessRuntime.sleepTimerMode, remaining)) {
-                    controller?.pause()
-                    cancelSleepTimer()
-                    controller?.let(::updatePlaybackCore)
-                    return@launch
-                }
+                // The service owns deadline/track-boundary stopping; this ticker only refreshes UI.
+
                 val delayMs = if (remaining <= EchoSleepTimerPolicy.FadeMs) 250L else SLEEP_TIMER_TICK_MS
                 delay(delayMs.milliseconds)
             }
@@ -1120,6 +1129,7 @@ internal class PlaybackController(
 
     private fun EchoPlaybackStatus.withPlaybackOptions(): EchoPlaybackStatus =
         copy(
+            autoMix = EchoPlaybackProcessRuntime.autoMixStatus.value,
             sleepTimerRemainingMs = sleepTimerRemainingMs(),
             sleepTimerMode = EchoPlaybackProcessRuntime.sleepTimerMode,
             sleepTimerMinutes = EchoPlaybackProcessRuntime.sleepTimerRequestedMinutes,

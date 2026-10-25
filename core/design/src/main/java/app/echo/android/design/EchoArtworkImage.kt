@@ -15,6 +15,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +52,7 @@ fun EchoArtworkImage(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(14.dp),
     sizeClass: EchoArtworkSize = EchoArtworkSize.Thumbnail,
+    placeholder: (@Composable () -> Unit)? = null,
 ) {
     EchoArtworkImage(
         artworkUri = artworkUri,
@@ -59,6 +63,7 @@ fun EchoArtworkImage(
         accent = echoTheme().accent,
         showSignal = false,
         placeholderIconSize = null,
+        placeholder = placeholder,
     )
 }
 
@@ -72,6 +77,7 @@ internal fun EchoArtworkImage(
     accent: Color? = null,
     showSignal: Boolean = false,
     placeholderIconSize: Dp? = null,
+    placeholder: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val resolvedAccent = accent ?: echoTheme().accent
@@ -98,6 +104,7 @@ internal fun EchoArtworkImage(
             highBitDepth = effectivePerformanceMode.isHighPerformance,
         )
     }
+    var imageReady by remember(model) { mutableStateOf(false) }
     Box(
         modifier = modifier
             .clip(shape)
@@ -112,28 +119,23 @@ internal fun EchoArtworkImage(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (artworkUri.isNullOrBlank()) {
+        if (placeholder == null) {
             EchoArtworkPlaceholder(
                 sizeClass = sizeClass,
                 accent = resolvedAccent,
                 showSignal = showSignal,
                 iconSize = placeholderIconSize,
             )
-        } else {
-            EchoArtworkPlaceholder(
-                sizeClass = sizeClass,
-                accent = resolvedAccent,
-                showSignal = showSignal,
-                iconSize = placeholderIconSize,
-            )
-            if (fetchUri != null) {
+        } else if (!imageReady) placeholder()
+        if (!artworkUri.isNullOrBlank() && fetchUri != null) {
                 AsyncImage(
                     model = model,
                     contentDescription = contentDescription,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
+                    onSuccess = { if (placeholder != null) imageReady = true },
+                    onError = { if (placeholder != null) imageReady = false },
                 )
-            }
         }
     }
 }

@@ -9,6 +9,92 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AudioFileTagRewriterTest {
+    @Test
+    fun unrelatedEditsPreserveSeparateArtistValues() {
+        val mp3 = id3File(4, listOf(textFrameV24("TPE1", "One\u0000Two"),
+            textFrameV24("TPE1", "Three"), textFrameV24("TPE2", "Owner One\u0000Owner Two")), FAKE_MP3)
+        val flac = flacFile(listOf("ARTIST=One", "ARTIST=Two", "ARTIST=Three",
+            "ALBUM ARTIST=Owner One", "ALBUM ARTIST=Owner Two"), byteArrayOf(1, 2))
+        val fields = SAMPLE_FIELDS.copy(artist = "One; Two; Three", albumArtist = "Owner One; Owner Two")
+        val rewrittenMp3 = rewrite(mp3, fields, "audio/mpeg").asString()
+        assertTrue(rewrittenMp3.contains("One\u0000Two"))
+        assertEquals(2, Regex("TPE1").findAll(rewrittenMp3).count())
+        val rewrittenFlac = rewrite(flac, fields, "audio/flac").asString()
+        assertTrue(rewrittenFlac.contains("ARTIST=Two"))
+        assertTrue(rewrittenFlac.contains("ALBUM ARTIST=Owner Two"))
+        val payloadSize = ((flac[43].toInt() and 255) shl 16) or
+            ((flac[44].toInt() and 255) shl 8) or (flac[45].toInt() and 255)
+        val comments = VorbisTagReader.comments(VorbisCommentRewriter.rewrite(flac.copyOfRange(46, 46 + payloadSize), fields)!!)
+        assertEquals(listOf("One", "Two", "Three"), comments.filter { it.first == "ARTIST" }.map { it.second })
+        val changed = rewrite(mp3, fields.copy(artist = "New", albumArtist = null), "audio/mpeg")
+        assertEquals("New", readLocalAudioTags(changed.inputStream())?.artist)
+        assertNull(readLocalAudioTags(changed.inputStream())?.albumArtist)
+    }
+
+    @Test
+    fun wavTrackAliasCanBeClearedAndRepeatedUnknownInfoIsPreserved() {
+        val base = silentWav()
+        val source = base + wavChunk("LIST", "INFO".toByteArray() + wavChunk("TRCK", "3/12\u0000".toByteArray()) +
+            wavChunk("ICMT", "first note\u0000".toByteArray()) + wavChunk("ICMT", "second note\u0000".toByteArray()))
+        leInt(source.size - 8).copyInto(source, 4)
+        val fields = SAMPLE_FIELDS.copy(trackNumber = null)
+        val rewritten = rewrite(source, fields, "audio/wav")
+        assertNull(readLocalAudioTags(rewritten.inputStream())?.trackNumber)
+        assertTrue(rewritten.asString().contains("first note"))
+        assertTrue(rewritten.asString().contains("second note"))
+        val numbered = rewrite(source, fields.copy(trackNumber = 4), "audio/wav")
+        assertTrue(numbered.asString().contains("4/12"))
+    }
+
+    @Test
+    fun wavRejectsPartialInfoBeforeChangingDestination() {
+        val base = silentWav()
+        for (tail in listOf("BROKEN".toByteArray(), "ICMT".toByteArray() + leInt(100) + byteArrayOf(1))) {
+            val bytes = base + wavChunk("LIST", "INFO".toByteArray() + wavChunk("INAM", "Old\u0000".toByteArray()) + tail)
+            leInt(bytes.size - 8).copyInto(bytes, 4)
+            val source = java.io.File.createTempFile("echo-info-source", ".wav")
+            val output = java.io.File.createTempFile("echo-info-output", ".wav")
+            try {
+                source.writeBytes(bytes)
+                output.writeText("untouched")
+                assertEquals(AudioTagRewriteStatus.InvalidSource,
+                    AudioFileTagRewriter.rewriteFile(source, output, SAMPLE_FIELDS, "audio/wav"))
+                assertEquals("untouched", output.readText())
+                assertTrue(bytes.contentEquals(source.readBytes()))
+            } finally { source.delete(); output.delete() }
+        }
+    }
+    @Test
+    fun id3PrefersFrontCoverOverEarlierBackCover() {
+        fun picture(type: Int, image: ByteArray) = Id3FrameBytes("APIC",
+            byteArrayOf(3) + "image/png".toByteArray() + byteArrayOf(0, type.toByte(), 0) + image)
+        val source = id3File(4, listOf(picture(4, byteArrayOf(9)), picture(3, TINY_PNG)), FAKE_MP3)
+        assertTrue(TINY_PNG.contentEquals(readLocalAudioTags(source.inputStream())?.artworkBytes))
+    }
+
+    @Test
+    fun vorbisCoverReplacementKeepsBackCoverAndReadsNewFrontCover() {
+        fun picture(type: Int, image: ByteArray): String {
+            val bytes = ByteArrayOutputStream()
+            java.io.DataOutputStream(bytes).apply {
+                writeInt(type)
+                writeInt(9); write("image/png".toByteArray()); writeInt(0)
+                repeat(4) { writeInt(0) }
+                writeInt(image.size); write(image)
+            }
+            return java.util.Base64.getEncoder().encodeToString(bytes.toByteArray())
+        }
+        val source = flacFile(listOf("TITLE=Old", "ARTIST=Artist",
+            "METADATA_BLOCK_PICTURE=${picture(4, byteArrayOf(9))}",
+            "METADATA_BLOCK_PICTURE=${picture(3, byteArrayOf(8))}"), byteArrayOf(1))
+        val payloadSize = ((source[43].toInt() and 255) shl 16) or
+            ((source[44].toInt() and 255) shl 8) or (source[45].toInt() and 255)
+        val payload = source.copyOfRange(46, 46 + payloadSize)
+        val rewritten = VorbisCommentRewriter.rewrite(payload,
+            SAMPLE_FIELDS.copy(artworkBytes = TINY_PNG, artworkMime = "image/png"))!!
+        assertEquals(2, VorbisTagReader.comments(rewritten).count { it.first == "METADATA_BLOCK_PICTURE" })
+        assertTrue(TINY_PNG.contentEquals(VorbisTagReader.fields(rewritten).artworkBytes))
+    }
     @Test fun batchGenreAndComposerSurviveFileRewrite() {
         val fields = SAMPLE_FIELDS.copy(genre = "Ambient",composer = "Composer")
         val rewritten = rewrite(FAKE_MP3,fields,"audio/mpeg")

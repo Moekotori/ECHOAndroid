@@ -71,10 +71,9 @@ object PodcastFeedParser {
             if (localName == "item" && parent == "channel" && uri.isEmpty()) item = HashMap()
             val values = item ?: show
             if (localName == "enclosure" && parent == "item" && uri.isEmpty() && values["audio"] == null) {
-                val type = attrs.getValue("type").orEmpty().lowercase()
+                val type = attrs.getValue("type").orEmpty().substringBefore(';').trim().lowercase()
                 val audio = resolve(attrs.getValue("url"), bases.last())
-                if (audio != null && (type.startsWith("audio/") ||
-                        (type.isBlank() && URI(audio).path.orEmpty().matches(Regex("(?i).*\\.(mp3|m4a|aac|ogg|opus|flac|wav)$"))))) {
+                if (audio != null && (type.startsWith("audio/") || type.isBlank() || type == "application/ogg")) {
                     values["audio"] = audio
                 }
             }
@@ -116,7 +115,7 @@ object PodcastFeedParser {
             val guid = values["guid"].orEmpty().trim().take(4096).takeIf { it.isNotBlank() } ?: audio
             val id = "podcast:" + identity("$feedId\n$guid")
             if (id in retained) return
-            val episode = EchoPodcastEpisode(id, feedId, plain(values["title"]).ifBlank { "Episode" }, audio,
+            val episode = EchoPodcastEpisode(id, feedId, plain(values["title"]), audio,
                 description(values), date(values["pubDate"]), duration(values["duration"]),
                 values["artwork"], values["link"]?.takeIf { it.isNotBlank() }, sourceOrder)
             if (episodes.size == PodcastLimits.Episodes && newest.compare(episode, episodes.peek()) <= 0) return
@@ -129,7 +128,7 @@ object PodcastFeedParser {
             require(episodes.isNotEmpty()) { "No audio episodes" }
             return ParsedPodcast(EchoPodcastFeed(feedId, url, plain(show["title"]), plain(show["author"]?.takeIf { it.isNotBlank() } ?: show["managingEditor"]),
                 description(show), show["artwork"], show["link"]?.takeIf { it.isNotBlank() }),
-                episodes.sortedWith(newest.reversed()))
+                episodes.sortedWith(newest.reversed()).map { if (it.title.isBlank()) it.copy(title = plain(show["title"])) else it })
         }
     }
 

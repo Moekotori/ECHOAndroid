@@ -103,7 +103,7 @@ internal fun NowPlayingLyricsPage(
                 supportingPane = !showTransportDock,
                 heading = { landscape ->
                     Box(Modifier.fillMaxWidth().lyricsPageEntrance(pageReveal, lightweight, travelDp = 10f)) {
-                        LyricsTrackHeading(status.track, paper, onOpenArtist, landscape)
+                        LyricsTrackHeading(status.track, paper, onOpenArtist, landscape, animationsVisible)
                     }
                 },
                 lyrics = {

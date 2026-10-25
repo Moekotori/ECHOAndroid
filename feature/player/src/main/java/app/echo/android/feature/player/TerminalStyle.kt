@@ -94,3 +94,11 @@ internal fun Modifier.phosphor(): Modifier = this
             y += step
         }
     }
+
+/** `[mm:ss.xx]`, as in an LRC file. */
+internal fun lyricTimestamp(ms: Long): String {
+    val centis = (ms.coerceAtLeast(0L) / 10L) % 100L
+    val seconds = (ms.coerceAtLeast(0L) / 1000L) % 60L
+    val minutes = ms.coerceAtLeast(0L) / 60000L
+    return "[%02d:%02d.%02d]".format(java.util.Locale.ROOT, minutes, seconds, centis)
+}

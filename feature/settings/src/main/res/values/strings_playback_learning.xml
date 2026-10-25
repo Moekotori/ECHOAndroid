@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stop_on_task_removed_title">Stop playback when removed from Recents</string>
+    <string name="stop_on_task_removed_detail">Save the queue and position, then stop playback when this app is swiped away. Background playback continues when disabled.</string>
+</resources>

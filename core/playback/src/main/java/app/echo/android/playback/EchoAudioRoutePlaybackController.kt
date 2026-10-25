@@ -107,8 +107,10 @@ class EchoAudioRoutePlaybackController(
     }
 
     private fun pauseForDisconnect() {
+        EchoPlaybackProcessRuntime.onSleepTimerUserCommand(
+            app.echo.android.model.playback.EchoSleepTimerCancellationReason.OutputChanged)
         acting = true
-        pausedByDisconnect = true
+        pausedByDisconnect = EchoManualFadePolicy.shouldRememberResume(player.playWhenReady, EchoPlaybackProcessRuntime.manualPlayIntent)
         player.pause()
         acting = false
     }

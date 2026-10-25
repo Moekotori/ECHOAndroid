@@ -88,6 +88,7 @@ import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
+import app.echo.android.model.library.libraryDisplayTitle
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -308,7 +309,7 @@ internal fun TrackRow(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        displayMetadataOrUnknown(track.title, unknownTrackLabel()),
+                        displayMetadataOrUnknown(track.libraryDisplayTitle(LocalLibraryFileNames.current), unknownTrackLabel()),
                         color = if (dark) Color.White.copy(alpha = 0.98f) else scheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -401,6 +402,7 @@ internal fun TrackContextMenu(
 ) {
     val selection = LocalLibraryBatchSelection.current
     val requestTrackDeletion = LocalLibraryDeleteTrack.current
+    val hiddenTracks = LocalHiddenTracksUi.current
     val openTrackVersions = LocalTrackVersionsAction.current
     val selecting = selection?.active == true
     val selected = selecting && track.id in selection.selected
@@ -442,7 +444,7 @@ internal fun TrackContextMenu(
                 selected = selected,
                 enabled = canSelect,
                 progress = selectionProgress,
-                label = displayMetadataOrUnknown(track.title, unknownTrackLabel()),
+                label = displayMetadataOrUnknown(track.libraryDisplayTitle(LocalLibraryFileNames.current), unknownTrackLabel()),
                 onToggle = { selection?.toggle(track) },
             )
             Box(Modifier.weight(1f)) {
@@ -577,6 +579,9 @@ internal fun TrackContextMenu(
                     },
                     onEdit = { sheetMode = TrackSheetMode.Editor },
                     onVersions = openTrackVersions?.let { open -> { sheetMode = null; open(track) } },
+                    onHide = hiddenTracks?.takeIf { track.source != app.echo.android.model.library.LibrarySource.EchoLink }?.let { ui ->
+                        { sheetMode = null; ui.requestHide(track) }
+                    },
                     onDelete = requestTrackDeletion?.let { request ->
                         {
                             sheetMode = null
@@ -688,7 +693,7 @@ internal fun TrackSheetHeader(track: EchoTrack, artworkSize: Dp = 64.dp, modifie
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
-                displayMetadataOrUnknown(track.title, unknownTrackLabel()),
+                displayMetadataOrUnknown(track.libraryDisplayTitle(LocalLibraryFileNames.current), unknownTrackLabel()),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Medium,
@@ -816,6 +821,7 @@ private fun TrackMetadataEditorFields(
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         NumericMetadataField(
             value = state.trackNumber,
+            isError = !state.trackNumberValid,
             onValueChange = { state.trackNumber = it },
             enabled = !saving,
             label = stringResource(L10nR.string.feature_library_track_000e4d),
@@ -823,6 +829,7 @@ private fun TrackMetadataEditorFields(
         )
         NumericMetadataField(
             value = state.discNumber,
+            isError = !state.discNumberValid,
             onValueChange = { state.discNumber = it },
             enabled = !saving,
             label = stringResource(L10nR.string.feature_library_disc_3128c0),
@@ -830,6 +837,7 @@ private fun TrackMetadataEditorFields(
         )
         NumericMetadataField(
             value = state.year,
+            isError = !state.yearValid,
             onValueChange = { state.year = it },
             enabled = !saving,
             label = stringResource(L10nR.string.feature_library_year_fe373f),
@@ -941,11 +949,13 @@ private fun NumericMetadataField(
     label: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isError: Boolean = false,
 ) {
     TextField(
         value = value,
-        onValueChange = { next -> onValueChange(next.filter(Char::isDigit).take(4)) },
+        onValueChange = onValueChange,
         enabled = enabled,
+        isError = isError,
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -964,7 +974,7 @@ private fun TrackInfoDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                displayMetadataOrUnknown(track.title, unknownTrackLabel()),
+                displayMetadataOrUnknown(track.libraryDisplayTitle(LocalLibraryFileNames.current), unknownTrackLabel()),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

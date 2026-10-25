@@ -14,10 +14,15 @@ internal object LocalAudioContainerMetadata {
         val type = mime.orEmpty().substringBefore(';').trim().lowercase(Locale.ROOT)
         val extension = name.orEmpty().substringBefore('?').substringAfterLast('.').lowercase(Locale.ROOT)
         return LibraryWavTagPolicy.isWavContainer(mime, name) || EchoApeMetadata.isApe(mime, name) ||
-            extension in setOf("wv", "aif", "aiff", "aifc", "wma", "asf", "tta", "tak", "w64") ||
+            isFlac(mime, name) || extension in setOf("wv", "aif", "aiff", "aifc", "wma", "asf", "tta", "tak", "w64") ||
             type in setOf("audio/x-wavpack", "audio/wavpack", "audio/aiff", "audio/x-aiff", "audio/x-ms-wma", "audio/x-ms-asf",
                 "audio/x-tta", "audio/tta", "audio/x-tak", "audio/tak", "audio/x-w64", "audio/w64")
     }
+
+    fun isFlac(mime: String?, name: String?): Boolean =
+        mime.orEmpty().substringBefore(';').trim().lowercase(Locale.ROOT) in
+            setOf("audio/flac", "audio/x-flac", "application/flac", "application/x-flac") ||
+            name.orEmpty().substringBefore('?').substringAfterLast('.').lowercase(Locale.ROOT) in setOf("flac", "fla")
 
     fun read(input: InputStream): LocalAudioContainerInfo? {
         val header = input.tagBytes(12) ?: return null
@@ -26,6 +31,15 @@ internal object LocalAudioContainerMetadata {
             id in listOf("RIFF", "RF64") && header.decodeToString(8, 12) == "WAVE" -> wave(header, input)
             id == "FORM" && header.decodeToString(8, 12) in listOf("AIFF", "AIFC") -> aiff(header, input)
             id == "wvpk" -> wavPack(header + (input.tagBytes(20) ?: return null), input)
+            id == "fLaC" -> {
+                if (header[4].toInt() and 127 != 0 || header[5].toInt() != 0 ||
+                    header[6].toInt() != 0 || header[7].toInt() != 34) return null
+                val stream = header + (input.tagBytes(30) ?: return null)
+                val packed = (18..25).fold(0L) { value, index -> (value shl 8) or (stream[index].toLong() and 255) }
+                val rate = (packed ushr 44).toInt()
+                if (rate !in 1..768000) return null
+                LocalAudioContainerInfo((packed and 0xfffffffffL) * 1000 / rate, rate)
+            }
             id in listOf("TTA1", "tBaK", "riff") || id.startsWith("ID3") ->
                 AdditionalLosslessMetadata.read(SequenceInputStream(ByteArrayInputStream(header), input))
             id == "MAC " -> EchoApeMetadata.read(SequenceInputStream(ByteArrayInputStream(header), input))

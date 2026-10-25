@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_control_pending">正在等待接收端确认最新控制目标…</string>
+</resources>

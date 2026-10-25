@@ -110,8 +110,7 @@ internal fun SettingsUsbContent(
                 else R.string.usb_page_sound_note),
             onClick = onOpenSound,
         )
-        SettingsActionRow(stringResource(R.string.usb_param_reset), stringResource(R.string.usb_param_reset_note),
-            onClick = { onOptionsChange(EchoUsbOutputOptions()) })
+        UsbOutputResetControls(options, onOptionsChange)
     }
     if (showDetails) {
         UsbSettingsSection(stringResource(R.string.usb_page_device_details), secondary = true, contentSpacing = 16.dp) {

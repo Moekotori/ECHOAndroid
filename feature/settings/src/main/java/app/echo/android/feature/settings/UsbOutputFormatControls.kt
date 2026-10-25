@@ -66,6 +66,8 @@ internal fun UsbOutputFormatControls(options: EchoUsbOutputOptions, d: EchoPlayb
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     UsbSettingsSection(stringResource(R.string.usb_param_volume)) {
+        UsbVolumeStatus(options, d, strict, onChange)
+
         var preview by remember(options.volumePercent, strict) { mutableFloatStateOf(
             if (strict) 100f else options.volumePercent.toFloat()) }
         Column(Modifier.settingsSearchAnchor(stringResource(R.string.usb_param_volume)).padding(vertical = 8.dp),

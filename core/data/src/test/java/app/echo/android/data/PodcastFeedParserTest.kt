@@ -5,6 +5,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PodcastFeedParserTest {
+    @Test fun enclosureCompatibilityMatchesPcForSuffixlessAndOggSources() {
+        val result = parse(rss("""<item><guid>one</guid><enclosure url="https://audio.example/stream?id=1"/></item><item><title>Ogg</title><enclosure url="https://audio.example/two" type="application/ogg; codecs=opus"/></item>"""))
+        assertEquals(2, result.episodes.size)
+        assertEquals("Show", result.episodes.first().title)
+        assertEquals("https://audio.example/stream?id=1", result.episodes.first().audioUrl)
+    }
     private val url = "https://podcast.example/feed.xml"
     private fun rss(items: String, extra: String = "") = """<rss version="2.0" xmlns:i="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:c="http://purl.org/rss/1.0/modules/content/"><channel><title>Show</title>$extra$items</channel></rss>"""
     private fun parse(xml: String) = PodcastFeedParser.parse(xml.toByteArray(), url)

@@ -175,6 +175,7 @@ private enum class FontImportTarget {
 fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean = false) {
     val updater: EchoUpdateViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     EchoUpdateHost(updater)
+    app.echo.android.feature.player.SleepTimerFeedbackHost(EchoPlaybackProcessRuntime.sleepTimerCancellations)
     val context = LocalContext.current
     val remoteWriteFailure by viewModel.remoteLibraryTools.failure.collectAsStateWithLifecycle()
     val remoteWriteFailureMessage = stringResource(app.echo.android.feature.library.R.string.remote_playlist_error)
@@ -317,15 +318,24 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     migrationPreview?.let { preview -> app.echo.android.feature.settings.BackupMigrationPreview(preview, migrationBusy,
         onApply = viewModel::applyMigrationBackup, onDismiss = viewModel.libraryMigration::dismiss) }
     var lyricsImportTrackId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lyricsPreviewTrackId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lyricsPreviewUri by rememberSaveable { mutableStateOf<String?>(null) }
     val lyricsImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { lyricsUri ->
             persistReadPermission(lyricsUri)
             lyricsImportTrackId?.let { trackId ->
-                viewModel.importLyricsForTrack(trackId, lyricsUri)
+                lyricsPreviewTrackId = trackId
+                lyricsPreviewUri = lyricsUri.toString()
             }
         }
         lyricsImportTrackId = null
     }
+    lyricsPreviewTrackId?.let { trackId -> lyricsPreviewUri?.let { uri ->
+        app.echo.android.ui.playback.EchoLyricsImportPreviewHost(trackId, uri, viewModel) {
+            lyricsPreviewTrackId = null
+            lyricsPreviewUri = null
+        }
+    } }
     var artworkImportTrackId by rememberSaveable { mutableStateOf<String?>(null) }
     val artworkImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { artworkUri ->
@@ -403,6 +413,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
 
     val echoLinkSession = (context.applicationContext as EchoApplication).echoLinkSession
     val remoteClient = echoLinkSession.client
+    LaunchedEffect(remoteClient) {
+        remoteClient.notices.collect { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show() }
+    }
     val echoLinkPlaybackRouter = echoLinkSession.playbackRouter
     LaunchedEffect(localNetwork.granted) { echoLinkSession.refreshLocalNetworkAccess() }
     val remoteMode by echoLinkPlaybackRouter.remoteMode.collectAsStateWithLifecycle()
@@ -1321,6 +1334,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                         when (EchoPagerPage.entries[page]) {
                             EchoPagerPage.Library -> EchoLibraryPage(
                                 viewModel = viewModel,
+                                onOpenPlayer = { nowPlayingExpanded = true },
+                                bottomInset = bottomDockInset,
                                 pageInteractive = appVisible && !shellOverlayOpen &&
                                     tabPagerState.settledPage == EchoPagerPage.Library.ordinal &&
                                     tabPagerState.targetPage == EchoPagerPage.Library.ordinal &&
@@ -1519,6 +1534,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 shuffleOptions = appSettings.shuffleOptions,
                                 trackTransitions = appSettings.trackTransitions,
                                 usbExclusiveAutoRequestOnStartup = appSettings.usbExclusiveAutoRequestOnStartup,
+                                audioInterruptionPolicy = appSettings.audioInterruptionPolicy,
+                                sleepTimerFinishTrack = appSettings.sleepTimerFinishTrack,
+                                stopOnTaskRemoved = appSettings.stopOnTaskRemoved,
+                                onStopOnTaskRemovedChange = viewModel::setStopOnTaskRemoved,
+                                onAudioInterruptionPolicyChange = viewModel::setAudioInterruptionPolicy,
+                                onSleepTimerFinishTrackChange = viewModel::setSleepTimerFinishTrack,
                                 pauseOnAudioDisconnect = appSettings.pauseOnAudioDisconnect,
                                 resumeOnAudioReconnect = appSettings.resumeOnAudioReconnect,
                                 replayGainEnabled = appSettings.replayGainEnabled,
@@ -1702,6 +1723,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onPcQueueOpened = { openPcQueueNonce = 0 },
                                 librarySyncActions = app.echo.android.ui.connect.rememberLibrarySyncActions(viewModel, remoteClient),
                                 remoteState = remoteStatus.connectionState,
+                                controlPending = remoteStatus.controlPending,
                                 pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
                                 trackTitle = remoteStatus.playback.track?.title.orEmpty(),
                                 trackArtist = remoteStatus.playback.track?.artist.orEmpty(),
@@ -1886,6 +1908,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                     onRenameUserPreset = viewModel::renameEqualizerUserPreset,
                                     onDeleteUserPreset = viewModel::deleteEqualizerUserPreset,
                                     onImportShareCode = viewModel::importEqualizerShareCode,
+                                    onImportBundle = viewModel::importEqualizerBundle,
                                     onSaveOutputAudioProfile = viewModel::saveOutputAudioProfile,
                                     onRemoveOutputAudioProfile = viewModel::removeOutputAudioProfile,
                                     outputAudioProfileBound = appSettings.outputAudioProfileKeys.contains(viewModel.currentOutputProfileKey()),
@@ -2013,6 +2036,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 app.echo.android.feature.connect.EchoLinkRemotePlayerSheet(
                     playback = remoteStatus.playback,
                     connected = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
+                    recovering = remoteStatus.connectionState == EchoRemoteConnectionState.Reconnecting,
+                    pending = remoteStatus.controlPending,
                     remoteError = remoteStatus.error,
                     active = appVisible && screenInteractive,
                     onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
@@ -2254,6 +2279,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     }
                 }
                 ErrorLogScreen(
+                    capture = remember(viewModel) { viewModel.diagnosticCapture.let { recorder ->
+                        app.echo.android.feature.settings.DiagnosticCaptureActions(recorder.enabled, recorder::start, recorder::stop, recorder::clear, recorder::export)
+                    } },
                     records = errorLogRecords,
                     onClear = viewModel::clearErrorLog,
                     onDelete = viewModel::deleteErrorLog,

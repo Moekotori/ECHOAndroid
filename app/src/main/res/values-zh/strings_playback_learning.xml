@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_key_volume_locked">严格 USB 直通保持输出音量，请使用 DAC 自身的音量控制。</string>
+    <string name="usb_key_volume_value">USB 音量：%1$d%%</string>
+</resources>

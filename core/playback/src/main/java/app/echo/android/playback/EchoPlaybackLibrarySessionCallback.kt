@@ -36,6 +36,7 @@ internal class EchoPlaybackLibrarySessionCallback(
     private val nextUpQueue: () -> NextUpQueueController? = { null },
     private val abLoop: () -> EchoAbLoopController? = { null },
     private val onUserCommand: (Int) -> Unit = {},
+    private val onManualToggle: () -> Boolean = { false },
 ) : MediaLibrarySession.Callback {
     @Volatile
     private var currentFavorite = false
@@ -60,6 +61,29 @@ internal class EchoPlaybackLibrarySessionCallback(
             }
             applyButtons(player)
         }
+    }
+
+    override fun onMediaButtonEvent(session: MediaSession, controllerInfo: MediaSession.ControllerInfo, intent: Intent): Boolean {
+        val event = if (android.os.Build.VERSION.SDK_INT >= 33)
+            intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, android.view.KeyEvent::class.java)
+        else @Suppress("DEPRECATION") (intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT) as? android.view.KeyEvent)
+        if (event?.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
+            event.keyCode == android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
+            onUserCommand(Player.COMMAND_PLAY_PAUSE)
+            if (onManualToggle()) return true
+        }
+        if (event?.action == android.view.KeyEvent.ACTION_DOWN) {
+            val command = when (event.keyCode) {
+                android.view.KeyEvent.KEYCODE_MEDIA_PLAY, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE,
+                android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> Player.COMMAND_PLAY_PAUSE
+                android.view.KeyEvent.KEYCODE_MEDIA_STOP -> Player.COMMAND_STOP
+                android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> Player.COMMAND_SEEK_TO_NEXT
+                android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS -> Player.COMMAND_SEEK_TO_PREVIOUS
+                else -> null
+            }
+            command?.let(onUserCommand)
+        }
+        return false
     }
 
     @Deprecated("Media3 compatibility callback")
@@ -274,6 +298,7 @@ internal class EchoPlaybackLibrarySessionCallback(
                 if (queue == null || items.isEmpty() || items.any { it.localConfiguration?.uri == null }) {
                     Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
                 } else {
+                    onUserCommand(Player.COMMAND_SET_MEDIA_ITEM)
                     queue.playAlbum(items, args.getInt("startIndex"), args.getBoolean("shuffle"))
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
@@ -284,6 +309,13 @@ internal class EchoPlaybackLibrarySessionCallback(
             }
             EchoPlaybackSessionCommands.EDIT_QUEUE -> {
                 val queue = nextUpQueue()
+                if (args.getString("action") == EchoPlaybackSessionCommands.EDIT_REMOVE_HIDDEN_TRACKS) {
+                    val ids = args.getStringArrayList("trackIds").orEmpty()
+                    if (controller.uid != android.os.Process.myUid() || queue == null || ids.isEmpty() || ids.size > 200 || ids.any { it.isBlank() || it.length > 8192 })
+                        return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+                    queue.removeHiddenTracks(ids.toSet())
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
                 if (args.getString("action") == EchoPlaybackSessionCommands.EDIT_REMOVE_DELETED_FILES) {
                     if (controller.uid != android.os.Process.myUid()) {
                         return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
@@ -295,6 +327,7 @@ internal class EchoPlaybackLibrarySessionCallback(
                     queue.removeDeletedFiles(uris.toSet())
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
+                if (args.getString("action") == "play") onUserCommand(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
                 if (args.getString("action") == "restore_order") queue?.restoreOrder(args.getIntArray("order")?.toList().orEmpty())
                 else queue?.edit(args.getString("action").orEmpty(), args.getString("entry").orEmpty(), args.getString("target"))
                 Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))

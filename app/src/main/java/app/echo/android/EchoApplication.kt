@@ -67,6 +67,9 @@ class EchoApplication : Application(), ImageLoaderFactory {
         super.attachBaseContext(base.wrapEchoAppLocale(base.readEchoStartupThemeSnapshot().appLanguage))
     }
 
+    internal val usbVolumeKeys by lazy { UsbVolumeKeys(this) }
+    val diagnosticCapture by lazy { app.echo.android.data.EchoDiagnosticRecorder(this, EchoPlaybackProcessRuntime.scope, BuildConfig.VERSION_NAME) }
+
     override fun onCreate() {
         super.onCreate()
         app.echo.android.podcasts.startPodcastProgressRecorder(EchoPlaybackProcessRuntime.scope, podcasts.store)
@@ -84,7 +87,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
         }
         EchoPlaybackProcessRuntime.setStreamResolver { mediaId, uri ->
             val id = app.echo.android.model.playback.EchoLinkPlaybackUri.trackId(mediaId, uri)
-            if (id == null) uri else echoLinkSession.client.resolvePhoneStreamUrl(id) ?: uri
+            if (id == null) uri else echoLinkSession.client.resolvePhoneStreamUrl(id, previousStreamUrl = uri)
         }
         echoLinkSession
         EchoArtworkUrlRewriteRegistry.replace { url ->
@@ -101,7 +104,11 @@ class EchoApplication : Application(), ImageLoaderFactory {
         )
         val settingsStore = EchoSettingsStore(this)
         bindPlaybackDspSettings(settingsStore, this)
-        EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore))
+        EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore) { ids ->
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                ids.distinct().chunked(256).flatMap { EchoLibraryDatabase.create(this@EchoApplication).hiddenTrackDao().hiddenIds(it) }.toSet()
+            }
+        })
         lyricsSession.start(settingsStore)
         scrobbleSession.start(settingsStore.appSettings)
         listeningHistoryRecorder.start(EchoPlaybackProcessRuntime.surface)
@@ -157,10 +164,10 @@ class EchoApplication : Application(), ImageLoaderFactory {
                 }
         }
         EchoPlaybackProcessRuntime.scope.launch {
-            settingsStore.appSettings.map { it.audioInterruptionPolicy to it.sleepTimerFinishTrack }
-                .distinctUntilChanged().collect { (policy, finishTrack) ->
+            settingsStore.appSettings.map { Triple(it.audioInterruptionPolicy, it.sleepTimerFinishTrack, it.stopOnTaskRemoved) }
+                .distinctUntilChanged().collect { (policy, finishTrack, stopOnTaskRemoved) ->
                     app.echo.android.playback.EchoPlaybackRuntimeOptionsStore.setListeningOptions(
-                        app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(policy), finishTrack)
+                        app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(policy), finishTrack, stopOnTaskRemoved)
                 }
         }
         EchoSubsonicListen.startFromSurface()

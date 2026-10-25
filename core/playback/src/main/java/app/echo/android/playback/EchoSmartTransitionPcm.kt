@@ -18,7 +18,7 @@ internal object EchoSmartTransitionPcm {
         AudioFormat.ENCODING_PCM_FLOAT -> 4
         AudioFormat.ENCODING_PCM_32BIT -> 4
         AudioFormat.ENCODING_PCM_24BIT_PACKED -> 3
-        else -> 2
+        else -> throw IllegalArgumentException("Unsupported PCM encoding: $encoding")
     }
 
     fun readSample(buffer: ByteBuffer, encoding: Int): Float = when (encoding) {
@@ -32,7 +32,8 @@ internal object EchoSmartTransitionPcm {
             val packed = b0 or (b1 shl 8) or (b2 shl 16)
             ((packed shl 8) shr 8) / 8_388_608f
         }
-        else -> buffer.short / 32_768f
+        AudioFormat.ENCODING_PCM_16BIT -> buffer.short / 32_768f
+        else -> throw IllegalArgumentException("Unsupported PCM encoding: $encoding")
     }
 
     fun resampleInterleaved(
@@ -60,16 +61,21 @@ internal object EchoSmartTransitionPcm {
             val next = (index + 1).coerceAtMost(inFrames - 1)
             val fraction = (src - index).toFloat().coerceIn(0f, 1f)
             for (channel in 0 until outCh) {
-                val a = channelSample(input, index, channel, inCh)
-                val b = channelSample(input, next, channel, inCh)
+                val a = channelSample(input, index, channel, inCh, outCh)
+                val b = channelSample(input, next, channel, inCh, outCh)
                 output[outFrame * outCh + channel] = a + (b - a) * fraction
             }
         }
         return output
     }
 
-    private fun channelSample(input: FloatArray, frame: Int, channel: Int, inputChannels: Int): Float {
+    private fun channelSample(input: FloatArray, frame: Int, channel: Int, inputChannels: Int, outputChannels: Int): Float {
         if (inputChannels == 1) return input[frame]
+        if (outputChannels == 1) {
+            var sum = 0f
+            for (source in 0 until inputChannels) sum += input[frame * inputChannels + source]
+            return sum / inputChannels
+        }
         val source = channel.coerceAtMost(inputChannels - 1)
         return input[frame * inputChannels + source]
     }

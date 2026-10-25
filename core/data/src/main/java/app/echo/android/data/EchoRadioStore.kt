@@ -36,6 +36,17 @@ class EchoRadioStore(context: Context) {
     suspend fun delete(id: String): List<EchoRadioStation> = update { stations -> stations.filterNot { it.id == id } }
     suspend fun clear(): List<EchoRadioStation> = update { emptyList() }
 
+    /** Apply an explicit import's bounded metadata probe to the current record, never a stale UI copy. */
+    suspend fun enrich(id: String, expectedUrl: String, facts: app.echo.android.model.radio.RadioProbeResult): List<EchoRadioStation> = update { stations ->
+        stations.map { current ->
+            if (current.id != id || current.url != expectedUrl) current else current.copy(
+                name = if (current.name == java.net.URI(current.url).host) facts.name ?: current.name else current.name,
+                description = current.description.ifBlank { facts.description.orEmpty() },
+                genre = current.genre.ifBlank { facts.genre.orEmpty() }, homepage = current.homepage ?: facts.homepage,
+                codec = current.codec ?: facts.codec, bitrateKbps = current.bitrateKbps ?: facts.bitrateKbps)
+        }
+    }
+
     suspend fun favorite(id: String): List<EchoRadioStation> = update { stations ->
         stations.map { if (it.id == id) it.copy(favorite = !it.favorite) else it }
     }
@@ -62,8 +73,9 @@ class EchoRadioStore(context: Context) {
     private suspend fun update(transform: (List<EchoRadioStation>) -> List<EchoRadioStation>): List<EchoRadioStation> =
         withContext(Dispatchers.IO) {
             mutex.withLock {
-                val next = transform(readInitialized())
-                write(next)
+                val previous = readInitialized()
+                val next = transform(previous)
+                if (next != previous) write(next)
                 next
             }
         }

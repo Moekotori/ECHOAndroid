@@ -10,10 +10,16 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">像素掌机</string>
     <string name="player_appearance_type_poster">字排海报</string>
-    <string name="player_appearance_holo_prism">极光棱镜</string>
-    <string name="player_appearance_starlight_orbit">星轨</string>
-    <string name="player_appearance_sakura_letter">樱花信笺</string>
-    <string name="player_appearance_neon_rain">霓虹夜行</string>
-    <string name="player_appearance_soda_pop">海盐汽水</string>
-    <string name="player_appearance_amber_film">琥珀胶片</string>
+    <string name="player_appearance_terminal">终端</string>
+    <string name="player_appearance_scrapbook">手帐拼贴</string>
+    <string name="player_appearance_metro_line">地铁线路</string>
+    <string name="player_appearance_chat_thread">聊天记录</string>
+    <string name="player_style_metro_origin">始发站</string>
+    <string name="player_style_metro_terminus">终点站</string>
+    <string name="player_style_metro_elapsed">已行驶 %1$s</string>
+    <string name="player_appearance_halftone">网点封面</string>
+    <string name="player_appearance_pixel_mosaic">像素马赛克</string>
+    <string name="player_appearance_contours">等高线</string>
+    <string name="player_appearance_dither">抖动点阵</string>
+    <string name="player_appearance_glyph_field">字符画</string>
 </resources>

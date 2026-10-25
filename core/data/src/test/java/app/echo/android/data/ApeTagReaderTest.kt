@@ -6,6 +6,22 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ApeTagReaderTest {
+    @Test fun scanDecoratorPreservesApeTagsAndEmbeddedCue() {
+        val cue = "FILE \"old.wav\" WAVE\nTRACK 01 AUDIO\nTITLE \"First\"\nINDEX 01 00:00:00\nTRACK 02 AUDIO\nTITLE \"Second\"\nINDEX 01 01:00:00"
+        val items = item("Title", "Album image".toByteArray()) + item("CUESHEET", cue.toByteArray())
+        val bytes = "wvpk".toByteArray() + ByteArray(72) + items + footer(items.size + 32, 2)
+        assertEquals("Album image", readScanMetadata(randomInput(bytes), ::readLocalAudioTags)?.title)
+        val sheet = readScanMetadata(randomInput(bytes), ApeTagReader::readCueChecked)!!
+        assertEquals(listOf("First", "Second"), sheet.tracks.map { it.title })
+        assertTrue(sheet.tracks.all { it.fileName == null })
+        val source = app.echo.android.model.library.EchoTrack("saf:wv", "content://file/wv", "Image", "Artist", durationMs = 120_000).toLibraryTrackEntity()
+        val expansion = source.resolveLocalCue(null, "album.wv") { sheet } as CueExpansion.Success
+        assertEquals(listOf(60_000L, 60_000L), expansion.tracks.map { it.durationMs })
+        assertNull(ApeTagReader.readCueChecked(randomInput("MAC ".toByteArray() + ByteArray(200))))
+        val broken = items + footer(Int.MAX_VALUE, 2)
+        assertThrows(java.io.IOException::class.java) { ApeTagReader.readCueChecked(randomInput(broken)) }
+    }
+
     @Test fun apeTagsSurviveAnId3v1TrailerAndIncludeArtwork() {
         val image = byteArrayOf(1, 2, 3, 4)
         val items = item("Title", "歌曲".toByteArray()) + item("Artist", "歌手".toByteArray()) +

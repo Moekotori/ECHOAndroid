@@ -25,6 +25,12 @@ internal fun SettingsPlaybackContent(
     shuffleOptions: app.echo.android.model.playback.EchoShuffleOptions,
     onShuffleOptionsChange: (app.echo.android.model.playback.EchoShuffleOptions) -> Unit,
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
+    audioInterruptionPolicy: String = "duck",
+    sleepTimerFinishTrack: Boolean = true,
+    stopOnTaskRemoved: Boolean = false,
+    onStopOnTaskRemovedChange: (Boolean) -> Unit = {},
+    onAudioInterruptionPolicyChange: (String) -> Unit = {},
+    onSleepTimerFinishTrackChange: (Boolean) -> Unit = {},
     pauseOnAudioDisconnect: Boolean,
     resumeOnAudioReconnect: Boolean,
     replayGainEnabled: Boolean,
@@ -45,6 +51,20 @@ internal fun SettingsPlaybackContent(
 ) {
     SettingsShuffleModeRow(shuffleOptions, onShuffleOptionsChange)
     SettingsSectionCard(title = stringResource(R.string.settings_section_listening)) {
+        SettingsSwitchRow(title = stringResource(R.string.manual_fade_title),
+        detail = stringResource(R.string.manual_fade_detail), checked = trackTransitions.playPauseFadeEnabled,
+        onCheckedChange = { onTrackTransitionsChange(trackTransitions.copy(playPauseFadeEnabled = it)) })
+        SettingsChoiceGroupRow(title = stringResource(R.string.listening_interruption),
+            detail = stringResource(R.string.listening_interruption_detail),
+            options = listOf(SettingsChoiceOption("duck", stringResource(R.string.listening_duck)),
+                SettingsChoiceOption("pause", stringResource(R.string.listening_pause))),
+            selectedValue = audioInterruptionPolicy, onOptionSelected = onAudioInterruptionPolicyChange)
+        SettingsSwitchRow(title = stringResource(R.string.stop_on_task_removed_title),
+            detail = stringResource(R.string.stop_on_task_removed_detail),
+            checked = stopOnTaskRemoved, onCheckedChange = onStopOnTaskRemovedChange)
+        SettingsSwitchRow(title = stringResource(R.string.listening_finish_track),
+            detail = stringResource(R.string.listening_finish_track_detail),
+            checked = sleepTimerFinishTrack, onCheckedChange = onSleepTimerFinishTrackChange)
         SettingsSwitchRow(
             title = stringResource(R.string.settings_pause_on_disconnect),
             detail = stringResource(R.string.settings_pause_on_disconnect_detail),

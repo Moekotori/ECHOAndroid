@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stop_on_task_removed_title">从最近任务移除时停止播放</string>
+    <string name="stop_on_task_removed_detail">划掉本应用时保存队列和进度并停止播放。关闭后继续后台播放。</string>
+</resources>

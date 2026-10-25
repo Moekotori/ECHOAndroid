@@ -15,7 +15,7 @@ import app.echo.android.model.playback.PlaybackControlsState
 import kotlinx.coroutines.*
 
 @Composable
-internal fun EchoRadioHost(viewModel: EchoAndroidViewModel, currentId: String?, streamTitle: String?, controls: PlaybackControlsState, onBack: () -> Unit, openUrl: (String) -> Unit) {
+internal fun EchoRadioHost(viewModel: EchoAndroidViewModel, currentId: String?, streamTitle: String?, controls: PlaybackControlsState, onBack: () -> Unit, openUrl: (String) -> Unit, onOpenPlayer: () -> Unit, interactive: Boolean) {
     val context = LocalContext.current
     val controller = viewModel.radioController
     val saved by controller.stations.collectAsStateWithLifecycle()
@@ -29,9 +29,9 @@ internal fun EchoRadioHost(viewModel: EchoAndroidViewModel, currentId: String?, 
     val scope = rememberCoroutineScope()
     val session = (context.applicationContext as EchoApplication).radioSession
     val revision by session.revision.collectAsStateWithLifecycle()
-    LaunchedEffect(revision) { controller.reload() }
-    LifecycleStartEffect(controller) {
-        controller.foreground(true)
+    LaunchedEffect(revision, interactive) { if (interactive) controller.reload() }
+    LifecycleStartEffect(controller, interactive) {
+        controller.foreground(interactive)
         onStopOrDispose { controller.foreground(false) }
     }
     val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -83,8 +83,13 @@ internal fun EchoRadioHost(viewModel: EchoAndroidViewModel, currentId: String?, 
         importFile = { importFile.launch(arrayOf("application/json", "audio/x-mpegurl", "audio/x-scpls", "text/*", "*/*")) },
         exportFile = { exportFile.launch("echo-radio-stations.json") },
         exportPlaylist = { exportPlaylist.launch("echo-radio-stations.m3u") },
-        retrySaved = { fileFailed = false; if (radioFailed) viewModel.broadcastPlayback.retryRadio() else controller.reload() }, openUrl = openUrl)
+        playClipboard = viewModel.broadcastPlayback::playClipboard,
+        retrySaved = { fileFailed = false; if (radioFailed) viewModel.broadcastPlayback.retryRadio() else controller.reload() }, openUrl = openUrl,
+        openPlayer = onOpenPlayer)
+    CompositionLocalProvider(app.echo.android.feature.radio.LocalOfficialRadioArtwork provides
+        "android.resource://app.echo.android/${app.echo.android.R.mipmap.ic_launcher}") {
     RadioScreen(saved, visible, recent, discovery, failed || fileFailed || radioFailed,
         radioPending || controls.state in listOf(EchoPlaybackState.Loading, EchoPlaybackState.Buffering), actions, currentId,
-        controls.isPlaying, onBack, streamTitle = streamTitle, videoSurface = { url -> RadioVideoStage(url) })
+        controls.isPlaying, onBack, streamTitle = streamTitle, videoSurface = { url -> if (interactive) RadioVideoStage(url) }, interactive = interactive)
+    }
 }

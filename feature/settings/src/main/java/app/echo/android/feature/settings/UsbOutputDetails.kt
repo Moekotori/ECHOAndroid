@@ -93,6 +93,7 @@ internal fun UsbOutputDetails(d: EchoPlaybackDiagnostics, output: UsbOutputPrese
         appendLine(state)
         rows.forEach { (label, value) -> appendLine("$label: $value") }
         transportRows.forEach { (label, value) -> appendLine("$label: $value") }
+        d.usbVolume?.let { appendLine("USB volume: $it") }
         d.usbCompatibilityRules.forEach { appendLine("${it.id}: ${it.reason} ${it.verification}") }
         appendLine(evidenceNote)
         append(ratesNote)

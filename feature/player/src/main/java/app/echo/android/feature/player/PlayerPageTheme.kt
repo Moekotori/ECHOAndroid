@@ -17,37 +17,57 @@ internal val EchoPlayerPageStyle.displayFont: FontFamily?
         EchoPlayerPageStyle.PixelHandheld -> ExpressivePlayerStyle.PixelDisplay
         EchoPlayerPageStyle.TypePoster -> ExpressivePlayerStyle.PosterDisplay
         EchoPlayerPageStyle.AfterglowMist -> FontFamily.Serif
-        else -> GachaThemes.of(this)?.display
+        EchoPlayerPageStyle.Terminal -> TerminalStyle.Mono
+        EchoPlayerPageStyle.Scrapbook -> ScrapbookStyle.Hand
+        else -> null
     }
 
 internal val EchoPlayerPageStyle.bodyFont: FontFamily?
     get() = when (this) {
         EchoPlayerPageStyle.RecordSleeve -> RecordSleeveStyle.BodyFont
         EchoPlayerPageStyle.PixelHandheld -> ExpressivePlayerStyle.PixelBody
-        else -> GachaThemes.of(this)?.body
+        EchoPlayerPageStyle.Terminal -> TerminalStyle.Mono
+        else -> null
     }
 
 internal fun playerPageTokens(style: EchoPlayerPageStyle): EchoThemeTokens {
     val base = echoThemeTokens(EchoColorTheme.Echo, !style.isLight)
     if (style == EchoPlayerPageStyle.Classic) return base
-    val gacha = GachaThemes.of(style)
     val afterglow = AfterglowPalette.forStyle(style.lyricsPreset, 0)
     val background = when (style) {
         EchoPlayerPageStyle.RecordSleeve -> RecordSleeveStyle.Paper
         EchoPlayerPageStyle.PixelHandheld -> ExpressivePlayerStyle.PixelPaper
         EchoPlayerPageStyle.TypePoster -> ExpressivePlayerStyle.PosterPaper
-        else -> gacha?.background ?: Color(afterglow.background)
+        EchoPlayerPageStyle.Terminal -> TerminalStyle.Screen
+        EchoPlayerPageStyle.Scrapbook -> ScrapbookStyle.Paper
+        EchoPlayerPageStyle.MetroLine -> MetroStyle.Paper
+        EchoPlayerPageStyle.ChatThread -> ChatStyle.Paper
+        EchoPlayerPageStyle.Halftone, EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
+        EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField -> FullBleedStyle.Screen
+        else -> Color(afterglow.background)
     }
     val ink = when (style) {
         EchoPlayerPageStyle.RecordSleeve -> RecordSleeveStyle.Ink
         EchoPlayerPageStyle.PixelHandheld -> ExpressivePlayerStyle.PixelInk
         EchoPlayerPageStyle.TypePoster -> ExpressivePlayerStyle.PosterInk
-        else -> gacha?.ink ?: Color(afterglow.foreground)
+        EchoPlayerPageStyle.Terminal -> TerminalStyle.Green
+        EchoPlayerPageStyle.Scrapbook -> ScrapbookStyle.Ink
+        EchoPlayerPageStyle.MetroLine -> MetroStyle.Ink
+        EchoPlayerPageStyle.ChatThread -> ChatStyle.Ink
+        EchoPlayerPageStyle.Halftone, EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
+        EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField -> Color.White
+        else -> Color(afterglow.foreground)
     }
     val accent = when (style) {
         EchoPlayerPageStyle.RecordSleeve -> RecordSleeveStyle.Wine
         EchoPlayerPageStyle.PixelHandheld, EchoPlayerPageStyle.TypePoster -> ink
-        else -> gacha?.accent ?: Color(afterglow.accent)
+        EchoPlayerPageStyle.Terminal -> TerminalStyle.Green
+        EchoPlayerPageStyle.Scrapbook -> ScrapbookStyle.Navy
+        EchoPlayerPageStyle.MetroLine -> MetroStyle.Line
+        EchoPlayerPageStyle.ChatThread -> ChatStyle.Accent
+        EchoPlayerPageStyle.Halftone, EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
+        EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField -> Color.White
+        else -> Color(afterglow.accent)
     }
     val muted = ink.copy(alpha = 0.62f)
     return base.copy(accent = accent, accentDeep = accent, accentText = accent,

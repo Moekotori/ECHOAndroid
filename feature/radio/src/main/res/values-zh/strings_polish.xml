@@ -1,0 +1,23 @@
+<resources>
+    <string name="radio_already_saved">已保存</string>
+    <string name="radio_browse_all">浏览全部</string>
+    <string name="radio_empty_title">寻找喜欢的声音</string>
+    <string name="radio_add_hint">发现电台、输入直播地址，或直接收听剪贴板中的内容。</string>
+    <string name="radio_enter_url">输入直播地址</string>
+    <string name="radio_play_clipboard">播放剪贴板内容</string>
+    <string name="radio_choose_country">国家 / 地区</string>
+    <string name="radio_any_country">所有国家 / 地区</string>
+    <string name="radio_choose_language">语言</string>
+    <string name="radio_any_language">所有语言</string>
+    <string name="radio_manual_filters">手动输入国家与语言</string>
+    <string name="radio_more_fields">封面、简介与备用线路</string>
+    <string name="radio_station_details">电台详情</string>
+    <string name="radio_open_player">打开播放页</string>
+    <string name="radio_no_results">没有找到匹配电台</string>
+    <string name="radio_no_results_hint">换个名称、国家、语言或分类再试试。</string>
+    <string name="radio_reset_search">重置筛选</string>
+    <string name="radio_expand_description">展开简介</string>
+    <string name="radio_collapse_description">收起简介</string>
+    <string name="radio_play_named">播放 %1$s</string>
+    <string name="radio_stop_named">停止 %1$s</string>
+</resources>

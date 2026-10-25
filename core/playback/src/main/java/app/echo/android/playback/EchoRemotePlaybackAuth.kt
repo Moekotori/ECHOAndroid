@@ -209,7 +209,9 @@ object EchoRemotePlaybackAuthRegistry {
             authorizationHeaders = authorizationHeaders,
             sensitiveQueryValues = sensitiveQueryValues,
         )
-        if (!isSubsonicStreamUrl(url)) return namespace
+        // Explicit media keys can be identical on unrelated servers.
+        val sourceNamespace = sha256("$namespace:${remotePlaybackOrigin(url)}")
+        if (!isSubsonicStreamUrl(url)) return sourceNamespace
         // A prefetch supplies an explicit media key, so the resource URL alone cannot
         // separate original audio from the MP3 fallback. Version only these streams
         // to leave cached responses from the previous server-selected format behind.
@@ -217,7 +219,7 @@ object EchoRemotePlaybackAuthRegistry {
             .filter { it.first.lowercase() in subsonicStreamVariantQueryNames }
             .map { it.first.lowercase() to it.second.lowercase() }
             .sortedWith(compareBy<Pair<String, String>> { it.first }.thenBy { it.second })
-        return sha256("$namespace:subsonic-stream-v1:$params")
+        return sha256("$sourceNamespace:subsonic-stream-v1:$params")
     }
 
     private fun matchingWebDavCredential(uri: Uri): EchoWebDavPlaybackCredential? =
@@ -267,22 +269,27 @@ fun echoRemoteAuthDataSourceFactory(context: Context): ResolvingDataSource.Facto
 @UnstableApi
 private fun echoRemoteAuthResolver(): ResolvingDataSource.Resolver =
     ResolvingDataSource.Resolver { dataSpec ->
-        // DataSource.open runs on the Media3 loader thread, never the UI thread.
-        val raw = dataSpec.uri.toString()
-        val trackId = EchoLinkPlaybackUri.trackIdFromPersistUri(raw)
-        val resolved = if (trackId != null) {
-            val uri = kotlinx.coroutines.runBlocking {
-                withTimeoutOrNull(EchoLinkStreamRefreshPolicy.ResolveTimeoutMs) {
-                    EchoPlaybackProcessRuntime.resolvePlayUri(EchoLinkPlaybackUri.mediaId(trackId), raw)
-                } ?: throw IOException("PC ECHO stream timed out")
-            }
-            if (EchoLinkPlaybackUri.trackIdFromPersistUri(uri) != null) {
-                throw IOException("PC ECHO stream is unavailable")
-            }
-            dataSpec.withUri(Uri.parse(uri))
-        } else dataSpec
-        EchoRemotePlaybackAuthRegistry.resolve(resolved)
+        EchoRemotePlaybackAuthRegistry.resolve(resolveEchoLinkDataSpec(dataSpec))
     }
+
+@UnstableApi
+private fun resolveEchoLinkDataSpec(dataSpec: DataSpec): DataSpec {
+    // DataSource.open runs on the Media3 loader thread, never the UI thread.
+    val raw = dataSpec.uri.toString()
+    val trackId = EchoLinkPlaybackUri.trackIdFromPersistUri(raw) ?: return dataSpec
+    val uri = kotlinx.coroutines.runBlocking {
+        withTimeoutOrNull(EchoLinkStreamRefreshPolicy.ResolveTimeoutMs) {
+            EchoPlaybackProcessRuntime.resolvePlayUri(EchoLinkPlaybackUri.mediaId(trackId), raw)
+        } ?: throw IOException("PC ECHO stream timed out")
+    }
+    if (EchoLinkPlaybackUri.trackIdFromPersistUri(uri) != null) {
+        throw IOException("PC ECHO stream is unavailable")
+    }
+    return dataSpec.buildUpon()
+        .setUri(Uri.parse(uri))
+        .setKey(dataSpec.key ?: EchoLinkPlaybackUri.mediaId(trackId))
+        .build()
+}
 
 @UnstableApi
 private class EchoPlaybackDataSourceFactory(
@@ -297,9 +304,14 @@ private class EchoPlaybackDataSourceFactory(
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
             .createDataSource()
 
-        return EchoSchemeRoutingDataSource(
-            remoteDataSource = remoteCacheDataSource,
-            localDataSource = resolvingFactory.createDataSource(),
+        // Resolve stable Echo Link URIs before cache lookup so a cached song from
+        // another PC cannot bypass the current connection or USB cache policy.
+        return ResolvingDataSource(
+            EchoSchemeRoutingDataSource(
+                remoteDataSource = remoteCacheDataSource,
+                localDataSource = resolvingFactory.createDataSource(),
+            ),
+            ResolvingDataSource.Resolver(::resolveEchoLinkDataSpec),
         )
     }
 }
@@ -581,6 +593,18 @@ private fun userInfoFromUrl(url: String): String? =
 
 private fun hostFromUrl(url: String): String? =
     runCatching { URI(url).host }.getOrNull()
+
+private fun remotePlaybackOrigin(url: String): String =
+    runCatching {
+        val uri = URI(url)
+        val scheme = uri.scheme?.lowercase().orEmpty()
+        val port = if (uri.port >= 0) uri.port else when (scheme) {
+            "http" -> 80
+            "https" -> 443
+            else -> -1
+        }
+        "$scheme://${uri.host?.lowercase().orEmpty()}:$port"
+    }.getOrDefault(url)
 
 private fun String.urlEncode(): String =
     URLEncoder.encode(this, StandardCharsets.UTF_8.name())

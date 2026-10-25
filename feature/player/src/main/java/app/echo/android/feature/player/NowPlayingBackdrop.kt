@@ -25,6 +25,7 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoTheme
 import app.echo.android.model.settings.EchoLyricsBackdrop
+import app.echo.android.model.settings.EchoPlayerPageStyle
 import kotlinx.coroutines.flow.collectLatest
 
 /**
@@ -42,6 +43,17 @@ internal fun NowPlayingBackdrop(
     link: BackdropLink? = null,
 ) {
     val dark = LocalEchoDarkTheme.current
+    // The full-bleed page styles pick their own field and dim it on the lyrics page.
+    val pageStyle = LocalPlayerPageStyle.current
+    val dense = pageStyle == EchoPlayerPageStyle.Halftone
+    val lyricsDim = when (pageStyle) {
+        EchoPlayerPageStyle.Halftone -> 0.62f
+        EchoPlayerPageStyle.PixelMosaic -> 0.68f
+        EchoPlayerPageStyle.Contours -> 0.5f
+        EchoPlayerPageStyle.Dither -> 0.7f
+        EchoPlayerPageStyle.GlyphField -> 0.62f
+        else -> 0f
+    }
     val mode = LocalEchoEffectivePerformanceMode.current
     val theme = echoTheme()
     val motionEnabled = animationsVisible && !mode.isLightweight
@@ -81,10 +93,14 @@ internal fun NowPlayingBackdrop(
     val washedGrid = remember(colorGrid, dark, theme) {
         colorGrid?.washedToward(if (dark) theme.night else theme.bgTop, if (dark) 0.06f else 0.34f)
     }
-    val target: BackdropField = remember(wash, style, washedGrid) {
+    val target: BackdropField = remember(wash, style, washedGrid, dense, pageStyle) {
         when {
+            pageStyle == EchoPlayerPageStyle.PixelMosaic && washedGrid != null -> PixelMosaicBackdropField(wash.deep, washedGrid)
+            pageStyle == EchoPlayerPageStyle.Contours && washedGrid != null -> ContourBackdropField(wash.deep, wash.vibrant, wash.soft, washedGrid)
+            pageStyle == EchoPlayerPageStyle.Dither && washedGrid != null -> DitherBackdropField(wash.deep, wash.soft, washedGrid)
+            pageStyle == EchoPlayerPageStyle.GlyphField && washedGrid != null -> GlyphBackdropField(wash.deep, washedGrid)
             style == EchoLyricsBackdrop.Mesh && washedGrid != null -> MeshBackdropField(wash.deep, washedGrid)
-            style == EchoLyricsBackdrop.Halftone && washedGrid != null -> HalftoneBackdropField(wash.deep, washedGrid)
+            style == EchoLyricsBackdrop.Halftone && washedGrid != null -> HalftoneBackdropField(wash.deep, washedGrid, dense)
             style == EchoLyricsBackdrop.Ridge && washedGrid != null -> RidgeBackdropField(wash.deep, washedGrid, dark)
             style == EchoLyricsBackdrop.Vinyl && washedGrid != null -> VinylBackdropField(wash.deep, washedGrid, dark)
             style == EchoLyricsBackdrop.Iso && washedGrid != null -> IsoBackdropField(wash.deep, washedGrid, dark)
@@ -100,6 +116,7 @@ internal fun NowPlayingBackdrop(
         }
     }
     Box(modifier.drawWithCache {
+        val titleVeil = Brush.verticalGradient(0.38f to Color.Transparent, 0.8f to Color.Black.copy(alpha = 0.78f))
         val veil = Brush.verticalGradient(
             0f to theme.night.copy(alpha = if (dark) 0.12f else 0.02f),
             0.46f to Color.Transparent,
@@ -118,6 +135,8 @@ internal fun NowPlayingBackdrop(
             }
             drawRect(veil)
             drawRect(theme.night.copy(alpha = (if (dark) 0.06f else 0.04f) * reveal().coerceIn(0f, 1f)))
+            if (lyricsDim > 0f) drawRect(Color.Black.copy(alpha = lyricsDim * reveal().coerceIn(0f, 1f)))
+            if (pageStyle.isFullBleed && pageStyle != EchoPlayerPageStyle.Halftone) drawRect(titleVeil, alpha = 1f - reveal().coerceIn(0f, 1f))
         }
     }.fillMaxSize())
 }
@@ -131,3 +150,5 @@ private data class FluidBackdropLayers(
     val previous: BackdropField? = null,
     val changedAtMs: Long = 0L,
 )
+
+private val EchoPlayerPageStyle.isFullBleed: Boolean get() = id.isFullBleedStyle()

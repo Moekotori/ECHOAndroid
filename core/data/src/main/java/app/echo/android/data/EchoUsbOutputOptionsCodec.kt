@@ -11,6 +11,7 @@ internal object EchoUsbOutputOptionsCodec {
             put("bitDepth", value.bitDepth)
             put("channelCount", value.channelCount)
             put("volumePercent", value.volumePercent)
+            put("volumeMode", value.volumeMode.id)
             put("bufferMode", value.bufferMode.id)
             put("keepAliveOnPause", value.keepAliveOnPause)
             put("dopDeviceLimits", JSONObject(value.dopDeviceLimits))
@@ -24,6 +25,7 @@ internal object EchoUsbOutputOptionsCodec {
             EchoUsbOutputOptions(
                 sampleRateHz = value.optInt("sampleRateHz", 0), bitDepth = value.optInt("bitDepth", 0),
                 channelCount = value.optInt("channelCount", 0), volumePercent = value.optInt("volumePercent", 100),
+                volumeMode = app.echo.android.model.playback.EchoUsbVolumeMode.fromId(value.optString("volumeMode")),
                 bufferMode = EchoUsbBufferMode.fromId(value.optString("bufferMode")),
                 keepAliveOnPause = value.optBoolean("keepAliveOnPause", true),
                 dopDeviceLimits = value.optJSONObject("dopDeviceLimits")?.let { limits ->

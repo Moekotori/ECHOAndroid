@@ -5,6 +5,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class OnlineLyricsCachePolicyTest {
+    @Test fun replacementDecodedDownloadsAreNotAutomaticallyReused() {
+        val request = EchoLyricsSearchRequest("Song", "Artist", null, 1000)
+        val damaged = OnlineLyricsCachePolicy.stamp(EchoLyrics(metadata = mapOf("text_decoding_lossy" to "true")), request)
+        assertFalse(OnlineLyricsCachePolicy.matches(damaged, request))
+        assertTrue(OnlineLyricsCachePolicy.matches(damaged.copy(metadata = damaged.metadata + ("text_decoding_lossy" to "false")), request))
+    }
     @Test fun invalidatesOldDownloadsAndChangedTagsWhilePreservingLyrics() {
         val request = EchoLyricsSearchRequest("Song", "Artist", "Album", 180000)
         val original = EchoLyrics(metadata = mapOf("provider" to "LRCLIB"))

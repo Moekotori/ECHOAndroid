@@ -11,24 +11,29 @@ import app.echo.android.EchoAndroidViewModel
 import app.echo.android.EchoApplication
 import app.echo.android.feature.podcasts.*
 import app.echo.android.model.radio.EchoRadioStation
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.material3.Surface
 
 @Composable
-internal fun EchoBroadcastHost(viewModel: EchoAndroidViewModel, page: String, interactive: Boolean, onBack: () -> Unit) {
-    if (!interactive) return
+internal fun EchoBroadcastHost(viewModel: EchoAndroidViewModel, page: String, interactive: Boolean, onBack: () -> Unit, onOpenPlayer: () -> Unit, bottomInset: Dp) {
     val context = LocalContext.current
     val metadata by viewModel.playbackMetadata.collectAsStateWithLifecycle()
     val controls by viewModel.playbackControls.collectAsStateWithLifecycle()
     val openUrl: (String) -> Unit = { url ->
         if (EchoRadioStation.validUrl(url)) runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
     }
+    Surface(Modifier.fillMaxSize().padding(bottom = bottomInset), color = app.echo.android.design.echoPageBackgroundColor()) {
+    Box(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
     if (page == "podcasts") {
         val controller = viewModel.podcasts
         val state by controller.state.collectAsStateWithLifecycle()
-        LifecycleStartEffect(controller) {
-            controller.open()
+        LifecycleStartEffect(controller, interactive) {
+            if (interactive) controller.open()
             onStopOrDispose { controller.close() }
         }
-        BackHandler { if (state.selected != null) controller.select(null) else onBack() }
+        BackHandler(enabled = interactive) { if (state.selected != null) controller.select(null) else onBack() }
         val actions = remember(controller, viewModel, context) {
             PodcastActions(controller::select, controller::searchFeeds, controller::searchEpisodes,
                 controller::filter, controller::page, controller::subscribe, controller::refresh,
@@ -39,8 +44,11 @@ internal fun EchoBroadcastHost(viewModel: EchoAndroidViewModel, page: String, in
                 markPlayed = controller::markPlayed, openUrl = openUrl)
         }
         PodcastScreen(state, actions, onBack, metadata.mediaId, controls.isPlaying,
-            playerStrip = { PodcastListeningStrip(viewModel) })
+            playbackPending = interactive && controls.state in setOf(app.echo.android.model.playback.EchoPlaybackState.Loading, app.echo.android.model.playback.EchoPlaybackState.Buffering),
+            playerStrip = { if (interactive) PodcastListeningStrip(viewModel) })
     } else {
-        EchoRadioHost(viewModel, metadata.mediaId, metadata.title, controls, onBack, openUrl)
+        EchoRadioHost(viewModel, metadata.mediaId, metadata.title, controls, onBack, openUrl, onOpenPlayer, interactive)
+    }
+    }
     }
 }

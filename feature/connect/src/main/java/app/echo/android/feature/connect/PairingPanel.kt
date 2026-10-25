@@ -40,6 +40,7 @@ internal fun PcLinkPanel(
     librarySyncActions: LibrarySyncActions? = null,
     phoneLibraryShareContent: @Composable () -> Unit = {},
     remoteState: EchoRemoteConnectionState,
+    controlPending: Boolean = false,
     pcTitle: String,
     trackTitle: String,
     trackArtist: String,
@@ -126,6 +127,35 @@ internal fun PcLinkPanel(
         }
     }
     LaunchedEffect(remoteMode) { if (!remoteMode) musicPicker = null }
+    @Composable
+    fun PlaybackControls(recovering: Boolean) {
+                RemoteNowPlaying(
+                    title = trackTitle,
+                    artist = trackArtist,
+                    artworkUrl = trackArtworkUrl,
+                    isPlaying = isPlaying,
+                    controlsEnabled = true,
+                    recovering = recovering,
+                    pending = controlPending,
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                    volume = volume,
+                    volumeControlEnabled = volumeControlEnabled,
+                    volumeLockedReason = volumeLockedReason,
+                    onPlayPause = onPlayPause,
+                    onPrevious = onPrevious,
+                    onNext = onNext,
+                    onStop = onStop,
+                    onSeek = onSeek,
+                    onVolume = onVolume,
+                    onOpenLibrary = { musicPicker = "library" },
+                    onOpenQueue = { onOpenFullQueue?.invoke() ?: run { musicPicker = "queue" } },
+                    outputMode = outputMode,
+                    currentTrackId = currentTrackId,
+                    queueCount = queueTotalCount,
+                    active = active && musicPicker == null,
+                )
+    }
     val hasSaved = !savedPcAddress.isNullOrBlank()
     val endpoint = remember(address, token) { EchoPairingParser.parseManual(address, token) }
     val validAddress = remember(address) { EchoPairingParser.parseManual(address, "validation-token") != null }
@@ -168,36 +198,14 @@ internal fun PcLinkPanel(
         }
         when {
             busy -> {
+                if (remoteState == EchoRemoteConnectionState.Reconnecting && remoteMode && currentTrackId != null) PlaybackControls(true)
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 ConnectNote(stringResource(L10nR.string.feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec))
                 TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_cancel_connection_fd085f)) }
             }
             connected -> {
                 if (remoteMode && !libraryOnly) {
-                RemoteNowPlaying(
-                    title = trackTitle,
-                    artist = trackArtist,
-                    artworkUrl = trackArtworkUrl,
-                    isPlaying = isPlaying,
-                    controlsEnabled = true,
-                    positionMs = positionMs,
-                    durationMs = durationMs,
-                    volume = volume,
-                    volumeControlEnabled = volumeControlEnabled,
-                    volumeLockedReason = volumeLockedReason,
-                    onPlayPause = onPlayPause,
-                    onPrevious = onPrevious,
-                    onNext = onNext,
-                    onStop = onStop,
-                    onSeek = onSeek,
-                    onVolume = onVolume,
-                    onOpenLibrary = { musicPicker = "library" },
-                    onOpenQueue = { onOpenFullQueue?.invoke() ?: run { musicPicker = "queue" } },
-                    outputMode = outputMode,
-                    currentTrackId = currentTrackId,
-                    queueCount = queueTotalCount,
-                    active = active && musicPicker == null,
-                )
+                PlaybackControls(false)
                 if (onHandoffPhoneToPc != null) {
                     TextButton(onClick = onHandoffPhoneToPc) {
                         Text(stringResource(L10nR.string.echo_link_handoff_phone))

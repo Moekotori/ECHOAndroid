@@ -85,6 +85,7 @@ data class EchoAppSettings(
     val usbExclusiveAutoRequestOnStartup: Boolean = true,
     val audioInterruptionPolicy: String = "duck",
     val sleepTimerFinishTrack: Boolean = true,
+    val stopOnTaskRemoved: Boolean = false,
     val pauseOnAudioDisconnect: Boolean = true,
     val resumeOnAudioReconnect: Boolean = false,
     val dsp: app.echo.android.model.playback.EchoDspSettings = app.echo.android.model.playback.EchoDspSettings(),
@@ -289,10 +290,12 @@ class EchoSettingsStore(
                     fadeEnabled = preferences[Keys.TrackFadeEnabled] ?: false,
                     fadeDurationMs = preferences[Keys.TrackFadeDurationMs] ?: 1500,
                     smartEnabled = preferences[Keys.TrackSmartTransitionEnabled] ?: false,
+                    playPauseFadeEnabled = preferences[Keys.ManualPlaybackFade] ?: true,
                 ).normalized(),
                 usbExclusiveAutoRequestOnStartup = preferences[Keys.UsbExclusiveAutoRequestOnStartup] ?: true,
                 audioInterruptionPolicy = app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(preferences[Keys.AudioInterruptionPolicy]).id,
                 sleepTimerFinishTrack = preferences[Keys.SleepTimerFinishTrack] ?: true,
+                stopOnTaskRemoved = preferences[Keys.StopOnTaskRemoved] ?: false,
                 pauseOnAudioDisconnect = preferences[Keys.PauseOnAudioDisconnect] ?: true,
                 resumeOnAudioReconnect = preferences[Keys.ResumeOnAudioReconnect] ?: false,
                 dsp = app.echo.android.model.playback.EchoDspSettings(
@@ -567,6 +570,14 @@ class EchoSettingsStore(
             it[Keys.TrackFadeEnabled] = normalized.fadeEnabled
             it[Keys.TrackFadeDurationMs] = normalized.fadeDurationMs
             it[Keys.TrackSmartTransitionEnabled] = normalized.smartEnabled
+            it[Keys.ManualPlaybackFade] = normalized.playPauseFadeEnabled
+        }
+    }
+
+    suspend fun setUsbVolumePercent(percent: Int) {
+        context.echoSettings.edit { prefs ->
+            val current = EchoUsbOutputOptionsCodec.decode(prefs[Keys.UsbOutputOptions])
+            prefs[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(current.copy(volumePercent = percent.coerceIn(0, 100)))
         }
     }
 
@@ -742,6 +753,14 @@ class EchoSettingsStore(
             } else {
                 it[Keys.OpraLastQuery] = trimmed.take(EchoEqualizerUserPresets.MaxNameLength * 2)
             }
+        }
+    }
+
+    suspend fun importEqualizerBundle(presets: List<EchoEqualizerUserPreset>, conflict: app.echo.android.model.playback.EchoEqImportConflict) {
+        context.echoSettings.edit { preferences ->
+            val current = EchoEqualizerUserPresetCodec.decode(preferences[Keys.EqualizerUserPresets])
+            val merged = app.echo.android.model.playback.EchoEqBundleCodec.merge(current, presets, conflict, System.currentTimeMillis())
+            preferences[Keys.EqualizerUserPresets] = EchoEqualizerUserPresetCodec.encode(merged)
         }
     }
 
@@ -1228,6 +1247,10 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.AudioInterruptionPolicy] = app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(value).id }
     }
 
+    suspend fun setStopOnTaskRemoved(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.StopOnTaskRemoved] = enabled }
+    }
+
     suspend fun setSleepTimerFinishTrack(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.SleepTimerFinishTrack] = enabled }
     }
@@ -1604,6 +1627,7 @@ class EchoSettingsStore(
             backup.usbBitPerfectEnabled?.let { prefs[Keys.UsbBitPerfectEnabled] = it }
             backup.usbOutputOptions?.let { prefs[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(it) }
             backup.usbExclusiveAutoRequestOnStartup?.let { prefs[Keys.UsbExclusiveAutoRequestOnStartup] = it }
+            backup.stopOnTaskRemoved?.let { prefs[Keys.StopOnTaskRemoved] = it }
             backup.pauseOnAudioDisconnect?.let { prefs[Keys.PauseOnAudioDisconnect] = it }
             backup.resumeOnAudioReconnect?.let { prefs[Keys.ResumeOnAudioReconnect] = it }
             backup.trackAudioInfoTagsVisible?.let { prefs[Keys.TrackAudioInfoTagsVisible] = it }
@@ -1617,6 +1641,7 @@ class EchoSettingsStore(
                 prefs[Keys.TrackFadeEnabled] = transitions.fadeEnabled
                 prefs[Keys.TrackFadeDurationMs] = transitions.fadeDurationMs
                 prefs[Keys.TrackSmartTransitionEnabled] = transitions.smartEnabled
+                prefs[Keys.ManualPlaybackFade] = transitions.playPauseFadeEnabled
             }
             backup.equalizerEnabled?.let { prefs[Keys.EqualizerEnabled] = it }
             backup.mseb?.let { prefs[Keys.Mseb] = EchoMsebCodec.encode(it) }
@@ -1712,10 +1737,12 @@ class EchoSettingsStore(
         val ShuffleRecentTrackCount = intPreferencesKey("shuffle_recent_track_count")
         val TrackFadeEnabled = booleanPreferencesKey("track_fade_enabled")
         val TrackFadeDurationMs = intPreferencesKey("track_fade_duration_ms")
+        val ManualPlaybackFade = booleanPreferencesKey("manual_playback_fade")
         val TrackSmartTransitionEnabled = booleanPreferencesKey("track_smart_transition")
         val UsbExclusiveAutoRequestOnStartup = booleanPreferencesKey("usb_exclusive_auto_request_on_startup")
         val AudioInterruptionPolicy = stringPreferencesKey("audio_interruption_policy")
         val SleepTimerFinishTrack = booleanPreferencesKey("sleep_timer_finish_track")
+        val StopOnTaskRemoved = booleanPreferencesKey("stop_on_task_removed")
         val PauseOnAudioDisconnect = booleanPreferencesKey("pause_on_audio_disconnect")
         val ResumeOnAudioReconnect = booleanPreferencesKey("resume_on_audio_reconnect")
         val DspLimiterEnabled = booleanPreferencesKey("dsp_limiter_enabled")
@@ -1962,6 +1989,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         usbBitPerfectEnabled = usbBitPerfectEnabled,
         usbOutputOptions = usbOutputOptions,
         usbExclusiveAutoRequestOnStartup = usbExclusiveAutoRequestOnStartup,
+        stopOnTaskRemoved = stopOnTaskRemoved,
         pauseOnAudioDisconnect = pauseOnAudioDisconnect,
         resumeOnAudioReconnect = resumeOnAudioReconnect,
         trackAudioInfoTagsVisible = trackAudioInfoTagsVisible,

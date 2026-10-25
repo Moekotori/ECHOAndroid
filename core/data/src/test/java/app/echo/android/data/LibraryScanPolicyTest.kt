@@ -9,6 +9,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibraryScanPolicyTest {
+    @Test
+    fun restoredWholeFilesReceiveRetiredCueReferencesButFailedReadsCannotMergeThem() {
+        val old = setOf("saf:file#cue:1", "saf:file#cue:2")
+        assertEquals(listOf("saf:file#cue:1" to "saf:file", "saf:file#cue:2" to "saf:file"),
+            LibraryScanPolicy.cueRowsSupersededByWholeFiles(setOf("saf:file"), old))
+        assertTrue(LibraryScanPolicy.cueRowsSupersededByWholeFiles(old, old).isEmpty())
+        assertTrue(LibraryScanPolicy.cueRowsSupersededByWholeFiles(old + "saf:file", old).isEmpty())
+        assertTrue(LibraryScanPolicy.cueRowsSupersededByWholeFiles(setOf("saf:other"), old).isEmpty())
+    }
+
     private fun fingerprint(
         fingerprint: String? = "fp",
         sizeBytes: Long = 1_024L,

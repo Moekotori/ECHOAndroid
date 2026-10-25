@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_import_preview_title">Preview lyrics</string>
+    <string name="lyrics_import_encoding">Encoding: %1$s</string>
+    <string name="lyrics_import_encoding_auto">Automatic</string>
+    <string name="lyrics_import_encoding_hint">Check the text before importing. If it looks wrong, select another encoding.</string>
+    <string name="lyrics_import_preview_failed">Could not read lyrics with this encoding.</string>
+</resources>

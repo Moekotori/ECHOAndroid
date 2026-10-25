@@ -10,6 +10,25 @@ import kotlin.math.abs
 
 class EchoSmartTransitionPcmTest {
     @Test
+    fun stereoToMonoRetainsRightChannelAndBalancesBothChannelsAcrossRates() {
+        val rightOnly = FloatArray(882) { if (it % 2 == 0) 0f else 0.8f }
+        val mono = EchoSmartTransitionPcm.resampleInterleaved(rightOnly, 44_100, 2, 48_000, 1)
+        assertEquals(480, mono.size)
+        assertTrue(mono.all { abs(it - 0.4f) < 0.0001f })
+        val opposite = EchoSmartTransitionPcm.resampleInterleaved(
+            floatArrayOf(0.6f, -0.6f, 0.4f, -0.4f), 48_000, 2, 48_000, 1)
+        assertTrue(opposite.all { abs(it) < 0.0001f })
+    }
+
+    @Test
+    fun unknownEncodingIsRejectedWithoutReadingPcmAsSixteenBit() {
+        val buffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN)
+        assertTrue(runCatching { EchoSmartTransitionPcm.bytesPerSample(-123) }.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(runCatching { EchoSmartTransitionPcm.readSample(buffer, -123) }.exceptionOrNull() is IllegalArgumentException)
+        assertEquals(0, buffer.position())
+    }
+
+    @Test
     fun fractionalMillisecondRateConversionKeepsTheRequestedWindowFrames() {
         val durationMs = 1501L
         val input = FloatArray((durationMs * 44_100 / 1000).toInt() * 2) { 0.25f }

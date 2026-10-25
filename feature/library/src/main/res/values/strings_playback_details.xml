@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_file_names">Show file names in song lists</string>
+    <string name="library_file_names_note">Display only. Search and sorting still use tags. Missing file names use the title; CUE entries also show the track title.</string>
+</resources>

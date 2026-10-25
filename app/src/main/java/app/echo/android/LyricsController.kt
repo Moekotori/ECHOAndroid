@@ -127,7 +127,18 @@ internal class LyricsController(
         uri: Uri,
         currentTrackId: String?,
         onImported: ((EchoLyrics, Long) -> Unit)? = null,
-    ) {
+    ) = importLyricsDocument(currentTrackId, onImported) { lyricsResolver.importFromUri(uri) }
+
+    private val importPreviewMutex = Mutex()
+
+    suspend fun previewImport(uri: Uri, charset: String?): EchoLyrics = importPreviewMutex.withLock {
+        withContext(Dispatchers.IO) { lyricsResolver.importFromUri(uri, charset) }
+    }
+
+    fun importLyricsDocument(lyrics: EchoLyrics, trackId: String, onImported: ((EchoLyrics, Long) -> Unit)? = null) =
+        importLyricsDocument(trackId, onImported) { lyrics }
+
+    private fun importLyricsDocument(currentTrackId: String?, onImported: ((EchoLyrics, Long) -> Unit)?, load: () -> EchoLyrics) {
         val target = currentTrackId ?: return
         val version = beginSelectionChange(target)
         _managementError.value = null
@@ -135,7 +146,7 @@ internal class LyricsController(
         importJob = scope.launch {
             try {
                 val parsed = withContext(Dispatchers.IO) {
-                    val imported = lyricsResolver.importFromUri(uri)
+                    val imported = load()
                     // The atomic selected file is self-contained; URI bindings are legacy fallback only.
                     if (!withCurrentSelection(target, version) {
                         importedLyricsStore.save(target, imported, selected = true)

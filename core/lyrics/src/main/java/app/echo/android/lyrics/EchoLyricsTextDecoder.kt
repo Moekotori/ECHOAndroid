@@ -5,31 +5,76 @@ import java.nio.charset.CharacterCodingException
 import java.nio.charset.Charset
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
+import org.mozilla.universalchardet.UniversalDetector
 
 object EchoLyricsTextDecoder {
-    fun decode(bytes: ByteArray): String? {
-        if (bytes.isEmpty()) return ""
+    data class Result(val text: String, val charset: String, val lossy: Boolean = false) {
+        fun attach(lyrics: app.echo.android.model.lyrics.EchoLyrics) = lyrics.copy(metadata = lyrics.metadata +
+            mapOf("text_encoding" to charset, "text_decoding_lossy" to lossy.toString()))
+    }
+    fun decode(bytes: ByteArray): String? = decodeResult(bytes)?.text
+    val selectableCharsets = listOf("UTF-8", "UTF-16LE", "UTF-16BE", "GB18030", "Big5", "Shift_JIS", "EUC-JP", "EUC-KR", "MS949", "windows-1252", "windows-1251")
+        .filter { runCatching { Charset.isSupported(it) }.getOrDefault(false) }
+
+    fun decodeResult(bytes: ByteArray, charsetOverride: String? = null): Result? {
         if (bytes.size >= 4 && bytes.copyOfRange(0, 4).contentEquals("krc1".toByteArray())) {
-            return decodeKrc(bytes)
+            if (charsetOverride != null && runCatching { Charset.forName(charsetOverride) }.getOrNull() != StandardCharsets.UTF_8) return null
+            return decodeKrc(bytes)?.takeIf { it.isReadableText() }?.let { Result(it, "UTF-8") }
         }
-
-        decodeBom(bytes)?.let { return it }
-
-        decodeStrict(bytes, StandardCharsets.UTF_8)?.takeIf { it.isReadableText() }?.let { return it }
-
-        if (bytes.looksLikeUtf16LittleEndian()) {
-            decodeStrict(bytes, StandardCharsets.UTF_16LE)?.takeIf { it.isReadableText() }?.let { return it }
+        if (charsetOverride != null) {
+            val charset = runCatching { Charset.forName(charsetOverride) }.getOrNull() ?: return null
+            return decodeStrict(bytes, charset)?.removePrefix("\uFEFF")?.takeIf { it.isReadableText() }
+                ?.let { Result(it, charset.name()) }
         }
-        if (bytes.looksLikeUtf16BigEndian()) {
-            decodeStrict(bytes, StandardCharsets.UTF_16BE)?.takeIf { it.isReadableText() }?.let { return it }
+        if (bytes.isEmpty()) return Result("", "UTF-8")
+        val bom = when {
+            bytes.startsWith(0xEF, 0xBB, 0xBF) -> StandardCharsets.UTF_8 to 3
+            bytes.startsWith(0xFF, 0xFE) -> StandardCharsets.UTF_16LE to 2
+            bytes.startsWith(0xFE, 0xFF) -> StandardCharsets.UTF_16BE to 2
+            else -> null
         }
-
+        // A declared Unicode encoding must never fall through to an unrelated legacy charset.
+        if (bom != null) return decodeStrict(bytes.copyOfRange(bom.second, bytes.size), bom.first)
+            ?.takeIf { it.isReadableText() }?.let { Result(it, bom.first.name()) }
+        if (bytes.looksLikeUtf16LittleEndian()) decodeStrict(bytes, StandardCharsets.UTF_16LE)
+            ?.takeIf { it.isReadableText() }?.let { return Result(it, "UTF-16LE") }
+        if (bytes.looksLikeUtf16BigEndian()) decodeStrict(bytes, StandardCharsets.UTF_16BE)
+            ?.takeIf { it.isReadableText() }?.let { return Result(it, "UTF-16BE") }
+        decodeStrict(bytes, StandardCharsets.UTF_8)?.takeIf { it.isReadableText() }?.let { return Result(it, "UTF-8") }
+        val detected = detectLegacyCharset(bytes)
+        // A few GB2312 pairs often get a spurious Latin/Cyrillic guess. Preserve the
+        // established Chinese fallback for that small, structurally valid sample.
+        if (detected?.name() !in EastAsianCharsets && bytes.isShortChineseSample()) {
+            decodeStrict(bytes, Gb18030)?.takeIf { it.isReadableText() }?.let { return Result(it, Gb18030.name()) }
+        }
+        detected?.let { charset ->
+            decodeStrict(bytes, charset)?.takeIf { it.isReadableText() }?.let { return Result(it, charset.name()) }
+        }
         ChineseCompatibleCharsets.forEach { charset ->
-            decodeStrict(bytes, charset)?.takeIf { it.isReadableText() }?.let { return it }
+            decodeStrict(bytes, charset)?.takeIf { it.isReadableText() }?.let { return Result(it, charset.name()) }
         }
+        return decodeLenient(bytes, Gb18030)?.takeIf { it.isReadableText() }?.let { Result(it, Gb18030.name(), true) }
+            ?: decodeLenient(bytes, StandardCharsets.UTF_8)?.takeIf { it.isReadableText() }?.let { Result(it, "UTF-8", true) }
+    }
 
-        return decodeLenient(bytes, Gb18030)?.takeIf { it.isReadableText() }
-            ?: decodeLenient(bytes, StandardCharsets.UTF_8)?.takeIf { it.isReadableText() }
+    private fun detectLegacyCharset(bytes: ByteArray): Charset? {
+        val detector = UniversalDetector()
+        detector.handleData(bytes, 0, minOf(bytes.size, 64 * 1024))
+        detector.dataEnd()
+        return detector.detectedCharset?.let { name -> runCatching { Charset.forName(name) }.getOrNull() }
+    }
+
+    private fun ByteArray.isShortChineseSample(): Boolean {
+        var index = 0
+        var pairs = 0
+        while (index < size) {
+            val lead = this[index].toInt() and 255
+            if (lead < 128) { index++; continue }
+            if (index + 1 >= size || lead !in 0xA1..0xF7 || (this[index + 1].toInt() and 255) !in 0xA1..0xFE) return false
+            if (++pairs > 8) return false
+            index += 2
+        }
+        return pairs > 0
     }
 
     private fun decodeKrc(bytes: ByteArray): String? = runCatching {
@@ -47,20 +92,6 @@ object EchoLyricsTextDecoder {
             decodeStrict(output.toByteArray(), StandardCharsets.UTF_8)
         }
     }.getOrNull()
-
-    private fun decodeBom(bytes: ByteArray): String? =
-        when {
-            bytes.startsWith(0xEF, 0xBB, 0xBF) -> {
-                decodeStrict(bytes.copyOfRange(3, bytes.size), StandardCharsets.UTF_8)
-            }
-            bytes.startsWith(0xFF, 0xFE) -> {
-                decodeStrict(bytes.copyOfRange(2, bytes.size), StandardCharsets.UTF_16LE)
-            }
-            bytes.startsWith(0xFE, 0xFF) -> {
-                decodeStrict(bytes.copyOfRange(2, bytes.size), StandardCharsets.UTF_16BE)
-            }
-            else -> null
-        }?.takeIf { it.isReadableText() }
 
     private fun decodeStrict(bytes: ByteArray, charset: Charset): String? =
         try {
@@ -80,10 +111,10 @@ object EchoLyricsTextDecoder {
         size >= values.size && values.indices.all { index -> this[index].toInt() and 0xFF == values[index] }
 
     private fun ByteArray.looksLikeUtf16LittleEndian(): Boolean =
-        size >= 6 && zeroRatio(startIndex = 1) >= Utf16ZeroRatioThreshold
+        size >= 2 && size % 2 == 0 && zeroRatio(startIndex = 1) >= Utf16ZeroRatioThreshold
 
     private fun ByteArray.looksLikeUtf16BigEndian(): Boolean =
-        size >= 6 && zeroRatio(startIndex = 0) >= Utf16ZeroRatioThreshold
+        size >= 2 && size % 2 == 0 && zeroRatio(startIndex = 0) >= Utf16ZeroRatioThreshold
 
     private fun ByteArray.zeroRatio(startIndex: Int): Float {
         var total = 0
@@ -99,6 +130,7 @@ object EchoLyricsTextDecoder {
     }
 
     private fun String.isReadableText(): Boolean {
+        if ('\u0000' in this) return false
         val sample = take(4096)
         if (sample.isBlank()) return true
         val suspicious = sample.count { char ->
@@ -112,5 +144,6 @@ object EchoLyricsTextDecoder {
     private val Gb18030: Charset = Charset.forName("GB18030")
     private val Gbk: Charset = Charset.forName("GBK")
     private val ChineseCompatibleCharsets = listOf(Gb18030, Gbk)
+    private val EastAsianCharsets = setOf("GB18030", "GB2312", "GBK", "Big5", "Shift_JIS", "EUC-JP", "EUC-KR", "x-windows-949")
     private const val Utf16ZeroRatioThreshold = 0.3f
 }

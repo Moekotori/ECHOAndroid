@@ -129,6 +129,8 @@ internal object Mp4TagRewriter {
     private fun rewriteItems(bytes: ByteArray, fields: AudioTagFields, old: AudioTagFields?): ByteArray? {
         val items = parse(bytes) ?: return null
         val replace = mutableSetOf("©nam", "©ART", "©alb", "aART", "trkn", "disk", "©day")
+        if (preserveTagNames(fields.artist, old?.artist)) replace -= "©ART"
+        if (preserveTagNames(fields.albumArtist, old?.albumArtist)) replace -= "aART"
         if (shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, old?.composer)) replace += "©wrt"
         if (shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, old?.genre)) replace += setOf("©gen", "gnre")
         if (fields.lyrics != null) replace += "©lyr"
@@ -148,8 +150,10 @@ internal object Mp4TagRewriter {
         }
         fun add(key: String, type: Int, value: ByteArray) { output.write(atom(key, atom("data", be(type) + be(0) + value))) }
         fun text(key: String, value: String?) { if (!value.isNullOrBlank()) add(key, 1, value.toByteArray(Charsets.UTF_8)) }
-        text("©nam", fields.title); text("©ART", fields.artist)
-        text("©alb", fields.album); text("aART", fields.albumArtist)
+        text("©nam", fields.title)
+        if ("©ART" in replace) text("©ART", fields.artist)
+        text("©alb", fields.album)
+        if ("aART" in replace) text("aART", fields.albumArtist)
         if ("©wrt" in replace) text("©wrt", fields.composer)
         if ("©gen" in replace) text("©gen", fields.genre)
         if (fields.lyrics != null) text("©lyr", fields.lyrics)

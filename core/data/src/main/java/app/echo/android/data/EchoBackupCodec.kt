@@ -136,6 +136,7 @@ object EchoBackupCodec {
         putOptNullableBoolean("usbBitPerfectEnabled", settings.usbBitPerfectEnabled)
         settings.usbOutputOptions?.let { put("usbOutputOptions", JSONObject(EchoUsbOutputOptionsCodec.encode(it))) }
         putOptNullableBoolean("usbExclusiveAutoRequestOnStartup", settings.usbExclusiveAutoRequestOnStartup)
+        putOptNullableBoolean("stopOnTaskRemoved", settings.stopOnTaskRemoved)
         putOptNullableBoolean("pauseOnAudioDisconnect", settings.pauseOnAudioDisconnect)
         putOptNullableBoolean("resumeOnAudioReconnect", settings.resumeOnAudioReconnect)
         putOptNullableBoolean("trackAudioInfoTagsVisible", settings.trackAudioInfoTagsVisible)
@@ -151,7 +152,8 @@ object EchoBackupCodec {
                 JSONObject()
                     .put("fadeEnabled", transitions.fadeEnabled)
                     .put("fadeDurationMs", transitions.fadeDurationMs)
-                    .put("smartEnabled", transitions.smartEnabled),
+                    .put("smartEnabled", transitions.smartEnabled)
+                    .put("playPauseFadeEnabled", transitions.playPauseFadeEnabled),
             )
         }
         putOptNullableBoolean("equalizerEnabled", settings.equalizerEnabled)
@@ -208,6 +210,7 @@ object EchoBackupCodec {
                 fadeEnabled = item.optBoolean("fadeEnabled", false),
                 fadeDurationMs = item.optInt("fadeDurationMs", 1500),
                 smartEnabled = item.optBoolean("smartEnabled", false),
+                playPauseFadeEnabled = item.optBoolean("playPauseFadeEnabled", true),
             ).normalized()
         }
         val filters = when (val filtersRaw = json.opt("equalizerFilters")) {
@@ -246,6 +249,7 @@ object EchoBackupCodec {
             usbBitPerfectEnabled = json.optionalBoolean("usbBitPerfectEnabled"),
             usbOutputOptions = json.optJSONObject("usbOutputOptions")?.let { EchoUsbOutputOptionsCodec.decode(it.toString()) },
             usbExclusiveAutoRequestOnStartup = json.optionalBoolean("usbExclusiveAutoRequestOnStartup"),
+            stopOnTaskRemoved = json.optionalBoolean("stopOnTaskRemoved"),
             pauseOnAudioDisconnect = json.optionalBoolean("pauseOnAudioDisconnect"),
             resumeOnAudioReconnect = json.optionalBoolean("resumeOnAudioReconnect"),
             trackAudioInfoTagsVisible = json.optionalBoolean("trackAudioInfoTagsVisible"),

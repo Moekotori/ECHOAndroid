@@ -1074,6 +1074,8 @@ class EchoLibraryRepository(
         val normalizedRelativePath = normalizeRelativePathPrefix(relativePathPrefix)
         val relativePathLike = normalizedRelativePath?.let { "${escapeSqlLikeArgument(it)}%" }
         val cueScanMarker = EmbeddedCueScanMarker(appContext.filesDir, "$source:$normalizedRelativePath:$options")
+        val cueCache = CueScanCache.scoped(appContext.cacheDir, "$source:$normalizedRelativePath:$options:sampleRate=${!skipSampleRateRead}")
+        val retryIds = HashSet<String>()
         val refreshCueMetadata = !cueScanMarker.isComplete()
         val scanRunId = System.currentTimeMillis()
         var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
@@ -1121,7 +1123,7 @@ class EchoLibraryRepository(
                 dao.getExistingMediaStoreFingerprintsInRelativePath(source, relativePathLike)
             }
                 .associateBy(TrackFingerprint::id)
-
+            val importedScanIds = importedLocalScanIds(existingFingerprints.keys)
             emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
             val editedTracks = if (relativePathLike == null) {
                 dao.getMetadataEditedTracks(source)
@@ -1137,9 +1139,12 @@ class EchoLibraryRepository(
                 existingTracks = existingFingerprints,
                 readSampleRate = !skipSampleRateRead,
                 refreshCueMetadata = refreshCueMetadata,
+                cueCache = cueCache,
+                onRetryIds = { retryIds.addAll(it) },
                 options = options,
                 rejectedFiles = rejectedFiles,
                 removeExcludedFromLibrary = removeExcludedFromLibrary,
+                onFolderArtwork = { ids, uri -> applyFolderArtwork(ids, uri) },
                 onSkipped = { skippedCount++ },
                 onTotalCount = { count ->
                     totalCount = count
@@ -1169,7 +1174,7 @@ class EchoLibraryRepository(
                     coroutineContext.ensureActive()
                     seenIds.addAll(batch.map { it.id })
                     val recovered = retainMetadataOnFailedReads(dao, batch)
-                    val accepted = filterLocalScanBatch(recovered, existingFingerprints.keys, options)
+                    val accepted = filterLocalScanBatch(recovered, importedScanIds, options)
                     skippedCount += batch.size - accepted.size
                     val classified = classifyScanBatch(
                         batch = accepted,
@@ -1209,7 +1214,8 @@ class EchoLibraryRepository(
             collapseIndexedDuplicates(dao, scanOutcome.fileIdentities, liveIds, seenIds)
             mergeDuplicateAliases(
                 dao,
-                LibraryScanPolicy.baseRowsSupersededByCue(seenIds, liveIds),
+                LibraryScanPolicy.baseRowsSupersededByCue(seenIds, liveIds) +
+                    LibraryScanPolicy.cueRowsSupersededByWholeFiles(seenIds, liveIds),
                 liveIds,
                 seenIds,
             )
@@ -1270,7 +1276,10 @@ class EchoLibraryRepository(
                 albumGroupingMaintenance.reconcileFolders(changedGroupingFolders)
             }
             scanner.pruneLocalArtwork(dao)
-            if (scanOutcome.querySucceeded && scanOutcome.failedReadCount == 0) cueScanMarker.complete()
+            existingFingerprints.keys.forEach { if (it !in seenIds) retryIds.add(it) }
+            retryIds.asSequence().chunked(500).forEach { dao.markScanMetadataRetry(it) }
+            cueCache.flush()
+            cueScanMarker.complete()
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
                 error = if (scanOutcome.failedReadCount > 0 || !scanOutcome.querySucceeded) {
@@ -1317,6 +1326,8 @@ class EchoLibraryRepository(
             ?: error("Document tree scan requires a relative path")
         val relativePathLike = "${escapeSqlLikeArgument(normalizedRelativePath)}%"
         val cueScanMarker = EmbeddedCueScanMarker(appContext.filesDir, "$source:$treeUri:$normalizedRelativePath:$options")
+        val cueCache = CueScanCache.scoped(appContext.cacheDir, "$source:$treeUri:$normalizedRelativePath:$options:sampleRate=${!skipSampleRateRead}")
+        val retryIds = HashSet<String>()
         val refreshCueMetadata = !cueScanMarker.isComplete()
         val scanRunId = System.currentTimeMillis()
         var progress = LibraryScanProgress(phase = LibraryScanPhase.Preparing)
@@ -1367,6 +1378,7 @@ class EchoLibraryRepository(
                         relativePathLike = relativePathLike,
                     )
                 ).associateBy(TrackFingerprint::id)
+            val importedScanIds = importedLocalScanIds(existingFingerprints.keys)
             val editedTracks = (
                 dao.getMetadataEditedTracksInRelativePath(
                     source = LibrarySource.MediaStore.id,
@@ -1380,7 +1392,7 @@ class EchoLibraryRepository(
             val duplicateAliases = LinkedHashMap<String, String>()
             val seenIds = HashSet<String>(existingFingerprints.size)
             val unresolvedMediaStoreIds = HashSet<String>()
-            val mediaStoreDuplicateKeys = scanner.documentTreeDuplicateKeys(existingFingerprints.values) {
+            val mediaStoreDuplicateKeys = scanner.documentTreeDuplicateKeys(existingFingerprints.values, readMetadata = false) {
                 unresolvedMediaStoreIds.addAll(it)
             }
 
@@ -1393,6 +1405,8 @@ class EchoLibraryRepository(
                 mediaStoreDuplicateKeys = mediaStoreDuplicateKeys,
                 readSampleRate = !skipSampleRateRead,
                 refreshCueMetadata = refreshCueMetadata,
+                cueCache = cueCache,
+                onRetryIds = { retryIds.addAll(it) },
                 options = options,
                 rejectedFiles = rejectedFiles,
                 onSkipped = { skippedCount++ },
@@ -1400,6 +1414,7 @@ class EchoLibraryRepository(
                 listings = documentListings,
                 reuseDirectoryListings = reuseDirectoryListings,
                 persistArtwork = scanner::persistLocalArtwork,
+                onFolderArtwork = { ids, uri -> applyFolderArtwork(ids, uri) },
                 onDuplicate = { oldId, targetId ->
                     if (oldId in existingFingerprints) duplicateAliases[oldId] = targetId
                 },
@@ -1425,7 +1440,7 @@ class EchoLibraryRepository(
                     coroutineContext.ensureActive()
                     seenIds.addAll(batch.map { it.id })
                     val recovered = retainMetadataOnFailedReads(dao, batch)
-                    val accepted = filterLocalScanBatch(recovered, existingFingerprints.keys, options)
+                    val accepted = filterLocalScanBatch(recovered, importedScanIds, options)
                     skippedCount += batch.size - accepted.size
                     val classified = classifyScanBatch(
                         batch = accepted,
@@ -1458,7 +1473,8 @@ class EchoLibraryRepository(
             mergeDuplicateAliases(dao, duplicateAliases.map { it.toPair() }, liveIds, seenIds)
             mergeDuplicateAliases(
                 dao,
-                LibraryScanPolicy.baseRowsSupersededByCue(seenIds, liveIds),
+                LibraryScanPolicy.baseRowsSupersededByCue(seenIds, liveIds) +
+                    LibraryScanPolicy.cueRowsSupersededByWholeFiles(seenIds, liveIds),
                 liveIds,
                 seenIds,
             )
@@ -1497,7 +1513,10 @@ class EchoLibraryRepository(
                 albumGroupingMaintenance.reconcileFolders(changedGroupingFolders)
             }
             scanner.pruneLocalArtwork(dao)
-            if (scanOutcome.querySucceeded && scanOutcome.failedReadCount == 0) cueScanMarker.complete()
+            existingFingerprints.keys.forEach { if (it !in seenIds) retryIds.add(it) }
+            retryIds.asSequence().chunked(500).forEach { dao.markScanMetadataRetry(it) }
+            cueCache.flush()
+            cueScanMarker.complete()
             emitProgress(
                 phase = if (scanOutcome.querySucceeded) LibraryScanPhase.Completed else LibraryScanPhase.Error,
                 error = when {
@@ -1813,6 +1832,9 @@ class EchoLibraryRepository(
             persistArtwork = scanner::persistLocalArtwork,
             persistLyrics = embeddedLyricsStore::store,
         )
+        val remoteCueMarker = EmbeddedCueScanMarker(appContext.filesDir, "remote:$source")
+        val remoteCueCache = CueScanCache.scoped(appContext.cacheDir, "remote:$source")
+        val remoteCues = RemoteCueScan(refreshEmbedded = !remoteCueMarker.isComplete(), cache = remoteCueCache)
 
         suspend fun emitProgress(
             phase: LibraryScanPhase = progress.phase,
@@ -1849,10 +1871,23 @@ class EchoLibraryRepository(
                 phase = LibraryScanPhase.QueryingMediaStore,
                 currentTitle = scanningText,
             )
+            val remoteIdsByUri = existingFingerprints.values.groupBy {
+                app.echo.android.model.library.CueSheetPolicy.playbackUri(it.contentUri)
+            }.mapValues { (_, rows) ->
+                rows.map { app.echo.android.model.library.CueSheetPolicy.baseTrackId(it.id) }.distinct().singleOrNull()
+            }
+            val knownCueSources = LibraryScanPolicy.cueChildrenByBase(existingFingerprints.keys).keys +
+                existingFingerprints.values.filter { CueScanState.isWholeFileCue(it.fingerprint) }.map { it.id }
             val visit = scan { track ->
                 coroutineContext.ensureActive()
+                val indexed = remoteIdsByUri[track.contentUri]?.let { track.copy(id = it) } ?: track
+                if (remoteCues.collect(indexed)) return@scan
                 scannedCount += 1
-                pending += track
+                when {
+                    indexed.id in knownCueSources -> remoteCues.defer(indexed)
+                    tagScan.canReuse(indexed, existingFingerprints[indexed.id]) -> seenIds += indexed.id
+                    else -> pending += indexed
+                }
                 val now = System.currentTimeMillis()
                 if (
                     LibraryScanPolicy.shouldEmitScanProgress(
@@ -1888,6 +1923,29 @@ class EchoLibraryRepository(
                 pending.clear()
             }
 
+            val liveRemoteIds = (existingFingerprints.keys + seenIds).toMutableSet()
+            remoteCues.apply(
+                existing = existingFingerprints,
+                seen = seenIds,
+                readCue = { track, reference -> fileTagReader.readCue(track, { scanContext.ensureActive() }, reference) },
+                readEmbedded = { track -> fileTagReader.readEmbeddedCue(track) { scanContext.ensureActive() } },
+                load = dao::getTracksByIds,
+                write = { tracks ->
+                    val written = writeRemoteBatch(dao, tracks, existingFingerprints, editedTracks)
+                    insertedCount += written.insertedCount
+                    updatedCount += written.updatedCount
+                    seenIds.addAll(written.seenIds)
+                    liveRemoteIds.addAll(written.seenIds)
+                    changedSummaries.add(written.summaryKeys)
+                },
+                merge = { aliases ->
+                    aliases.flatMap { listOf(it.first, it.second) }.distinct().chunked(500).forEach { ids ->
+                        changedSummaries.add(dao.getTracksByIds(ids).toSummaryKeySet())
+                    }
+                    mergeDuplicateAliases(dao, aliases, liveRemoteIds, seenIds)
+                },
+                readSource = { track -> tagScan.enrich(track, null) },
+            )
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
             val deletion = deleteMissingIfComplete(
                 dao = dao,
@@ -1895,20 +1953,27 @@ class EchoLibraryRepository(
                     querySucceeded = true,
                     scannedCount = scannedCount,
                     existingCount = existingFingerprints.size,
-                    hitVisitCap = visit.incomplete,
+                    hitVisitCap = visit.incomplete || remoteCues.incomplete,
                 ),
                 missingIds = { LibraryScanPolicy.unseenIds(existingFingerprints.keys, seenIds) },
             )
             deletedCount = deletion.deletedCount
             changedSummaries.add(deletion.summaryKeys)
             rebuildSummariesIfNeeded(dao, changedSummaries.build())
-            if (!visit.incomplete) {
+            remoteCueCache.flush()
+            val remoteRetries = remoteCues.retryIds.toMutableSet()
+            existingFingerprints.keys.forEach { if (it !in seenIds) remoteRetries.add(it) }
+            remoteRetries.asSequence().chunked(500).forEach { dao.markScanMetadataRetry(it) }
+            if (!visit.incomplete && remoteCues.coverageComplete) {
+                remoteCueMarker.complete()
                 tagScan.complete()
+            }
+            if (!visit.incomplete && !remoteCues.incomplete) {
                 scanner.pruneLocalArtwork(dao)
             }
             emitProgress(
-                phase = if (visit.incomplete) LibraryScanPhase.Error else LibraryScanPhase.Completed,
-                error = if (visit.incomplete) text(R.string.library_remote_scan_partial) else null,
+                phase = if (visit.incomplete || remoteCues.incomplete) LibraryScanPhase.Error else LibraryScanPhase.Completed,
+                error = if (visit.incomplete || remoteCues.incomplete) text(R.string.library_remote_scan_partial) else null,
                 currentTitle = null,
                 isCompleted = true,
             )
@@ -2230,7 +2295,7 @@ class EchoLibraryRepository(
     private fun albumPlaybackQuery(albumKey: String, limit: Int): SimpleSQLiteQuery =
         SimpleSQLiteQuery(
             """
-            SELECT * FROM library_tracks
+            SELECT * FROM visible_library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
               AND albumKey = ?
             ORDER BY
@@ -2245,7 +2310,7 @@ class EchoLibraryRepository(
     private fun remoteAlbumPlaybackQuery(source: String, albumKey: String, limit: Int): SimpleSQLiteQuery =
         SimpleSQLiteQuery(
             """
-            SELECT * FROM library_tracks
+            SELECT * FROM visible_library_tracks
             WHERE source = ?
               AND albumKey = ?
             ORDER BY
@@ -2260,7 +2325,7 @@ class EchoLibraryRepository(
     private fun artistPlaybackQuery(artistKey: String, limit: Int): SimpleSQLiteQuery =
         SimpleSQLiteQuery(
             """
-            SELECT * FROM library_tracks
+            SELECT * FROM visible_library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
               AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = ?)
             ORDER BY
@@ -2294,18 +2359,14 @@ class EchoLibraryRepository(
         liveIds: MutableSet<String>,
         seenIds: MutableSet<String>,
     ) {
-        val cueChildren = LibraryScanPolicy.cueChildrenByBase(liveIds)
-        for ((oldId, targetId) in aliases) {
-            coroutineContext.ensureActive()
-            if (oldId == targetId || oldId !in liveIds) continue
-            val target = targetId.takeIf { it in liveIds }
-                ?: LibraryScanPolicy.duplicateMergeTarget(oldId, targetId, liveIds, cueChildren)
-                ?: continue
-            if (target == oldId || target !in liveIds) continue
-            dao.mergeScanDuplicate(oldId, target)
-            liveIds.remove(oldId)
-            seenIds.add(oldId)
-            yield()
+        val ranges = PersonalBookmarkRangeStore(appContext)
+        mergeScanAliases(aliases, liveIds, seenIds) { oldId, targetId ->
+            val plan = dao.planBookmarkMerge(oldId, targetId)
+            if (plan == null || !plan.complete || !ranges.prepareMerge(plan.moves)) false
+            else if (dao.mergeScanDuplicate(oldId, targetId, plan)) {
+                ranges.completeMerge(plan.moves)
+                true
+            } else false
         }
     }
 
@@ -2319,7 +2380,7 @@ class EchoLibraryRepository(
         if (documents.isEmpty()) return
         val candidates = documentDuplicateCandidates(snapshots, documents)
         if (candidates.isEmpty()) return
-        val native = scanner.documentTreeDuplicateKeys(candidates)
+        val native = scanner.documentTreeDuplicateKeys(candidates, readMetadata = false)
         if (native.isEmpty()) return
         val cueChildren = LibraryScanPolicy.cueChildrenByBase(liveIds)
         val aliases = ArrayList<Pair<String, String>>()
@@ -2344,6 +2405,7 @@ class EchoLibraryRepository(
                 nativeBaseId = target.id,
                 liveIds = liveIds,
                 cueChildren = cueChildren,
+                confirmedIds = seenIds,
             ) ?: continue
             aliases += document.id to destination
             for (copy in native.otherCopies(target.id)) {
@@ -2351,7 +2413,7 @@ class EchoLibraryRepository(
                 val copyDestination = if (destination in liveIds && !CueSheetPolicy.isCueTrackId(copy.id)) {
                     destination
                 } else {
-                    LibraryScanPolicy.duplicateMergeTarget(copy.id, target.id, liveIds, cueChildren)
+                    LibraryScanPolicy.duplicateMergeTarget(copy.id, target.id, liveIds, cueChildren, seenIds)
                 } ?: continue
                 if (copy.id != copyDestination) aliases += copy.id to copyDestination
             }
@@ -2374,7 +2436,7 @@ class EchoLibraryRepository(
                 if (copy == keeper || copy !in liveIds) continue
                 val destination = when {
                     keeper in liveIds -> keeper
-                    else -> LibraryScanPolicy.duplicateMergeTarget(copy, keeper, liveIds, cueChildren)
+                    else -> LibraryScanPolicy.duplicateMergeTarget(copy, keeper, liveIds, cueChildren, seenIds)
                 } ?: continue
                 if (copy != destination) aliases += copy to destination
             }

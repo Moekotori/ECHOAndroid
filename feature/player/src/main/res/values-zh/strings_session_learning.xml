@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="saved_clips_title">已保存的歌曲片段</string>
+    <string name="saved_clips_detail">将当前 A–B 区间保存到本机，不生成音频文件。最多保存 500 个片段，暂不参与设备间同步。</string>
+    <string name="saved_clips_save">保存当前 A–B 区间</string>
+    <string name="saved_clips_load">播放并循环</string>
+    <string name="saved_clips_rename">重命名</string>
+    <string name="saved_clips_delete">删除</string>
+    <string name="saved_clips_name">片段名称</string>
+    <string name="saved_clips_confirm">保存</string>
+    <string name="saved_clips_cancel">取消</string>
+    <string name="saved_clips_error">片段操作失败，请检查区间、名称和可用存储空间。</string>
+</resources>

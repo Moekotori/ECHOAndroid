@@ -68,6 +68,11 @@ android {
         applicationId = "app.echo.android"
         minSdk = 26
         targetSdk = 37
+        // Every advertised ABI must include the playback, DSP and USB libraries.
+        // Transitive AndroidX libraries also contain x86, which we do not build.
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+        }
         versionName = echoVersionName
         versionCode = echoVersionCode
         buildConfigField(

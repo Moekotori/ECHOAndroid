@@ -145,6 +145,9 @@ interface LibraryTrackDao {
     """)
     suspend fun sharedLocalTrackCount(query: String, pattern: String): Int
 
+    @Query("UPDATE library_tracks SET artworkUri = :uri WHERE id IN (:ids) AND (artworkUri IS NULL OR artworkUri = '' OR artworkUri LIKE 'content://media/%/audio/albumart/%')")
+    suspend fun applyFolderArtwork(ids: List<String>, uri: String): Int
+
     @Query("SELECT * FROM library_tracks WHERE id = :trackId LIMIT 1")
     suspend fun getTrackById(trackId: String): LibraryTrackEntity?
 
@@ -936,10 +939,10 @@ interface LibraryTrackDao {
     )
     suspend fun listRecentlyAddedTracksForBrowse(limit: Int, offset: Int): List<LibraryTrackEntity>
 
-    @Query("SELECT COUNT(*) FROM visible_library_tracks AS library_tracks")
+    @Query("SELECT COUNT(*) FROM library_tracks")
     suspend fun countTracks(): Int
 
-    @Query("SELECT COUNT(*) FROM visible_library_tracks AS library_tracks WHERE source = :source")
+    @Query("SELECT COUNT(*) FROM library_tracks WHERE source = :source")
     suspend fun countTracksFromSource(source: String): Int
 
     @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
@@ -1171,7 +1174,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE (source = 'mediastore' OR source = 'saf')
           AND (
             normalizedTitle LIKE '%' || lower(trim(:query)) || '%'
@@ -1199,7 +1202,7 @@ interface LibraryTrackDao {
     suspend fun searchTracks(query: String, limit: Int): List<LibraryTrackEntity>
 
     @Query("""
-        SELECT * FROM library_tracks
+        SELECT * FROM visible_library_tracks AS library_tracks
         WHERE instr(lower(title), lower(:title)) > 0
           AND (:artist = '' OR instr(lower(artist), lower(:artist)) > 0)
           AND (:album = '' OR instr(lower(album), lower(:album)) > 0)
@@ -1220,7 +1223,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT library_tracks.* FROM library_tracks
+        SELECT library_tracks.* FROM visible_library_tracks AS library_tracks
         JOIN library_tracks_fts ON library_tracks.id = library_tracks_fts.trackId
         WHERE library_tracks_fts MATCH :matchQuery
         ORDER BY
@@ -1335,8 +1338,30 @@ interface LibraryTrackDao {
     @Query("DELETE FROM library_playback_stats WHERE trackId = :oldId")
     suspend fun deleteMergedPlaybackReference(oldId: String)
 
-    @Query("INSERT OR IGNORE INTO library_bookmarks (id, trackId, positionMs, label, titleSnapshot, artistSnapshot, uriSnapshot, durationSnapshot) SELECT :targetId || ':' || positionMs, :targetId, positionMs, label, titleSnapshot, artistSnapshot, uriSnapshot, durationSnapshot FROM library_bookmarks WHERE trackId = :oldId")
-    suspend fun mergeBookmarkReferences(oldId: String, targetId: String)
+    @Query("UPDATE library_tracks SET fingerprint = 'saf:metadata-pending' WHERE id IN (:ids) AND (fingerprint IS NULL OR fingerprint != 'saf:metadata-pending')")
+    suspend fun markScanMetadataRetry(ids: List<String>)
+
+    @Query("SELECT * FROM library_bookmarks WHERE trackId = :trackId ORDER BY positionMs, id LIMIT 10001")
+    suspend fun scanMergeBookmarks(trackId: String): List<LibraryBookmarkEntity>
+
+    @Query("SELECT * FROM library_tracks WHERE contentUri >= :lower AND contentUri < :upper ORDER BY clipStartMs, id LIMIT 4097")
+    suspend fun scanMergeCueTargets(lower: String, upper: String): List<LibraryTrackEntity>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertMergedBookmarks(bookmarks: List<LibraryBookmarkEntity>)
+
+    suspend fun planBookmarkMerge(oldId: String, targetId: String): BookmarkMergePlan? {
+        val old = getTrackById(oldId) ?: return null
+        val target = getTrackById(targetId) ?: return null
+        val originals = scanMergeBookmarks(oldId)
+        val direct = bookmarkMergePlan(old, listOf(target), originals)
+        if (direct.complete) return direct
+        val targets = if (app.echo.android.model.library.CueSheetPolicy.isCueTrackId(target.id)) {
+            val prefix = app.echo.android.model.library.CueSheetPolicy.playbackUri(target.contentUri) + "#echo-cue="
+            scanMergeCueTargets(prefix, prefix + '\uffff')
+        } else listOf(target)
+        return bookmarkMergePlan(old, targets, originals)
+    }
 
     @Query("DELETE FROM library_bookmarks WHERE trackId = :oldId")
     suspend fun deleteMergedBookmarks(oldId: String)
@@ -1349,10 +1374,12 @@ interface LibraryTrackDao {
 
     /** Identity and all user-owned references move together, or roll back together. */
     @Transaction
-    suspend fun mergeScanDuplicate(oldId: String, targetId: String) {
-        if (oldId == targetId) return
-        val old = getTrackById(oldId) ?: return
-        val target = getTrackById(targetId) ?: return
+    suspend fun mergeScanDuplicate(oldId: String, targetId: String, expectedBookmarks: BookmarkMergePlan? = null): Boolean {
+        if (oldId == targetId) return false
+        val old = getTrackById(oldId) ?: return false
+        val target = getTrackById(targetId) ?: return false
+        val bookmarks = planBookmarkMerge(oldId, targetId) ?: return false
+        if (!bookmarks.complete || (expectedBookmarks != null && bookmarks != expectedBookmarks)) return false
         val edited = if ((old.metadataEditedAtEpochMs ?: 0L) > (target.metadataEditedAtEpochMs ?: 0L)) old else target
         val merged = target.copy(artworkUri = target.artworkUri ?: old.artworkUri)
             .withPreservedUserMetadata(edited).withScanMetadata(preserveGroupingFrom = edited)
@@ -1365,10 +1392,11 @@ interface LibraryTrackDao {
         refreshMergedPlaylistCounts(targetId)
         mergePlaybackReferences(oldId, targetId)
         deleteMergedPlaybackReference(oldId)
-        mergeBookmarkReferences(oldId, targetId)
+        insertMergedBookmarks(bookmarks.moves.map { it.destination })
         deleteMergedBookmarks(oldId)
         upsertScanBatch(listOf(merged))
         deleteScanBatch(listOf(oldId))
+        return true
     }
 
     @Transaction

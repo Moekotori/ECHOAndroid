@@ -27,6 +27,40 @@ internal class PersonalBookmarkRangeStore(context: Context) {
         return json.keys().asSequence().associateWith { json.getJSONArray(it).getLong(0) }
     }
 
+    /** Stage copies before the Room transaction. Original keys survive failure or cancellation. */
+    suspend fun prepareMerge(moves: List<BookmarkMergeMove>): Boolean {
+        if (moves.isEmpty()) return true
+        var complete = true
+        store.edit { preferences ->
+            val json = JSONObject(preferences[records] ?: "{}")
+            for (move in moves) {
+                val oldKey = key(move.original.trackId, move.original.positionMs)
+                val record = json.optJSONArray(oldKey) ?: continue
+                val nextKey = key(move.destination.trackId, move.destination.positionMs)
+                if (json.has(nextKey)) continue
+                val end = move.endPosition(record.getLong(0)) ?: continue
+                if (end > EchoPersonalStateLimits.MaxDurationMs) { complete = false; break }
+                json.put(nextKey, JSONArray(listOf(end, record.getLong(1))))
+            }
+            val encoded = json.toString()
+            if (json.length() > EchoPersonalStateLimits.Bookmarks || encoded.length > 128 * 1024) complete = false
+            if (complete) preferences[records] = encoded
+        }
+        return complete
+    }
+
+    suspend fun completeMerge(moves: List<BookmarkMergeMove>) {
+        if (moves.isEmpty()) return
+        store.edit { preferences ->
+            val json = JSONObject(preferences[records] ?: "{}")
+            moves.forEach { move ->
+                val old = key(move.original.trackId, move.original.positionMs)
+                if (old != key(move.destination.trackId, move.destination.positionMs)) json.remove(old)
+            }
+            preferences[records] = json.toString()
+        }
+    }
+
     suspend fun set(trackId: String, positionMs: Long, endPositionMs: Long?) {
         store.edit { preferences ->
             val json = JSONObject(preferences[records] ?: "{}")

@@ -16,3 +16,7 @@ internal fun UsbExclusivePcmSession.transportEvidence(): EchoUsbTransportDiagnos
 
 internal fun UsbExclusivePcmSession.compatibilityEvidence(): List<EchoUsbCompatibilityRule> =
     quirks.matchedRules.map { EchoUsbCompatibilityRule(it.id, it.reason, it.verification) }
+
+internal fun UsbExclusivePcmSession.volumeEvidence(): app.echo.android.model.playback.EchoUsbVolumeDiagnostics? =
+    volumeState?.let { app.echo.android.model.playback.EchoUsbVolumeDiagnostics(it.requested, it.effective,
+        it.checked, it.readbackVerified, it.hardwareDb, it.handoff, it.reason) }

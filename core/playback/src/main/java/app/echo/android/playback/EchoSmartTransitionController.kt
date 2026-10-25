@@ -6,6 +6,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import app.echo.android.model.playback.EchoSleepTimerMode
+import app.echo.android.model.playback.EchoAutoMixStage
+import app.echo.android.model.playback.EchoAutoMixStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
@@ -38,6 +40,18 @@ internal class EchoSmartTransitionController(
     private val optionsJob: Job
     private var armed: Armed? = null
     private var committing = false
+    private var statusGeneration = 0L
+    private fun status(stage: EchoAutoMixStage, reason: String? = null) {
+        val value = if (stage == EchoAutoMixStage.Preparing)
+            EchoPlaybackProcessRuntime.autoMixStatus.value.copy(stage = stage, reason = reason, playing = player.isPlaying)
+        else EchoAutoMixStatus(stage, reason, playing = player.isPlaying)
+        EchoPlaybackProcessRuntime.publishAutoMixStatus(value)
+    }
+    internal fun onAudibleProgress() {
+        val active = armed ?: return
+        val previous = EchoPlaybackProcessRuntime.autoMixStatus.value
+        EchoPlaybackProcessRuntime.publishAutoMixStatus(previous.audibleProgress(player.currentPosition, player.isPlaying, active.mix.mixedFrames))
+    }
     private val playing = MutableStateFlow(player.isPlaying)
 
     init {
@@ -54,6 +68,7 @@ internal class EchoSmartTransitionController(
 
     override fun onEvents(player: Player, events: Player.Events) {
         playing.value = player.isPlaying
+        onAudibleProgress()
         if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_TIMELINE_CHANGED,
                 Player.EVENT_REPEAT_MODE_CHANGED, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
                 Player.EVENT_PLAYBACK_PARAMETERS_CHANGED, Player.EVENT_IS_PLAYING_CHANGED,
@@ -107,24 +122,44 @@ internal class EchoSmartTransitionController(
                     EchoSmartTransitionPolicy.bypassReason(current.candidate),
                     active.mix.epoch == mixer.streamEpoch)) return
         }
+        statusGeneration++
+        val token = statusGeneration
         loopJob?.cancel()
         loopJob = null
         disarm()
-        val enabled = !EchoPlaybackProcessRuntime.abLoop.value.active && EchoSmartTransitionPolicy.mixerPassthroughEnabled(
-            EchoPlaybackRuntimeOptionsStore.options.value.trackTransitions,
-            EchoPlaybackCachePolicy.effectiveMode, EchoPlaybackProcessRuntime.usbExclusiveEnabled,
-            EchoPlaybackProcessRuntime.usbBitPerfectEnabled)
-        mixer.setEnabled(enabled)
-        if (!enabled) return
-        val snapshot = snapshot() ?: return
-        if (EchoSmartTransitionPolicy.bypassReason(snapshot.candidate) != null) return
-        loopJob = scope.launch { prepare(snapshot) }
+        val config = EchoPlaybackRuntimeOptionsStore.options.value.trackTransitions
+        val environment = when {
+            !config.smartEnabled -> "Disabled"
+            EchoPlaybackProcessRuntime.usbBitPerfectEnabled -> "BitPerfect"
+            EchoPlaybackProcessRuntime.usbExclusiveEnabled -> "UsbExclusive"
+            EchoPlaybackCachePolicy.effectiveMode.isLightweight -> "Lightweight"
+            EchoPlaybackProcessRuntime.abLoop.value.active -> "AbLoop"
+            else -> null
+        }
+        mixer.setEnabled(environment == null)
+        if (environment != null) { status(EchoAutoMixStage.Bypassed, environment); return }
+        val snapshot = snapshot()
+        if (snapshot == null) { status(EchoAutoMixStage.Bypassed, "NextMissing"); return }
+        val reason = EchoSmartTransitionPolicy.bypassReason(snapshot.candidate)
+        if (reason != null) { status(EchoAutoMixStage.Bypassed, reason.name); return }
+        status(EchoAutoMixStage.Analyzing)
+        loopJob = scope.launch {
+            try { prepare(snapshot) }
+            catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) { if (statusGeneration == token) status(EchoAutoMixStage.Failed, "PreparationFailed") }
+            finally {
+                if (statusGeneration == token) {
+                    EchoPlaybackProcessRuntime.autoMixStatus.value.workerStopped(player.isPlaying)
+                        ?.let(EchoPlaybackProcessRuntime::publishAutoMixStatus)
+                }
+            }
+        }
     }
 
     private suspend fun prepare(snapshot: LoopSnapshot) {
         if (!stillCurrent(snapshot)) return
         // Enabling the option can precede the audio thread's configure/flush by a buffer.
-        val stream = withTimeoutOrNull(1_500) { mixer.streamFormats.filterNotNull().first() } ?: return
+        val stream = withTimeoutOrNull(1_500) { mixer.streamFormats.filterNotNull().first() } ?: run { status(EchoAutoMixStage.Bypassed, "StreamUnavailable"); return }
         if (!stillCurrent(snapshot)) return
         val rate = stream.rate
         val channels = stream.channels
@@ -133,17 +168,22 @@ internal class EchoSmartTransitionController(
             autoMix.prepare(snapshot.currentUri, snapshot.nextUri, snapshot.candidate.currentDurationMs,
                 snapshot.candidate.nextDurationMs, rate, channels,
                 EchoSmartTransitionPolicy.maxOverlapMs(snapshot.candidate))
-        } ?: return
+        } ?: run { status(EchoAutoMixStage.Bypassed, "NoWindow"); return }
         if (!stillCurrent(snapshot) || plan.startMs <= player.currentPosition) return
+        EchoPlaybackProcessRuntime.publishAutoMixStatus(EchoAutoMixStatus(EchoAutoMixStage.Waiting,
+            mode = plan.mode, outgoingBpm = plan.outgoingBpm, incomingBpm = plan.incomingBpm,
+            tempoConfidence = plan.tempoConfidence, startPositionMs = plan.startMs,
+            durationMs = plan.durationMs, playing = player.isPlaying))
         delay((plan.startMs - player.currentPosition - EchoSmartTransitionPolicy.PredecodeLeadMs).coerceAtLeast(0))
         if (!stillCurrent(snapshot)) return
+        status(EchoAutoMixStage.Preparing)
         val pcm = decodeMutex.withLock {
             val from = decoder.decodeMixWindow(snapshot.currentUri, plan.startMs, plan.durationMs, rate, channels)
                 ?: return@withLock null
             val to = decoder.decodeMixWindow(snapshot.nextUri, plan.nextStartMs, plan.durationMs, rate, channels)
                 ?: return@withLock null
             autoMix.render(plan, from, to, channels)
-        } ?: return
+        } ?: run { status(EchoAutoMixStage.Failed, "DecodeFailed"); return }
         coroutineContext.ensureActive()
         if (!stillCurrent(snapshot) || mixer.streamEpoch != epoch || mixer.outputSampleRateHz != rate) return
         val startPosition = plan.startMs
@@ -157,6 +197,16 @@ internal class EchoSmartTransitionController(
                 snapshot.currentId, player.getMediaItemAt(snapshot.nextIndex).toEchoTrackRef(),
                 plan.startMs, plan.durationMs))
             EchoPlaybackProcessRuntime.setSmartMixArmed(true)
+            EchoPlaybackProcessRuntime.publishAutoMixStatus(EchoAutoMixStatus(EchoAutoMixStage.Armed,
+                mode = plan.mode, outgoingBpm = plan.outgoingBpm, incomingBpm = plan.incomingBpm,
+                tempoConfidence = plan.tempoConfidence, startPositionMs = startPosition,
+                durationMs = plan.durationMs, playing = player.isPlaying))
+            while (stillCurrent(snapshot) && player.currentPosition < startPosition) {
+                playing.first { it }
+                if (!stillCurrent(snapshot)) return
+                delay((startPosition - player.currentPosition).coerceAtLeast(20))
+            }
+            onAudibleProgress()
             val endPosition = startPosition + plan.durationMs
             if (endPosition < snapshot.candidate.currentDurationMs - 2) {
                 // Wait on the audible player clock, never the processor's prebuffered cursor.
@@ -172,6 +222,7 @@ internal class EchoSmartTransitionController(
                 EchoPlaybackProcessRuntime.setTrackFadeGain(1f)
                 committing = true
                 try {
+                    if (EchoPlaybackProcessRuntime.manualPlayIntent == false) player.pause()
                     onAutomaticAdvance(snapshot.currentIndex, snapshot.nextIndex)
                     player.seekTo(snapshot.nextIndex, continuation)
                 }
@@ -260,6 +311,8 @@ internal class EchoSmartTransitionController(
     }
 
     override fun close() {
+        statusGeneration++
+        status(EchoAutoMixStage.Idle)
         loopJob?.cancel()
         optionsJob.cancel()
         player.removeListener(this)
@@ -280,4 +333,12 @@ internal class EchoSmartTransitionController(
         val nextUri: String,
         val candidate: EchoSmartTransitionPolicy.Candidate,
     )
+}
+
+/** A finished worker owns no pending/mixing state; keep explicit failure/bypass outcomes intact. */
+internal fun EchoAutoMixStatus.workerStopped(isPlaying: Boolean): EchoAutoMixStatus? = when (stage) {
+    EchoAutoMixStage.Analyzing, EchoAutoMixStage.Waiting, EchoAutoMixStage.Preparing,
+    EchoAutoMixStage.Armed, EchoAutoMixStage.Mixing ->
+        EchoAutoMixStatus(EchoAutoMixStage.Bypassed, "ConditionsChanged", playing = isPlaying)
+    else -> null
 }

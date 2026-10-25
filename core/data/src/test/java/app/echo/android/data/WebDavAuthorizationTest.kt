@@ -9,6 +9,35 @@ import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 class WebDavAuthorizationTest {
+    @Test fun discoversSidecarsAndReadsThemWithTheExistingAuthenticatedRangePath() = kotlinx.coroutines.runBlocking {
+        val cue = "FILE \"song.flac\" WAVE\nTRACK 01 AUDIO\nTITLE \"Network song\"\nINDEX 01 00:00:00".toByteArray()
+        val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
+        val requests = java.util.Collections.synchronizedList(mutableListOf<Pair<String?, String?>>())
+        server.createContext("/music") { exchange ->
+            requests += exchange.requestHeaders.getFirst("Authorization") to exchange.requestHeaders.getFirst("Range")
+            val bytes = if (exchange.requestMethod == "PROPFIND") {
+                """<D:multistatus xmlns:D="DAV:"><D:response><D:href>/music/album.cue</D:href>
+                    <D:propstat><D:prop><D:getcontentlength>${cue.size}</D:getcontentlength><D:getcontenttype>text/plain</D:getcontenttype></D:prop>
+                    <D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response></D:multistatus>""".toByteArray()
+            } else cue
+            if (exchange.requestMethod == "GET") exchange.responseHeaders.add("Content-Range", "bytes 0-${cue.lastIndex}/${cue.size}")
+            exchange.sendResponseHeaders(if (exchange.requestMethod == "PROPFIND") 207 else 206, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val endpoint = WebDavEndpoint("http://127.0.0.1:${server.address.port}/music", "reader", "secret")
+            val files = mutableListOf<WebDavAudioFile>()
+            WebDavClient(endpoint).scanAudioFiles { files += it }
+            val source = files.single().toLibraryTrackEntity(endpoint, 1)
+            assertEquals("album.cue", source.fileName)
+            val sheet = RemoteFileTagReader(endpoint, okhttp3.OkHttpClient()).readCue(source, {}) { it == "song.flac" }
+            assertEquals("Network song", sheet.tracks.single().title)
+            assertTrue(requests.all { it.first == endpoint.authorizationHeader() })
+            assertEquals("bytes=0-${cue.lastIndex}", requests.last().second)
+        } finally { server.stop(0) }
+    }
+
     @Test fun publicWebDavScanDoesNotSendAnEmptyBasicCredential() = kotlinx.coroutines.runBlocking {
         val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
         var authorization: String? = "not requested"

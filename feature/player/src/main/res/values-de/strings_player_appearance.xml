@@ -10,10 +10,16 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">Pixel-Player</string>
     <string name="player_appearance_type_poster">Typoposter</string>
-    <string name="player_appearance_holo_prism">Holo-Prisma</string>
-    <string name="player_appearance_starlight_orbit">Sternenbahn</string>
-    <string name="player_appearance_sakura_letter">Kirschblütenbrief</string>
-    <string name="player_appearance_neon_rain">Neonregen</string>
-    <string name="player_appearance_soda_pop">Brause-Pop</string>
-    <string name="player_appearance_amber_film">Bernsteinfilm</string>
+    <string name="player_appearance_terminal">Terminal</string>
+    <string name="player_appearance_scrapbook">Sammelalbum</string>
+    <string name="player_appearance_metro_line">U-Bahn-Linie</string>
+    <string name="player_appearance_chat_thread">Chatverlauf</string>
+    <string name="player_style_metro_origin">Startbahnhof</string>
+    <string name="player_style_metro_terminus">Endstation</string>
+    <string name="player_style_metro_elapsed">Gefahren %1$s</string>
+    <string name="player_appearance_halftone">Raster-Cover</string>
+    <string name="player_appearance_pixel_mosaic">Pixelmosaik</string>
+    <string name="player_appearance_contours">Höhenlinien</string>
+    <string name="player_appearance_dither">Dithering</string>
+    <string name="player_appearance_glyph_field">Zeichenbild</string>
 </resources>

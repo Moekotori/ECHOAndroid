@@ -6,15 +6,23 @@ import app.echo.android.playback.EchoPlaybackSessionSnapshot
 import app.echo.android.playback.EchoPlaybackSessionStore
 import app.echo.android.playback.EchoPlaybackRuntimeOptionsStore
 import kotlinx.coroutines.flow.first
+import app.echo.android.playback.withoutHiddenTracks
 
 class EchoSettingsPlaybackSessionStore(
     private val settingsStore: EchoSettingsStore,
+    private val hiddenIds: suspend (List<String>) -> Set<String> = { emptySet() },
 ) : EchoPlaybackSessionStore {
     override suspend fun load(): EchoPlaybackSessionSnapshot? {
         val settings = settingsStore.appSettings.first()
         EchoPlaybackRuntimeOptionsStore.setTrackTransitions(settings.trackTransitions)
         EchoPlaybackRuntimeOptionsStore.setShuffleOptions(settings.shuffleOptions)
-        return settingsStore.getSavedPlaybackSession()?.toSnapshot()
+        EchoPlaybackRuntimeOptionsStore.setListeningOptions(
+            app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(settings.audioInterruptionPolicy),
+            settings.sleepTimerFinishTrack,
+            settings.stopOnTaskRemoved,
+        )
+        val snapshot = settingsStore.getSavedPlaybackSession()?.toSnapshot() ?: return null
+        return snapshot.withoutHiddenTracks(hiddenIds(snapshot.queue.map { it.id }))
     }
 
     override suspend fun save(snapshot: EchoPlaybackSessionSnapshot?) {

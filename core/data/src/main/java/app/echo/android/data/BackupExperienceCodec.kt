@@ -9,7 +9,9 @@ internal object BackupExperienceCodec {
         value.libraryLayout?.normalized()?.let { layout ->
             json.put("libraryLayout", JSONObject()
                 .put("order", JSONArray(layout.order.map(EchoLibraryCategory::id)))
-                .put("hidden", JSONArray(layout.hidden.map(EchoLibraryCategory::id))))
+                .put("hidden", JSONArray(layout.hidden.map(EchoLibraryCategory::id)))
+                .put("showFileNames", layout.showFileNames)
+                .put("hiddenTrackActions", JSONArray(layout.hiddenTrackActions.map { it.id })))
         }
         value.homeLayout?.let { json.put("homeLayout", JSONObject().put("order", JSONArray(it.order.map(EchoHomeSection::id))).put("hidden", JSONArray(it.hidden.map(EchoHomeSection::id)))) }
         json.putOpt("playerPageStyle", value.playerPageStyle).putOpt("playerTextScale", value.playerTextScale)
@@ -29,7 +31,10 @@ internal object BackupExperienceCodec {
         fun categories(name: String): List<EchoLibraryCategory> = value.optJSONArray(name)?.let { array ->
             (0 until array.length()).mapNotNull { EchoLibraryCategory.fromId(array.optString(it)) }
         }.orEmpty()
-        return EchoLibraryLayout(categories("order"), categories("hidden").toSet()).normalized()
+        val actions = value.optJSONArray("hiddenTrackActions")
+        val hiddenActions = if (actions == null) emptySet() else (0 until actions.length()).mapNotNull {
+            app.echo.android.model.settings.EchoTrackMenuAction.fromId(actions.optString(it)) }.toSet()
+        return EchoLibraryLayout(categories("order"), categories("hidden").toSet(), value.optBoolean("showFileNames", false), hiddenActions).normalized()
     }
     fun encode(json: JSONObject, document: EchoBackupDocument) {
         json.put("history", JSONArray().apply { document.history.forEach { event -> put(JSONObject()

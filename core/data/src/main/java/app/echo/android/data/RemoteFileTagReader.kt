@@ -15,6 +15,25 @@ internal class RemoteFileTagReader(
     private val http = client?.newBuilder()?.callTimeout(5, TimeUnit.SECONDS)?.readTimeout(5, TimeUnit.SECONDS)?.build()
 
     fun read(track: LibraryTrackEntity, checkActive: () -> Unit): AudioTagFields? {
+        return withInput(track, checkActive, ::readLocalAudioTags)
+    }
+
+    fun readCue(track: LibraryTrackEntity, checkActive: () -> Unit, referenceExists: (String) -> Boolean): app.echo.android.model.library.CueSheet {
+        if (track.sizeBytes > app.echo.android.model.library.CueSheetPolicy.MaxCueBytes) throw IOException("Remote CUE exceeds size limit")
+        return withInput(track, checkActive) { readCueSheet(it, referenceExists) }
+            ?: throw IOException("Cannot read remote CUE")
+    }
+
+    fun readEmbeddedCue(track: LibraryTrackEntity, checkActive: () -> Unit): app.echo.android.model.library.CueSheet? {
+        val extension = track.fileName.orEmpty().substringAfterLast('.').lowercase(java.util.Locale.ROOT)
+        if (extension !in setOf("flac", "fla", "ape", "wv", "tta", "tak")) return null
+        if (track.sizeBytes <= 0) throw IOException("Unknown remote CUE source length")
+        return withInput(track, checkActive) {
+            if (extension in setOf("flac", "fla")) FlacEmbeddedCueReader.readChecked(it) else ApeTagReader.readCueChecked(it)
+        }
+    }
+
+    private fun <T> withInput(track: LibraryTrackEntity, checkActive: () -> Unit, reader: (java.io.InputStream) -> T): T? {
         if (track.contentUri.startsWith("smb://")) {
             EchoSmbFileReader.open(track.contentUri).use { file ->
                 val input = RandomAccessTagInput(file.length, checkActive) { position, count ->
@@ -23,7 +42,7 @@ internal class RemoteFileTagReader(
                     if (read <= 0) throw IOException("SMB embedded tag range unavailable")
                     if (read == count) bytes else bytes.copyOf(read)
                 }
-                return readLocalAudioTags(input)
+                return reader(input)
             }
         }
         val endpoint = webDavEndpoint ?: return null
@@ -64,6 +83,6 @@ internal class RemoteFileTagReader(
                 if (read == count) bytes else bytes.copyOf(read)
             }
         }
-        return readLocalAudioTags(input)
+        return reader(input)
     }
 }

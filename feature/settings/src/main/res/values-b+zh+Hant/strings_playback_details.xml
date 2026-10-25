@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="manual_fade_title">手動播放／暫停漸變</string>
+    <string name="manual_fade_detail">手動操作時使用 180 毫秒短漸變。來電、輸出中斷與定時停止仍立即暫停，嚴格直通不使用漸變。</string>
+    <string name="mix_status_title">實際執行狀態</string>
+    <string name="mix_status_idle">閒置</string>
+    <string name="mix_status_bypassed">一般播放</string>
+    <string name="mix_status_analyzing">正在分析這兩首歌曲</string>
+    <string name="mix_status_preparing">正在準備過渡音訊</string>
+    <string name="mix_status_armed">過渡已準備</string>
+    <string name="mix_status_mixing">正在混合</string>
+    <string name="mix_status_failed">準備失敗，繼續一般播放</string>
+    <string name="mix_status_paused">已暫停，保留過渡</string>
+    <string name="mix_status_mode">本次過渡模式</string>
+    <string name="mix_status_confidence">節奏信心值（取兩首較低值）</string>
+    <string name="mix_reason_disabled">AutoMix 未開啟。</string>
+    <string name="mix_reason_lightweight">輕量效能模式保留一般播放。</string>
+    <string name="mix_reason_usb">目前 USB 輸出保留原始播放鏈路。</string>
+    <string name="mix_reason_album">同專輯相鄰曲目保留原始銜接。</string>
+    <string name="mix_reason_next">沒有可用的下一首，片段來源保留原始邊界。</string>
+    <string name="mix_reason_not_playing">等待開始播放。</string>
+    <string name="mix_reason_source">目前直播或遠端來源使用一般播放。</string>
+    <string name="mix_reason_mode">循環或睡眠定時需要保留原始曲目邊界。</string>
+    <string name="mix_reason_speed">AutoMix 需要正常播放速度。</string>
+    <string name="mix_reason_format">時長、剩餘時間或輸出格式不適合本次過渡。</string>
+    <string name="mix_reason_stream">等待可用的輸出串流。</string>
+    <string name="mix_reason_failed">未能準備過渡音訊，本次繼續一般播放。</string>
+    <string name="mix_reason_window">沒有可用過渡視窗，或播放條件已變更。</string>
+    <string name="mix_status_waiting">方案已分析，等待準備音訊</string>
+</resources>

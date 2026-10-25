@@ -54,9 +54,9 @@ internal object RadioBrowserParser {
             tags = tags,
             bitrateKbps = bitrate,
             codec = codec,
-            artworkUrl = item.optString("favicon").trim().takeIf {
+            artworkUrl = app.echo.android.model.radio.RadioArtworkPolicy.corrected(item.optString("favicon").trim().takeIf {
                 it.length <= 2048 && EchoRadioStation.validUrl(it)
-            },
+            }),
             countryCode = item.optString("countrycode").take(2),
             language = item.optString("language").take(128),
             homepage = item.optString("homepage").takeIf { EchoRadioStation.validUrl(it) },

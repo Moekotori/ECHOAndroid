@@ -30,6 +30,7 @@ import kotlinx.coroutines.withContext
 data class EchoPlaybackRuntimeOptions(
     val audioInterruptionPolicy: app.echo.android.model.playback.EchoAudioInterruptionPolicy = app.echo.android.model.playback.EchoAudioInterruptionPolicy.Duck,
     val sleepTimerFinishTrack: Boolean = true,
+    val stopOnTaskRemoved: Boolean = false,
     val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
     val shuffleOptions: app.echo.android.model.playback.EchoShuffleOptions = app.echo.android.model.playback.EchoShuffleOptions(),
 )
@@ -38,8 +39,8 @@ object EchoPlaybackRuntimeOptionsStore {
     private val _options = MutableStateFlow(EchoPlaybackRuntimeOptions())
     val options: StateFlow<EchoPlaybackRuntimeOptions> = _options.asStateFlow()
 
-    fun setListeningOptions(policy: app.echo.android.model.playback.EchoAudioInterruptionPolicy, finishTrack: Boolean) {
-        _options.update { it.copy(audioInterruptionPolicy = policy, sleepTimerFinishTrack = finishTrack) }
+    fun setListeningOptions(policy: app.echo.android.model.playback.EchoAudioInterruptionPolicy, finishTrack: Boolean, stopOnTaskRemoved: Boolean = false) {
+        _options.update { it.copy(audioInterruptionPolicy = policy, sleepTimerFinishTrack = finishTrack, stopOnTaskRemoved = stopOnTaskRemoved) }
     }
 
     fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
@@ -81,6 +82,18 @@ object EchoPlaybackProcessRuntime {
     @Volatile internal var smartFadeInMediaId: String? = null
     internal val sleepTransitionModes = MutableStateFlow(EchoSleepTimerMode.Off)
 
+    private val _autoMixStatus = kotlinx.coroutines.flow.MutableStateFlow(app.echo.android.model.playback.EchoAutoMixStatus())
+    val autoMixStatus = _autoMixStatus.asStateFlow()
+    internal fun publishAutoMixStatus(value: app.echo.android.model.playback.EchoAutoMixStatus) { _autoMixStatus.value = value.normalized() }
+
+    internal val manualFadeState = EchoManualFadeState()
+    internal val manualFadeGain: Float get() = manualFadeState.gain
+    val manualPlayIntent: Boolean? get() = manualFadeState.intent
+    internal fun setManualFadeGain(value: Float) {
+        manualFadeState.gain = value.coerceIn(0f, 1f)
+        enginePolicy?.applyReplayGain()
+    }
+
     @Volatile internal var audioFocusGain: Float = 1f
         private set
 
@@ -115,11 +128,14 @@ object EchoPlaybackProcessRuntime {
     var usbOutputOptions = app.echo.android.model.playback.EchoUsbOutputOptions()
         private set
 
+    @Volatile internal var usbVolumeUpdater: ((app.echo.android.model.playback.EchoUsbOutputOptions) -> Unit)? = null
+
     fun setUsbOutputOptions(options: app.echo.android.model.playback.EchoUsbOutputOptions) {
         val next = options.normalized
         val previous = usbOutputOptions
         if (next == previous) return
         usbOutputOptions = next
+        usbVolumeUpdater?.invoke(next)
         if (usbExclusiveEnabled && next.needsRebuild(previous, usbBitPerfectEnabled)) {
             reconfigureAudioPipeline(forceSinkReset = true)
         }
@@ -325,14 +341,21 @@ object EchoPlaybackProcessRuntime {
     internal var lastUsbCompatibilityRules: List<app.echo.android.model.playback.EchoUsbCompatibilityRule> = emptyList()
         private set
 
+    internal var lastUsbVolumeEvidence: app.echo.android.model.playback.EchoUsbVolumeDiagnostics? = null
+        private set
+
     fun setUsbExclusiveSinkStatus(status: EchoUsbExclusiveSinkStatus?) {
         if (status == null && usbExclusiveSinkStatus != null) {
+            EchoUsbCaptureTrace.capture(usbExclusiveSinkStatus)
+            lastUsbVolumeEvidence = usbExclusiveSinkStatus?.volumeEvidence?.invoke()?.copy(sessionClosed = true, handoff = false)
             lastUsbTransferEvidence = usbExclusiveSinkStatus?.transferEvidence?.invoke()?.copy(sessionClosed = true)
             lastUsbCompatibilityRules = usbExclusiveSinkStatus?.compatibilityRules.orEmpty()
         } else if (status != null) {
+            lastUsbVolumeEvidence = null
             lastUsbTransferEvidence = null
             lastUsbCompatibilityRules = emptyList()
         }
+        app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.UsbOpen, if (status?.streaming == true) 1 else 0, status?.sampleRateHz?.toLong() ?: 0)
         usbExclusiveSinkStatus = status
         if (status?.streaming != true) {
             exclusiveMakeupGain = 1f
@@ -372,14 +395,7 @@ object EchoPlaybackProcessRuntime {
     }
 
     suspend fun resolveRemoteStreamUri(mediaId: String, uri: String): String {
-        if (
-            EchoLinkPlaybackUri.trackIdFromPersistUri(uri) == null &&
-            !EchoLinkPlaybackUri.isOneShotStreamUri(uri) &&
-            !EchoLinkPlaybackUri.requiresStreamResolve(mediaId, uri)
-        ) {
-            return uri
-        }
-        return streamResolver?.resolvePlayUri(mediaId, uri)?.takeIf { it.isNotBlank() } ?: uri
+        return resolveEchoLinkStreamUri(mediaId, uri, streamResolver)
     }
 
     suspend fun reResolveBoundPlayerQueue() {
@@ -411,8 +427,10 @@ object EchoPlaybackProcessRuntime {
                     if (changed || (enginePolicy?.boundPlayer() ?: mediaController) !== player ||
                         player.currentMediaItem != item || player.currentMediaItemIndex != index ||
                         player.currentPosition != position || player.playWhenReady != playWhenReady ||
-                        resolved == uri || EchoLinkPlaybackUri.trackIdFromPersistUri(resolved) != null) return@withContext
-                    player.replaceMediaItem(index, item.buildUpon().setUri(Uri.parse(resolved)).build())
+                        EchoLinkPlaybackUri.trackIdFromPersistUri(resolved) != null) return@withContext
+                    if (resolved != uri) {
+                        player.replaceMediaItem(index, item.buildUpon().setUri(Uri.parse(resolved)).build())
+                    }
                     player.seekTo(index, position)
                     player.prepare()
                     player.playWhenReady = playWhenReady
@@ -478,6 +496,7 @@ object EchoPlaybackProcessRuntime {
     }
 
     fun publishSurface(snapshot: EchoPlaybackSurfaceSnapshot) {
+        EchoUsbCaptureTrace.capture(usbExclusiveSinkStatus)
         surfaceSnapshot = snapshot
         _surface.value = snapshot
         surfaceListener?.invoke(snapshot)
@@ -579,8 +598,14 @@ object EchoPlaybackProcessRuntime {
         }
     }
 
-    fun onSleepTimerUserCommand() {
-        if (sleepTimerFinishingCurrentTrack) cancelSleepTimer()
+    private val sleepCancellationEvents = EchoSleepTimerCancellationEvents()
+    val sleepTimerCancellations = sleepCancellationEvents.notices
+
+    fun onSleepTimerUserCommand(
+        reason: app.echo.android.model.playback.EchoSleepTimerCancellationReason =
+            app.echo.android.model.playback.EchoSleepTimerCancellationReason.PlaybackChanged,
+    ) {
+        sleepCancellationEvents.cancelIfFinishing(sleepTimerFinishingCurrentTrack, reason, ::cancelSleepTimer)
     }
 
     fun onSleepTimerEndOfMediaItem() {
@@ -631,6 +656,7 @@ object EchoPlaybackProcessRuntime {
                         player?.playWhenReady == true, durationMs, player?.currentPosition ?: 0L,
                         player?.isCurrentMediaItemLive == true,
                     )) {
+                    app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.SleepTimer, 1)
                     sleepTimerFinishingCurrentTrack = true
                     sleepTimerMode = EchoSleepTimerMode.EndOfTrack
                     (player as? ExoPlayer)?.pauseAtEndOfMediaItems = true

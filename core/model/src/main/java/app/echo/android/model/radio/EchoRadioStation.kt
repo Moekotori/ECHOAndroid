@@ -12,17 +12,21 @@ data class EchoRadioStation(
     val codec: String? = null, val bitrateKbps: Int? = null, val countryCode: String = "", val language: String = "",
     val streams: List<EchoRadioStream> = emptyList(), val defaultStreamUrl: String? = null, val videoUrl: String? = null,
 ) {
-    fun toTrack(streamUrl: String? = null): EchoTrack = EchoTrack(
+    fun toTrack(streamUrl: String? = null): EchoTrack {
+        val chosen = streamUrl?.takeIf { it == url || streams.any { stream -> stream.url == it } }
+            ?: defaultStreamUrl?.takeIf { it == url || streams.any { stream -> stream.url == it } } ?: url
+        val selectedCodec = if (chosen == url) codec else streams.firstOrNull { it.url == chosen }?.codec
+        return EchoTrack(
         id = MediaIdPrefix + id,
-        uri = streamUrl?.takeIf { it == url || streams.any { stream -> stream.url == it } }
-            ?: defaultStreamUrl?.takeIf { it == url || streams.any { stream -> stream.url == it } } ?: url,
+        uri = chosen,
         title = name,
         artist = URI(url).host.orEmpty(),
         source = LibrarySource("radio"),
         artworkUri = artworkUrl,
         genre = genre.takeIf { it.isNotBlank() },
-        mimeType = if (codec.equals("HLS", ignoreCase = true)) "application/x-mpegURL" else null,
+        mimeType = if (selectedCodec.equals("HLS", ignoreCase = true)) "application/x-mpegURL" else null,
     )
+    }
 
     companion object {
         const val MediaIdPrefix = "radio:"

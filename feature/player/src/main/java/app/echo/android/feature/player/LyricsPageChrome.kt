@@ -21,6 +21,7 @@ import app.echo.android.design.EchoArtworkImage
 import app.echo.android.design.EchoArtworkSize
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.playback.EchoTrackRef
+import app.echo.android.model.settings.EchoPlayerPageStyle
 
 @Composable
 internal fun LyricsTrackHeading(
@@ -28,8 +29,26 @@ internal fun LyricsTrackHeading(
     paper: Boolean,
     onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
     landscape: Boolean = false,
+    animate: Boolean = false,
 ) {
     if (track == null) return
+    val style = LocalPlayerPageStyle.current
+    if (style == EchoPlayerPageStyle.Terminal) {
+        TerminalLyricsHeading(track)
+        return
+    }
+    if (style == EchoPlayerPageStyle.Scrapbook) {
+        ScrapbookLyricsHeading(track)
+        return
+    }
+    if (style == EchoPlayerPageStyle.MetroLine) {
+        MetroLyricsHeading(track, animate)
+        return
+    }
+    if (style == EchoPlayerPageStyle.ChatThread) {
+        ChatLyricsHeading(track)
+        return
+    }
     if (paper) {
         Column(
             Modifier.fillMaxWidth().padding(top = if (landscape) 4.dp else 18.dp, bottom = if (landscape) 12.dp else 20.dp),

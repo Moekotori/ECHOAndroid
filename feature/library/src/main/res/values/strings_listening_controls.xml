@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hidden_track_title">Hidden songs</string>
+    <string name="hidden_track_confirm">Hide %1$s? It will be removed from the playback queue. Files, playlist membership, favorites and listening records will be kept.</string>
+    <string name="hidden_track_note">Restore songs to make them visible in the library again. Files, playlist membership and listening records are preserved.</string>
+    <string name="hidden_track_hide">Hide song</string>
+    <string name="hidden_track_restore">Restore</string>
+    <string name="hidden_track_restore_all">Restore all</string>
+    <string name="hidden_track_cancel">Cancel</string>
+    <string name="hidden_track_empty">No hidden songs</string>
+    <string name="hidden_track_failed">Could not complete the operation. Please retry.</string>
+    <string name="hidden_track_retry">Retry</string>
+    <string name="hidden_track_count">Hidden songs: %1$d</string>
+</resources>

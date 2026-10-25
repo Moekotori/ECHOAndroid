@@ -10,10 +10,16 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">ピクセル</string>
     <string name="player_appearance_type_poster">文字ポスター</string>
-    <string name="player_appearance_holo_prism">オーロラプリズム</string>
-    <string name="player_appearance_starlight_orbit">星の軌道</string>
-    <string name="player_appearance_sakura_letter">桜の便箋</string>
-    <string name="player_appearance_neon_rain">ネオンレイン</string>
-    <string name="player_appearance_soda_pop">ソーダポップ</string>
-    <string name="player_appearance_amber_film">アンバーフィルム</string>
+    <string name="player_appearance_terminal">ターミナル</string>
+    <string name="player_appearance_scrapbook">スクラップブック</string>
+    <string name="player_appearance_metro_line">地下鉄路線</string>
+    <string name="player_appearance_chat_thread">チャット</string>
+    <string name="player_style_metro_origin">始発駅</string>
+    <string name="player_style_metro_terminus">終点</string>
+    <string name="player_style_metro_elapsed">走行 %1$s</string>
+    <string name="player_appearance_halftone">ハーフトーン</string>
+    <string name="player_appearance_pixel_mosaic">ピクセルモザイク</string>
+    <string name="player_appearance_contours">等高線</string>
+    <string name="player_appearance_dither">ディザ</string>
+    <string name="player_appearance_glyph_field">文字アート</string>
 </resources>

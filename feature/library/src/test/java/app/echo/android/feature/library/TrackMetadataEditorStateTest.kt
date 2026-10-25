@@ -3,10 +3,35 @@ package app.echo.android.feature.library
 import app.echo.android.model.library.EchoTrack
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TrackMetadataEditorStateTest {
     private val track = EchoTrack("track", "content://audio/1", "Title", "Artist")
+
+    @Test
+    fun invalidNumbersCannotBeSavedAsAccidentalClears() {
+        val state = TrackMetadataEditorState().apply { title = "Title"; artist = "Artist" }
+        for (invalid in listOf("0", "-1", "1/12", "999999999999", "abc")) {
+            state.trackNumber = invalid
+            assertFalse(invalid, state.canSave)
+        }
+        state.trackNumber = " 12 "
+        state.discNumber = "2"
+        state.year = "2026"
+        assertTrue(state.canSave)
+        assertEquals(12, state.toUpdate(track).trackNumber)
+        state.year = "10000"
+        assertFalse(state.canSave)
+        state.year = ""
+        state.discNumber = "0"
+        assertFalse(state.canSave)
+        state.discNumber = ""
+        state.trackNumber = ""
+        assertTrue(state.canSave)
+        assertNull(state.toUpdate(track).trackNumber)
+    }
 
     @Test
     fun artworkIsAnExplicitDraftAndDoesNotCarryStaleTrackArtwork() {

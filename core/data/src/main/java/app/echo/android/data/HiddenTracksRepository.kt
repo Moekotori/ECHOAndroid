@@ -28,19 +28,24 @@ suspend fun EchoLibraryRepository.hideTracks(ids: List<String>): Set<String> = w
 }
 
 suspend fun EchoLibraryRepository.restoreHiddenTracks(ids: List<String>) = withContext(Dispatchers.IO) {
+    var restored = 0
     ids.distinct().chunked(256).forEach { batch -> database.withTransaction {
-        database.hiddenTrackDao().restore(batch)
-        refreshHiddenSummaryKeys(batch)
+        val hidden = database.hiddenTrackDao().hiddenIds(batch)
+        restored += database.hiddenTrackDao().restore(hidden)
+        refreshHiddenSummaryKeys(hidden)
     } }
+    restored
 }
 
 suspend fun EchoLibraryRepository.restoreAllHiddenTracks() = withContext(Dispatchers.IO) {
+    var restored = 0
     while (true) {
         val batch = database.hiddenTrackDao().firstBatch()
         if (batch.isEmpty()) break
-        restoreHiddenTracks(batch)
+        restored += restoreHiddenTracks(batch)
         yield()
     }
+    restored
 }
 
 suspend fun EchoLibraryRepository.hiddenTrackIds(ids: List<String>): Set<String> = withContext(Dispatchers.IO) {

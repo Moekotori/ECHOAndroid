@@ -17,6 +17,7 @@ object UsbPcmPacker {
         destination: ByteArray,
         destinationOffset: Int = 0,
         volume: Float = 1f,
+        gainRamp: UsbPcmGainRamp? = null,
     ): Int {
         val channels = channelCount.coerceAtLeast(1)
         val destStride = destBytesPerSample.coerceIn(1, 4)
@@ -26,14 +27,15 @@ object UsbPcmPacker {
             "USB PCM destination is too small"
         }
         val safeVolume = volume.coerceAtLeast(0f)
-        if (canCopyDirectly(sourceEncoding, destStride, source.order(), safeVolume)) {
+        if ((gainRamp == null || gainRamp.unity()) && canCopyDirectly(sourceEncoding, destStride, source.order(), safeVolume)) {
             source.get(destination, destinationOffset, outBytes)
             return outBytes
         }
         var destIndex = destinationOffset
         repeat(frames) {
+            val frameGain = safeVolume * (gainRamp?.next() ?: 1f)
             repeat(channels) {
-                val sample = scaleSample(readNormalizedSample(source, sourceEncoding), safeVolume)
+                val sample = scaleSample(readNormalizedSample(source, sourceEncoding), frameGain)
                 writeIntegerSample(destination, destIndex, destStride, sample)
                 destIndex += destStride
             }

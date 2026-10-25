@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sleep_cancel_playback">播放操作已取消睡眠定时。</string>
+    <string name="sleep_cancel_track">切换歌曲已取消睡眠定时。</string>
+    <string name="sleep_cancel_seek">调整播放进度已取消睡眠定时。</string>
+    <string name="sleep_cancel_queue">播放队列变更已取消睡眠定时。</string>
+    <string name="sleep_cancel_focus">失去音频焦点，睡眠定时已取消。</string>
+    <string name="sleep_cancel_output">音频输出变化，睡眠定时已取消。</string>
+    <string name="sleep_cancel_error">播放出错，睡眠定时已取消。</string>
+</resources>

@@ -7,6 +7,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.drop
 
 internal class PodcastController(private val repository: PodcastRepository, private val scope: CoroutineScope) {
     private val mutable = MutableStateFlow(PodcastScreenState())
@@ -17,12 +18,27 @@ internal class PodcastController(private val repository: PodcastRepository, priv
     private var queryGeneration = 0L
     private var operationGeneration = 0L
     private var failedRefreshId: String? = null
+    private var progressJob: Job? = null
 
-    fun open() { opened = true; retry() }
+    fun open() {
+        opened = true
+        progressJob?.cancel()
+        progressJob = scope.launch {
+            repository.store.progressRevision.drop(1).collect {
+                if (opened && !mutable.value.loading && !mutable.value.busy) {
+                    try { loadPage(mutable.value.episodes.page) }
+                    catch (e: CancellationException) { throw e }
+                    catch (_: Exception) { mutable.update { it.copy(failed = true) } }
+                }
+            }
+        }
+        retry()
+    }
     fun close() {
         opened = false; queryGeneration++; operationGeneration++
         queryJob?.cancel(); operation?.cancel()
-        mutable.update { it.copy(episodes = PodcastEpisodePage(), loading = false, busy = false) }
+        progressJob?.cancel()
+        mutable.update { it.copy(episodes = PodcastEpisodePage(page = it.episodes.page), loading = false, busy = false) }
     }
 
     fun retry() {
@@ -95,6 +111,7 @@ internal class PodcastController(private val repository: PodcastRepository, priv
 
     fun refresh() = mutate {
         val selected = mutable.value.selected ?: return@mutate
+        mutable.update { it.copy(artworkRevision = it.artworkRevision + 1) }
         failedRefreshId = selected.id
         repository.refresh(selected)
         failedRefreshId = null

@@ -48,6 +48,40 @@ class EchoRemoteClient internal constructor(
     private val _status = MutableStateFlow(EchoRemoteStatus())
     val status: StateFlow<EchoRemoteStatus> = _status.asStateFlow()
 
+    private val noticeGate = EchoConnectionNoticeGate()
+    private val _notices = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 8,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
+    val notices: kotlinx.coroutines.flow.SharedFlow<String> = _notices
+    private fun notice(key: String, message: String) {
+        if (noticeGate.accept(key)) _notices.tryEmit(message)
+    }
+    private val remoteCommandMutex = kotlinx.coroutines.sync.Mutex()
+    private val controls: EchoRemoteControlSession by lazy {
+        EchoRemoteControlSession(scope, transport, ::applyStatus, ::publishControls,
+            onFailure = { target, error ->
+                if (!rejectAuthentication(target, error)) {
+                    val code = (error as? EchoLinkHttpException)?.statusCode
+                    if (code != null && code in 400..499 || code == 501) {
+                        val message = error.userMessage()
+                        _status.update { it.copy(error = message) }
+                        notice("control-http:$code", message)
+                    } else markReconnecting(target, error)
+                }
+            }, onNotice = { reason ->
+                val message = text(when (reason) {
+                    "queued" -> R.string.remote_control_queued
+                    "uncertain" -> R.string.remote_control_uncertain
+                    "unsupported" -> R.string.remote_control_unsupported
+                    else -> R.string.remote_control_expired
+                })
+                notice("control:$reason", message)
+                if (reason != "queued") _status.update { it.copy(error = message) }
+            }, commandMutex = remoteCommandMutex)
+    }
+    private fun publishControls() {
+        _status.update { it.copy(playback = controls.projected(), controlPending = controls.pending) }
+    }
+
     private val _library = MutableStateFlow(EchoRemoteLibraryState())
     val library: StateFlow<EchoRemoteLibraryState> = _library.asStateFlow()
     private val bridgeFolders = EchoBridgeFolderBrowser(scope, transport, { endpoint }, _library) { it.userMessage() }
@@ -101,6 +135,7 @@ class EchoRemoteClient internal constructor(
     fun setForeground(visible: Boolean) {
         if (foreground == visible) return
         foreground = visible
+        controls.setActive(visible)
         if (!visible) {
             stopEventStream()
             statusPollJob?.cancel()
@@ -238,6 +273,9 @@ class EchoRemoteClient internal constructor(
             _library.value = EchoRemoteLibraryState()
             clearStreamCache()
         }
+        noticeGate.clear()
+        controls.bind(nextEndpoint)
+        controls.setActive(foreground)
         val generation = ++connectGeneration
         queueBrowser.cancel(clear = true)
         lastCommandError = null
@@ -335,6 +373,8 @@ class EchoRemoteClient internal constructor(
     }
 
     fun disconnect() {
+        controls.bind(null)
+        noticeGate.clear()
         bridgeFolders.reset()
         queueBrowser.cancel(clear = true)
         lastCommandError = null
@@ -374,7 +414,7 @@ class EchoRemoteClient internal constructor(
         when (message) {
             is EchoRemoteMessage.StatusSnapshot -> {
                 val target = endpoint ?: return
-                val playback = mergeEchoLinkSnapshot(_status.value.playback, message)
+                val playback = mergeEchoLinkSnapshot(controls.confirmedSnapshot, message)
                 statusRefreshGeneration += 1
                 applyStatus(
                     target,
@@ -407,9 +447,20 @@ class EchoRemoteClient internal constructor(
             }
             return
         }
-        scope.launch {
-            dispatchCommand(target, command, onSuccess)
+        if (authRejected || target.libraryOnly) return
+        lastCommandError = null
+        _status.update { it.copy(error = null) }
+        if (controls.request(command, onSuccess)) {
+            if (_status.value.connectionState != EchoRemoteConnectionState.Connected)
+                notice("control:queued", text(R.string.remote_control_queued))
+            return
         }
+        controls.clear()
+        if (_status.value.connectionState != EchoRemoteConnectionState.Connected) {
+            notice("relative:offline", text(R.string.remote_control_relative_offline))
+            return
+        }
+        scope.launch { dispatchCommand(target, command, onSuccess) }
     }
 
     fun refreshLibrary(query: String = _library.value.query) {
@@ -1135,7 +1186,10 @@ class EchoRemoteClient internal constructor(
         lastCommandError = null
         _status.update { it.copy(error = null) }
         val connection = connectGeneration
-        val result = runSuspendCatching { transport.sendCommand(target, command) }
+        val result = runSuspendCatching {
+            remoteCommandMutex.lock()
+            try { transport.sendCommand(target, command) } finally { remoteCommandMutex.unlock() }
+        }
         result.onSuccess { response ->
             if (connection != connectGeneration || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
                 return@onSuccess
@@ -1157,6 +1211,7 @@ class EchoRemoteClient internal constructor(
             }
             if (commandRequest == commandGeneration) {
                 lastCommandError = error.userMessage()
+                notice("command:${error.javaClass.simpleName}:${(error as? EchoLinkHttpException)?.statusCode}", lastCommandError!!)
                 _status.update { current ->
                     current.copy(error = lastCommandError)
                 }
@@ -1269,11 +1324,14 @@ class EchoRemoteClient internal constructor(
 
     private fun rejectAuthentication(target: EchoRemoteEndpoint, error: Throwable?): Boolean {
         if ((error as? EchoLinkHttpException)?.statusCode !in listOf(401, 403)) return false
+        controls.clear()
+        noticeGate.clear()
         authRejected = true
         statusPollJob?.cancel()
         foregroundRefreshJob?.cancel()
         stopEventStream()
         val message = if (target.token.isBlank()) R.string.connect_direct_unavailable else R.string.connect_auth_expired
+        notice("auth", text(message))
         markConnectionError(target, EchoLinkHttpException(text(message)))
         clearStreamCache()
         return true
@@ -1282,6 +1340,7 @@ class EchoRemoteClient internal constructor(
     private fun applyStatus(target: EchoRemoteEndpoint, response: EchoLinkStatusResponse) {
         if (authRejected || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) return
         pollFailures = 0
+        val playback = response.playback?.let(controls::observe) ?: controls.projected()
         val capableEndpoint = target.copy(libraryOnly = response.libraryOnly,
             supportsV2Events = target.supportsV2Events && !response.libraryOnly)
         val namedEndpoint = response.deviceName
@@ -1293,7 +1352,8 @@ class EchoRemoteClient internal constructor(
             current.copy(
                 connectionState = EchoRemoteConnectionState.Connected,
                 endpoint = namedEndpoint,
-                playback = response.playback ?: app.echo.android.model.connect.EchoRemotePlaybackSnapshot(),
+                playback = playback,
+                controlPending = controls.pending,
                 error = lastCommandError,
             )
         }
@@ -1333,11 +1393,13 @@ class EchoRemoteClient internal constructor(
             clipEndMs = source.sourceRange?.endMs ?: 0L)
     }
 
-    suspend fun resolvePhoneStreamUrl(trackId: String): String? {
+    suspend fun resolvePhoneStreamUrl(trackId: String, previousStreamUrl: String? = null): String? {
         val target = endpoint ?: return null
+        val connection = connectGeneration
         if (trackId.isBlank()) return null
-        return runSuspendCatching { resolveCachedStream(target, trackId) }
+        return runSuspendCatching { resolveCachedStream(target, trackId, previousStreamUrl) }
             .getOrNull()
+            ?.takeIf { connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target) }
             ?.streamUrl
             ?.takeIf { it.isNotBlank() }
     }
@@ -1353,13 +1415,20 @@ class EchoRemoteClient internal constructor(
     private suspend fun resolveCachedStream(
         target: EchoRemoteEndpoint,
         trackId: String,
+        previousStreamUrl: String? = null,
     ): EchoLinkStreamResponse {
+        val connection = connectGeneration
         val key = EchoLinkStreamCachePolicy.cacheKey(
             EchoLinkRequestPolicy.endpointIdentity(target),
             trackId,
         )
         val now = System.currentTimeMillis()
-        val cached = synchronized(streamCacheLock) { streamCache[key] }
+        val cached = synchronized(streamCacheLock) {
+            if (previousStreamUrl != null && streamCache[key]?.streamUrl == previousStreamUrl) {
+                streamCache.remove(key)
+            }
+            streamCache[key]
+        }
         if (cached != null && EchoLinkStreamCachePolicy.isFresh(cached.expiresAtEpochMs, now)) {
             return EchoLinkStreamResponse(
                 streamUrl = cached.streamUrl,
@@ -1369,7 +1438,9 @@ class EchoRemoteClient internal constructor(
             )
         }
         val stream = transport.resolveStream(target, trackId)
-        rememberStream(key, stream)
+        if (connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
+            rememberStream(key, stream)
+        }
         return stream
     }
 

@@ -196,6 +196,22 @@ class UsbExclusivePcmSession internal constructor(
     @Volatile
     private var disconnected = false
     private var keepAliveThread: Thread? = null
+    @Volatile private var volumeControl: UsbDacVolumeController? = null
+    val volumeRamp: UsbPcmGainRamp? get() = volumeControl?.ramp
+    val volumeState: UsbDacVolumeState? get() = volumeControl?.state
+    val volumeFailed: Boolean get() = volumeControl?.fatal == true
+    fun configureVolume(mode: String, percent: Int) {
+        if (sessionClosed || dop) return
+        val existing = volumeControl
+        if (existing != null) { existing.request(mode, percent); return }
+        val connection = connection ?: return
+        val format = selectedFormat ?: return
+        val spec = spec ?: return
+        volumeControl = UsbDacVolumeController(connection.rawDescriptors, format,
+            UsbAudioControlTransfer(connection::controlTransfer), percent, mode, spec.sampleRateHz,
+            150L + capacityFrames() * 1000 / spec.sampleRateHz.coerceAtLeast(1) +
+                32768L * 1000 / (spec.sampleRateHz.coerceAtLeast(1) * spec.channelCount.coerceAtLeast(1) * bytesPerSample))
+    }
     private val snapshotBuffer = LongArray(17)
     private var nextSnapshotMs = 0L
     @Volatile
@@ -218,8 +234,9 @@ class UsbExclusivePcmSession internal constructor(
         nextSnapshotMs = now + 1_000L
     }
 
-    fun setPlaybackActive(active: Boolean) = synchronized(lock) {
-        if (!closed) UsbIsochronousNative.setPlaybackActive(nativeHandle, active)
+    fun setPlaybackActive(active: Boolean) {
+        volumeControl?.setPlaying(active)
+        synchronized(lock) { if (!closed) UsbIsochronousNative.setPlaybackActive(nativeHandle, active) }
     }
 
     val state: UsbExclusiveOutputState
@@ -395,6 +412,7 @@ class UsbExclusivePcmSession internal constructor(
             val audioInterface = audioInterface
             val controlInterface = controlInterface
             if (connection != null) {
+                volumeControl?.close()
                 if (audioInterface != null) {
                     runCatching { connection.setInterfaceAlt(audioInterface.id, 0) }
                     runCatching { connection.releaseInterface(audioInterface) }

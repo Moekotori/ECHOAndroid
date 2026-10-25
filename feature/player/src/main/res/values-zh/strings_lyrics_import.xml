@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_import_preview_title">预览歌词</string>
+    <string name="lyrics_import_encoding">编码：%1$s</string>
+    <string name="lyrics_import_encoding_auto">自动识别</string>
+    <string name="lyrics_import_encoding_hint">导入前请检查文字；如果出现乱码，可以选择其他编码。</string>
+    <string name="lyrics_import_preview_failed">无法使用此编码读取歌词。</string>
+</resources>

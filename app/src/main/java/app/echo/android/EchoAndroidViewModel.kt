@@ -90,6 +90,12 @@ import app.echo.android.playback.EchoReplayGainScanner
 import app.echo.android.model.playback.EchoReplayGainScanFailure
 import app.echo.android.model.playback.EchoReplayGainScanState
 import java.util.UUID
+import app.echo.android.data.observeHiddenTrackCount
+import app.echo.android.data.pagedHiddenTracks
+import app.echo.android.data.hideTracks
+import app.echo.android.data.restoreHiddenTracks
+import app.echo.android.data.restoreAllHiddenTracks
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Job
@@ -177,6 +183,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         })
     internal val broadcastPlayback by lazy { BroadcastPlaybackController(application as EchoApplication, playbackController, preferredPlayback, radioController) }
     internal fun cancelPendingPlaybackSelection() = preferredPlayback.invalidate()
+    internal fun observeHiddenTracksCount() = repository.observeHiddenTrackCount()
+    internal fun hiddenTracks() = repository.pagedHiddenTracks()
+    internal suspend fun hideLibraryTracks(ids: List<String>) {
+        // ViewModel ownership completes the queue edit even if the confirmation sheet leaves composition.
+        viewModelScope.async {
+            val hidden = repository.hideTracks(ids)
+            require(hidden.isNotEmpty())
+            playbackController.removeHiddenTracks(hidden)
+        }.await()
+    }
+    internal suspend fun restoreLibraryTracks(ids: List<String>) = repository.restoreHiddenTracks(ids)
+    internal suspend fun restoreAllLibraryTracks() = repository.restoreAllHiddenTracks()
+
     internal suspend fun trackVersions(track: EchoTrack) = repository.trackVersions(track)
     internal suspend fun setPreferredTrackVersion(track: EchoTrack, id: String?) = repository.setPreferredTrackVersion(track, id)
     private suspend fun playPreferredQueue(
@@ -200,6 +219,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
+    internal val diagnosticCapture get() = (getApplication<android.app.Application>() as EchoApplication).diagnosticCapture
     private val lastFmClient = LastFmClient()
     private val lastFmController = (application as EchoApplication).scrobbleSession.lastFm
     private val listenBrainzClient = ListenBrainzClient()
@@ -271,6 +291,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             "echo_title" to track.title, "echo_artist" to track.artist, "echo_album" to track.album.orEmpty(), "echo_duration_ms" to track.durationMs.toString()))
         lyricsController.saveEditedLyrics(trackId, enriched)
     }
+    fun resumeLocalPlayback() = playbackController.resumePlayback()
+
     suspend fun setAbLoop(trackId: String?, startMs: Long, endMs: Long) = playbackController.setAbLoop(trackId, startMs, endMs)
     val playbackControls: StateFlow<PlaybackControlsState> = playbackController.playbackControls
     val playbackQueue: StateFlow<PlaybackQueueState> = playbackController.playbackQueue
@@ -1250,6 +1272,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    suspend fun previewLyricsImport(uri: Uri, charset: String?): EchoLyrics = lyricsController.previewImport(uri, charset)
+
+    fun importLyricsDocument(trackId: String, lyrics: EchoLyrics) {
+        lyricsController.importLyricsDocument(lyrics, trackId) { imported, version ->
+            writeImportedLyricsToFile(trackId, imported, version)
+        }
+    }
+
     private fun writeImportedLyricsToFile(trackId: String, lyrics: EchoLyrics, version: Long) {
         viewModelScope.launch {
             // The full imported selection is already durable. Only mirror it to audio tags
@@ -1434,6 +1464,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setAudioInterruptionPolicy(value: String) {
         viewModelScope.launch { settingsStore.setAudioInterruptionPolicy(value) }
+    }
+
+    fun setStopOnTaskRemoved(enabled: Boolean) {
+        viewModelScope.launch { settingsStore.setStopOnTaskRemoved(enabled) }
     }
 
     fun setSleepTimerFinishTrack(enabled: Boolean) {
@@ -1672,6 +1706,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun deleteEqualizerUserPreset(id: String) {
         updateSettings { deleteEqualizerUserPreset(id) }
     }
+
+    internal suspend fun importEqualizerBundle(presets: List<app.echo.android.model.playback.EchoEqualizerUserPreset>, conflict: app.echo.android.model.playback.EchoEqImportConflict) =
+        withContext(Dispatchers.IO) { settingsStore.importEqualizerBundle(presets, conflict) }
 
     fun importEqualizerShareCode(code: String) {
         val parsed = EchoEqualizerShareCodec.decode(code, UUID.randomUUID().toString()) ?: return

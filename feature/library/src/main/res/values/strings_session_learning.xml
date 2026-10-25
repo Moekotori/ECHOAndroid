@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_menu_title">Song menu</string>
+    <string name="track_menu_detail">Show the advanced actions you use. Playback and track information remain available. Restore defaults with Reset below.</string>
+</resources>

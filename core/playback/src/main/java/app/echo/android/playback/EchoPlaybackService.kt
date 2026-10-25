@@ -37,6 +37,7 @@ class EchoPlaybackService : MediaLibraryService() {
     private var sessionRestorer: EchoPlaybackSessionRestorer? = null
     private var statusLyricsOverlay: EchoStatusLyricsOverlay? = null
     private var notificationLyrics: EchoNotificationLyricController? = null
+    private var manualFade: EchoManualFadePlayer? = null
     private var audioFocus: EchoAudioFocusController? = null
     private var audioRoutePlayback: EchoAudioRoutePlaybackController? = null
     private var surfaceProgressJob: Job? = null
@@ -48,7 +49,17 @@ class EchoPlaybackService : MediaLibraryService() {
     }
 
     private val playerListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(state: Int) {
+            app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.PlaybackState, state.toLong())
+        }
+        override fun onMediaItemTransition(item: androidx.media3.common.MediaItem?, reason: Int) {
+            app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.MediaTransition, reason.toLong())
+        }
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.PlaybackState, -1, error.errorCode.toLong())
+        }
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.PlaybackState, if (playWhenReady) 1 else 0, reason.toLong())
             if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM)
                 EchoPlaybackProcessRuntime.onSleepTimerEndOfMediaItem()
         }
@@ -109,6 +120,7 @@ class EchoPlaybackService : MediaLibraryService() {
             while (isActive && player.isPlaying) {
                 delay(1_000L)
                 if (player.isPlaying) {
+                    smartTransitions?.onAudibleProgress()
                     EchoPlaybackProcessRuntime.publishSurface(player.toPlaybackSurfaceSnapshot())
                 }
             }
@@ -182,6 +194,7 @@ class EchoPlaybackService : MediaLibraryService() {
         )
         sessionRestorer = restorer
         EchoPlaybackProcessRuntime.setRemoteAuthReadyListener(restorer::playIfRemoteAuthReady)
+        val manualPlayer = EchoManualFadePlayer(exoPlayer, serviceScope).also { manualFade = it }
         val callback = EchoPlaybackLibrarySessionCallback(
             context = this,
             scope = serviceScope,
@@ -192,10 +205,11 @@ class EchoPlaybackService : MediaLibraryService() {
             nextUpQueue = { nextUpQueue },
             abLoop = { abLoop },
             onUserCommand = { audioFocus?.onUserCommand(it) },
+            onManualToggle = { manualPlayer.toggle(); true },
         )
         sessionCallback = callback
         val buttons = callback.currentButtons(exoPlayer)
-        mediaSession = MediaLibrarySession.Builder(this, exoPlayer, callback)
+        mediaSession = MediaLibrarySession.Builder(this, manualPlayer, callback)
             .setId("echo-mobile-main-session")
             .setBitmapLoader(
                 EchoNotificationBitmapLoader(
@@ -267,8 +281,25 @@ class EchoPlaybackService : MediaLibraryService() {
             )
         }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (EchoPlaybackRuntimeOptionsStore.options.value.stopOnTaskRemoved) {
+            // Pause immediately; retain the queue and position before releasing the output.
+            EchoPlaybackProcessRuntime.cancelSleepTimer()
+            player?.pause()
+            sessionRestorer?.stopAndPersist()
+            // Cancel pending resumption futures before they can repopulate/start the player.
+            serviceScope.cancel()
+            player?.stop()
+            stopSelf()
+        } else {
+            super.onTaskRemoved(rootIntent)
+        }
+    }
+
     override fun onDestroy() {
         EchoPlaybackProcessRuntime.setAudioInteractionGate(null)
+        manualFade?.close()
+        manualFade = null
         abLoop?.close()
         abLoop = null
         trackTransitions?.close()

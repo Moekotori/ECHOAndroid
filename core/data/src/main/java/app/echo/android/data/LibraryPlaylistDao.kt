@@ -100,7 +100,7 @@ interface LibraryPlaylistDao {
 
     @Query(
         """
-        SELECT library_tracks.* FROM library_tracks
+        SELECT library_tracks.* FROM visible_library_tracks AS library_tracks
         JOIN library_playlist_tracks ON library_tracks.id = library_playlist_tracks.trackId
         WHERE library_playlist_tracks.playlistId = :playlistId
         ORDER BY library_playlist_tracks.position ASC

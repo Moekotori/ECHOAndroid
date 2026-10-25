@@ -27,13 +27,13 @@ internal object MediaStoreCueCatalog {
         val uncertainFolders: Set<String> = emptySet(),
         val discoveryFailed: Boolean = false,
     ) {
+        private val uncertain = ScanDirectoryIndex(uncertainFolders, ignoreCase = true)
         fun isUncertain(folder: String?): Boolean {
-            val normalized = folder.orEmpty().replace('\\', '/').trim('/').lowercase(java.util.Locale.ROOT)
-            return discoveryFailed || uncertainFolders.any { it.isEmpty() || normalized == it || normalized.startsWith("$it/") }
+            return discoveryFailed || uncertain.contains(folder)
         }
     }
 
-    suspend fun load(contentResolver: ContentResolver): CueSheetCatalog {
+    suspend fun load(contentResolver: ContentResolver, relativePathPrefix: String? = null): CueSheetCatalog {
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.DISPLAY_NAME,
@@ -57,12 +57,14 @@ internal object MediaStoreCueCatalog {
         } else {
             MediaStore.Files.getContentUri("external")
         }
+        val scope = CueCatalogScope(relativePathPrefix, Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q, storageRoot)
+        val cueScope = scope.cueSelection()
         val cursor = try {
             contentResolver.query(
                 uri,
                 projection,
-                "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?",
-                arrayOf("%.cue"),
+                "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?" + (cueScope?.let { " AND ${it.sql}" } ?: ""),
+                arrayOf("%.cue") + (cueScope?.args ?: emptyArray()),
                 null,
             )
         } catch (cancelled: CancellationException) {
@@ -70,6 +72,8 @@ internal object MediaStoreCueCatalog {
         } catch (_: Exception) { null } ?: return CueSheetCatalog(emptyMap(), emptyList(), discoveryFailed = true)
         val sheets = LinkedHashMap<String, CueSheet>()
         val files = ArrayList<IndexedCueFile>()
+        data class PendingCue(val uri: Uri, val folder: String, val name: String, val legacyFolder: String?)
+        val pending = ArrayList<PendingCue>()
         var trackCount = 0
         val uncertainFolders = HashSet<String>()
 
@@ -105,38 +109,33 @@ internal object MediaStoreCueCatalog {
                     primaryStorageRoot = storageRoot,
                 )
                 if (!LocalAudioFileTypes.isCueSheet(name, null)) continue
-                if (files.size >= 4096 || trackCount >= 32768)
+                if (pending.size >= 4096)
                     return CueSheetCatalog(emptyMap(), files, discoveryFailed = true)
                 if (size > CueSheetPolicy.MaxCueBytes) { uncertainFolders += folder.lowercase(java.util.Locale.ROOT); continue }
-                val document = Uri.withAppendedPath(uri, id.toString())
-                val sheet = try {
-                    contentResolver.openInputStream(document)?.use(::readCueSheet)
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) { null }
-                if (sheet == null) { uncertainFolders += folder.lowercase(java.util.Locale.ROOT); continue }
-                trackCount += sheet.tracks.size
-                sheet.forLocalDirectories().forEach { (descendant, localized) ->
-                    val target = listOf(folder.trim('/'), descendant).filter { it.isNotEmpty() }.joinToString("/")
-                    files += IndexedCueFile(target.lowercase(java.util.Locale.ROOT), name, localized)
-                }
+                pending += PendingCue(Uri.withAppendedPath(uri, id.toString()), folder.trim('/'), name,
+                    if (dataIndex >= 0) listing.getStringOrNull(dataIndex)?.substringBeforeLast('/') else null)
             }
         }
-        if (files.isEmpty()) return CueSheetCatalog(emptyMap(), emptyList(), uncertainFolders)
-        // One lightweight name query only when CUEs exist. Keep candidates in CUE folders only.
-        val wantedStems = files.groupBy { it.folder }.mapValues { (_, cues) ->
-            cues.flatMap { cue ->
-                (listOf(cue.fileName) + cue.sheet.tracks.mapNotNull { it.fileName } + listOfNotNull(cue.sheet.fileName))
-                    .mapNotNull(CueSheetPolicy::localAudioName).map { it.substringBeforeLast('.').lowercase(java.util.Locale.ROOT) }
-            }.toHashSet()
+        if (pending.isEmpty()) return CueSheetCatalog(emptyMap(), emptyList(), uncertainFolders)
+        // Read names before decoding: exact non-ASCII FILE references disambiguate legacy charsets.
+        val wantedFolders = pending.mapTo(HashSet()) { it.folder }
+        fun wanted(folder: String): Boolean {
+            var current = folder
+            while (true) {
+                if (current in wantedFolders) return true
+                if (current.isEmpty()) return false
+                current = current.substringBeforeLast('/', "")
+            }
         }
         val audioNames = HashMap<String, MutableList<String>>()
+        var nameCount = 0
+        val (fallbackClause, fallbackArgs) = LocalAudioFileTypes.mediaStoreFallbackNameClause(MediaStore.Files.FileColumns.DISPLAY_NAME)
+        for (nameScope in scope.audioSelections(wantedFolders, pending.mapNotNull { it.legacyFolder })) {
         val audioCursor = try { contentResolver.query(
             uri, projection,
-            "(${MediaStore.Files.FileColumns.MEDIA_TYPE} = ${MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO} OR " +
-                "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR ${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR " +
-                "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?)",
-            arrayOf("%.flac", "%.ape", "%.wv"), null,
+            "(${MediaStore.Files.FileColumns.MEDIA_TYPE} = ${MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO} OR $fallbackClause)" +
+                (nameScope?.let { " AND ${it.sql}" } ?: ""),
+            fallbackArgs + (nameScope?.args ?: emptyArray()), null,
         ) } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) { null }
@@ -155,17 +154,48 @@ internal object MediaStoreCueCatalog {
                     mediaStoreRelativePath = if (pathIndex >= 0) listing.getStringOrNull(pathIndex) else null,
                     legacyDataPath = if (dataIndex >= 0) listing.getStringOrNull(dataIndex) else null,
                     primaryStorageRoot = storageRoot,
-                ).lowercase(java.util.Locale.ROOT)
-                if (name.substringBeforeLast('.').lowercase(java.util.Locale.ROOT) in wantedStems[folder].orEmpty())
+                )
+                if (wanted(folder)) {
+                    if (++nameCount > 65536) return CueSheetCatalog(emptyMap(), emptyList(), discoveryFailed = true)
                     audioNames.getOrPut(folder) { ArrayList() }.add(name)
+                }
             }
         }
+        }
         val indices = audioNames.mapValues { CueAudioNameIndex(it.value) }
+        for (cue in pending) {
+            coroutineContext.ensureActive()
+            val sheet = try {
+                contentResolver.openInputStream(cue.uri)?.use { input ->
+                    readCueSheet(input) { reference ->
+                        val (descendant, name) = cueReference(reference) ?: return@readCueSheet false
+                        val folder = listOf(cue.folder, descendant)
+                            .filter(String::isNotEmpty).joinToString("/")
+                        indices[folder]?.match(name) != null
+                    }
+                }
+            } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { null }
+            if (sheet == null) { uncertainFolders += cue.folder; continue }
+            val directories = sheet.forLocalDirectories()
+            trackCount += directories.filterKeys { descendant ->
+                scope.includes(listOf(cue.folder, descendant).filter(String::isNotEmpty).joinToString("/"))
+            }.values.sumOf { it.tracks.size }
+            if (trackCount > 32768) return CueSheetCatalog(emptyMap(), files, discoveryFailed = true)
+            if (directories.values.sumOf { it.tracks.size } != sheet.tracks.size) uncertainFolders += cue.folder
+            directories.forEach { (descendant, localized) ->
+                val target = listOf(cue.folder, descendant).filter(String::isNotEmpty).joinToString("/")
+                if (scope.includes(target)) files += IndexedCueFile(target, cue.name, localized)
+            }
+        }
+        val catalogs = HashMap<String, CueDirectoryCatalog>()
         files.forEach { cue ->
             coroutineContext.ensureActive()
-            cue.sheet.forDirectoryAudio(indices[cue.folder] ?: CueAudioNameIndex(emptyList()), cue.fileName).forEach { (audio, sheet) ->
-                sheets.putIfAbsent(cueFolderKey(cue.folder, audio), sheet)
-            }
+            catalogs.getOrPut(cue.folder) { CueDirectoryCatalog(audioNames[cue.folder].orEmpty()) }
+                .add(cue.sheet, cue.fileName)
+        }
+        catalogs.forEach { (folder, catalog) ->
+            if (catalog.uncertain) uncertainFolders += folder
+            catalog.sheets().forEach { (audio, sheet) -> sheets[cueFolderKey(folder, audio)] = sheet }
         }
         return CueSheetCatalog(sheets, files, uncertainFolders)
     }
@@ -173,4 +203,4 @@ internal object MediaStoreCueCatalog {
 }
 
 internal fun cueFolderKey(folder: String, name: String): String =
-    "${folder.lowercase(java.util.Locale.ROOT)}\u0000${name.lowercase(java.util.Locale.ROOT)}"
+    "${folder.replace('\\', '/').trim('/')}\u0000$name"

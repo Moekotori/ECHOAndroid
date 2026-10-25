@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hidden_track_title">已隱藏的歌曲</string>
+    <string name="hidden_track_confirm">隱藏 %1$s？將移出播放佇列，但保留檔案、歌單關係、收藏及播放記錄。</string>
+    <string name="hidden_track_note">恢復後歌曲會重新顯示在曲庫中。檔案、歌單關係與播放記錄均會保留。</string>
+    <string name="hidden_track_hide">隱藏歌曲</string>
+    <string name="hidden_track_restore">恢復顯示</string>
+    <string name="hidden_track_restore_all">全部恢復</string>
+    <string name="hidden_track_cancel">取消</string>
+    <string name="hidden_track_empty">沒有已隱藏的歌曲</string>
+    <string name="hidden_track_failed">操作未完成，請重試。</string>
+    <string name="hidden_track_retry">重試</string>
+    <string name="hidden_track_count">已隱藏的歌曲：%1$d</string>
+</resources>

@@ -45,6 +45,8 @@ object CueSheetPolicy {
         val name = audioName?.substringAfterLast('/')?.trim().orEmpty()
         if (name.isEmpty()) return emptyList()
         if (sheet.tracks.any { !it.fileName.isNullOrBlank() }) {
+            val exact = sheet.tracks.filter { localAudioName(it.fileName) == name }
+            if (exact.isNotEmpty()) return exact
             return sheet.tracks.filter { matchAudioName(it.fileName, listOf(name)) != null }
         }
         return if (matchAudioName(sheet.fileName, listOf(name)) != null) sheet.tracks else emptyList()
@@ -71,7 +73,7 @@ object CueSheetPolicy {
         val stem = wanted.substringBeforeLast('.')
         return audioNames.filter {
             it.substringBeforeLast('.').equals(stem, true) &&
-                it.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) in setOf("flac", "ape", "wv")
+                it.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) in setOf("flac", "fla", "ape", "wv")
         }.singleOrNull()
     }
 

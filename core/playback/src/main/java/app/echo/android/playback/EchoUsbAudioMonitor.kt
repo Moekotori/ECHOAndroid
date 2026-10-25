@@ -497,6 +497,9 @@ fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): Echo
         usbOutputBitDepth = exclusive?.bitDepth,
         usbBufferCapacityFrames = exclusive?.bufferCapacityFrames,
         usbTransfer = transfer,
+        usbVolume = if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled && exclusiveStreaming)
+            app.echo.android.model.playback.EchoUsbVolumeDiagnostics(EchoPlaybackProcessRuntime.usbOutputOptions.volumeMode.id, "fixed", false, false, null, false, "strict")
+            else exclusive?.volumeEvidence?.invoke() ?: EchoPlaybackProcessRuntime.lastUsbVolumeEvidence,
         usbCompatibilityRules = rules,
         usbLastRequestedSampleRateHz = exclusive?.sampleRateHz ?: EchoPlaybackProcessRuntime.usbOutputOptions.sampleRateHz
             .takeIf { status.exclusiveEnabled && !EchoPlaybackProcessRuntime.usbBitPerfectEnabled && it > 0 }

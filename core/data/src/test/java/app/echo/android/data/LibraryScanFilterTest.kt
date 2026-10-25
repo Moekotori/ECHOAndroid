@@ -70,6 +70,14 @@ class LibraryScanFilterTest {
         assertEquals(listOf(intro), filterLocalScanBatch(listOf(intro, noise), emptySet(), defaults))
     }
 
+    @Test fun restoredWholeFilesAreExistingImportsEvenAfterTheUserRaisesMinimumDuration() {
+        val restored = track("saf:album", 60_000)
+        val newFile = track("new", 60_000)
+        val known = importedLocalScanIds(setOf("saf:album#cue:1", "saf:album#cue:2"))
+        val options = defaults.copy(minDurationMs = 180_000)
+        assertEquals(listOf(restored), filterLocalScanBatch(listOf(restored, newFile), known, options))
+    }
+
     @Test fun directoryExclusionAppliesToImportedAndNewRows() {
         val options = defaults.copy(excludedRelativePaths = setOf("Recordings"))
         assertFalse(options.includesDirectory("Recordings/Call/"))

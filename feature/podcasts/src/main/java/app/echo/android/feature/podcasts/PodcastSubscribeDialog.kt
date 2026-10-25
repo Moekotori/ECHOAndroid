@@ -1,6 +1,9 @@
 package app.echo.android.feature.podcasts
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -17,9 +20,10 @@ internal fun PodcastSubscribeDialog(subscribe: suspend (String) -> Unit, onDismi
     val scope = rememberCoroutineScope()
     AlertDialog(onDismissRequest = { if (!busy) onDismiss() }, title = { Text(stringResource(R.string.podcast_subscribe)) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(stringResource(R.string.podcast_notice))
                 OutlinedTextField(url, { url = it.take(4096); failed = false }, singleLine = true, enabled = !busy,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri),
                     label = { Text(stringResource(R.string.podcast_rss_url)) },
                     isError = failed || (url.isNotBlank() && !EchoRadioStation.validUrl(url)))
                 if (busy) LinearProgressIndicator()

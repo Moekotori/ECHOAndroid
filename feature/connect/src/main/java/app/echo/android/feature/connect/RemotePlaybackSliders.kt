@@ -34,33 +34,29 @@ internal fun RemoteSeekControl(
     enabled: Boolean,
     active: Boolean,
     onSeek: (Long) -> Unit,
+    interpolate: Boolean = true,
 ) {
     val duration = durationMs.coerceAtLeast(0L)
     var dragging by remember { mutableStateOf<Long?>(null) }
-    var committed by remember { mutableStateOf<Long?>(null) }
-    var committedAt by remember { mutableStateOf<Long?>(null) }
     val anchor = remember(positionMs, isPlaying, active) { SystemClock.elapsedRealtime() }
     var now by remember { mutableLongStateOf(anchor) }
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    LaunchedEffect(anchor, active, isPlaying, committedAt, lightweight) {
+    LaunchedEffect(anchor, active, isPlaying, lightweight, interpolate) {
         now = SystemClock.elapsedRealtime()
-        while (active && (isPlaying || committed != null)) {
+        while (active && isPlaying && interpolate) {
             delay(if (lightweight) 1_000L else 100L)
             now = SystemClock.elapsedRealtime()
-            if (!EchoLinkRemoteControlHold.shouldHoldCommittedPosition(committed, committedAt, positionMs, now)) {
-                committed = null
-                committedAt = null
-            }
+
         }
     }
-    val live = positionMs + if (isPlaying && active) (now - anchor).coerceAtLeast(0L) else 0L
-    val shown = EchoLinkRemoteControlHold.displayedPositionMs(positionMs, live, committed, committedAt, now, dragging)
+    val live = positionMs + if (isPlaying && active && interpolate) (now - anchor).coerceAtLeast(0L) else 0L
+    val shown = (dragging ?: live)
         .coerceIn(0L, duration)
     val label = stringResource(R.string.remote_seek)
     val smooth by animateFloatAsState(
         targetValue = shown.toFloat(),
         animationSpec = tween(
-            durationMillis = if (active && isPlaying && !lightweight && dragging == null && committed == null) 100 else 0,
+            durationMillis = if (active && isPlaying && !lightweight && dragging == null) 100 else 0,
             easing = LinearEasing,
         ),
         label = "remoteProgress",
@@ -71,8 +67,6 @@ internal fun RemoteSeekControl(
             onValueChange = { dragging = it.toLong() },
             onValueChangeFinished = {
                 dragging?.let { target ->
-                    committed = target
-                    committedAt = SystemClock.elapsedRealtime()
                     onSeek(target)
                 }
                 dragging = null
@@ -93,17 +87,7 @@ internal fun RemoteSeekControl(
 @Composable
 internal fun RemoteVolumeControl(volume: Float, enabled: Boolean, onVolume: (Float) -> Unit) {
     var dragging by remember { mutableStateOf<Float?>(null) }
-    var committed by remember { mutableStateOf<Float?>(null) }
-    var committedAt by remember { mutableStateOf<Long?>(null) }
-    LaunchedEffect(volume, committedAt) {
-        if (EchoLinkRemoteControlHold.shouldHoldCommittedVolume(committed, committedAt, volume, SystemClock.elapsedRealtime())) {
-            val remaining = EchoLinkRemoteControlHold.HoldTimeoutMs - (SystemClock.elapsedRealtime() - (committedAt ?: 0L))
-            delay(remaining.coerceAtLeast(0L))
-        }
-        committed = null
-        committedAt = null
-    }
-    val shown = (dragging ?: committed ?: volume).coerceIn(0f, 1f)
+    val shown = (dragging ?: volume).coerceIn(0f, 1f)
     val label = stringResource(R.string.feature_connect_volume_8f3a19)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         EchoIcon(Icons.AutoMirrored.Rounded.VolumeUp, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -111,8 +95,6 @@ internal fun RemoteVolumeControl(volume: Float, enabled: Boolean, onVolume: (Flo
             enabled = enabled,
             onValueChangeFinished = {
                 dragging?.let {
-                    committed = it
-                    committedAt = SystemClock.elapsedRealtime()
                     onVolume(it)
                 }
                 dragging = null

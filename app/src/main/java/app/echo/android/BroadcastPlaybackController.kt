@@ -48,8 +48,24 @@ internal class BroadcastPlaybackController(
     }
     fun retryRadio() { lastRadio?.let { playRadio(it.first, it.second) } }
 
+    fun playClipboard(text: String) {
+        selection.launch {
+            try {
+                val entries = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    app.echo.android.data.RadioPlaylistCodec.parse(text)
+                }
+                val station = entries.firstOrNull() ?: throw IllegalArgumentException("No radio address")
+                playRadio(station, null)
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { mutableFailed.value = true }
+        }
+    }
+
     fun playPodcast(feed: EchoPodcastFeed, episode: EchoPodcastEpisode, restart: Boolean) {
-        if (!restart && playback.currentTrackId == episode.id) { selection.invalidate(); playback.playPause(); return }
+        if (!restart && playback.currentTrackId == episode.id && playback.playbackControls.value.state in
+            setOf(app.echo.android.model.playback.EchoPlaybackState.Playing, app.echo.android.model.playback.EchoPlaybackState.Paused)) {
+            selection.invalidate(); playback.playPause(); return
+        }
         selection.launch {
             val store = application.podcasts.store
             val latest = store.episode(episode.id) ?: episode
@@ -62,7 +78,9 @@ internal class BroadcastPlaybackController(
     fun listenPodcast(feed: EchoPodcastFeed) {
         selection.launch {
             val store = application.podcasts.store
-            val active = playback.currentTrackId?.let { store.episode(it) }?.takeIf { it.feedId == feed.id }
+            val active = playback.currentTrackId?.takeIf { playback.playbackControls.value.state in
+                setOf(app.echo.android.model.playback.EchoPlaybackState.Playing, app.echo.android.model.playback.EchoPlaybackState.Paused) }
+                ?.let { store.episode(it) }?.takeIf { it.feedId == feed.id }
             if (active != null) {
                 if (!playback.playbackControls.value.isPlaying) playback.playPause()
             } else store.continueEpisode(feed.id)?.let { episode ->

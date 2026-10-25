@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hidden_restore_select">選擇歌曲</string>
+    <string name="hidden_restore_limit">每批最多選擇 %1$d 首歌曲。</string>
+    <string name="hidden_restore_failed">未能完成還原，部分歌曲可能已還原。請檢查列表後重試。</string>
+    <plurals name="hidden_restore_selected"><item quantity="other">還原所選（%1$d）</item></plurals>
+    <plurals name="hidden_restore_done"><item quantity="other">已還原 %1$d 首歌曲。</item></plurals>
+    <plurals name="hidden_restore_all_confirm"><item quantity="other">還原全部 %1$d 首隱藏歌曲？歌曲將重新顯示在音樂庫中，不會自動加入播放佇列。</item></plurals>
+</resources>

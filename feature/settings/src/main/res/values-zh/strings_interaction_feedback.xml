@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_reset_format">恢复格式与缓冲</string>
+    <string name="usb_reset_format_note">恢复自动格式与均衡缓冲，保留音量、DAC 控制和 DoP 设备授权。</string>
+    <string name="usb_reset_full">重置全部输出参数</string>
+    <string name="usb_reset_full_note">执行前查看全部改动，包括音量与 DoP 设备授权。</string>
+    <string name="usb_reset_format_changes">采样率、位深、声道：自动。缓冲：均衡。</string>
+    <string name="usb_reset_format_kept">保留当前音量、音量模式、暂停保活偏好、DoP 设备授权及输出模式。</string>
+    <string name="usb_reset_full_changes">音量：100%。音量模式：数字音量。暂停时保持 DAC 唤醒：开启。</string>
+    <string name="usb_reset_output_mode_kept">保留独占／严格输出模式、自动申请连接权限及断开／重连播放偏好。</string>
+    <string name="usb_reset_confirm">重置</string>
+    <string name="usb_reset_cancel">取消</string>
+    <plurals name="usb_reset_dop_count"><item quantity="other">清除 %1$d 条 DoP 设备授权，之后需重新允许设备才能使用 DoP 播放。</item></plurals>
+</resources>

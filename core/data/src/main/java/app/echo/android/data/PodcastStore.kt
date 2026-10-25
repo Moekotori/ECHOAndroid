@@ -12,6 +12,8 @@ import org.json.JSONObject
 
 /** Independent bounded podcast database. Handles exist only while an operation owns the mutex. */
 class PodcastStore(context: Context) {
+    private val mutableProgressRevision = kotlinx.coroutines.flow.MutableStateFlow(0L)
+    val progressRevision: kotlinx.coroutines.flow.StateFlow<Long> = mutableProgressRevision
     private val helper = object : SQLiteOpenHelper(context.applicationContext, "podcasts.sqlite", null, 1) {
         override fun onConfigure(db: SQLiteDatabase) { db.setForeignKeyConstraintsEnabled(true) }
         override fun onCreate(db: SQLiteDatabase) {
@@ -107,6 +109,8 @@ class PodcastStore(context: Context) {
         val position = positionMs.coerceAtLeast(0)
         db.execSQL("UPDATE episodes SET position=?,played=CASE WHEN ?=1 THEN 1 WHEN ?=1 OR ?<position THEN 0 ELSE played END WHERE id=? AND (position!=? OR (?=1 AND played=0) OR (?=1 AND played=1))",
             arrayOf<Any?>(position, if (ended) 1 else 0, if (replay) 1 else 0, position, id, position, if (ended) 1 else 0, if (replay) 1 else 0))
+        val changed = db.rawQuery("SELECT changes()", null).use { it.moveToFirst(); it.getInt(0) > 0 }
+        if (changed) mutableProgressRevision.value++
     }
 
     private fun encode(feed: EchoPodcastFeed) = JSONObject().put("id", feed.id).put("url", feed.url).put("title", feed.title)

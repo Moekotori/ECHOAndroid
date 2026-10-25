@@ -1,0 +1,14 @@
+<resources>
+    <string name="podcast_collection">Your subscriptions</string>
+    <string name="podcast_welcome_detail">A conversation, a story, a moment for yourself. Keep your favorite shows together and pick up where you left off.</string>
+    <string name="podcast_saved_time">Saved at %1$s</string>
+    <string name="podcast_episode_time">%1$s</string>
+    <string name="podcast_more_for">More actions for %1$s</string>
+    <string name="podcast_episode_details">Episode details</string>
+    <string name="podcast_close_details">Close episode details</string>
+    <string name="podcast_no_results">Nothing here yet</string>
+    <string name="podcast_no_results_hint">Try another search or change the listening filter.</string>
+    <string name="podcast_reset_search">Show all</string>
+    <string name="podcast_play_episode">Play %1$s</string>
+    <string name="podcast_pause_episode">Pause %1$s</string>
+</resources>

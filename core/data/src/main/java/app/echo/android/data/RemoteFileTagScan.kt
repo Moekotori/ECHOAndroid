@@ -14,24 +14,36 @@ internal class RemoteFileTagScan(
 ) {
     private val marker = File(directory, "remote-file-tags-v1-${sourceId.hashCode().toUInt().toString(16)}")
     private val backfill = !marker.exists()
-    private var failed = false
+
+    fun canReuse(incoming: LibraryTrackEntity, existing: TrackFingerprint?): Boolean =
+        !backfill && existing != null && !existing.fingerprint.isNullOrBlank() &&
+            existing.fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint &&
+            !CueScanState.isWholeFileCue(existing.fingerprint) &&
+            !app.echo.android.model.library.CueSheetPolicy.isCueTrackId(existing.id) &&
+            incoming.contentUri == existing.contentUri && incoming.sizeBytes > 0 &&
+            incoming.sizeBytes == existing.sizeBytes && incoming.dateModifiedSeconds > 0 &&
+            incoming.dateModifiedSeconds == existing.dateModifiedSeconds &&
+            incoming.relativePath == existing.relativePath && !existing.fileName.isNullOrBlank() &&
+            incoming.fileName == existing.fileName
 
     fun enrich(incoming: LibraryTrackEntity, existing: LibraryTrackEntity?): LibraryTrackEntity {
         if (existing?.metadataEditedAtEpochMs != null) return incoming
         val unchanged = sameRemoteFile(incoming, existing)
-        if (!backfill && unchanged && existing != null) {
+        val reusable = unchanged && !CueScanState.isWholeFileCue(existing?.fingerprint) &&
+            existing?.fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint
+        if (!backfill && reusable && existing != null && existing.fingerprint != LibraryScanPolicy.PendingDocumentMetadataFingerprint) {
             return existing.copy(lastSeenScanRunId = incoming.lastSeenScanRunId)
         }
         val tags = try { reader(incoming) } catch (error: CancellationException) {
             throw error
         } catch (_: IOException) {
-            failed = true
-            return if (unchanged && existing != null) existing.copy(lastSeenScanRunId = incoming.lastSeenScanRunId) else incoming
+            return (if (unchanged && existing != null) existing.copy(lastSeenScanRunId = incoming.lastSeenScanRunId) else incoming)
+                .copy(fingerprint = LibraryScanPolicy.PendingDocumentMetadataFingerprint)
         } catch (_: Exception) {
-            failed = true
-            return if (unchanged && existing != null) existing.copy(lastSeenScanRunId = incoming.lastSeenScanRunId) else incoming
+            return (if (unchanged && existing != null) existing.copy(lastSeenScanRunId = incoming.lastSeenScanRunId) else incoming)
+                .copy(fingerprint = LibraryScanPolicy.PendingDocumentMetadataFingerprint)
         }
-        val fallback = if (unchanged && existing != null) existing.copy(lastSeenScanRunId = incoming.lastSeenScanRunId) else incoming
+        val fallback = if (reusable && existing != null) existing.copy(lastSeenScanRunId = incoming.lastSeenScanRunId, fingerprint = null) else incoming
         persistLyrics(incoming, tags?.lyrics)
         return fallback.withAudioTags(tags).copy(
             artworkUri = persistArtwork(tags?.artworkBytes) ?: fallback.artworkUri,
@@ -39,7 +51,8 @@ internal class RemoteFileTagScan(
     }
 
     fun complete() {
-        if (!failed) runCatching { marker.writeText("1") }
+        // Failed rows carry their own retry fingerprint; do not repeat every successful file.
+        runCatching { marker.writeText("1") }
     }
 }
 

@@ -69,6 +69,14 @@ class CueScanRecoveryTest {
     }
 
     @Test
+    fun outOfRangeSidecarCannotReplaceExistingMovementsWithWholeFile() {
+        val invalid = movements.copy(tracks = movements.tracks.map { it.copy(startMs = it.startMs + 120_000L) })
+        assertSame(CueExpansion.ReadFailed, source().resolveLocalCue(invalid, null) { error("sidecar wins") })
+        assertSame(CueExpansion.ReadFailed, source().resolveLocalCue(null, "file.flac") { invalid })
+        assertSame(CueExpansion.ReadFailed, source().resolveLocalCue(movements, "unrelated.flac") { error("sidecar wins") })
+    }
+
+    @Test
     fun cancellationStillCancelsScanning() {
         assertThrows(CancellationException::class.java) {
             source().resolveLocalCue(null, "file.flac") { throw CancellationException("cancelled") }

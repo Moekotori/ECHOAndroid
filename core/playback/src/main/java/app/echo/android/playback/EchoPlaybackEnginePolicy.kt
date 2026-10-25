@@ -202,7 +202,7 @@ class EchoPlaybackEnginePolicy(
             trackDurationKnown = durationMs > 0L,
         )
         player.volume = (
-            EchoPlaybackProcessRuntime.audioFocusGain * EchoPlaybackProcessRuntime.trackFadeGain *
+            EchoPlaybackProcessRuntime.manualFadeGain * EchoPlaybackProcessRuntime.audioFocusGain * EchoPlaybackProcessRuntime.trackFadeGain *
                 EchoSleepTimerPolicy.fadeMultiplier(
                     remainingMs,
                     mode = EchoPlaybackProcessRuntime.sleepTimerMode,

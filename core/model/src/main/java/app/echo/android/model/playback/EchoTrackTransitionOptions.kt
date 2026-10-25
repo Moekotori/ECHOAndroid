@@ -5,6 +5,7 @@ data class EchoTrackTransitionOptions(
     val fadeEnabled: Boolean = false,
     val fadeDurationMs: Int = 1500,
     val smartEnabled: Boolean = false,
+    val playPauseFadeEnabled: Boolean = true,
 ) {
     fun normalized() = copy(fadeDurationMs = roundFadeDurationMs(fadeDurationMs))
 }

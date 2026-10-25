@@ -25,17 +25,24 @@ internal class EchoUsbExclusiveAudioOutput(
 ) : AudioOutput {
     private val listeners = CopyOnWriteArrayList<AudioOutput.Listener>()
     private val packed = ByteArray(PACKED_BUFFER_BYTES)
-    private val pendingPacked = ByteArray(PACKED_BUFFER_BYTES)
     private val channelCount = Integer.bitCount(outputConfig.channelMask).coerceAtLeast(1)
     private val sampleRateHz = outputConfig.sampleRate
     private val destFrameBytes = (destBytesPerSample * channelCount).coerceAtLeast(1)
-    private var pendingBytes = 0
+    private val pending = EchoUsbPendingPcm(sourceEncoding, channelCount, destBytesPerSample, PACKED_BUFFER_BYTES)
     private var playing = false
-    private var released = false
+    @Volatile private var released = false
     private var reportedPositionAdvancing = false
     private var playbackParameters = PlaybackParameters.DEFAULT
     @Volatile
     private var volume: Float = 1f
+
+    private val updateVolume: (app.echo.android.model.playback.EchoUsbOutputOptions) -> Unit = { options ->
+        if (!released) session.configureVolume(options.volumeMode.id, options.volumePercent)
+    }
+    init {
+        updateVolume(EchoPlaybackProcessRuntime.usbOutputOptions)
+        EchoPlaybackProcessRuntime.usbVolumeUpdater = updateVolume
+    }
 
     val transport: String
         get() = session.transport?.name?.lowercase() ?: "usb"
@@ -58,6 +65,7 @@ internal class EchoUsbExclusiveAudioOutput(
             EchoUsbExclusiveSinkStatus(
                 streaming = true,
                 transferEvidence = session::transportEvidence,
+                volumeEvidence = session::volumeEvidence,
                 compatibilityRules = session.compatibilityEvidence(),
                 transport = transport,
                 sampleRateHz = sampleRateHz,
@@ -77,7 +85,7 @@ internal class EchoUsbExclusiveAudioOutput(
     }
 
     override fun write(buffer: ByteBuffer, encodedAccessUnitCount: Int, presentationTimeUs: Long): Boolean {
-        if (released || !session.openResult.isReady) {
+        if (released || session.volumeFailed || !session.openResult.isReady) {
             throw AudioOutput.WriteException(-1, false)
         }
         val frameBytes = UsbPcmPacker.sourceBytesPerFrame(sourceEncoding, channelCount)
@@ -92,6 +100,12 @@ internal class EchoUsbExclusiveAudioOutput(
         if (isBigEndian(outputConfig.encoding)) {
             buffer.order(ByteOrder.BIG_ENDIAN)
         }
+        if (!playing) {
+            pending.stash(buffer)
+            buffer.order(originalOrder)
+            return !buffer.hasRemaining()
+        }
+        if (!drainPending()) { buffer.order(originalOrder); return false }
         val packedBytes = UsbPcmPacker.pack(
             source = buffer,
             sourceEncoding = sourceEncoding,
@@ -100,21 +114,9 @@ internal class EchoUsbExclusiveAudioOutput(
             destBytesPerSample = destBytesPerSample,
             destination = packed,
             volume = mixedVolume(),
+            gainRamp = session.volumeRamp,
         )
         buffer.order(originalOrder)
-        if (!playing) {
-            val stashed = stashPending(packedBytes)
-            val framesStashed = stashed / destFrameBytes
-            if (framesStashed < frames) {
-                buffer.position(buffer.position() - (frames - framesStashed) * frameBytes)
-                return false
-            }
-            return !buffer.hasRemaining()
-        }
-        if (!drainPending()) {
-            buffer.position(buffer.position() - frames * frameBytes)
-            return false
-        }
         val result = session.writePcm(packed, 0, packedBytes)
         if (
             result.state == UsbExclusiveOutputState.OpenFailed ||
@@ -139,7 +141,7 @@ internal class EchoUsbExclusiveAudioOutput(
 
     override fun flush() {
         reportedPositionAdvancing = false
-        pendingBytes = 0
+        pending.clear()
         session.flush()
         if (playing) {
             session.setPlaybackActive(true)
@@ -159,6 +161,7 @@ internal class EchoUsbExclusiveAudioOutput(
         if (released) return
         released = true
         playing = false
+        if (EchoPlaybackProcessRuntime.usbVolumeUpdater === updateVolume) EchoPlaybackProcessRuntime.usbVolumeUpdater = null
         session.close()
         EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(null)
         listeners.forEach { it.onReleased() }
@@ -202,42 +205,21 @@ internal class EchoUsbExclusiveAudioOutput(
     override fun setPreferredDevice(preferredDevice: AudioDeviceInfo?) = Unit
 
     private fun mixedVolume(): Float =
-        volume * EchoPlaybackProcessRuntime.exclusiveMakeupGain *
-            (EchoPlaybackProcessRuntime.usbOutputOptions.volumePercent / 100f)
+        volume * EchoPlaybackProcessRuntime.exclusiveMakeupGain
 
     private fun drainPending(): Boolean {
-        if (pendingBytes <= 0) return true
-        val result = session.writePcm(pendingPacked, 0, pendingBytes)
-        if (
-            result.state == UsbExclusiveOutputState.OpenFailed ||
-            result.state == UsbExclusiveOutputState.Closed ||
-            result.state == UsbExclusiveOutputState.UnsupportedTransport
-        ) {
-            throw AudioOutput.WriteException(
-                -1,
-                result.state == UsbExclusiveOutputState.OpenFailed,
-            )
+        if (pending.empty) return true
+        val packedBytes = pending.pack(packed, mixedVolume(), session.volumeRamp)
+        val result = session.writePcm(packed, 0, packedBytes)
+        if (result.state == UsbExclusiveOutputState.OpenFailed || result.state == UsbExclusiveOutputState.Closed ||
+            result.state == UsbExclusiveOutputState.UnsupportedTransport) {
+            throw AudioOutput.WriteException(-1, result.state == UsbExclusiveOutputState.OpenFailed)
         }
-        val written = result.bytesWritten.coerceAtLeast(0)
-        if (written <= 0) return false
-        if (written >= pendingBytes) {
-            pendingBytes = 0
+        if (result.bytesWritten > 0) {
+            pending.consume(result.bytesWritten)
             maybeReportPositionAdvancing()
-            return true
         }
-        System.arraycopy(pendingPacked, written, pendingPacked, 0, pendingBytes - written)
-        pendingBytes -= written
-        maybeReportPositionAdvancing()
-        return false
-    }
-
-    private fun stashPending(packedBytes: Int): Int {
-        val space = pendingPacked.size - pendingBytes
-        val copy = packedBytes.coerceAtMost(space)
-        if (copy <= 0) return 0
-        System.arraycopy(packed, 0, pendingPacked, pendingBytes, copy)
-        pendingBytes += copy
-        return copy
+        return pending.empty
     }
 
     private fun maybeReportPositionAdvancing() {
@@ -276,4 +258,5 @@ data class EchoUsbExclusiveSinkStatus(
     val bufferCapacityFrames: Long? = null,
     val transferEvidence: (() -> app.echo.android.model.playback.EchoUsbTransportDiagnostics?)? = null,
     val compatibilityRules: List<app.echo.android.model.playback.EchoUsbCompatibilityRule> = emptyList(),
+    val volumeEvidence: (() -> app.echo.android.model.playback.EchoUsbVolumeDiagnostics?)? = null,
 )

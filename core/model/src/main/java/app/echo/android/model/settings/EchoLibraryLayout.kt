@@ -9,9 +9,16 @@ enum class EchoLibraryCategory(val id: String) {
     }
 }
 
+enum class EchoTrackMenuAction(val id: String) {
+    EditTags("edit-tags"), ImportLyrics("import-lyrics"), Artwork("artwork"), Versions("versions"), Hide("hide"), Delete("delete");
+    companion object { fun fromId(id: String) = entries.firstOrNull { it.id == id } }
+}
+
 data class EchoLibraryLayout(
     val order: List<EchoLibraryCategory> = EchoLibraryCategory.entries.toList(),
     val hidden: Set<EchoLibraryCategory> = emptySet(),
+    val showFileNames: Boolean = false,
+    val hiddenTrackActions: Set<EchoTrackMenuAction> = emptySet(),
 ) {
     fun normalized(): EchoLibraryLayout {
         val unique = order.distinct()

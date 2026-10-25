@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="listening_interruption">短暫音訊中斷</string>
+    <string name="listening_interruption_detail">選擇導航提示等短暫中斷時的處理方式。長期失去焦點會暫停；手動暫停、輸出變更或錯誤會取消自動恢復。Bit-perfect 輸出會暫停而不修改 PCM 音量。</string>
+    <string name="listening_duck">降低音量</string>
+    <string name="listening_pause">暫停後恢復</string>
+    <string name="listening_finish_track">定時到點播完目前歌曲</string>
+    <string name="listening_finish_track_detail">倒數結束後等待正在播放的歌曲結束。直播或未知長度音訊會到點停止；等待期間手動操作播放控制會取消定時。</string>
+</resources>

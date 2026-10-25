@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_control_queued">Connection interrupted. Keeping your latest playback or seek target briefly.</string>
+    <string name="remote_control_uncertain">The play/pause result could not be confirmed. It will not be repeated automatically. Check the state and try again.</string>
+    <string name="remote_control_expired">The remote action was not confirmed in time. Its pending target has been cleared.</string>
+    <string name="remote_control_unsupported">This receiver does not provide playback state. Deferred controls were cleared.</string>
+    <string name="remote_control_relative_offline">Reconnect before changing tracks or editing the queue. These actions are not replayed automatically.</string>
+</resources>

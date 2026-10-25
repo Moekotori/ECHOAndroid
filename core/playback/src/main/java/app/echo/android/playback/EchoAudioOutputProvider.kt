@@ -103,6 +103,7 @@ internal class EchoAudioOutputProvider(
             channelCount = channelCount,
             bitDepth = bitDepth,
         )
+        app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.UsbOpen, spec.sampleRateHz.toLong(), spec.bitDepth.toLong())
         val session = usbOutput.open(spec, transferCount = options.bufferMode.transferCount,
             keepAliveOnPause = options.keepAliveOnPause)
         if (!session.openResult.isReady) {
@@ -129,6 +130,7 @@ internal class EchoAudioOutputProvider(
 
     private fun recordUsbOpenFailure(state: UsbExclusiveOutputState, message: String?) {
         if (state !in reportableUsbOpenFailures) return
+        app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.UsbError, state.ordinal.toLong())
         EchoErrorLog.record(
             source = EchoErrorSource.Usb,
             summary = message?.takeIf { it.isNotBlank() } ?: state.name,

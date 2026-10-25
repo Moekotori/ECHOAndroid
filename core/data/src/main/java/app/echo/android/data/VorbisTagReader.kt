@@ -42,8 +42,12 @@ internal object VorbisTagReader {
         comments.forEach { (key, value) -> if (value.isNotBlank()) values.putIfAbsent(key.uppercase(Locale.ROOT), value) }
         fun names(vararg keys: String): String? = LibraryArtistPolicy.display(comments
             .filter { (key, _) -> key.uppercase(Locale.ROOT) in keys }.map { it.second })
-        val artwork = values["METADATA_BLOCK_PICTURE"]?.takeIf { it.length <= MaxEncodedPictureChars }?.let {
-            runCatching { EmbeddedTagArtwork.flac(Base64.getDecoder().decode(it)) }.getOrNull()
+        var artwork: TagArtwork? = null
+        for ((key, value) in comments) {
+            if (!key.equals("METADATA_BLOCK_PICTURE", ignoreCase = true) || value.length > MaxEncodedPictureChars) continue
+            val picture = runCatching { EmbeddedTagArtwork.flac(Base64.getDecoder().decode(value)) }.getOrNull() ?: continue
+            if (artwork == null || picture.type == 3) artwork = picture
+            if (picture.type == 3) break
         }
         return AudioTagFields(
             title = values["TITLE"].orEmpty(), artist = names("ARTIST").orEmpty(), album = values["ALBUM"],

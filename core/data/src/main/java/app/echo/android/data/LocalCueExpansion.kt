@@ -19,12 +19,18 @@ internal fun LibraryTrackEntity.resolveLocalCue(
     externalReadFailed: Boolean = false,
     readEmbedded: () -> CueSheet?,
 ): CueExpansion {
-    if (external != null) return CueExpansion.Success(splitByCue(external, audioName))
+    fun expand(sheet: CueSheet, name: String?): CueExpansion {
+        val movements = if (name == null) sheet.tracks else CueSheetPolicy.tracksForAudio(sheet, name)
+        // Invalid timing is a read/validation failure, never proof that old movements disappeared.
+        if (movements.isEmpty() || CueSheetPolicy.withEndTimes(movements, durationMs).isEmpty()) return CueExpansion.ReadFailed
+        return CueExpansion.Success(splitByCue(sheet, name))
+    }
+    if (external != null) return expand(external, audioName)
     if (externalReadFailed) return CueExpansion.ReadFailed
     return try {
         val embedded = readEmbedded()
-        CueExpansion.Success(embedded?.let { splitByCue(it) }
-            ?: listOf(copy(fingerprint = CueScanState.clearWholeFile(fingerprint))))
+        if (embedded != null) expand(embedded, null)
+        else CueExpansion.Success(listOf(copy(fingerprint = CueScanState.clearWholeFile(fingerprint))))
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (_: Exception) {
@@ -39,10 +45,15 @@ internal fun LibraryTrackEntity.expandLocalCue(
     audioName: String?,
     externalReadFailed: Boolean = false,
 ): CueExpansion = resolveLocalCue(external, audioName, externalReadFailed) {
-    val isFlac = audioName?.endsWith(".flac", true) == true || mimeType in setOf("audio/flac", "audio/x-flac")
-    if (!isFlac) null else {
+    val isFlac = LocalAudioFileTypes.mimeTypeForFileName(audioName.orEmpty()) == "audio/flac" ||
+        mimeType?.substringBefore(';')?.trim()?.lowercase(java.util.Locale.ROOT) in
+        setOf("audio/flac", "audio/x-flac", "application/flac", "application/x-flac")
+    val isApeTagContainer = audioName?.substringAfterLast('.')?.lowercase(java.util.Locale.ROOT) in setOf("ape", "wv", "tta", "tak") ||
+        mimeType?.substringBefore(';')?.trim()?.lowercase(java.util.Locale.ROOT) in
+        setOf("audio/ape", "audio/x-ape", "audio/x-monkeys-audio", "audio/x-wavpack", "audio/wavpack", "audio/tta", "audio/x-tta", "audio/tak", "audio/x-tak")
+    if (!isFlac && !isApeTagContainer) null else {
         val input = resolver.openInputStream(Uri.parse(CueSheetPolicy.playbackUri(contentUri)))
-            ?: throw IOException("Cannot open FLAC CUE metadata")
-        input.use(FlacEmbeddedCueReader::readChecked)
+            ?: throw IOException("Cannot open embedded CUE metadata")
+        input.use { if (isFlac) FlacEmbeddedCueReader.readChecked(it) else ApeTagReader.readCueChecked(it) }
     }
 }

@@ -12,6 +12,30 @@ import org.junit.Before
 import org.junit.Test
 
 class EchoRemotePlaybackAuthTest {
+    @Test
+    fun echoLinkCacheIdentitySeparatesServersEvenWithTheSameTrackAndToken() {
+        val path = "/echo-link/media/token"
+        val first = EchoRemotePlaybackAuthRegistry.cacheIdentity("http://192.168.1.20:26789$path", emptyMap())
+        val otherHost = EchoRemotePlaybackAuthRegistry.cacheIdentity("http://192.168.1.21:26789$path", emptyMap())
+        val otherPort = EchoRemotePlaybackAuthRegistry.cacheIdentity("http://192.168.1.20:26790$path", emptyMap())
+        val otherScheme = EchoRemotePlaybackAuthRegistry.cacheIdentity("https://192.168.1.20:26789$path", emptyMap())
+        assertNotEquals(first, otherHost)
+        assertNotEquals(first, otherPort)
+        assertNotEquals(first, otherScheme)
+    }
+
+    @Test
+    fun echoLinkCacheIdentityRemainsStableWhenStreamTokenPathRotates() {
+        assertEquals(
+            EchoRemotePlaybackAuthRegistry.cacheIdentity("http://pc:26789/echo-link/media/first", emptyMap()),
+            EchoRemotePlaybackAuthRegistry.cacheIdentity("http://pc:26789/echo-link/media/second", emptyMap()),
+        )
+        assertEquals(
+            EchoRemotePlaybackAuthRegistry.cacheIdentity("https://PC/echo-link/media/first", emptyMap()),
+            EchoRemotePlaybackAuthRegistry.cacheIdentity("https://pc:443/echo-link/media/second", emptyMap()),
+        )
+    }
+
     @Before
     fun resetRegistry() {
         EchoRemotePlaybackAuthRegistry.replaceWebDavCredentials(emptyList())

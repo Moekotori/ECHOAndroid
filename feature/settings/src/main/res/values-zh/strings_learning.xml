@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_title">问题复现记录</string>
+    <string name="capture_detail">主动开启事件记录，最多 2 MiB，24 小时或进程退出后停止。不记录音频、歌词、歌曲名称、路径或账号数据。复现问题后可导出 ZIP。</string>
+    <string name="capture_start">开始记录</string>
+    <string name="capture_stop">停止记录</string>
+    <string name="capture_export">导出 ZIP</string>
+    <string name="capture_clear">清除</string>
+    <string name="learning_operation_failed">操作失败，请检查文件或可用容量后重试。</string>
+    <string name="learning_operation_done">已完成</string>
+    <string name="eq_bundle_import">导入预设包</string>
+    <string name="eq_bundle_export">导出预设包</string>
+    <string name="eq_bundle_select_all">全选／取消全选</string>
+    <string name="eq_bundle_preview">待导入：%1$d；重名：%2$d；已保存：%3$d/%4$d。导入后需手动应用预设，当前音效设置保持原样。</string>
+    <string name="eq_bundle_add">新增，重名自动改名</string>
+    <string name="eq_bundle_skip">跳过重名预设</string>
+    <string name="eq_bundle_replace">覆盖重名预设</string>
+    <string name="eq_bundle_capacity">预设容量不足，请调整重名策略或先删除部分已保存预设。</string>
+    <string name="eq_bundle_confirm">导入</string>
+    <string name="usb_volume_software">数字音量</string>
+    <string name="usb_volume_auto">自动（优先 DAC，失败用数字音量）</string>
+    <string name="usb_volume_hardware">DAC 硬件音量（失败回退数字音量）</string>
+    <string name="usb_volume_fixed">固定 PCM 输出</string>
+    <string name="usb_volume_pending">独占播放开始后生效</string>
+    <string name="usb_volume_handoff">正在淡出并交接音量</string>
+    <string name="usb_volume_hardware_verified">DAC 音量控制回读已验证</string>
+    <string name="usb_volume_muted">控制失败，已静音</string>
+    <string name="usb_volume_actual">实际采用：%1$s</string>
+    <string name="usb_volume_db">DAC 回读：%1$.2f dB</string>
+    <string name="usb_volume_strict_reason">严格直通保持硬件与 PCM 增益原样。</string>
+    <string name="usb_volume_no_master">未找到播放链路中可确认的主音量控制，使用数字音量。</string>
+    <string name="usb_volume_no_mute">安全交接需要可读写的 DAC 静音控制，使用数字音量。</string>
+    <string name="usb_volume_no_range">无法安全确认 DAC 音量范围，使用数字音量。</string>
+    <string name="usb_volume_device_muted">DAC 本身已静音，保留设备的静音状态。</string>
+    <string name="usb_volume_failed">DAC 控制或回读失败。能确认增益时使用数字音量，否则停止播放。</string>
+    <string name="usb_volume_handoff_note">硬件模式支持已验证控制回读的 UAC1/UAC2 播放主音量。切换时短暂淡出、淡入，不会高于连接时的 DAC 增益，关闭链路时恢复设备增益。控制回读不代表已验证实际响度。</string>
+    <string name="usb_volume_waiting">硬件音量交接将在恢复播放后进行。</string>
+    <string name="usb_volume_previous">上次链路：%1$s</string>
+    <string name="usb_volume_device_changed">DAC 增益或静音被外部操作改变，已改用数字音量并保留外部设置。重新建立输出链路可再次检测硬件控制。</string>
+</resources>

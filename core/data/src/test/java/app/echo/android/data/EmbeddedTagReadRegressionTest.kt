@@ -8,6 +8,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EmbeddedTagReadRegressionTest {
+    @Test fun id3PrefixedFlacKeepsVorbisTagsAndId3Priority() {
+        val bytes = id3(text("TIT2", "ID3 title")) +
+            flac(block(0x84, comments("TITLE=Vorbis title", "ARTIST=Vorbis artist", "LYRICS=Words")))
+        val tags = read(bytes)!!
+        assertEquals("ID3 title", tags.title)
+        assertEquals("Vorbis artist", tags.artist)
+        assertEquals("Words", tags.lyrics)
+    }
     @Test fun id3v23LatinTitleWithNonBreakingSpaceAndUtf16ChineseTags() {
         // Text payloads match the reported Private Wars MP3; no audio fixture is needed.
         val title = "Private\u00A0Wars"
@@ -161,14 +169,35 @@ class EmbeddedTagReadRegressionTest {
         val tail = ByteArray(128).also { "TAG".toByteArray().copyInto(it); "Tail song".toByteArray().copyInto(it, 3) }
         val length = 500_000_000L
         var transferred = 0
+        var requests = 0
         val input = RandomAccessTagInput(length) { position, count ->
+            requests++
             ByteArray(count).also { bytes ->
                 transferred += count
                 if (position == length - 128) tail.copyInto(bytes)
             }
         }
         assertEquals("Tail song", readLocalAudioTags(input)?.title)
-        assertTrue(transferred < 300_000)
+        assertEquals(16 * 1024 + 128, transferred)
+        assertEquals(2, requests)
+    }
+
+    @Test fun tailReadRestoresHeadCacheAndLargeTagsStillUseLargePages() {
+        val bytes = id3(text("TIT2", "Large") + frame("APIC", apic(ByteArray(600_000) { 7 }))) + ByteArray(300_000)
+        val ranges = mutableListOf<Pair<Long, Int>>()
+        val input = RandomAccessTagInput(bytes.size.toLong()) { at, count ->
+            ranges += at to count
+            bytes.copyOfRange(at.toInt(), at.toInt() + count)
+        }
+        assertEquals(73, input.read())
+        assertEquals(128, input.tail(128)!!.size)
+        assertEquals(68, input.read())
+        assertEquals(2, ranges.size)
+        val tags = readLocalAudioTags(RandomAccessTagInput(bytes.size.toLong()) { at, count ->
+            bytes.copyOfRange(at.toInt(), at.toInt() + count)
+        })!!
+        assertEquals("Large", tags.title)
+        assertEquals(600_000, tags.artworkBytes!!.size)
     }
 
     @Test fun changedRemoteFilesInvalidateLyricsCache() {
@@ -194,9 +223,53 @@ class EmbeddedTagReadRegressionTest {
             assertEquals("Tagged", next.enrich(incoming, tagged).title)
             assertEquals(1, reads)
             val failed = RemoteFileTagScan(directory, "another-source", { throw java.io.IOException("Unavailable") }, { null })
-            assertEquals("Tagged", failed.enrich(incoming, tagged).title)
+            val pending = failed.enrich(incoming, tagged)
+            assertEquals("Tagged", pending.title)
             failed.complete()
-            assertEquals(1, directory.listFiles()!!.size)
+            assertEquals(2, directory.listFiles()!!.size)
+            val retry = RemoteFileTagScan(directory, "another-source", { reads++; null }, { null })
+            retry.enrich(incoming, pending)
+            assertEquals(2, reads)
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun remoteReuseRequiresCompletedBackfillAndMatchingPhysicalFacts() {
+        val directory = java.nio.file.Files.createTempDirectory("echo-tag-reuse").toFile()
+        try {
+            val incoming = remoteTrack().copy(fileName = "song.mp3")
+            val facts = TrackFingerprint(incoming.id, incoming.contentUri, null, "done", incoming.sizeBytes,
+                incoming.dateModifiedSeconds, incoming.relativePath, fileName = incoming.fileName)
+            val first = RemoteFileTagScan(directory, incoming.source, { null }, { null })
+            assertFalse(first.canReuse(incoming, facts))
+            first.complete()
+            val scan = RemoteFileTagScan(directory, incoming.source, { error("Should skip tag read") }, { null })
+            assertTrue(scan.canReuse(incoming, facts))
+            assertFalse(scan.canReuse(incoming.copy(sizeBytes = 2000), facts))
+            assertFalse(scan.canReuse(incoming.copy(fileName = "renamed.mp3"), facts))
+            assertFalse(scan.canReuse(incoming, facts.copy(fingerprint = LibraryScanPolicy.PendingDocumentMetadataFingerprint)))
+            assertFalse(scan.canReuse(incoming, facts.copy(fingerprint = CueScanState.markWholeFile("old"))))
+            assertFalse(scan.canReuse(incoming, facts.copy(fileName = null)))
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun wholeFileCueMetadataIsNotReusedAsPhysicalFileTagsAndFailuresAreRetried() {
+        val directory = java.nio.file.Files.createTempDirectory("echo-cue-tag-scan").toFile()
+        try {
+            val incoming = remoteTrack()
+            val cue = incoming.copy(title = "Sidecar title", fingerprint = CueScanState.markWholeFile("old"))
+            val first = RemoteFileTagScan(directory, incoming.source, { null }, { null })
+            assertEquals(incoming.title, first.enrich(incoming, cue).title)
+            first.complete()
+            var reads = 0
+            val failed = RemoteFileTagScan(directory, incoming.source, { reads++; throw java.io.IOException("unavailable") }, { null })
+            val pending = failed.enrich(incoming, cue)
+            assertEquals(LibraryScanPolicy.PendingDocumentMetadataFingerprint, pending.fingerprint)
+            assertEquals("Sidecar title", pending.title)
+            val retry = RemoteFileTagScan(directory, incoming.source, { reads++; AudioTagFields("Recovered", "Artist", null, null, null, null, null) }, { null })
+            val recovered = retry.enrich(incoming, pending)
+            assertEquals("Recovered", recovered.title)
+            assertNotEquals(LibraryScanPolicy.PendingDocumentMetadataFingerprint, recovered.fingerprint)
+            assertEquals(2, reads)
         } finally { directory.deleteRecursively() }
     }
 

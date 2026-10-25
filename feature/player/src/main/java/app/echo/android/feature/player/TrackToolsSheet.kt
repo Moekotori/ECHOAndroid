@@ -37,6 +37,12 @@ class TrackToolsActions(
     val saveBookmark: suspend (EchoTrack, Long, String) -> Unit,
     val deleteBookmark: suspend (String) -> Unit,
     val setLoop: suspend (String?, Long, Long) -> Boolean,
+    val clips: (String) -> Flow<List<EchoSavedTrackClip>>,
+    val saveClip: suspend (EchoTrack, String, Long, Long) -> Unit,
+    val renameClip: suspend (String, String) -> Unit,
+    val deleteClip: suspend (String) -> Unit,
+    val resumePlayback: () -> Unit,
+
 )
 
 internal fun trackToolsTime(positionMs: Long): String {
@@ -51,6 +57,7 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
     loopAvailable: Boolean = true) {
     val bookmarks by remember(track.id) { actions.bookmarks(track.id) }.collectAsState(emptyList())
     val scope = rememberCoroutineScope()
+    val currentTrackId by rememberUpdatedState(track.id)
     var a by remember(track.id) { mutableLongStateOf(if (loop.active && loop.trackId == track.id) loop.startMs
         else position().coerceIn(0, (track.durationMs - 500).coerceAtLeast(0))) }
     var b by remember(track.id) { mutableLongStateOf(if (loop.active && loop.trackId == track.id) loop.endMs
@@ -69,6 +76,12 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
         LazyColumn(Modifier.fillMaxWidth().imePadding(),
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            item {
+                SavedClipControls(track, a, b, actions, loopAvailable, onLoad = { clip ->
+                    a = clip.startMs; b = clip.endMs
+                    if (actions.setLoop(track.id, clip.startMs, clip.endMs) && currentTrackId == clip.trackId) { onSeek(clip.startMs); actions.resumePlayback() } else error = true
+                })
+            }
             item {
                 val loopLabel = stringResource(R.string.track_loop_title)
                 Text(loopLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)

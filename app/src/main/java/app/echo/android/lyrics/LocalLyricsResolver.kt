@@ -8,6 +8,9 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import app.echo.android.data.LibraryTrackEntity
+import app.echo.android.data.DocumentSiblingFiles
+import app.echo.android.model.library.CueSheetPolicy
+import kotlinx.coroutines.CancellationException
 import app.echo.android.R
 import app.echo.android.model.lyrics.EchoLyrics
 import java.io.File
@@ -19,13 +22,16 @@ class LocalLyricsResolver(
 ) {
     private val contentResolver: ContentResolver = context.contentResolver
     fun loadForTrack(track: LibraryTrackEntity, order: List<EchoLyricsSource> = EchoLyricsSource.entries.toList()): EchoLyrics? {
+        val audioUri = CueSheetPolicy.playbackUri(track.contentUri)
         val candidates by lazy { buildCandidateNames(track) }
         EchoLyricsOptions(sourceOrder = order).normalized.sourceOrder.forEach { source ->
             val result = if (source == EchoLyricsSource.Embedded) {
-                loadEmbeddedLyrics(track.contentUri)
+                safely { loadEmbeddedLyrics(audioUri) }
             } else {
                 val names = candidates.filter { it.endsWith(".spl", true) == (source == EchoLyricsSource.Spl) }
-                loadFromFileUri(track.contentUri, names) ?: loadFromMediaStore(track, names)
+                safely { loadFromFileUri(audioUri, names) } ?:
+                    safely { loadFromDocumentTree(audioUri, names) } ?:
+                    safely { loadFromMediaStore(track, names) }
             }
             if (result != null) return result
         }
@@ -35,15 +41,15 @@ class LocalLyricsResolver(
     fun loadFromUri(uri: Uri): EchoLyrics? {
         val sourceLabel = displayName(uri) ?: uri.lastPathSegment
         return readText(uri)
-            ?.let { runCatching { EchoLyricsParser.parse(it, sourceLabel = sourceLabel) }.getOrNull() }
+            ?.let { runCatching { it.attach(EchoLyricsParser.parse(it.text, sourceLabel = sourceLabel)) }.getOrNull() }
             ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
     }
 
-    fun importFromUri(uri: Uri): EchoLyrics {
+    fun importFromUri(uri: Uri, charsetOverride: String? = null): EchoLyrics {
         val sourceLabel = displayName(uri) ?: uri.lastPathSegment
-        val text = readText(uri)
+        val text = readText(uri, charsetOverride)
             ?: throw IllegalArgumentException(context.getString(R.string.lyrics_read_failed))
-        val lyrics = runCatching { EchoLyricsParser.parse(text, sourceLabel = sourceLabel) }
+        val lyrics = runCatching { text.attach(EchoLyricsParser.parse(text.text, sourceLabel = sourceLabel)) }
             .getOrElse { error ->
                 throw IllegalArgumentException(
                     context.getString(R.string.lyrics_parse_failed, error.readableMessage()),
@@ -61,14 +67,36 @@ class LocalLyricsResolver(
         val audioFile = uri.path?.let(::File) ?: return null
         val parent = audioFile.parentFile ?: return null
 
-        return candidates.asSequence()
+        val matches = sequence {
+            yieldAll(candidates)
+            var complete = true
+            val files = java.nio.file.Files.newDirectoryStream(parent.toPath()).use { paths ->
+                paths.asSequence().take(4097).mapIndexedNotNull { index, path ->
+                    if (index == 4096) { complete = false; null } else path
+                }.filter { java.nio.file.Files.isRegularFile(it) }
+                    .map { it.fileName.toString() }
+                    .filter { name -> LYRICS_EXTENSIONS.any { name.endsWith(it, true) } }.toList()
+            }
+            yieldAll(LyricsSidecarNames.matching(candidates, files, complete).filter { it !in candidates })
+        }
+        return matches
             .map { File(parent, it) }
             .filter { it.isFile && it.canRead() }
             .mapNotNull { file ->
-                readText(file)?.let { text -> runCatching { EchoLyricsParser.parse(text, sourceLabel = file.name) }.getOrNull() }
+                readText(file)?.let { text -> runCatching { text.attach(EchoLyricsParser.parse(text.text, sourceLabel = file.name)) }.getOrNull() }
                     ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
             }
             .firstOrNull()
+    }
+
+    private fun loadFromDocumentTree(contentUri: String, candidates: List<String>): EchoLyrics? {
+        val listing = DocumentSiblingFiles.read(contentResolver, Uri.parse(contentUri), LYRICS_EXTENSIONS) ?: return null
+        val byName = listing.files.associateBy { it.name }
+        return LyricsSidecarNames.matching(candidates, byName.keys, listing.complete).firstNotNullOfOrNull { name ->
+            readText(byName.getValue(name).uri)?.let { text ->
+                safely { text.attach(EchoLyricsParser.parse(text.text, sourceLabel = name)) }
+            }?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
+        }
     }
 
     private fun loadEmbeddedLyrics(contentUri: String): EchoLyrics? {
@@ -78,12 +106,12 @@ class LocalLyricsResolver(
         }.getOrNull() ?: return null
 
         return runCatching {
-            EchoLyricsParser.parse(embeddedText.text, sourceLabel = embeddedText.sourceLabel)
+            EmbeddedLyricsReader.parse(embeddedText)
         }.getOrNull()
-            ?.takeIf { it.lines.isNotEmpty() }
     }
 
     private fun loadFromMediaStore(track: LibraryTrackEntity, candidates: List<String>): EchoLyrics? {
+        if (Uri.parse(CueSheetPolicy.playbackUri(track.contentUri)).authority != MediaStore.AUTHORITY) return null
         val location = LyricsSidecarLocation.fromLibraryFolder(track.relativePath) ?: return null
         if (candidates.isEmpty()) return null
         val modernStorage = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
@@ -95,13 +123,11 @@ class LocalLyricsResolver(
         ) + if (modernStorage) emptyArray() else arrayOf(MediaStore.MediaColumns.DATA)
         @Suppress("DEPRECATION")
         val primaryStorageRoot = if (modernStorage) "" else Environment.getExternalStorageDirectory().absolutePath
-        val candidateLookup = candidates.mapIndexed { index, name -> name.normalizedLyricsName() to index }.toMap()
-        val displayNamePlaceholders = candidates.joinToString(",") { "?" }
         val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             "${MediaStore.Files.FileColumns.RELATIVE_PATH} = ? AND " +
                 "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
         } else {
-            "${MediaStore.Files.FileColumns.DISPLAY_NAME} IN ($displayNamePlaceholders)"
+            "${MediaStore.Files.FileColumns.DISPLAY_NAME} COLLATE NOCASE IN (${candidates.joinToString(",") { "?" }})"
         }
         val selectionArgs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             arrayOf(location.relativePath, "%.%")
@@ -115,8 +141,11 @@ class LocalLyricsResolver(
                 val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
                 @Suppress("DEPRECATION")
                 val dataIndex = if (modernStorage) -1 else cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
-                val matches = linkedMapOf<Int, Uri>()
+                val matches = linkedMapOf<String, Uri>()
+                var visited = 0
+                var complete = true
                 while (cursor.moveToNext()) {
+                    if (++visited > 4096) { complete = false; break }
                     if (!modernStorage && !location.containsLegacyFile(cursor.getString(dataIndex), primaryStorageRoot)) continue
                     val id = cursor.getLong(idIndex)
                     val displayName = cursor.getString(nameIndex)
@@ -126,23 +155,20 @@ class LocalLyricsResolver(
                     ) {
                         continue
                     }
-                    if (displayName.normalizedLyricsName() !in candidateLookup) {
-                        continue
-                    }
                     val lyricsUri = Uri.withAppendedPath(collection, id.toString())
-                    matches.putIfAbsent(candidateLookup.getValue(displayName.normalizedLyricsName()), lyricsUri)
+                    matches.putIfAbsent(displayName, lyricsUri)
                 }
-                matches.entries.sortedBy { it.key }.firstNotNullOfOrNull { (rank, uri) ->
-                    readText(uri)?.let { runCatching { EchoLyricsParser.parse(it, sourceLabel = candidates[rank]) }.getOrNull() }
+                LyricsSidecarNames.matching(candidates, matches.keys, complete).firstNotNullOfOrNull { name ->
+                    readText(matches.getValue(name))?.let { runCatching { it.attach(EchoLyricsParser.parse(it.text, sourceLabel = name)) }.getOrNull() }
                         ?.takeIf { parsed -> parsed.lines.any { it.text.isNotBlank() } }
                 }
             }
     }
 
-    private fun readText(uri: Uri): String? =
+    private fun readText(uri: Uri, charsetOverride: String? = null): EchoLyricsTextDecoder.Result? =
         runCatching {
             openLyricsInputStream(uri)?.use { input ->
-                EchoLyricsTextDecoder.decode(input.readLimitedLyricsBytes())
+                EchoLyricsTextDecoder.decodeResult(input.readLimitedLyricsBytes(), charsetOverride)?.takeUnless { it.lossy }
             }
         }.getOrNull()
 
@@ -153,8 +179,8 @@ class LocalLyricsResolver(
             ?: runCatching { contentResolver.openTypedAssetFileDescriptor(uri, "*/*", null)?.createInputStream() }
                 .getOrNull()
 
-    private fun readText(file: File): String? =
-        runCatching { file.inputStream().use { EchoLyricsTextDecoder.decode(it.readLimitedLyricsBytes()) } }.getOrNull()
+    private fun readText(file: File): EchoLyricsTextDecoder.Result? =
+        runCatching { file.inputStream().use { EchoLyricsTextDecoder.decodeResult(it.readLimitedLyricsBytes())?.takeUnless { it.lossy } } }.getOrNull()
 
     private fun Throwable.readableMessage(): String =
         rootCause().let { root ->
@@ -167,19 +193,14 @@ class LocalLyricsResolver(
         cause?.takeIf { it !== this }?.rootCause() ?: this
 
     private fun buildCandidateNames(track: LibraryTrackEntity): List<String> {
-        val bases = linkedSetOf<String>()
-        displayNameBase(track.contentUri)?.let(bases::add)
-        track.title.takeIf { it.isNotBlank() }?.let(bases::add)
-
-        return bases
-            .flatMap { base -> LYRICS_EXTENSIONS.map { extension -> "$base$extension" } }
-            .distinct()
+        val fileName = track.fileName ?: safely { audioDisplayName(CueSheetPolicy.playbackUri(track.contentUri)) }
+        return LyricsSidecarNames.candidates(fileName, track.title)
     }
 
-    private fun displayNameBase(contentUri: String): String? {
+    private fun audioDisplayName(contentUri: String): String? {
         val uri = runCatching { Uri.parse(contentUri) }.getOrNull() ?: return null
         if (uri.scheme == ContentResolver.SCHEME_FILE) {
-            return uri.path?.let(::File)?.nameWithoutExtension
+            return uri.path?.let(::File)?.name
         }
         return contentResolver.query(
             uri,
@@ -190,7 +211,6 @@ class LocalLyricsResolver(
         )?.use { cursor ->
             if (cursor.moveToFirst()) {
                 cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME))
-                    ?.substringBeforeLast('.', missingDelimiterValue = "")
                     ?.takeIf { it.isNotBlank() }
             } else {
                 null
@@ -199,7 +219,7 @@ class LocalLyricsResolver(
     }
 
     private fun displayName(uri: Uri): String? =
-        contentResolver.query(
+        safely { contentResolver.query(
             uri,
             arrayOf(OpenableColumns.DISPLAY_NAME),
             null,
@@ -211,12 +231,11 @@ class LocalLyricsResolver(
             } else {
                 null
             }
-        }
+        } }
 
-    private fun String.normalizedLyricsName(): String =
-        trim()
-            .lowercase()
-            .replace(Regex("""[\s._\-]+"""), "")
+    private fun <T> safely(read: () -> T): T? = try { read() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { null }
 
     private companion object {
         val LYRICS_EXTENSIONS = EchoLyricsParser.fileExtensions

@@ -43,7 +43,12 @@ internal class TrackMetadataEditorState(
     }
 
     val canSave: Boolean
-        get() = title.isNotBlank() && artist.isNotBlank()
+        get() = title.isNotBlank() && artist.isNotBlank() &&
+            trackNumberValid && discNumberValid && yearValid
+
+    val trackNumberValid: Boolean get() = trackNumber.isValidMetadataNumber()
+    val discNumberValid: Boolean get() = discNumber.isValidMetadataNumber()
+    val yearValid: Boolean get() = year.isValidMetadataNumber(max = 9999)
 
     fun toUpdate(track: EchoTrack): EchoTrackMetadataUpdate =
         EchoTrackMetadataUpdate(
@@ -95,3 +100,8 @@ internal fun rememberTrackMetadataEditorState(track: EchoTrack): TrackMetadataEd
 
 private fun String.toPositiveIntOrNull(): Int? =
     trim().toIntOrNull()?.takeIf { it > 0 }
+
+private fun String.isValidMetadataNumber(max: Int = Int.MAX_VALUE): Boolean =
+    isBlank() || trim().let { text ->
+        text.all { it in '0'..'9' } && text.toIntOrNull()?.let { it in 1..max } == true
+    }

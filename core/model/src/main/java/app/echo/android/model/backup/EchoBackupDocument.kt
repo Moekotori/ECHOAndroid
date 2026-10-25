@@ -53,6 +53,7 @@ data class EchoBackupSettings(
     val usbBitPerfectEnabled: Boolean? = null,
     val usbOutputOptions: app.echo.android.model.playback.EchoUsbOutputOptions? = null,
     val usbExclusiveAutoRequestOnStartup: Boolean? = null,
+    val stopOnTaskRemoved: Boolean? = null,
     val pauseOnAudioDisconnect: Boolean? = null,
     val resumeOnAudioReconnect: Boolean? = null,
     val trackAudioInfoTagsVisible: Boolean? = null,

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_file_names">歌曲列表显示文件名</string>
+    <string name="library_file_names_note">仅改变列表显示，搜索和排序仍按歌曲标签。没有文件名时使用标题，CUE 分轨同时显示曲目标题。</string>
+</resources>

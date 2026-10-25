@@ -35,6 +35,7 @@ internal object AdditionalLosslessMetadata {
             }
             "tBaK" -> tak(input)
             "riff" -> wave64(magic, input)
+            "fLaC" -> LocalAudioContainerMetadata.read(SequenceInputStream(ByteArrayInputStream(magic), input))
             "MAC " -> EchoApeMetadata.read(SequenceInputStream(ByteArrayInputStream(magic), input))
                 ?.let { LocalAudioContainerInfo(it.durationMs, it.sampleRateHz) }
             else -> null

@@ -10,10 +10,16 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">픽셀 플레이어</string>
     <string name="player_appearance_type_poster">타이포 포스터</string>
-    <string name="player_appearance_holo_prism">오로라 프리즘</string>
-    <string name="player_appearance_starlight_orbit">별의 궤도</string>
-    <string name="player_appearance_sakura_letter">벚꽃 편지</string>
-    <string name="player_appearance_neon_rain">네온 레인</string>
-    <string name="player_appearance_soda_pop">소다 팝</string>
-    <string name="player_appearance_amber_film">앰버 필름</string>
+    <string name="player_appearance_terminal">터미널</string>
+    <string name="player_appearance_scrapbook">스크랩북</string>
+    <string name="player_appearance_metro_line">지하철 노선</string>
+    <string name="player_appearance_chat_thread">채팅</string>
+    <string name="player_style_metro_origin">출발역</string>
+    <string name="player_style_metro_terminus">종착역</string>
+    <string name="player_style_metro_elapsed">주행 %1$s</string>
+    <string name="player_appearance_halftone">하프톤 커버</string>
+    <string name="player_appearance_pixel_mosaic">픽셀 모자이크</string>
+    <string name="player_appearance_contours">등고선</string>
+    <string name="player_appearance_dither">디더링</string>
+    <string name="player_appearance_glyph_field">글자 아트</string>
 </resources>

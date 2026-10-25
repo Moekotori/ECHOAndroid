@@ -10,10 +10,16 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">Пиксели</string>
     <string name="player_appearance_type_poster">Типоплакат</string>
-    <string name="player_appearance_holo_prism">Голо-призма</string>
-    <string name="player_appearance_starlight_orbit">Звёздная орбита</string>
-    <string name="player_appearance_sakura_letter">Письмо сакуры</string>
-    <string name="player_appearance_neon_rain">Неоновый дождь</string>
-    <string name="player_appearance_soda_pop">Содовая</string>
-    <string name="player_appearance_amber_film">Янтарная плёнка</string>
+    <string name="player_appearance_terminal">Терминал</string>
+    <string name="player_appearance_scrapbook">Скрапбук</string>
+    <string name="player_appearance_metro_line">Линия метро</string>
+    <string name="player_appearance_chat_thread">Чат</string>
+    <string name="player_style_metro_origin">Начальная</string>
+    <string name="player_style_metro_terminus">Конечная</string>
+    <string name="player_style_metro_elapsed">В пути %1$s</string>
+    <string name="player_appearance_halftone">Растровая обложка</string>
+    <string name="player_appearance_pixel_mosaic">Пиксельная мозаика</string>
+    <string name="player_appearance_contours">Горизонтали</string>
+    <string name="player_appearance_dither">Дизеринг</string>
+    <string name="player_appearance_glyph_field">Символьная графика</string>
 </resources>

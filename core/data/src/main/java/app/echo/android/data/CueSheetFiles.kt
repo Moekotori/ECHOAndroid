@@ -9,7 +9,7 @@ import java.io.InputStream
 internal class CueAudioNameIndex(audioNames: Collection<String>) {
     private val exact = audioNames.distinct().groupBy { it.lowercase(java.util.Locale.ROOT) }
     private val replacements = audioNames.distinct().filter {
-        it.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) in setOf("flac", "ape", "wv")
+        it.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) in setOf("flac", "fla", "ape", "wv")
     }.groupBy { it.substringBeforeLast('.').lowercase(java.util.Locale.ROOT) }
 
     fun match(reference: String?): String? {
@@ -46,7 +46,7 @@ internal fun CueSheet.forLocalDirectories(): Map<String, CueSheet> {
     return groups.mapValues { (_, tracks) -> copy(fileName = null, tracks = tracks) }
 }
 
-internal fun readCueSheet(input: InputStream): CueSheet? {
+internal fun readCueSheet(input: InputStream, referenceExists: ((String) -> Boolean)? = null): CueSheet? {
     val output = ByteArrayOutputStream()
     val buffer = ByteArray(8192)
     while (true) {
@@ -56,5 +56,14 @@ internal fun readCueSheet(input: InputStream): CueSheet? {
         output.write(buffer, 0, count)
         if (output.size() > CueSheetPolicy.MaxCueBytes) return null
     }
-    return CueSheetParser.parse(output.toByteArray())
+    return CueSheetParser.parse(output.toByteArray(), referenceExists)
+}
+
+/** Portable path relative to the sidecar folder; never relocate an absolute or parent reference. */
+internal fun cueReference(reference: String): Pair<String, String>? {
+    val path = reference.trim().replace('\\', '/')
+    if (path.startsWith('/') || ':' in path || '\u0000' in path) return null
+    val parts = path.split('/').filter { it.isNotEmpty() && it != "." }
+    if (parts.isEmpty() || ".." in parts) return null
+    return parts.dropLast(1).joinToString("/") to parts.last()
 }

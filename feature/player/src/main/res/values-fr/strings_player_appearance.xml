@@ -10,10 +10,16 @@
     <string name="player_appearance_percent">%1$d%%</string>
     <string name="player_appearance_pixel_handheld">Pixels</string>
     <string name="player_appearance_type_poster">Affiche typo</string>
-    <string name="player_appearance_holo_prism">Prisme holo</string>
-    <string name="player_appearance_starlight_orbit">Orbite stellaire</string>
-    <string name="player_appearance_sakura_letter">Lettre sakura</string>
-    <string name="player_appearance_neon_rain">Pluie néon</string>
-    <string name="player_appearance_soda_pop">Soda pop</string>
-    <string name="player_appearance_amber_film">Pellicule ambre</string>
+    <string name="player_appearance_terminal">Terminal</string>
+    <string name="player_appearance_scrapbook">Carnet collage</string>
+    <string name="player_appearance_metro_line">Ligne de métro</string>
+    <string name="player_appearance_chat_thread">Conversation</string>
+    <string name="player_style_metro_origin">Départ</string>
+    <string name="player_style_metro_terminus">Terminus</string>
+    <string name="player_style_metro_elapsed">Parcouru %1$s</string>
+    <string name="player_appearance_halftone">Pochette en points</string>
+    <string name="player_appearance_pixel_mosaic">Mosaïque de pixels</string>
+    <string name="player_appearance_contours">Courbes de niveau</string>
+    <string name="player_appearance_dither">Tramage</string>
+    <string name="player_appearance_glyph_field">Art de caractères</string>
 </resources>

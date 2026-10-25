@@ -12,6 +12,7 @@ import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.connect.EchoRemoteTrack
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -155,6 +156,45 @@ class EchoRemoteClientTest {
         assertEquals(first, second)
         assertEquals(1, transport.streamCalls)
         client.disconnect()
+    }
+
+    @Test
+    fun retryDoesNotReuseTheRejectedStreamBeforeItsExpiry() = runBlocking {
+        val transport = FakeEchoLinkTransport(streamExpiresAtEpochMs = System.currentTimeMillis() + 60_000L)
+        val client = EchoRemoteClient(this, transport)
+        try {
+            client.connect(endpoint, false)
+            delay(20)
+            val first = client.resolvePhoneStreamUrl("track-1")
+            val retry = client.resolvePhoneStreamUrl("track-1", previousStreamUrl = first)
+            assertTrue(!retry.isNullOrBlank())
+            assertTrue(first != retry)
+            assertEquals(retry, client.resolvePhoneStreamUrl("track-1"))
+            assertEquals(2, transport.streamCalls)
+        } finally { client.disconnect() }
+    }
+
+    @Test
+    fun disconnectedResolveCannotReturnOrRepopulateAnOldStream() = runBlocking {
+        val blocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(streamBlocker = blocker,
+            streamExpiresAtEpochMs = System.currentTimeMillis() + 60_000L)
+        val client = EchoRemoteClient(this, transport)
+        try {
+            client.connect(endpoint, false)
+            delay(20)
+            val pending = async {
+                client.resolvePhoneStreamUrl("track-1")
+            }
+            delay(20)
+            client.disconnect()
+            client.connect(endpoint, false)
+            delay(20)
+            blocker.complete(Unit)
+            assertNull(pending.await())
+            assertTrue(!client.resolvePhoneStreamUrl("track-1").isNullOrBlank())
+            assertEquals(2, transport.streamCalls)
+        } finally { client.disconnect() }
     }
 
     @Test

@@ -1,0 +1,23 @@
+<resources>
+    <string name="radio_already_saved">Saved</string>
+    <string name="radio_browse_all">See all</string>
+    <string name="radio_empty_title">Find your next frequency</string>
+    <string name="radio_add_hint">Discover a station, add its stream address, or listen from your clipboard.</string>
+    <string name="radio_enter_url">Enter a stream URL</string>
+    <string name="radio_play_clipboard">Play from clipboard</string>
+    <string name="radio_choose_country">Country / region</string>
+    <string name="radio_any_country">All countries / regions</string>
+    <string name="radio_choose_language">Language</string>
+    <string name="radio_any_language">All languages</string>
+    <string name="radio_manual_filters">Manual country and language</string>
+    <string name="radio_more_fields">Cover, description and streams</string>
+    <string name="radio_station_details">Station details</string>
+    <string name="radio_open_player">Open player</string>
+    <string name="radio_no_results">No matching stations</string>
+    <string name="radio_no_results_hint">Try another name, country, language or genre.</string>
+    <string name="radio_reset_search">Reset filters</string>
+    <string name="radio_expand_description">Read more</string>
+    <string name="radio_collapse_description">Show less</string>
+    <string name="radio_play_named">Play %1$s</string>
+    <string name="radio_stop_named">Stop %1$s</string>
+</resources>

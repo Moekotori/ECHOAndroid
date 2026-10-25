@@ -53,10 +53,21 @@ internal fun PlayerCoverPage(
         onCast, onToggleShuffle, onCycleRepeatMode, onToggleFavorite, onOpenLyrics, onOpenArtist)
     // Only cover-page type scales. Lyrics, transport hit targets and the drawer do not.
     CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * appearance.textScale)) {
-        val gacha = GachaThemes.of(EchoPlayerPageStyle.fromId(appearance.style))
-        if (gacha != null) {
-            GachaCoverPage(gacha, status, positionMsState, durationMsState, actions,
-                isCurrentTrackFavorite, castActive, appearance.artworkScale, presentationExpanded, modifier)
+        if (appearance.style == EchoPlayerPageStyle.Terminal.id) {
+            TerminalCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
+                castActive, appearance.artworkScale, presentationExpanded, modifier)
+        } else if (appearance.style.isFullBleedStyle()) {
+            FullBleedCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
+                castActive, modifier)
+        } else if (appearance.style == EchoPlayerPageStyle.MetroLine.id) {
+            MetroCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
+                castActive, appearance.artworkScale, presentationExpanded, modifier)
+        } else if (appearance.style == EchoPlayerPageStyle.ChatThread.id) {
+            ChatCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
+                castActive, appearance.artworkScale, presentationExpanded, modifier)
+        } else if (appearance.style == EchoPlayerPageStyle.Scrapbook.id) {
+            ScrapbookCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
+                castActive, appearance.artworkScale, modifier)
         } else if (appearance.style == "pixel_handheld") {
             PixelHandheldCoverPage(status, positionMsState, durationMsState, actions,
                 isCurrentTrackFavorite, castActive, appearance.artworkScale, modifier)

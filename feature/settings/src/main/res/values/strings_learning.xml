@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_title">Reproduce a problem</string>
+    <string name="capture_detail">Opt-in event timeline, up to 2 MiB. Stops after 24 hours or when the process exits. No audio, lyrics, media names, paths or account data. Export a ZIP after reproducing the problem.</string>
+    <string name="capture_start">Start recording</string>
+    <string name="capture_stop">Stop recording</string>
+    <string name="capture_export">Export ZIP</string>
+    <string name="capture_clear">Clear</string>
+    <string name="learning_operation_failed">Operation failed. Check the file or available capacity and retry.</string>
+    <string name="learning_operation_done">Completed</string>
+    <string name="eq_bundle_import">Import preset bundle</string>
+    <string name="eq_bundle_export">Export preset bundle</string>
+    <string name="eq_bundle_select_all">Select all / none</string>
+    <string name="eq_bundle_preview">Import: %1$d · Name conflicts: %2$d · Saved: %3$d/%4$d. Active sound settings will stay as they are until you apply a preset.</string>
+    <string name="eq_bundle_add">Add; rename duplicates</string>
+    <string name="eq_bundle_skip">Skip matching names</string>
+    <string name="eq_bundle_replace">Replace matching names</string>
+    <string name="eq_bundle_capacity">Not enough preset slots. Change the conflict policy or remove saved presets.</string>
+    <string name="eq_bundle_confirm">Import</string>
+    <string name="usb_volume_software">Digital volume</string>
+    <string name="usb_volume_auto">Automatic (try DAC, otherwise digital)</string>
+    <string name="usb_volume_hardware">DAC hardware volume (with digital fallback)</string>
+    <string name="usb_volume_fixed">Fixed PCM output</string>
+    <string name="usb_volume_pending">Applies when exclusive playback starts</string>
+    <string name="usb_volume_handoff">Fading for volume handoff</string>
+    <string name="usb_volume_hardware_verified">DAC control readback verified</string>
+    <string name="usb_volume_muted">Muted after control failure</string>
+    <string name="usb_volume_actual">Actual: %1$s</string>
+    <string name="usb_volume_db">DAC readback: %1$.2f dB</string>
+    <string name="usb_volume_strict_reason">Strict output leaves hardware and PCM gain unchanged.</string>
+    <string name="usb_volume_no_master">No unambiguous writable playback master volume was found. Using digital volume.</string>
+    <string name="usb_volume_no_mute">Safe handoff requires readable and writable DAC mute control. Using digital volume.</string>
+    <string name="usb_volume_no_range">The DAC volume range cannot be safely confirmed. Using digital volume.</string>
+    <string name="usb_volume_device_muted">The DAC is already muted. Its mute setting is preserved.</string>
+    <string name="usb_volume_failed">DAC control or readback failed. Digital fallback is used when its gain can be confirmed; otherwise playback stops.</string>
+    <string name="usb_volume_handoff_note">Hardware mode supports verified UAC1/UAC2 playback master controls. Switching briefly fades out and in. It never raises DAC gain above its value at connection; device gain is restored on close. Readback does not verify physical loudness.</string>
+    <string name="usb_volume_waiting">Hardware changes wait until playback resumes.</string>
+    <string name="usb_volume_previous">Previous session: %1$s</string>
+    <string name="usb_volume_device_changed">The DAC gain or mute was changed outside ECHO. Digital volume is now used and the external setting is preserved. Reopen the output to detect hardware control again.</string>
+</resources>

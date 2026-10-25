@@ -129,7 +129,16 @@ class MainActivity : ComponentActivity() {
             else -> return super.onKeyDown(keyCode, event)
         }
         val session = (application as? EchoApplication)?.echoLinkSession
-        return session != null && session.adjustCastVolume(delta) || super.onKeyDown(keyCode, event)
+        if (session != null && session.adjustCastVolume(delta)) return true
+        if ((application as? EchoApplication)?.usbVolumeKeys?.down(keyCode, event?.repeatCount ?: 0) == true) return true
+        return super.onKeyDown(keyCode, event)
+    }
+
+    @OptIn(UnstableApi::class)
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) &&
+            (application as? EchoApplication)?.usbVolumeKeys?.up(keyCode) == true) return true
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun onNewIntent(intent: Intent) {

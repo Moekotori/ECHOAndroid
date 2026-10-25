@@ -63,12 +63,16 @@ class ArtworkColorGrid(val columns: Int, val rows: Int, private val argb: IntArr
         fun fromPixels(pixels: IntArray, columns: Int, rows: Int): ArtworkColorGrid =
             ArtworkColorGrid(columns, rows, IntArray(pixels.size) { vivid(pixels[it]) })
 
-        fun fromBitmap(source: Bitmap): ArtworkColorGrid {
-            val scaled = Bitmap.createScaledBitmap(source, Columns, Rows, true)
-            val pixels = IntArray(Columns * Rows)
-            scaled.getPixels(pixels, 0, Columns, 0, 0, Columns, Rows)
+        /** A finer mosaic for styles that draw the cover as shapes of their own (about 18 KB). */
+        const val DetailedColumns = 48
+        const val DetailedRows = 96
+
+        fun fromBitmap(source: Bitmap, columns: Int = Columns, rows: Int = Rows): ArtworkColorGrid {
+            val scaled = Bitmap.createScaledBitmap(source, columns, rows, true)
+            val pixels = IntArray(columns * rows)
+            scaled.getPixels(pixels, 0, columns, 0, 0, columns, rows)
             if (scaled !== source) scaled.recycle()
-            return fromPixels(pixels, Columns, Rows)
+            return fromPixels(pixels, columns, rows)
         }
 
         private fun pack(r: Int, g: Int, b: Int): Int = 0xFF shl 24 or (r shl 16) or (g shl 8) or b
@@ -110,16 +114,19 @@ class ArtworkColorGrid(val columns: Int, val rows: Int, private val argb: IntArr
  * the previous grid until the next one is ready, so the surface never flashes back to a fallback.
  */
 @Composable
-fun rememberArtworkColorGrid(artworkUri: String?, enabled: Boolean = true): ArtworkColorGrid? {
+fun rememberArtworkColorGrid(artworkUri: String?, enabled: Boolean = true, detailed: Boolean = false): ArtworkColorGrid? {
     if (!enabled || artworkUri.isNullOrBlank()) return null
     val context = LocalContext.current
     val rewriteRevision = EchoArtworkUrlRewriteRegistry.revision
     val fetchUri = resolvedArtworkFetchUri(artworkUri)
     val headers = EchoArtworkRequestHeadersRegistry.headersFor(artworkUri)
-    val grid by produceState<ArtworkColorGrid?>(null, artworkUri, fetchUri, rewriteRevision, headers) {
+    val grid by produceState<ArtworkColorGrid?>(null, artworkUri, fetchUri, rewriteRevision, headers, detailed) {
         val loaded = withContext(Dispatchers.IO) {
-            loadArtworkSwatch(context, fetchUri ?: artworkUri, sampleSize = 16, headers = headers)
-                ?.let(ArtworkColorGrid::fromBitmap)
+            loadArtworkSwatch(context, fetchUri ?: artworkUri, sampleSize = if (detailed) 8 else 16, headers = headers)
+                ?.let {
+                    if (detailed) ArtworkColorGrid.fromBitmap(it, ArtworkColorGrid.DetailedColumns, ArtworkColorGrid.DetailedRows)
+                    else ArtworkColorGrid.fromBitmap(it)
+                }
         }
         if (loaded != null) value = loaded
     }

@@ -4,6 +4,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EchoRadioStationTest {
+    @Test fun selectedAlternativeUsesItsOwnCodecAndKeepsStationIdentity() {
+        val primary = "https://radio.example/live.m3u8"
+        val alternate = "https://radio.example/live.mp3"
+        val station = EchoRadioStation("id", "My station", primary, codec = "HLS",
+            streams = listOf(EchoRadioStream(alternate, "MP3")), defaultStreamUrl = alternate)
+        assertEquals(alternate, station.toTrack().uri)
+        assertNull(station.toTrack().mimeType)
+        assertEquals("application/x-mpegURL", station.toTrack(primary).mimeType)
+        assertEquals("radio:id", station.toTrack(alternate).id)
+    }
     @Test fun acceptsDirectStreamsAndHlsWithQueryParameters() {
         listOf("http://radio.example:8000/live", "https://radio.example/live.m3u8?token=abc", " https://radio.example/stream ").forEach {
             assertTrue(it, EchoRadioStation.validUrl(it))

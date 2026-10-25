@@ -20,4 +20,5 @@ data class EchoPlaybackStatus(
     val replayGainTrackGainDb: Float? = null,
     val replayGainTagsLoaded: Boolean = false,
     val diagnostics: EchoPlaybackDiagnostics = EchoPlaybackDiagnostics(),
+    val autoMix: EchoAutoMixStatus = EchoAutoMixStatus(),
 )

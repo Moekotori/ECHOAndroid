@@ -8,6 +8,49 @@ import org.junit.Test
 
 class LocalScanMetadataTest {
     @Test
+    fun scanDecoratorPreservesLegacyTailTagsAndRandomAccess() {
+        val trailer = ByteArray(128).also {
+            "TAG".toByteArray().copyInto(it)
+            "Tail title".toByteArray().copyInto(it, 3)
+            "Tail artist".toByteArray().copyInto(it, 33)
+        }
+        val bytes = ByteArray(128) + trailer
+        val file = java.io.File.createTempFile("echo-scan-tail-", ".mp3")
+        try {
+            file.writeBytes(bytes)
+            assertEquals("Tail title", readScanMetadata(file.inputStream(), ::readLocalAudioTags)?.title)
+            val ranges = RandomAccessTagInput(bytes.size.toLong()) { at, count ->
+                bytes.copyOfRange(at.toInt(), at.toInt() + count)
+            }
+            assertEquals("Tail artist", readScanMetadata(ranges, ::readLocalAudioTags)?.artist)
+        } finally { file.delete() }
+    }
+
+    @Test
+    fun tailFailuresCannotBeSwallowedAndOptionalFailuresRemainPending() {
+        val input = object : InputStream(), TagTailReader {
+            override fun read(): Int = -1
+            override fun tail(count: Int): ByteArray? = throw IOException("tail unavailable")
+        }
+        assertThrows(IOException::class.java) {
+            readScanMetadata(input) { stream ->
+                try { (stream as TagTailReader).tail(32) } catch (_: IOException) { null }
+            }
+        }
+        val reads = ScanMetadataReads()
+        assertNull(reads.optional({ null }) { null })
+        assertTrue(reads.failed)
+        assertEquals(1, reads.optional({ byteArrayOf(1).inputStream() }) { it.read() })
+        assertTrue(reads.failed) // A later successful fallback must not erase the failure.
+        val absent = ScanMetadataReads()
+        assertNull(absent.optional({ byteArrayOf().inputStream() }) { null })
+        assertFalse(absent.failed) // Successfully read, genuinely absent tags are cacheable.
+        assertThrows(kotlinx.coroutines.CancellationException::class.java) {
+            absent.optional({ throw kotlinx.coroutines.CancellationException() }) { null }
+        }
+    }
+
+    @Test
     fun swallowedIoFailureStillRequestsARetryAndClosesInput() {
         var closed = false
         val input = object : InputStream() {

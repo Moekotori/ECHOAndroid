@@ -27,6 +27,8 @@ internal class EchoAutoMixEngine(context: Context) {
         val nextStartMs: Long,
         val durationMs: Long,
         val frames: Int,
+        val mode: String? = null, val outgoingBpm: Double? = null, val incomingBpm: Double? = null,
+        val tempoConfidence: Double? = null,
     )
 
     suspend fun prepare(current: String, next: String, currentDurationMs: Long, nextDurationMs: Long,
@@ -61,7 +63,10 @@ internal class EchoAutoMixEngine(context: Context) {
                     start < 0 || entry < 0 || entry + duration > nextDurationMs ||
                     transition.contentFramesFor(frames) != frames) null
                 // MediaCodec windows use millisecond boundaries; keep the consumed frames identical.
-                else Plan(transition, start, entry, duration, (duration * rate / 1000).toInt())
+                else Plan(transition, start, entry, duration, (duration * rate / 1000).toInt(),
+                    base.name(), base.outroBpm()?.toDouble(), base.introBpm()?.toDouble(),
+                    if (base.tempoOut() != null && base.tempoIn() != null)
+                        minOf(base.tempoOut().confidence, base.tempoIn().confidence).toDouble() else null)
             }
         } catch (cancelled: CancellationException) {
             throw cancelled

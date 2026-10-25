@@ -26,6 +26,7 @@ fun LibraryTrackEntity.toEchoTrack(): EchoTrack =
         composer = composer,
         clipStartMs = clipStartMs,
         clipEndMs = clipEndMs,
+        fileName = fileName,
     )
 
 fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
@@ -54,6 +55,7 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
         fingerprint = buildTrackFingerprint(this),
         clipStartMs = clipStartMs,
         clipEndMs = clipEndMs,
+        fileName = fileName,
     ).withComputedSearchMetadata()
 
 internal fun LibraryTrackEntity.withFingerprint(): LibraryTrackEntity =

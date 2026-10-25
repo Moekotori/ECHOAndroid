@@ -3,7 +3,6 @@ package app.echo.android.data
 import app.echo.android.model.library.CueSheet
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.CueSheetTrack
-import java.nio.charset.StandardCharsets
 import java.util.Locale
 
 /** Bounded text parser. An incomplete sheet never authorizes a partial library replacement. */
@@ -13,11 +12,14 @@ object CueSheetParser {
     private val DataMode = Regex("""^(?:MODE[12]/\d+|CDI/\d+)$""", RegexOption.IGNORE_CASE)
     private val FileValue = Regex("""^(?:"((?:[^"\\]|\\.)+)"|'((?:[^'\\]|\\.)+)'|(.+?))(?:\s+\S+)?$""")
 
-    fun parse(bytes: ByteArray): CueSheet? =
-        if (bytes.isEmpty() || bytes.size > CueSheetPolicy.MaxCueBytes) null else parseText(decode(bytes))
+    fun parse(bytes: ByteArray, referenceExists: ((String) -> Boolean)? = null): CueSheet? =
+        if (bytes.isEmpty() || bytes.size > CueSheetPolicy.MaxCueBytes) null else
+            CueTextDecoder.decode(bytes, referenceExists)?.let(::parseText)
 
     fun parseText(text: String): CueSheet? {
-        if (text.isEmpty() || text.length > CueSheetPolicy.MaxCueBytes || '\u0000' in text) return null
+        if (text.isEmpty() || text.length > CueSheetPolicy.MaxCueBytes || text.any {
+            it == '\u0000' || it == '\uFFFD' || (it.isISOControl() && it !in "\r\n\t")
+        }) return null
         var file: String? = null
         var firstFile: String? = null
         var album: String? = null
@@ -34,7 +36,8 @@ object CueSheetParser {
         var pregap: Long? = null
         var data = false
         var failed = false
-        fun sourceKey() = file.orEmpty().replace('\\', '/').lowercase(Locale.ROOT)
+        // Android and remote providers can contain A.flac and a.flac as separate sources.
+        fun sourceKey() = file.orEmpty().replace('\\', '/')
         fun bound(time: Long) {
             val previous = lastBySource[sourceKey()] ?: return
             val track = tracks[previous]
@@ -44,7 +47,10 @@ object CueSheetParser {
         fun commit() {
             val n = number
             val offset = start
-            if (n != null && !data) {
+            if (n != null && data) {
+                // A truncated final data track must not leave the preceding audio open-ended.
+                if (offset == null || pregap?.let { it > offset } == true) failed = true
+            } else if (n != null) {
                 if (offset == null || pregap?.let { it > offset } == true) failed = true
                 else {
                     bound(offset)
@@ -103,9 +109,11 @@ object CueSheetParser {
                         continue
                     }
                     val time = indexTime(match) ?: return null
+                    if (match.groupValues[1] == "0") {
+                        if (pregap != null) return null
+                        pregap = time
+                    } else { if (start != null) return null; start = time }
                     if (data) bound(time)
-                    else if (match.groupValues[1] == "0") pregap = time
-                    else { if (start != null) return null; start = time }
                 }
             }
             if (failed) return null
@@ -139,6 +147,5 @@ object CueSheetParser {
         return value.substring(1, value.length - 1).replace("\\${value[0]}", "${value[0]}")
     }
 
-    internal fun decode(bytes: ByteArray): String =
-        TagTextDecoder.decode(bytes) ?: String(bytes, StandardCharsets.UTF_8)
+    internal fun decode(bytes: ByteArray): String? = CueTextDecoder.decode(bytes)
 }

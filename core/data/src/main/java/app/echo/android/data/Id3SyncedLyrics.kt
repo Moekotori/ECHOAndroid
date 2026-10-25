@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 
 internal fun decodeSyncedId3Lyrics(payload: ByteArray): String? {
     if (payload.size <= 7) return null
+    if ((payload[0].toInt() and 0xFF) !in 0..3) return null
     val encoding = id3Encoding(payload[0])
     val timestampFormat = payload[4].toInt() and 0xFF
     if (timestampFormat != 2) return null
@@ -38,7 +39,7 @@ private fun decodeId3Text(payload: ByteArray, start: Int, end: Int, encoding: Id
     val text = if (encoding.charset == StandardCharsets.ISO_8859_1) {
         decodeLegacyTagText(slice).orEmpty()
     } else {
-        slice.toString(encoding.charset)
+        TagTextDecoder.decodeDeclared(slice, encoding.charset).orEmpty()
     }
     return text.trimEnd('\u0000')
 }

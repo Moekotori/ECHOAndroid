@@ -696,6 +696,7 @@ fun LibraryScreen(
                 )
             },
             actions = {
+                if (selectedSource == LibrarySourceMode.Local) LibraryHiddenTracksAccess()
                 when (selectedSource) {
                     LibrarySourceMode.Local -> if (selectedMode != LibraryViewMode.Radio && selectedMode != LibraryViewMode.Playlists) {
                         LibrarySourceScanButton(onAddMusic)

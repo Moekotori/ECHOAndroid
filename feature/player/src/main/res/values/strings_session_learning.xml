@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="saved_clips_title">Saved song clips</string>
+    <string name="saved_clips_detail">Save the current A–B selection locally. No audio file is created. Up to 500 clips; clips stay on this device.</string>
+    <string name="saved_clips_save">Save current A–B selection</string>
+    <string name="saved_clips_load">Play and loop</string>
+    <string name="saved_clips_rename">Rename</string>
+    <string name="saved_clips_delete">Delete</string>
+    <string name="saved_clips_name">Clip name</string>
+    <string name="saved_clips_confirm">Save</string>
+    <string name="saved_clips_cancel">Cancel</string>
+    <string name="saved_clips_error">Could not complete the clip action. Check the range, name and available storage.</string>
+</resources>

@@ -14,17 +14,22 @@ internal object VorbisCommentRewriter {
         }
         val replaceComposer = shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, old("COMPOSER"))
         val replaceGenre = shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, old("GENRE"))
+        val preserveArtist = preserveTagNames(fields.artist, LibraryArtistPolicy.display(original
+            .filter { it.first.equals("ARTIST", ignoreCase = true) }.map { it.second }))
+        val preserveAlbumArtist = preserveTagNames(fields.albumArtist, LibraryArtistPolicy.display(original
+            .filter { it.first.uppercase(Locale.ROOT) in AlbumArtistKeys }.map { it.second }))
         val comments = original.filterNot { (key, value) ->
             val upper = key.uppercase(Locale.ROOT)
-            upper in Managed || (replaceComposer && upper == "COMPOSER") || (replaceGenre && upper == "GENRE") ||
+            val keepNames = (preserveArtist && upper == "ARTIST") || (preserveAlbumArtist && upper in AlbumArtistKeys)
+            (!keepNames && upper in Managed) || (replaceComposer && upper == "COMPOSER") || (replaceGenre && upper == "GENRE") ||
                 (fields.lyrics != null && upper in Lyrics) ||
                 (fields.replayGainTrackGainDb != null && upper == "REPLAYGAIN_TRACK_GAIN") ||
                 (fields.artworkBytes != null && upper == "METADATA_BLOCK_PICTURE" && isFrontPicture(value))
         }.toMutableList()
         comments += "TITLE" to fields.title
-        comments += "ARTIST" to fields.artist
+        if (!preserveArtist) comments += "ARTIST" to fields.artist
         fields.album?.let { comments += "ALBUM" to it }
-        fields.albumArtist?.let { comments += "ALBUMARTIST" to it }
+        if (!preserveAlbumArtist) fields.albumArtist?.let { comments += "ALBUMARTIST" to it }
         if (replaceComposer) fields.composer?.takeIf { it.isNotBlank() }?.let { comments += "COMPOSER" to it }
         if (replaceGenre) fields.genre?.takeIf { it.isNotBlank() }?.let { comments += "GENRE" to it }
         tagNumberWithTotal(fields.trackNumber, old("TRACKNUMBER", "TRACK"))?.let { comments += "TRACKNUMBER" to it }
@@ -65,5 +70,6 @@ internal object VorbisCommentRewriter {
 
     const val MaxBytes = 12 * 1024 * 1024
     private val Lyrics = setOf("LYRICS", "UNSYNCEDLYRICS", "SYNCEDLYRICS")
+    private val AlbumArtistKeys = setOf("ALBUMARTIST", "ALBUM ARTIST", "ALBUM_ARTIST")
     private val Managed = setOf("TITLE", "ARTIST", "ALBUM", "ALBUMARTIST", "ALBUM ARTIST", "ALBUM_ARTIST", "TRACKNUMBER", "TRACK", "DISCNUMBER", "DISC", "DATE", "YEAR")
 }

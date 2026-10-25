@@ -6,6 +6,26 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class LocalAudioContainerMetadataTest {
+    @Test fun flacStreamInfoStopsAt42BytesAndSupportsId3Prefix() {
+        val header = ByteArray(42)
+        "fLaC".toByteArray().copyInto(header)
+        header[4] = 0x80.toByte()
+        header[7] = 34
+        val packed = (48000L shl 44) or (1L shl 41) or (15L shl 36) or 144000L
+        for (i in 0..7) header[18 + i] = (packed ushr (56 - i * 8)).toByte()
+        for (prefix in listOf(ByteArray(0), byteArrayOf(73, 68, 51, 4, 0, 0, 0, 0, 0, 2, 0, 0))) {
+            val input = (prefix + header + ByteArray(1000)).inputStream()
+            val info = LocalAudioContainerMetadata.read(input)!!
+            assertEquals(3000L, info.durationMs)
+            assertEquals(48000, info.sampleRateHz)
+            assertEquals(1000, input.available())
+        }
+        assertTrue(LocalAudioContainerMetadata.supports(null, "song.fla"))
+        assertTrue(LocalAudioContainerMetadata.supports("audio/x-flac", null))
+        assertNull(LocalAudioContainerMetadata.read(header.copyOf(41).inputStream()))
+        header[7] = 33
+        assertNull(LocalAudioContainerMetadata.read(header.inputStream()))
+    }
     // Short FFmpeg-generated fixtures, independently checked with ffprobe.
     @Test fun realContainersReportRateAndDuration() {
         for (name in listOf("pcm.wav", "pcm.aiff", "little-endian.aifc", "tagged.wv", "tagged.wma")) {

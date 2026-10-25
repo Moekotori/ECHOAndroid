@@ -13,8 +13,8 @@ private fun momentQuery(query: String, limit: Int? = null): SimpleSQLiteQuery {
         COALESCE(t.contentUri,b.uriSnapshot) AS uri, t.artworkUri,
         COALESCE(t.durationMs,b.durationSnapshot) AS durationMs, t.source
         FROM library_bookmarks b LEFT JOIN library_tracks t ON t.id = b.trackId
-        WHERE b.label LIKE ? ESCAPE '\' OR COALESCE(t.title,b.titleSnapshot) LIKE ? ESCAPE '\'
-           OR COALESCE(t.artist,b.artistSnapshot) LIKE ? ESCAPE '\'
+        WHERE b.trackId NOT IN (SELECT trackId FROM library_hidden_tracks) AND (b.label LIKE ? ESCAPE '\' OR COALESCE(t.title,b.titleSnapshot) LIKE ? ESCAPE '\'
+           OR COALESCE(t.artist,b.artistSnapshot) LIKE ? ESCAPE '\')
         ORDER BY b.trackId, b.positionMs, b.id""" + (limit?.let { " LIMIT ${it.coerceIn(1, 100)}" } ?: ""), arrayOf(pattern, pattern, pattern))
 }
 

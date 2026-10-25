@@ -358,9 +358,11 @@ class EmbeddedTagWriter(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     put(MediaStore.Audio.Media.ALBUM_ARTIST, fields.albumArtist)
                 }
-                fields.year?.let { put(MediaStore.Audio.Media.YEAR, it) }
+                if (fields.year != null) put(MediaStore.Audio.Media.YEAR, fields.year)
+                else putNull(MediaStore.Audio.Media.YEAR)
                 val packedTrack = ((fields.discNumber ?: 0) * 1000) + (fields.trackNumber ?: 0)
                 if (packedTrack > 0) put(MediaStore.Audio.Media.TRACK, packedTrack)
+                else putNull(MediaStore.Audio.Media.TRACK)
                 put(MediaStore.MediaColumns.SIZE, tagged.length())
                 put(MediaStore.MediaColumns.DATE_MODIFIED, System.currentTimeMillis() / 1000L)
             }

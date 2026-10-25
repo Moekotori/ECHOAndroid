@@ -301,7 +301,11 @@ fun NowPlayingScreen(
     val effectiveLyricsFocusGlowEnabled = lyricsFocusGlowEnabled && !effectivePerformanceMode.isLightweight
     val palette = rememberArtworkPalette(track?.artworkUri, seedKey = track?.id)
     val backdropStyle = EchoLyricsBackdrop.fromId(lyricsBackdrop)
-    val colorGrid = rememberArtworkColorGrid(track?.artworkUri, enabled = backdropStyle.needsColorGrid)
+    val fullBleedPage = appearance.style.isFullBleedStyle()
+    // Full-bleed page styles always paint their own field, whatever the lyrics backdrop setting says.
+    val shownBackdrop = if (fullBleedPage) EchoLyricsBackdrop.Halftone else backdropStyle
+    val detailedGrid = fullBleedPage && appearance.style != EchoPlayerPageStyle.Halftone.id
+    val colorGrid = rememberArtworkColorGrid(track?.artworkUri, enabled = shownBackdrop.needsColorGrid, detailed = detailedGrid)
     var splitNowPlaying by remember { mutableStateOf(false) }
     val pagerState = rememberPagerState(
         // A direct lyrics opening has its own outer entrance; do not add a simultaneous page slide.
@@ -456,12 +460,12 @@ fun NowPlayingScreen(
     val windowLayout = app.echo.android.design.rememberEchoWindowLayout()
     val shortLandscape = windowLayout.shortLandscape
     val fold by rememberPlayerFold(presentationExpanded)
-    val preferSplit = windowLayout.supportsTwoPanes() && !shortLandscape && (!lyricStyle.isAfterglow || lyricsAlignment == "vertical")
+    val preferSplit = windowLayout.supportsTwoPanes() && (!lyricStyle.isAfterglow || lyricsAlignment == "vertical")
     val wideSinglePage = windowLayout.widthDp >= 840f
     val lyricsSurfaceVisible = !isRadio && pagerState.currentPage == NowPlayingPage.Lyrics.ordinal
     val immersiveAfterglow = lyricsAlignment != "vertical" && !isRadio && fold == null && !splitNowPlaying && lyricStyle.isAfterglow && lyricsSurfaceVisible && !pagerState.isScrollInProgress
     val sleeveTopBar = !isRadio && appearance.usesFlatSurface && !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
-    val drawLyricsBackdrop = !isRadio && !appearance.usesFlatSurface
+    val drawLyricsBackdrop = !isRadio && (!appearance.usesFlatSurface || fullBleedPage)
     RecordSleeveSystemBars(
         enabled = presentationExpanded && (!immersiveAfterglow || playbackSettingsVisible),
         darkIcons = if (isRadio) !LocalEchoDarkTheme.current else sharedStyle.isLight,
@@ -546,8 +550,9 @@ fun NowPlayingScreen(
             if (drawLyricsBackdrop) {
                 val backdropModifier = Modifier.fillMaxSize()
                 LyricsPageBackdrop(palette, lyricsReveal,
-                    presentationExpanded && !overlayBlocking && track != null, backdropModifier, backdropStyle, colorGrid, backdropLink)
+                    presentationExpanded && !overlayBlocking && track != null, backdropModifier, shownBackdrop, colorGrid, backdropLink)
             }
+            if (!isRadio) PageStyleDecor(sharedStyle, lyricsReveal, Modifier.fillMaxSize())
             Column(
                 modifier = Modifier
                     .safeDrawingPadding()
@@ -1206,6 +1211,11 @@ internal fun LyricsControlDeck(
             ) {
                 FormatChip(text = "Lyrics", highlight = true)
                 FormatChip(text = lyrics.format.label(), highlight = false)
+                lyrics.metadata["text_encoding"]?.takeIf { it.length <= 40 }?.let { encoding ->
+                    FormatChip(text = stringResource(L10nR.string.lyrics_decoding_encoding, encoding), highlight = false)
+                    if (lyrics.metadata["text_decoding_lossy"] == "true")
+                        FormatChip(text = stringResource(L10nR.string.lyrics_decoding_lossy), highlight = false)
+                }
                 lyrics.sourceLabel?.takeIf { it.isNotBlank() }?.let { source ->
                     Text(
                         text = source,

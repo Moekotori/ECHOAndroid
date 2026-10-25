@@ -93,7 +93,7 @@ internal object AudioFileTagRewriter {
         val tail = when (input) {
             is FileInputStream -> fileTail(input)
             is ByteArrayInputStream -> inMemoryTail(input, peek)
-            is RandomAccessTagInput -> try { input.tail(ID3V1_BYTES) } catch (_: java.io.IOException) { null }
+            is TagTailReader -> try { input.tail(ID3V1_BYTES) } catch (_: java.io.IOException) { null }
             else -> null
         } ?: return null
         return parseId3v1(tail)
@@ -205,6 +205,7 @@ internal object AudioFileTagRewriter {
         val id3 = readId3Fields(header, input)
         val next = ByteArray(12)
         val read = try { readFully(input, next) } catch (_: java.io.IOException) { return id3?.takeUnless { it.isBlank() } }
+        if (isFlac(next, read)) return mergeAudioTags(id3, readFlacFields(next, read, input))
         if (read >= 4 && next.decodeToString(0, 4) in setOf("MAC ", "wvpk", "TTA1", "tBaK")) {
             val ape = try { ApeTagReader.read(input) } catch (_: java.io.IOException) { null }
             return mergeAudioTags(id3, ape)
@@ -502,10 +503,16 @@ internal object AudioFileTagRewriter {
     ): List<Id3Frame> {
         fun originalText(id: String): String? = frames.asSequence().filter { it.id == id }
             .mapNotNull { readableId3Payload(it, version)?.let(::decodeId3Text) }.firstOrNull()
+        fun originalNames(id: String): String? = LibraryArtistPolicy.display(frames.filter { it.id == id }
+            .flatMap { readableId3Payload(it, version)?.let(::decodeId3Values).orEmpty() })
+        val preserveArtist = preserveTagNames(fields.artist, originalNames("TPE1"))
+        val preserveAlbumArtist = preserveTagNames(fields.albumArtist, originalNames("TPE2"))
         val originalDate = originalText("TDRC") ?: originalText("TYER")
         val preserveDate = fields.year != null && originalDate?.take(4)?.toIntOrNull() == fields.year
         val managed = HashSet(if (version == 4) ManagedId3v24 else ManagedId3v23)
         if (preserveDate) managed.removeAll(setOf("TDRC", "TYER"))
+        if (preserveArtist) managed.remove("TPE1")
+        if (preserveAlbumArtist) managed.remove("TPE2")
         val replaceComposer = shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, originalText("TCOM"))
         val replaceGenre = shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, originalText("TCON"))
         if (replaceComposer) managed += "TCOM"
@@ -521,9 +528,9 @@ internal object AudioFileTagRewriter {
         }
         val next = ArrayList<Id3Frame>(kept.size + 10)
         next += textFrame(version, "TIT2", fields.title)
-        next += textFrame(version, "TPE1", fields.artist)
+        if (!preserveArtist) next += textFrame(version, "TPE1", fields.artist)
         fields.album?.let { next += textFrame(version, "TALB", it) }
-        fields.albumArtist?.let { next += textFrame(version, "TPE2", it) }
+        if (!preserveAlbumArtist) fields.albumArtist?.let { next += textFrame(version, "TPE2", it) }
         if (replaceComposer) fields.composer?.takeIf { it.isNotBlank() }?.let { next += textFrame(version, "TCOM", it) }
         if (replaceGenre) fields.genre?.takeIf { it.isNotBlank() }?.let { next += textFrame(version, "TCON", it) }
         tagNumberWithTotal(fields.trackNumber, originalText("TRCK"))?.let { next += textFrame(version, "TRCK", it) }
@@ -616,7 +623,13 @@ internal object AudioFileTagRewriter {
             .mapNotNull { readableId3Payload(it, majorVersion)?.let(::decodeReadTxxx) }.toList()
         val artwork = frames.asSequence().filter { it.id == "APIC" || it.id == "PIC" }
             .mapNotNull { frame -> readableId3Payload(frame, majorVersion)?.let { EmbeddedTagArtwork.id3(it, frame.id == "PIC") } }
-            .firstOrNull()
+            .let { pictures ->
+                var fallback: TagArtwork? = null
+                pictures.firstOrNull { picture ->
+                    if (fallback == null) fallback = picture
+                    picture.type == 3
+                } ?: fallback
+            }
         return AudioTagFields(
             title = text("TIT2").orEmpty(),
             artist = names("TPE1").orEmpty(),
@@ -727,11 +740,12 @@ internal object AudioFileTagRewriter {
         if (index >= payload.size) return null
         val raw = payload.copyOfRange(index, payload.size)
         val text = when (encoding) {
-            1 -> raw.toString(Charsets.UTF_16)
-            2 -> raw.toString(Charsets.UTF_16BE)
-            3 -> raw.toString(StandardCharsets.UTF_8)
-            else -> TagTextDecoder.decode(raw) ?: raw.toString(StandardCharsets.ISO_8859_1)
-        }
+            0 -> TagTextDecoder.decode(raw)
+            1 -> TagTextDecoder.decodeDeclared(raw, Charsets.UTF_16)
+            2 -> TagTextDecoder.decodeDeclared(raw, Charsets.UTF_16BE)
+            3 -> TagTextDecoder.decodeDeclared(raw, StandardCharsets.UTF_8)
+            else -> null
+        } ?: return null
         return text.trimEnd('\u0000').trim().takeIf { it.isNotEmpty() }
     }
 
@@ -765,18 +779,26 @@ internal object AudioFileTagRewriter {
         }
         val replaceComposer = shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, original("COMPOSER"))
         val replaceGenre = shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, original("GENRE"))
+        val preserveArtist = preserveTagNames(fields.artist, LibraryArtistPolicy.display(originalComments
+            .filter { it.first.equals("ARTIST", ignoreCase = true) }.map { it.second }))
+        val preserveAlbumArtist = preserveTagNames(fields.albumArtist, LibraryArtistPolicy.display(originalComments
+            .filter { it.first.uppercase(java.util.Locale.ROOT) in AlbumArtistVorbisKeys }.map { it.second }))
         val comments = mutableListOf<Pair<String, String>>()
         originalComments.forEach { (key, value) ->
             val upper = key.uppercase(java.util.Locale.ROOT)
+            if ((preserveArtist && upper == "ARTIST") || (preserveAlbumArtist && upper in AlbumArtistVorbisKeys)) {
+                comments += key to value
+                return@forEach
+            }
             if (upper in ManagedVorbisKeys || (upper == "GENRE" && replaceGenre) || (upper == "COMPOSER" && replaceComposer)) return@forEach
             if (fields.lyrics != null && upper in VorbisLyricsKeys) return@forEach
             if (fields.replayGainTrackGainDb != null && upper == "REPLAYGAIN_TRACK_GAIN") return@forEach
             comments += key to value
         }
         comments += "TITLE" to fields.title
-        comments += "ARTIST" to fields.artist
+        if (!preserveArtist) comments += "ARTIST" to fields.artist
         fields.album?.let { comments += "ALBUM" to it }
-        fields.albumArtist?.let { comments += "ALBUMARTIST" to it }
+        if (!preserveAlbumArtist) fields.albumArtist?.let { comments += "ALBUMARTIST" to it }
         if (replaceComposer) fields.composer?.takeIf { it.isNotBlank() }?.let { comments += "COMPOSER" to it }
         if (replaceGenre) fields.genre?.takeIf { it.isNotBlank() }?.let { comments += "GENRE" to it }
         tagNumberWithTotal(fields.trackNumber, original("TRACKNUMBER", "TRACK"))?.let { comments += "TRACKNUMBER" to it }
@@ -1089,6 +1111,7 @@ internal object AudioFileTagRewriter {
         "YEAR",
     )
     private val VorbisLyricsKeys = setOf("LYRICS", "UNSYNCEDLYRICS", "SYNCEDLYRICS")
+    private val AlbumArtistVorbisKeys = setOf("ALBUMARTIST", "ALBUM ARTIST", "ALBUM_ARTIST")
     private val Id3LyricsKeys = VorbisLyricsKeys + "USLT"
     private val V22_FRAME_MAP = mapOf(
         "TT2" to "TIT2",

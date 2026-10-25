@@ -488,6 +488,8 @@ private fun sleepTimerDetail(status: EchoPlaybackStatus): String {
     if (status.sleepTimerMode == EchoSleepTimerMode.Off) {
         return stringResource(L10nR.string.feature_player_off_12ac24)
     }
+    if (status.sleepTimerFinishingCurrentTrack) return stringResource(L10nR.string.sleep_timer_finishing,
+        formatSleepTimerRemaining(status.sleepTimerRemainingMs))
     if (status.sleepTimerMode == EchoSleepTimerMode.EndOfTrack) {
         val remaining = status.sleepTimerRemainingMs
         return if (remaining in 1 until 12 * 60 * 60 * 1000L) {

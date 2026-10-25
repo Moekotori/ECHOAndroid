@@ -13,7 +13,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -21,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.echo.android.model.lyrics.EchoLyricLine
+import app.echo.android.model.settings.EchoPlayerPageStyle
 import app.echo.android.feature.player.R as L10nR
 
 @Composable
@@ -47,16 +51,26 @@ internal fun LyricsLineItem(
     motion: LyricsMotionProfile,
     animateFocus: Boolean,
     paper: Boolean,
+    passed: Boolean = false,
     onClick: (() -> Unit)?,
     onLongClick: () -> Unit,
 ) {
     val contextMotion = if (animateFocus) spring<Float>(dampingRatio = 1f,
         stiffness = motion.focusStiffness, visibilityThreshold = 0.001f)
     else tween(0)
-    val textAlign = lyricsTextAlign(lyricsAlignment)
-    val horizontalAlignment = lyricsHorizontalAlignment(lyricsAlignment)
     val markerAlpha = animateFloatAsState(if (focused) 1f else 0f,
         if (animateFocus) EchoMotion.silkFloat(320) else snap(), label = "lyrics-focus-marker")
+    val pageStyle = LocalPlayerPageStyle.current
+    val terminal = pageStyle == EchoPlayerPageStyle.Terminal
+    val scrapbook = pageStyle == EchoPlayerPageStyle.Scrapbook
+    val metro = pageStyle == EchoPlayerPageStyle.MetroLine
+    val chat = pageStyle == EchoPlayerPageStyle.ChatThread
+    // Station lists and chat bubbles read left to right whatever the alignment setting says.
+    val alignment = if (metro || chat) "start" else lyricsAlignment
+    val lineColor = if (chat && focused) Color.White else lyricAccent
+    val lineHighlight = if (chat && focused) Color.White else highlightColor
+    val textAlign = lyricsTextAlign(alignment)
+    val horizontalAlignment = lyricsHorizontalAlignment(alignment)
     val primaryAlpha = when (focusDistance) {
         0 -> 1f
         else -> if (immersive) 0.08f else when (focusDistance) {
@@ -104,13 +118,41 @@ internal fun LyricsLineItem(
     )
     Column(
         modifier = Modifier
+            .then(if (chat) Modifier.widthIn(max = 320.dp) else Modifier)
             .fillMaxWidth()
             .graphicsLayer {
                 // Move captions together with their line, leaving the measured scroll anchor intact.
                 translationY = textLift.value.dp.toPx() * spacing.coerceAtMost(1f)
             }
             .drawBehind {
-                if (paper && markerAlpha.value > 0f) {
+                if (chat) {
+                    val fill = lerp(Color.White.copy(alpha = 0.88f), ChatStyle.Accent, markerAlpha.value)
+                    drawOutline(ChatStyle.Bubble.createOutline(size, layoutDirection, this), fill)
+                }
+                if (metro) {
+                    val x = 18.dp.toPx()
+                    val dotY = 21.dp.toPx()
+                    val half = (25f * spacing / 2f).dp.toPx()
+                    val reached = passed || focused
+                    drawLine(if (reached) MetroStyle.Line else MetroStyle.Rail, Offset(x, -half), Offset(x, dotY), 8.dp.toPx())
+                    drawLine(if (passed) MetroStyle.Line else MetroStyle.Rail, Offset(x, dotY), Offset(x, size.height + half), 8.dp.toPx())
+                    val radius = if (focused) 12.dp.toPx() else 9.dp.toPx()
+                    drawCircle(Color.White, radius, Offset(x, dotY))
+                    drawCircle(if (reached) MetroStyle.Line else Color(0xFFAAB0BB), radius, Offset(x, dotY),
+                        style = Stroke(if (focused) 5.dp.toPx() else 4.dp.toPx()))
+                }
+                if (terminal && markerAlpha.value > 0f) {
+                    // Cursor line: a tinted row and a bar on the left edge.
+                    drawRect(highlightColor.copy(alpha = 0.14f * markerAlpha.value))
+                    drawRect(highlightColor.copy(alpha = markerAlpha.value), Offset.Zero, Size(2.dp.toPx(), size.height))
+                }
+                if (scrapbook && markerAlpha.value > 0f) {
+                    drawRoundRect(
+                        ScrapbookStyle.Yellow.copy(alpha = 0.85f * markerAlpha.value),
+                        Offset(0f, size.height * 0.34f), Size(size.width, size.height * 0.5f), CornerRadius(3.dp.toPx()),
+                    )
+                }
+                if (paper && !scrapbook && !metro && !chat && markerAlpha.value > 0f) {
                     drawLine(
                         highlightColor.copy(alpha = animatedPrimaryAlpha.value * markerAlpha.value),
                         Offset(1.dp.toPx(), 6.dp.toPx()),
@@ -132,13 +174,25 @@ internal fun LyricsLineItem(
                     Modifier
                 },
             )
-            .padding(horizontal = if (paper) 10.dp else 4.dp, vertical = 2.dp),
+            .padding(
+                start = if (metro) 44.dp else if (chat) 14.dp else if (paper) 10.dp else 4.dp,
+                end = if (chat) 14.dp else if (paper) 10.dp else 4.dp,
+                top = if (chat) 9.dp else 2.dp,
+                bottom = if (chat) 9.dp else 2.dp,
+            ),
         horizontalAlignment = horizontalAlignment,
         verticalArrangement = Arrangement.spacedBy((5f * spacing).dp),
     ) {
         if (line.speaker != null || line.isBackground) {
             Text(text = if (line.isBackground) stringResource(L10nR.string.lyrics_backing_vocals) else line.speaker.orEmpty(),
                 color = lyricAccent.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)
+        }
+        if (terminal && line.startMs >= 0L) {
+            Text(
+                text = lyricTimestamp(line.startMs),
+                modifier = Modifier.graphicsLayer { alpha = animatedPrimaryAlpha.value * 0.7f },
+                color = highlightColor, fontFamily = TerminalStyle.Mono, fontSize = 10.5.sp,
+            )
         }
         KaraokeLyricText(
             line = line,
@@ -150,8 +204,8 @@ internal fun LyricsLineItem(
             glowEnabled = focusGlowEnabled && !paper,
             motionIntensity = motion.intensity,
             position = positionMsState,
-            color = lyricAccent,
-            highlightColor = highlightColor,
+            color = lineColor,
+            highlightColor = lineHighlight,
             unhighlightedAlpha = if (paper) 0.72f else null,
             intensity = lyricsWordHighlightIntensity,
             modifier = Modifier.fillMaxWidth().graphicsLayer {
@@ -160,7 +214,7 @@ internal fun LyricsLineItem(
                 scaleY = textScale.value
                 val blur = textBlur.value.dp.toPx()
                 renderEffect = if (blur >= 0.5f) BlurEffect(blur, blur, TileMode.Decal) else null
-                transformOrigin = TransformOrigin(if (lyricsAlignment == "start") 0f else 0.5f, 0.5f)
+                transformOrigin = TransformOrigin(if (alignment == "start") 0f else 0.5f, 0.5f)
             },
             // Reserve the focused size and scale only the main lyric in drawing:
             // long lines keep their wraps and the follow-scroll anchor stays stable.
@@ -178,7 +232,7 @@ internal fun LyricsLineItem(
             Text(
                 text = translation,
                 modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = animatedSecondaryAlpha.value },
-                color = lyricAccent,
+                color = lineColor,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.SansSerif,
                     fontSize = (14f * scale).sp,
@@ -193,7 +247,7 @@ internal fun LyricsLineItem(
             Text(
                 text = romanization,
                 modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = animatedSecondaryAlpha.value * 0.92f },
-                color = lyricAccent,
+                color = lineColor,
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = FontFamily.SansSerif,
                     fontSize = (12f * scale).sp,

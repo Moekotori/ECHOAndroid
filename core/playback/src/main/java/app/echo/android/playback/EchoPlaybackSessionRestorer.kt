@@ -20,6 +20,14 @@ internal class EchoPlaybackSessionRestorer(
     private val enginePolicy: () -> EchoPlaybackEnginePolicy?,
 ) {
     private val mutex = Mutex()
+    @Volatile private var stopping = false
+
+    fun stopAndPersist() {
+        stopping = true
+        pendingPlayUntilRemoteAuth = false
+        heldSavedPlayWhenReady = null
+        persistFromPlayer(force = true)
+    }
 
     @Volatile
     var restoreCompleted: Boolean = false
@@ -39,6 +47,7 @@ internal class EchoPlaybackSessionRestorer(
 
     suspend fun restore(userRequestedPlay: Boolean): EchoPlaybackSessionSnapshot? =
         mutex.withLock {
+            if (stopping) return@withLock null
             val current = player() ?: return@withLock null
             // Media3 requires every Player read to happen on the player's application thread;
             // callers such as onPlaybackResumption reach here from a background future.
@@ -47,7 +56,7 @@ internal class EchoPlaybackSessionRestorer(
                 restoreCompleted = shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = false)
                 if (userRequestedPlay) {
                     withContext(Dispatchers.Main.immediate) {
-                        player()?.play()
+                        if (!stopping) player()?.play()
                     }
                     heldSavedPlayWhenReady = null
                 }
@@ -72,7 +81,13 @@ internal class EchoPlaybackSessionRestorer(
             }
             val resolvedQueue = snapshot.queue.mapIndexed { index, track ->
                 if (index != snapshot.currentIndex) return@mapIndexed track
-                val playUri = EchoPlaybackProcessRuntime.resolvePlayUri(track.id, track.uri)
+                val playUri = try {
+                    EchoPlaybackProcessRuntime.resolvePlayUri(track.id, track.uri)
+                } catch (_: java.io.IOException) {
+                    // Keep the saved queue while disconnected, but restore it paused
+                    // with a stable URI so playback cannot reuse a rejected URL.
+                    app.echo.android.model.playback.EchoLinkPlaybackUri.persistableUri(track.id, track.uri)
+                }
                 if (playUri == track.uri) track else track.copy(uri = playUri)
             }
             val resolved = snapshot.copy(queue = resolvedQueue)
@@ -116,6 +131,7 @@ internal class EchoPlaybackSessionRestorer(
                 jellyfinAuthReady = jellyfinAuthReady,
             )
             withContext(Dispatchers.Main.immediate) {
+                if (stopping) return@withContext
                 val live = player() ?: return@withContext
                 if (!shouldRestoreIntoEmptyPlayer(live.mediaItemCount)) return@withContext
                 enginePolicy()?.mergeSampleRates(resolved.queue.associate { it.id to it.sampleRateHz })
@@ -133,6 +149,7 @@ internal class EchoPlaybackSessionRestorer(
     fun playIfRemoteAuthReady() {
         scope.launch {
             val live = mutex.withLock {
+                if (stopping) return@withLock null
                 val current = player() ?: return@withLock null
                 val item = withContext(Dispatchers.Main.immediate) { current.currentMediaItem }
                 val uri = item?.localConfiguration?.uri?.toString().orEmpty()
@@ -157,7 +174,7 @@ internal class EchoPlaybackSessionRestorer(
                 current
             } ?: return@launch
             withContext(Dispatchers.Main.immediate) {
-                if (player() === live && EchoPlaybackProcessRuntime.canContinueAudioInteraction()) live.play()
+                if (!stopping && player() === live && EchoPlaybackProcessRuntime.canContinueAudioInteraction()) live.play()
             }
         }
     }

@@ -8,6 +8,31 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FlacEmbeddedCueReaderTest {
+    @Test
+    fun largeUnrelatedVorbisValuesDoNotHideCueOrForceWholeBlockAllocation() {
+        val artwork = "METADATA_BLOCK_PICTURE=".toByteArray() + ByteArray(2 * 1024 * 1024 + 64) { 65 }
+        val cue = "CUESHEET=TRACK 01 AUDIO\nTITLE \"One\"\nINDEX 01 00:00:00".toByteArray()
+        val audio = "PCM must stay unread".toByteArray()
+        for (withCue in listOf(false, true)) {
+            val values = if (withCue) listOf(artwork, cue) else listOf(artwork)
+            val comments = ByteArrayOutputStream().apply {
+                fun number(value: Int) { write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(value).array()) }
+                number(0); number(values.size)
+                values.forEach { number(it.size); write(it) }
+            }.toByteArray()
+            var readBytes = 0
+            val input = object : java.io.FilterInputStream((flac(4 to comments) + audio).inputStream()) {
+                override fun read(bytes: ByteArray, offset: Int, length: Int): Int = `in`.read(bytes, offset, length).also {
+                    if (it > 0) readBytes += it
+                }
+            }
+            val sheet = FlacEmbeddedCueReader.readChecked(input)
+            if (withCue) assertEquals("One", sheet?.tracks?.single()?.title) else assertNull(sheet)
+            assertTrue(readBytes < 8192)
+            assertEquals(audio.size, input.available())
+        }
+    }
+
     private fun info(): ByteArray = ByteArray(34).also {
         ByteBuffer.wrap(it).putLong(10, (44100L shl 44) or (120L * 44100))
     }
@@ -45,6 +70,26 @@ class FlacEmbeddedCueReaderTest {
         assertTrue(sheet.tracks.all { it.fileName == null })
         assertEquals(listOf(60_000L, 120_000L), sheet.tracks.map { it.endMs })
         assertNull(FlacEmbeddedCueReader.readChecked(flac(4 to comments("")).inputStream()))
+    }
+
+    @Test
+    fun rejectsDamagedCommentTailAndConflictingEmbeddedSheets() {
+        val text = "TRACK 01 AUDIO\nTITLE \"One\"\nINDEX 01 00:00:00"
+        val broken = comments(text).also {
+            // Declared two comments, but the second one was not completely written.
+            ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN).putInt(4, 2)
+        }
+        assertThrows(java.io.IOException::class.java) {
+            FlacEmbeddedCueReader.readChecked(flac(4 to broken).inputStream())
+        }
+        assertThrows(java.io.IOException::class.java) {
+            FlacEmbeddedCueReader.readChecked(flac(4 to comments(text), 4 to comments(text.replace("One", "Other"))).inputStream())
+        }
+        val malformedUtf8 = comments(text).also { it[it.lastIndex] = 0xff.toByte() }
+        assertThrows(java.io.IOException::class.java) {
+            FlacEmbeddedCueReader.readChecked(flac(4 to malformedUtf8).inputStream())
+        }
+        assertEquals("One", FlacEmbeddedCueReader.readChecked(flac(4 to comments(text), 4 to comments(text)).inputStream())?.tracks?.single()?.title)
     }
 
     @Test

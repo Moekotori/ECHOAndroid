@@ -34,19 +34,23 @@ class DocumentTreeTrackScanner(
         rejectedFiles: LocalScanFilterCache? = null,
         onSkipped: suspend () -> Unit = {},
         onUnchangedIds: suspend (List<String>) -> Unit = {},
+        onRetryIds: suspend (List<String>) -> Unit = {},
+        cueCache: CueScanCache? = null,
         listings: DocumentTreeListingCache? = null,
         reuseDirectoryListings: Boolean = true,
         persistArtwork: (ByteArray?) -> String? = { null },
+        onFolderArtwork: suspend (List<String>, String) -> Unit = { _, _ -> },
         onBatch: suspend (List<LibraryTrackEntity>) -> Unit,
         onProgress: suspend (scannedCount: Int, currentTrack: LibraryTrackEntity?) -> Unit,
     ): MediaStoreScanOutcome {
+        val folderArtwork = FolderArtworkResolver(contentResolver, persistArtwork)
         val rootDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
         val safeBatchSize = batchSize.coerceAtLeast(1)
         val batch = ArrayList<LibraryTrackEntity>(safeBatchSize)
         val pendingDirectories = ArrayDeque<DocumentTreeDirectory>()
         var scannedCount = 0
         var unmatchedCueCount = 0
-        val uncertainCueDirectories = HashSet<String>()
+        val uncertainCueDirectories = ScanDirectoryIndex(ignoreCase = true)
         val descendantCues = HashMap<String, MutableList<Pair<CueSheet, String>>>()
         var descendantTrackCount = 0
         var querySucceeded = true
@@ -130,30 +134,35 @@ class DocumentTreeTrackScanner(
                     relativePath = childRelative,
                 )
             }
-            val inherited = descendantCues.remove(directory.relativePath.lowercase(java.util.Locale.ROOT)).orEmpty()
+            val directoryCover = if (audioRows.isNotEmpty()) folderArtwork.documents(treeUri, directory.documentId, children) else null
+            val songCovers = folderArtwork.documentSidecars(treeUri, children, audioRows.map { it.displayName })
+            val inherited = descendantCues.remove(directory.relativePath).orEmpty()
             descendantTrackCount -= inherited.sumOf { it.first.tracks.size }
             val (cueByAudioName, unmatchedInDirectory) = cueSheetsByAudioName(
                 cueRows, audioRows.map { it.displayName }, inherited,
                 onReadFailure = {
                     failedReads++
-                    uncertainCueDirectories += directory.relativePath.lowercase(java.util.Locale.ROOT)
+                    uncertainCueDirectories.add(directory.relativePath)
                 },
             ) { folder, sheet, cueName ->
-                val target = appendRelativePath(directory.relativePath, folder).lowercase(java.util.Locale.ROOT)
+                val target = appendRelativePath(directory.relativePath, folder)
                 if (descendantTrackCount + sheet.tracks.size <= 32768) {
                     descendantCues.getOrPut(target) { ArrayList() }.add(sheet to cueName)
                     descendantTrackCount += sheet.tracks.size
-                } else unmatchedCueCount++
+                } else {
+                    unmatchedCueCount++
+                    failedReads++
+                    uncertainCueDirectories.add(target)
+                }
             }
             unmatchedCueCount += unmatchedInDirectory
             val unchangedIds = ArrayList<String>()
-            val currentDirectory = directory.relativePath.lowercase(java.util.Locale.ROOT)
-            val externalReadFailed = uncertainCueDirectories.any {
-                it.isEmpty() || currentDirectory == it || currentDirectory.startsWith("$it/")
-            }
-            fun preserveFailedCue(baseId: String) {
+            val externalReadFailed = uncertainCueDirectories.contains(directory.relativePath)
+            suspend fun preserveFailedCue(baseId: String) {
                 failedReads++
-                unchangedIds += CueScanState.preservedIds(baseId, baseId in existingTracks, cueChildrenByBase[baseId].orEmpty())
+                val ids = CueScanState.preservedIds(baseId, baseId in existingTracks, cueChildrenByBase[baseId].orEmpty())
+                unchangedIds += ids
+                onRetryIds(ids)
             }
             for (row in audioRows) {
                 coroutineContext.ensureActive()
@@ -166,10 +175,30 @@ class DocumentTreeTrackScanner(
                 )
                 if (duplicate != null) {
                     val safBaseId = "saf:${Uri.encode(row.documentId)}"
+                    val facts = cueSourceFacts(duplicate.id, duplicate.contentUri, row.sizeBytes, row.lastModifiedMs.toEpochSeconds(), row.relativePath, row.displayName)
+                    val cached = cueCache?.reuse(facts, cueSheet, existingTracks, externalReadFailed)
+                    if (cached != null) {
+                        LibraryScanPolicy.safDuplicateAliases(safBaseId, cached, cueChildrenByBase[safBaseId].orEmpty())
+                            .forEach { (oldId, targetId) -> onDuplicate(oldId, targetId) }
+                        mediaStoreDuplicateKeys.otherCopies(duplicate.id).forEach { copy ->
+                            LibraryScanPolicy.safDuplicateAliases(copy.id, cached, cueChildrenByBase[copy.id].orEmpty())
+                                .forEach { (oldId, targetId) -> onDuplicate(oldId, targetId) }
+                        }
+                        unchangedIds += cached
+                        scannedCount++
+                        continue
+                    }
                     val knownSource = listOf(safBaseId, duplicate.id).any {
                         it in existingTracks || cueChildrenByBase[it].orEmpty().isNotEmpty()
                     }
-                    val expansion = duplicate.expandLocalCue(contentResolver, cueSheet, row.displayName, externalReadFailed && knownSource)
+                    val expansion = if (externalReadFailed && knownSource) CueExpansion.ReadFailed else try {
+                        val physical = row.documentUri.toTrackEntity(row.documentId, row.displayName, row.mimeType, row.sizeBytes,
+                            row.lastModifiedMs, row.relativePath, null, readSampleRate, persistArtwork)
+                            .let { if (it.artworkUri == null && directoryCover != null) it.copy(artworkUri = directoryCover) else it }
+                            .copy(id = duplicate.id, source = duplicate.source)
+                        if (physical.fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint && knownSource) CueExpansion.ReadFailed
+                        else physical.expandLocalCue(contentResolver, cueSheet, row.displayName)
+                    } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { CueExpansion.ReadFailed }
                     if (expansion is CueExpansion.ReadFailed) {
                         preserveFailedCue(safBaseId)
                         preserveFailedCue(duplicate.id)
@@ -178,13 +207,19 @@ class DocumentTreeTrackScanner(
                         onProgress(scannedCount, null)
                         continue
                     }
-                    val expanded = (expansion as CueExpansion.Success).tracks
-                    LibraryScanPolicy.safDuplicateAliases(safBaseId, expanded.map { it.id }).forEach { (oldId, targetId) ->
+                    val expanded = (expansion as CueExpansion.Success).tracks.map { item ->
+                        item.copy(contentUri = if (CueSheetPolicy.isCueTrackId(item.id))
+                            CueSheetPolicy.contentUri(duplicate.contentUri, item.trackNumber ?: error("Missing CUE track number"))
+                            else duplicate.contentUri).withFingerprint()
+                    }
+                    cueCache?.remember(facts, cueSheet, expanded)
+                    LibraryScanPolicy.safDuplicateAliases(safBaseId, expanded.map { it.id }, cueChildrenByBase[safBaseId].orEmpty()).forEach { (oldId, targetId) ->
                         onDuplicate(oldId, targetId)
                     }
                     // 同一路径上的另一条曲库行（例如 mediastore:file）并进留下的 id，而不是当成另一首歌删掉。
                     mediaStoreDuplicateKeys.otherCopies(duplicate.id).forEach { copy ->
-                        onDuplicate(copy.id, duplicate.id)
+                        LibraryScanPolicy.safDuplicateAliases(copy.id, expanded.map { it.id }, cueChildrenByBase[copy.id].orEmpty())
+                            .forEach { (oldId, targetId) -> onDuplicate(oldId, targetId) }
                     }
                     // Keep the stable MediaStore ID, including cue movements, and refresh changed tags.
                     expanded.forEach { item ->
@@ -199,6 +234,13 @@ class DocumentTreeTrackScanner(
                     continue
                 }
                 val trackId = "saf:${Uri.encode(row.documentId)}"
+                val facts = cueSourceFacts(trackId, row.documentUri.toString(), row.sizeBytes, row.lastModifiedMs.toEpochSeconds(), row.relativePath, row.displayName)
+                val cached = cueCache?.reuse(facts, cueSheet, existingTracks, externalReadFailed)
+                if (cached != null) {
+                    unchangedIds += cached
+                    scannedCount++
+                    continue
+                }
                 val existingCueIds = cueChildrenByBase[trackId].orEmpty()
                 val existingTrack = existingTracks[trackId] ?: existingCueIds.firstOrNull()?.let(existingTracks::get)
                 val fileUnchanged = LibraryScanPolicy.shouldReuseUnchangedDocumentTrack(
@@ -213,7 +255,7 @@ class DocumentTreeTrackScanner(
                 val remembered = if (fileUnchanged) {
                     LibraryScanPolicy.rememberUnchangedCueIds(
                         trackId, existingCueIds,
-                        hasCueSheet = cueSheet != null || CueScanState.isWholeFileCue(existingTrack?.fingerprint) || (refreshCueMetadata),
+                        hasCueSheet = cueSheet != null || externalReadFailed || CueScanState.isWholeFileCue(existingTrack?.fingerprint) || (refreshCueMetadata),
                     )
                 } else {
                     null
@@ -251,7 +293,9 @@ class DocumentTreeTrackScanner(
                         readSampleRate = readSampleRate,
                         persistArtwork = persistArtwork,
                     )
-                }.onSuccess { track ->
+                }.onSuccess { original ->
+                    val cover = songCovers[row.displayName] ?: directoryCover
+                    val track = if (original.artworkUri == null && cover != null) original.copy(artworkUri = cover) else original
                     // One unreadable file stays in the library and is retried. It must not block
                     // deletion of other songs that this listing proved are gone.
                     if (track.fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint) {
@@ -279,6 +323,7 @@ class DocumentTreeTrackScanner(
                         onProgress(scannedCount, null)
                         return@onSuccess
                     }
+                    cueCache?.remember(facts, cueSheet, (expansion as CueExpansion.Success).tracks)
                     (expansion as CueExpansion.Success).tracks.forEach { item ->
                         batch += item
                         scannedCount += 1
@@ -294,9 +339,29 @@ class DocumentTreeTrackScanner(
                     if (existingTrack != null) {
                         unchangedIds += trackId
                         unchangedIds += existingCueIds
+                        onRetryIds(listOf(trackId) + existingCueIds)
                     }
                     Log.w(TAG, "Skipping unreadable document tree audio file.", error)
                 }
+            }
+            // Assign same-name pictures per audio file, including cached CUE children and
+            // the retained MediaStore alias. Directory fallback runs afterward, only for missing art.
+            audioRows.forEach { row ->
+                val cover = songCovers[row.displayName] ?: return@forEach
+                val base = "saf:${Uri.encode(row.documentId)}"
+                val duplicate = mediaStoreDuplicateKeys.find(row.relativePath, row.sizeBytes, row.lastModifiedMs.toEpochSeconds(), row.displayName)
+                val ids = listOf(base) + cueChildrenByBase[base].orEmpty() +
+                    listOfNotNull(duplicate?.id).flatMap { listOf(it) + cueChildrenByBase[it].orEmpty() }
+                ids.chunked(256).forEach { onFolderArtwork(it, cover) }
+            }
+            if (directoryCover != null) {
+                val ids = audioRows.flatMap { row ->
+                    val base = "saf:${Uri.encode(row.documentId)}"
+                    listOf(base) + cueChildrenByBase[base].orEmpty() +
+                        listOfNotNull(mediaStoreDuplicateKeys.find(row.relativePath, row.sizeBytes, row.lastModifiedMs.toEpochSeconds(), row.displayName)?.id)
+                            .flatMap { listOf(it) + cueChildrenByBase[it].orEmpty() }
+                }
+                ids.chunked(256).forEach { onFolderArtwork(it, directoryCover) }
             }
             if (unchangedIds.isNotEmpty()) {
                 onUnchangedIds(unchangedIds)
@@ -325,31 +390,34 @@ class DocumentTreeTrackScanner(
         onReadFailure: () -> Unit,
         onDescendant: (String, CueSheet, String) -> Unit,
     ): Pair<Map<String, CueSheet>, Int> {
-        val matched = LinkedHashMap<String, CueSheet>()
-        val audioIndex = CueAudioNameIndex(audioNames)
+        val catalog = CueDirectoryCatalog(audioNames)
+        val index = CueAudioNameIndex(audioNames)
         var unmatched = 0
         val local = ArrayList<Pair<CueSheet, String>>(inherited)
         for (row in cueRows) {
-            val sheet = if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) null else readCueSheet(row.documentUri)
+            val sheet = if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) null else readCueSheet(row.documentUri) { reference ->
+                val (folder, name) = cueReference(reference) ?: return@readCueSheet false
+                folder.isEmpty() && index.match(name) != null
+            }
             val directories = sheet?.forLocalDirectories().orEmpty()
             if (directories.isEmpty()) { unmatched++; onReadFailure(); continue }
+            if (directories.values.sumOf { it.tracks.size } != sheet?.tracks?.size) onReadFailure()
             directories.forEach { (folder, localized) ->
                 if (folder.isEmpty()) local += localized to row.displayName
                 else onDescendant(folder, localized, row.displayName)
             }
         }
         for ((sheet, cueName) in local) {
-            val hits = sheet.forDirectoryAudio(audioIndex, cueName)
-            if (hits.isEmpty()) unmatched++
-            else hits.forEach { (name, resolved) -> matched.putIfAbsent(name, resolved) }
+            if (!catalog.add(sheet, cueName)) unmatched++
         }
-        return matched to unmatched
+        if (catalog.uncertain) onReadFailure()
+        return catalog.sheets() to unmatched
     }
 
-    private fun readCueSheet(uri: Uri): CueSheet? {
+    private fun readCueSheet(uri: Uri, referenceExists: (String) -> Boolean): CueSheet? {
         return try {
             contentResolver.openInputStream(uri)?.use { input ->
-                readCueSheet(input)
+                readCueSheet(input, referenceExists)
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -468,22 +536,18 @@ class DocumentTreeTrackScanner(
         displayName: String,
         persistArtwork: (ByteArray?) -> String?,
     ): DocumentAudioMetadata {
+        val reads = ScanMetadataReads()
         val container = if (LocalAudioContainerMetadata.supports(mimeType, displayName)) {
-            try {
-                contentResolver.openInputStream(uri)?.use(LocalAudioContainerMetadata::read)
-            } catch (error: CancellationException) { throw error } catch (_: Exception) { null }
+            reads.optional({ contentResolver.openInputStream(uri) }, LocalAudioContainerMetadata::read)
         } else null
         val fileTags = mergeAudioTags(container?.tags, if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, displayName)) {
-            try {
-                contentResolver.openInputStream(uri)?.use(::readLocalAudioTags)
-            } catch (error: CancellationException) { throw error } catch (_: Exception) { null }
+            reads.optional({ contentResolver.openInputStream(uri) }, ::readLocalAudioTags)
         } else null)
         if (EchoDsdMetadata.isDsd(mimeType, displayName)) {
-            val dsd = runCatching {
-                contentResolver.openInputStream(uri)?.use(EchoDsdMetadata::read)
-            }.getOrNull()
+            val dsd = reads.optional({ contentResolver.openInputStream(uri) }, EchoDsdMetadata::read)
             if (dsd != null) {
                 return DocumentAudioMetadata(
+                    readSucceeded = !reads.failed,
                     title = dsd.tags?.title?.takeIf { it.isNotBlank() } ?: fileTags?.title,
                     artist = dsd.tags?.artist?.takeIf { it.isNotBlank() } ?: fileTags?.artist,
                     album = dsd.tags?.album ?: fileTags?.album,
@@ -499,13 +563,13 @@ class DocumentTreeTrackScanner(
                 )
             }
         }
-        fun fallbackMetadata() = fileTags.toDocumentMetadata(readSucceeded = container?.durationMs?.let { it > 0 } == true).copy(
+        fun fallbackMetadata() = fileTags.toDocumentMetadata(readSucceeded = !reads.failed && container?.durationMs?.let { it > 0 } == true).copy(
             durationMs = container?.durationMs ?: 0L,
             sampleRateHz = container?.sampleRateHz.takeIf { readSampleRate },
             artworkUri = persistArtwork(fileTags?.artworkBytes),
         )
         if (container != null && container.durationMs > 0 &&
-            (EchoApeMetadata.isApe(mimeType, displayName) ||
+            (EchoApeMetadata.isApe(mimeType, displayName) || LocalAudioContainerMetadata.isFlac(mimeType, displayName) ||
                 displayName.substringAfterLast('.').lowercase(java.util.Locale.ROOT) in setOf("wv", "tta", "tak"))) {
             return fallbackMetadata()
         }
@@ -514,6 +578,7 @@ class DocumentTreeTrackScanner(
             contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
                 retriever.setDataSource(descriptor.fileDescriptor)
                 DocumentAudioMetadata(
+                    readSucceeded = !reads.failed,
                     title = fileTags?.title?.takeIf { it.isNotBlank() }
                         ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_TITLE),
                     artist = fileTags?.artist?.takeIf { it.isNotBlank() }

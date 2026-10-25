@@ -7,6 +7,41 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class EmbeddedLyricsReaderTest {
+    @Test
+    fun legacyId3LyricsKeepChineseJapaneseKoreanAndAccents() {
+        val samples = listOf(
+            "GB18030" to "青花瓷 今天我们一起听歌",
+            "Big5" to "繁體中文 今天我們一起聽歌",
+            "Shift_JIS" to "夜に駆ける 君の声が聞こえる",
+            "EUC-KR" to "사랑 노래 오늘 우리 함께 하늘 바다",
+            "windows-1252" to "Don’t Stop — Café déjà vu",
+        )
+        for ((encoding, body) in samples) {
+            val text = "[00:01.00]$body"
+            val payload = byteArrayOf(0) + "eng".toByteArray() + byteArrayOf(0) + text.toByteArray(java.nio.charset.Charset.forName(encoding))
+            val frame = "USLT".toByteArray() + syncSafe(payload.size) + byteArrayOf(0, 0) + payload
+            val tag = "ID3".toByteArray() + byteArrayOf(4, 0, 0) + syncSafe(frame.size) + frame
+            assertEquals(encoding, text, EmbeddedLyricsReader.read(tag.inputStream())?.text)
+        }
+    }
+    @Test
+    fun malformedDeclaredUnicodeIsNotDisplayedAsReplacementCharacters() {
+        fun tag(id: String, payload: ByteArray): ByteArray {
+            val frame = id.toByteArray() + syncSafe(payload.size) + byteArrayOf(0, 0) + payload
+            return "ID3".toByteArray() + byteArrayOf(4, 0, 0) + syncSafe(frame.size) + frame
+        }
+        val broken = "[00:01.00]".toByteArray() + byteArrayOf(0xe9.toByte())
+        val uslt = byteArrayOf(3) + "eng".toByteArray() + byteArrayOf(0) + broken
+        assertEquals(null, EmbeddedLyricsReader.read(tag("USLT", uslt).inputStream()))
+        val sylt = byteArrayOf(3) + "eng".toByteArray() + byteArrayOf(2, 1, 0) +
+            byteArrayOf(0xe9.toByte(), 0) + ByteBuffer.allocate(4).putInt(1000).array()
+        assertEquals(null, EmbeddedLyricsReader.read(tag("SYLT", sylt).inputStream()))
+    }
+    @Test
+    fun timestampOnlyEmbeddedLyricsDoNotBlockOtherSources() {
+        assertEquals(null, EmbeddedLyricsReader.parse(EmbeddedLyricsText("[ti:Song]\n[00:01.00]", "Embedded tags")))
+        assertEquals("Body", EmbeddedLyricsReader.parse(EmbeddedLyricsText("[00:01.00]Body", "Embedded tags"))?.lines?.single()?.text)
+    }
     private val text = "[00:01.00]保存后的歌词"
 
     @Test

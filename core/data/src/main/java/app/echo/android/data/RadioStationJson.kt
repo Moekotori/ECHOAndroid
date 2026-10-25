@@ -29,7 +29,7 @@ internal object RadioStationJson {
         require(streams.length() <= 15)
         val played = item.optLong("lastPlayed", 0).takeIf { it > 0 } ?: try { Instant.parse(item.optString("lastPlayedAt")).toEpochMilli() } catch (_: Exception) { 0 }
         return EchoRadioStation(item.optString("id").ifBlank { UUID.randomUUID().toString() }, item.getString("name").trim().take(120), item.getString("url").trim(),
-            item.optional("coverUrl") ?: item.optional("artwork"), item.optBoolean("favorite"), played,
+            RadioArtworkPolicy.corrected(item.optional("coverUrl") ?: item.optional("artwork")), item.optBoolean("favorite"), played,
             item.optString("description").take(32768), item.optString("genre").take(512), item.optional("homepage"), item.optional("codec"),
             item.optInt("bitrate").takeIf { it > 0 }, item.optString("countryCode").take(2), item.optString("language").take(128),
             List(streams.length()) { i -> streams.getJSONObject(i).let { EchoRadioStream(it.getString("url"), it.optional("codec"), it.optInt("bitrate").takeIf { rate -> rate > 0 }) } },

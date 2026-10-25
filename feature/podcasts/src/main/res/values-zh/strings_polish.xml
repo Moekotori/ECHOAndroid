@@ -1,0 +1,14 @@
+<resources>
+    <string name="podcast_collection">我的订阅</string>
+    <string name="podcast_welcome_detail">一段对话，一个故事，一点新的灵感。收藏喜欢的节目，下次回来接着听。</string>
+    <string name="podcast_saved_time">已听至 %1$s</string>
+    <string name="podcast_episode_time">%1$s</string>
+    <string name="podcast_more_for">%1$s 的更多操作</string>
+    <string name="podcast_episode_details">单集详情</string>
+    <string name="podcast_close_details">关闭单集详情</string>
+    <string name="podcast_no_results">没有找到匹配内容</string>
+    <string name="podcast_no_results_hint">换个关键词，或查看其他收听状态。</string>
+    <string name="podcast_reset_search">查看全部</string>
+    <string name="podcast_play_episode">播放 %1$s</string>
+    <string name="podcast_pause_episode">暂停 %1$s</string>
+</resources>

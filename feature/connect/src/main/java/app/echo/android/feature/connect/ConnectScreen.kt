@@ -40,6 +40,7 @@ import app.echo.android.model.library.LibraryScanProgress
 @Composable
 fun ConnectScreen(
     remoteState: EchoRemoteConnectionState,
+    controlPending: Boolean = false,
     librarySyncActions: LibrarySyncActions? = null,
     pcTitle: String,
     trackTitle: String,
@@ -270,6 +271,7 @@ fun ConnectScreen(
                                         )
                                     },
                                     remoteState = remoteState,
+                                    controlPending = controlPending,
                                     pcTitle = pcTitle,
                                     trackTitle = trackTitle,
                                     trackArtist = trackArtist,

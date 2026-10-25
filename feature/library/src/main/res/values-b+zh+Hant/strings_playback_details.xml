@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_file_names">歌曲列表顯示檔案名稱</string>
+    <string name="library_file_names_note">僅變更列表顯示，搜尋與排序仍按歌曲標籤。沒有檔案名稱時使用標題，CUE 分軌同時顯示曲目標題。</string>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_reset_format">Reset format and buffer</string>
+    <string name="usb_reset_format_note">Restore automatic format and balanced buffering. Keep volume, DAC controls and DoP device permissions.</string>
+    <string name="usb_reset_full">Reset all output parameters</string>
+    <string name="usb_reset_full_note">Review all changes before resetting, including volume and DoP device permissions.</string>
+    <string name="usb_reset_format_changes">Sample rate, bit depth and channels: automatic. Buffer: Balanced.</string>
+    <string name="usb_reset_format_kept">Keep current volume, volume mode, keep-alive preference, DoP device permissions and output mode.</string>
+    <string name="usb_reset_full_changes">Volume: 100%. Volume mode: digital. Keep DAC awake when paused: on.</string>
+    <string name="usb_reset_output_mode_kept">Keep exclusive/strict output mode, automatic connection permission and disconnect/reconnect playback preferences.</string>
+    <string name="usb_reset_confirm">Reset</string>
+    <string name="usb_reset_cancel">Cancel</string>
+    <plurals name="usb_reset_dop_count"><item quantity="one">Remove %1$d DoP device permission. DoP playback requires allowing the device again.</item><item quantity="other">Remove %1$d DoP device permissions. DoP playback requires allowing the devices again.</item></plurals>
+</resources>

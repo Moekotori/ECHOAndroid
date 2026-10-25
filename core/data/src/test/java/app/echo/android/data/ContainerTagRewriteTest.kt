@@ -6,6 +6,35 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ContainerTagRewriteTest {
+    @Test fun m4aTitleEditKeepsSeparateArtistDataAtoms() {
+        fun atom(key: String, bytes: ByteArray) = java.nio.ByteBuffer.allocate(4).putInt(bytes.size + 8).array() +
+            key.toByteArray(Charsets.ISO_8859_1) + bytes
+        fun text(value: String) = atom("data", byteArrayOf(0, 0, 0, 1, 0, 0, 0, 0) + value.toByteArray())
+        val artists = atom("©ART", text("One") + text("Two"))
+        val owners = atom("aART", text("Owner One") + text("Owner Two"))
+        val source = atom("ftyp", "M4A ".toByteArray() + ByteArray(4)) +
+            atom("moov", atom("udta", atom("meta", ByteArray(4) + atom("ilst", artists + owners)))) +
+            atom("mdat", byteArrayOf(1, 2, 3))
+        val fields = AudioTagFields("New title", "One; Two", null, "Owner One; Owner Two", null, null, null)
+        val output = ByteArrayOutputStream()
+        assertEquals(AudioTagRewriteStatus.Written, AudioFileTagRewriter.rewrite(source.inputStream(), output, fields))
+        val rewritten = output.toByteArray()
+        assertTrue(readLocalAudioTags(rewritten.inputStream()).matchesWrittenTags(fields))
+        var offset = 0
+        var metadata: ByteArray? = null
+        while (offset + 8 <= rewritten.size) {
+            val size = rewritten.tagU32(offset).toInt()
+            if (rewritten.copyOfRange(offset + 4, offset + 8).toString(Charsets.US_ASCII) == "moov") {
+                metadata = rewritten.copyOfRange(offset + 8, offset + size)
+                break
+            }
+            offset += size
+        }
+        val activeMetadata = requireNotNull(metadata).toList()
+        assertTrue(activeMetadata.windowed(artists.size).any { it == artists.toList() })
+        assertTrue(activeMetadata.windowed(owners.size).any { it == owners.toList() })
+        assertArrayEquals(mdat(source), mdat(rewritten))
+    }
     @Test fun commonContainersRoundTripTagsAndKeepEveryAudioPacketAcrossRepeatedEdits() {
         val directory = File("build/format-tag-smoke").apply { mkdirs() }
         for (extension in listOf("m4a", "ogg", "opus")) {

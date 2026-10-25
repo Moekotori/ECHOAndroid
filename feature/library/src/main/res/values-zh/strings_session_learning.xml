@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_menu_title">歌曲菜单</string>
+    <string name="track_menu_detail">显示常用的高级操作。播放和歌曲信息始终保留；可用底部重置按钮恢复默认。</string>
+</resources>

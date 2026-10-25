@@ -18,3 +18,8 @@ internal fun shouldReplaceOptionalTextTag(value: String?, modified: Boolean, ori
     if (next.isEmpty()) return true
     return next != original.orEmpty().trim()
 }
+
+/** Keep separate values/frames when the editor's display value has not changed. */
+internal fun preserveTagNames(value: String?, original: String?): Boolean =
+    !value.isNullOrBlank() && LibraryArtistPolicy.display(listOf(value)) ==
+        LibraryArtistPolicy.display(listOf(original.orEmpty()))

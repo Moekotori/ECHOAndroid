@@ -24,6 +24,11 @@ internal class LibraryExperienceController(
         tryTakePersistableReadPermission(context, uri)
         resolveIncomingAudioTrack(context, repository, uri)
     }
+    private val clips = SavedTrackClipStore(context)
+    fun clips(id: String) = clips.observe(id)
+    suspend fun saveClip(track: EchoTrack, name: String, start: Long, end: Long) = clips.save(track.id, name, start, end, track.durationMs)
+    suspend fun renameClip(id: String, name: String) = clips.rename(id, name)
+    suspend fun deleteClip(id: String) = clips.delete(id)
     fun bookmarks(id: String) = repository.observeBookmarks(id)
     suspend fun saveBookmark(id: String, position: Long, label: String) = repository.saveBookmark(id, position, label)
     suspend fun saveBookmark(track: EchoTrack, position: Long, label: String) = repository.saveBookmark(track, position, label)

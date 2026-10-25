@@ -61,10 +61,12 @@ internal fun EchoLibraryPage(
     linkedDetailBackEnabled: Boolean,
     onOpenConnect: () -> Unit,
     pageInteractive: Boolean,
+    onOpenPlayer: () -> Unit = {},
+    bottomInset: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp(0f),
 ) {
     var broadcastPage by rememberSaveable { mutableStateOf<String?>(null) }
     broadcastPage?.let { page ->
-        EchoBroadcastHost(viewModel, page, pageInteractive, onBack = { broadcastPage = null })
+        EchoBroadcastHost(viewModel, page, pageInteractive, onBack = { broadcastPage = null }, onOpenPlayer = onOpenPlayer, bottomInset = bottomInset)
         return
     }
     val experienceActions = rememberLibraryExperienceActions(viewModel) { onScanFolder(appSettings.libraryScanOptions) }
@@ -221,6 +223,10 @@ internal fun EchoLibraryPage(
         }
     }
     val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as app.echo.android.EchoApplication
+    app.echo.android.feature.library.LibraryPresentationProvider(remember(viewModel) {
+        app.echo.android.feature.library.LibraryHiddenTrackActions(viewModel.observeHiddenTracksCount(), viewModel::hiddenTracks,
+            viewModel::hideLibraryTracks, viewModel::restoreLibraryTracks, viewModel::restoreAllLibraryTracks)
+    }, showFileNames = appSettings.libraryLayout.showFileNames, hiddenTrackActions = appSettings.libraryLayout.hiddenTrackActions) {
     app.echo.android.feature.library.TrackVersionsProvider(
         load = viewModel::trackVersions, save = viewModel::setPreferredTrackVersion,
     ) {
@@ -418,6 +424,7 @@ internal fun EchoLibraryPage(
                 exportM3uLauncher.launch("$fileName.m3u")
             },
         )
+    }
     }
     }
     }

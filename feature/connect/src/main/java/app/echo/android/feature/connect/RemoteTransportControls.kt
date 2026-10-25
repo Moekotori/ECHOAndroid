@@ -26,13 +26,14 @@ internal fun RemoteTransportControls(
     onPrevious: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
+    relativeEnabled: Boolean = enabled,
 ) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(32.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onPrevious, Modifier.size(56.dp), enabled = enabled) {
+        IconButton(onPrevious, Modifier.size(56.dp), enabled = relativeEnabled) {
             EchoIcon(Icons.Rounded.SkipPrevious,
                 stringResource(R.string.feature_connect_previous_on_pc_a0f0a7), Modifier.size(30.dp))
         }
@@ -41,7 +42,7 @@ internal fun RemoteTransportControls(
                 stringResource(if (isPlaying) R.string.feature_connect_pause_pc_003bcf else R.string.feature_connect_play_on_pc_aa41d1),
                 Modifier.size(38.dp))
         }
-        IconButton(onNext, Modifier.size(56.dp), enabled = enabled) {
+        IconButton(onNext, Modifier.size(56.dp), enabled = relativeEnabled) {
             EchoIcon(Icons.Rounded.SkipNext,
                 stringResource(R.string.feature_connect_next_on_pc_303358), Modifier.size(30.dp))
         }

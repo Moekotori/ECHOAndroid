@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hidden_restore_select">Select songs</string>
+    <string name="hidden_restore_limit">Select up to %1$d songs per batch.</string>
+    <string name="hidden_restore_failed">Could not finish restoring. Some songs may already be restored; check the list and retry.</string>
+    <plurals name="hidden_restore_selected"><item quantity="one">Restore selected (%1$d)</item><item quantity="other">Restore selected (%1$d)</item></plurals>
+    <plurals name="hidden_restore_done"><item quantity="one">Restored %1$d song.</item><item quantity="other">Restored %1$d songs.</item></plurals>
+    <plurals name="hidden_restore_all_confirm"><item quantity="one">Restore all %1$d hidden song? Songs will be visible in the library again without being added back to the playback queue.</item><item quantity="other">Restore all %1$d hidden songs? Songs will be visible in the library again without being added back to the playback queue.</item></plurals>
+</resources>

@@ -3,9 +3,9 @@ package app.echo.android.data
 import java.io.File
 import java.util.UUID
 
-/** A bounded migration cache. V2 also refreshes legacy whole-file CUE rows lacking provenance. */
+/** A bounded migration cache. V4 also refreshes APEv2 CUEs and previously lost tail tags. */
 internal class EmbeddedCueScanMarker(filesDir: File, scope: String) {
-    private val directory = File(filesDir, "embedded-cue-scan-v2")
+    private val directory = File(filesDir, "embedded-cue-scan-v4")
     private val marker = File(directory, UUID.nameUUIDFromBytes(scope.toByteArray(Charsets.UTF_8)).toString())
     fun isComplete(): Boolean = marker.isFile
     fun complete() {

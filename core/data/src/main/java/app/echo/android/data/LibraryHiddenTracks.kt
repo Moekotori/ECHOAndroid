@@ -27,5 +27,5 @@ interface LibraryHiddenTrackDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun hide(rows: List<LibraryHiddenTrackEntity>)
     @Query("DELETE FROM library_hidden_tracks WHERE trackId IN (:ids)")
-    suspend fun restore(ids: List<String>)
+    suspend fun restore(ids: List<String>): Int
 }

@@ -74,6 +74,13 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
         manualIndices().filter { it != current }.asReversed().forEach(player::removeMediaItem)
     }
 
+    fun removeHiddenTracks(ids: Set<String>) = change {
+        if (player.currentMediaItem?.mediaId in ids) EchoPlaybackProcessRuntime.onSleepTimerUserCommand(
+            app.echo.android.model.playback.EchoSleepTimerCancellationReason.QueueChanged)
+        applyDeletedQueueRanges(player, HiddenQueuePolicy.ranges(player.mediaItemCount,
+            { player.getMediaItemAt(it).mediaId }, ids))
+    }
+
     fun removeDeletedFiles(uris: Set<String>) = change {
         val ranges = DeletedQueueFilesPolicy.removalRanges(
             player.mediaItemCount,

@@ -24,11 +24,13 @@ internal class EchoAudioFocusController(
     private val scope: CoroutineScope,
     private val canInteract: () -> Boolean,
 ) : Player.Listener, AutoCloseable {
+    private val feedback = EchoAudioFocusFeedback(context)
     private val manager = context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val route = EchoPlaybackProcessRuntime.outputRouteMonitor(context.applicationContext).route
     private val resume = EchoAudioResumeGuard()
     private var acting = false
     private var held = false
+    private var registered = false
     private var ducked = false
     private var closed = false
     private var optionsJob: Job? = null
@@ -55,7 +57,13 @@ internal class EchoAudioFocusController(
         routeJob = scope.launch {
             route.collect {
                 val key = routeKey()
-                if (key != observedRoute) { observedRoute = key; resume.cancel() }
+                if (key != observedRoute) {
+                    app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.OutputChanged)
+                    observedRoute = key
+                    if (resume.pending) EchoPlaybackProcessRuntime.onSleepTimerUserCommand(
+                        app.echo.android.model.playback.EchoSleepTimerCancellationReason.OutputChanged)
+                    resume.cancel()
+                }
             }
         }
         if (player.playWhenReady) requestFocus()
@@ -64,36 +72,49 @@ internal class EchoAudioFocusController(
     fun onUserCommand(command: Int) {
         if (command in UserIntentCommands) {
             resume.cancel() // Also catches a second pause while focus already has the player paused.
-            EchoPlaybackProcessRuntime.onSleepTimerUserCommand()
+            EchoPlaybackProcessRuntime.onSleepTimerUserCommand(sleepTimerCancellationForCommand(command))
         }
     }
 
     private fun routeKey(): String = route.value.let { "${it.kind}|${it.deviceName}|${it.deviceNames}" }
     private fun identity() = EchoAudioResumeIdentity(player.currentMediaItem?.mediaId, player.currentMediaItemIndex, routeKey())
-    private fun remember() = resume.remember(identity(), EchoPlaybackProcessRuntime.sleepTimerEndTimeEpochMs)
+    private fun remember() = resume.remember(identity(),
+        EchoPlaybackProcessRuntime.sleepTimerEndTimeEpochMs.takeUnless { EchoPlaybackProcessRuntime.sleepTimerFinishingCurrentTrack })
     private inline fun own(block: () -> Unit) { acting = true; try { block() } finally { acting = false } }
     private fun gain(value: Float) { EchoPlaybackProcessRuntime.setAudioFocusGain(value) }
 
     private fun requestFocus() {
         if (closed || held) return
-        when (manager.requestAudioFocus(request)) {
+        registered = true
+        val result = try { manager.requestAudioFocus(request) } catch (error: RuntimeException) {
+            app.echo.android.model.error.EchoErrorLog.record(
+                app.echo.android.model.error.EchoErrorSource.Playback, "Audio focus request failed", throwable = error)
+            AudioManager.AUDIOFOCUS_REQUEST_FAILED
+        }
+        feedback.onRequest(result)
+        when (result) {
             AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> { held = true; ducked = false; gain(1f) }
             AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> { remember(); own { player.pause() } }
-            else -> { resume.cancel(); own { player.pause() }; gain(1f) }
+            else -> { registered = false; resume.cancel(); own { player.pause() }; gain(1f) }
         }
     }
 
     private fun pauseForFocus() {
-        if (player.playWhenReady) remember()
+        EchoPlaybackProcessRuntime.onSleepTimerUserCommand(
+            app.echo.android.model.playback.EchoSleepTimerCancellationReason.AudioFocusLost)
+        if (EchoManualFadePolicy.shouldRememberResume(player.playWhenReady, EchoPlaybackProcessRuntime.manualPlayIntent)) remember()
+        else if (EchoPlaybackProcessRuntime.manualPlayIntent == false) resume.cancel()
         ducked = false
-        gain(1f)
         own { player.pause() }
+        gain(1f)
     }
 
     private fun onFocus(change: Int) {
-        if (closed) return
+        if (closed || !registered) return
+        app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.AudioFocus, change.toLong())
         when (change) {
             AudioManager.AUDIOFOCUS_GAIN -> {
+                feedback.clear()
                 held = true; ducked = false; gain(1f)
                 val canPlay = !player.playWhenReady && player.mediaItemCount > 0 &&
                     player.playbackState != Player.STATE_ENDED && player.playerError == null && canInteract()
@@ -107,8 +128,11 @@ internal class EchoAudioFocusController(
                 else if (player.playWhenReady) { ducked = true; gain(0.2f) }
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
-                held = false; ducked = false; resume.cancel(); gain(1f)
+                held = false; registered = false; ducked = false; resume.cancel()
+                EchoPlaybackProcessRuntime.onSleepTimerUserCommand(
+                    app.echo.android.model.playback.EchoSleepTimerCancellationReason.AudioFocusLost)
                 own { player.pause() }
+                gain(1f)
                 manager.abandonAudioFocusRequest(request)
             }
         }
@@ -117,11 +141,15 @@ internal class EchoAudioFocusController(
     override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
         if (acting || closed) return
         if (playWhenReady) requestFocus() else {
-            resume.cancel(); held = false; ducked = false; gain(1f)
+            resume.cancel(); held = false; registered = false; ducked = false; gain(1f)
             manager.abandonAudioFocusRequest(request)
         }
     }
-    override fun onPlayerError(error: PlaybackException) { resume.cancel() }
+    override fun onPlayerError(error: PlaybackException) {
+        resume.cancel()
+        EchoPlaybackProcessRuntime.onSleepTimerUserCommand(
+            app.echo.android.model.playback.EchoSleepTimerCancellationReason.PlaybackError)
+    }
     override fun onPlaybackStateChanged(state: Int) {
         if (state == Player.STATE_ENDED || state == Player.STATE_IDLE) resume.cancel()
     }
@@ -132,13 +160,16 @@ internal class EchoAudioFocusController(
         if (reason == Player.DISCONTINUITY_REASON_SEEK) resume.cancel()
     }
     override fun close() {
+        feedback.clear()
         closed = true; resume.cancel(); optionsJob?.cancel(); routeJob?.cancel()
         player.removeListener(this); manager.abandonAudioFocusRequest(request); gain(1f)
     }
 
     companion object {
         private val UserIntentCommands = setOf(Player.COMMAND_PLAY_PAUSE, Player.COMMAND_STOP,
-            Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+            Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM, Player.COMMAND_SEEK_TO_DEFAULT_POSITION,
+            Player.COMMAND_SEEK_BACK, Player.COMMAND_SEEK_FORWARD, Player.COMMAND_SEEK_TO_NEXT,
+            Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM, Player.COMMAND_SEEK_TO_MEDIA_ITEM,
             Player.COMMAND_CHANGE_MEDIA_ITEMS, Player.COMMAND_SET_MEDIA_ITEM)
     }

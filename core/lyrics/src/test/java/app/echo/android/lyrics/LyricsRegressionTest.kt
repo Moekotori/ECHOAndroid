@@ -59,11 +59,17 @@ class LyricsRegressionTest {
     }
     @Test fun readsCompressedKrcFiles() {
         val text = "[1000,2000]<0,1000,0>Hello"
-        val output = java.io.ByteArrayOutputStream()
-        java.util.zip.DeflaterOutputStream(output).use { it.write(text.toByteArray()) }
-        val payload = output.toByteArray()
-        val key = intArrayOf(64, 71, 97, 119, 94, 50, 116, 71, 81, 54, 49, 45, 206, 210, 110, 105)
-        val bytes = "krc1".toByteArray() + ByteArray(payload.size) { (payload[it].toInt() xor key[it % key.size]).toByte() }
+        fun encoded(value: String): ByteArray {
+            val output = java.io.ByteArrayOutputStream()
+            java.util.zip.DeflaterOutputStream(output).use { it.write(value.toByteArray()) }
+            val payload = output.toByteArray()
+            val key = intArrayOf(64, 71, 97, 119, 94, 50, 116, 71, 81, 54, 49, 45, 206, 210, 110, 105)
+            return "krc1".toByteArray() + ByteArray(payload.size) { (payload[it].toInt() xor key[it % key.size]).toByte() }
+        }
+        val bytes = encoded(text)
         assertEquals(text, EchoLyricsTextDecoder.decode(bytes))
+        assertEquals(text, EchoLyricsTextDecoder.decodeResult(bytes, "UTF-8")?.text)
+        assertNull(EchoLyricsTextDecoder.decodeResult(bytes, "GB18030"))
+        assertNull(EchoLyricsTextDecoder.decodeResult(encoded("\u0000")))
     }
 }

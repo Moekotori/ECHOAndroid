@@ -10,6 +10,12 @@ internal fun LibraryScanOptions.accepts(durationMs: Long, sizeBytes: Long, relat
     return includesDirectory(relativePath)
 }
 
+/** Compute once per snapshot: restoring a CUE's whole file is a refresh, not a new import. */
+internal fun importedLocalScanIds(ids: Set<String>): Set<String> = buildSet(ids.size) {
+    addAll(ids)
+    ids.forEach { add(CueSheetPolicy.baseTrackId(it)) }
+}
+
 internal fun LibraryScanOptions.includesDirectory(relativePath: String?): Boolean {
     val path = relativePath.orEmpty().replace('\\', '/').trim('/')
     val pathKey = path.lowercase(java.util.Locale.ROOT)

@@ -14,7 +14,7 @@ class TrackVersionsRepository(private val database: EchoLibraryDatabase, context
 suspend fun trackVersions(track: EchoTrack): EchoTrackVersions = withContext(Dispatchers.IO) {
     val key = EchoTrackVersionPolicy.key(track)
     val candidates = if (key == null) emptyList() else database.trackDao().queryTracks(SimpleSQLiteQuery(
-        "SELECT * FROM library_tracks WHERE normalizedTitle = ? ORDER BY id LIMIT 128",
+        "SELECT * FROM visible_library_tracks WHERE normalizedTitle = ? ORDER BY id LIMIT 128",
         arrayOf(track.title.normalizedForSearch()),
     )).map { it.toEchoTrack() }.filter { EchoTrackVersionPolicy.matches(track, it) }
     val tracks = (listOf(track) + candidates).distinctBy { it.id }
@@ -47,7 +47,7 @@ suspend fun resolvePreferredTrackVersions(
         if (titles.isEmpty()) continue
         // A pathological repeated title must not cause unbounded memory or work.
         val candidates = database.trackDao().queryTracks(SimpleSQLiteQuery(
-            "SELECT * FROM library_tracks WHERE normalizedTitle IN (${titles.joinToString(",") { "?" }}) ORDER BY id LIMIT 2048",
+            "SELECT * FROM visible_library_tracks WHERE normalizedTitle IN (${titles.joinToString(",") { "?" }}) ORDER BY id LIMIT 2048",
             titles.toTypedArray(),
         )).map { it.toEchoTrack() }
         val byTitle = candidates.groupBy { EchoTrackVersionPolicy.normalized(it.title) }

@@ -8,6 +8,18 @@ import org.junit.Test
 
 class CueSheetPolicyTest {
     @Test
+    fun exactPerFileNamesWinOverCaseFoldAndRipReplacementFallbacks() {
+        val sheet = CueSheet(tracks = listOf(
+            CueSheetTrack(1, "Upper", startMs = 0L, fileName = "A.flac"),
+            CueSheetTrack(2, "Lower", startMs = 0L, fileName = "a.flac"),
+            CueSheetTrack(3, "Wave", startMs = 0L, fileName = "A.wav"),
+        ))
+        assertEquals(listOf("Upper"), CueSheetPolicy.tracksForAudio(sheet, "A.flac").map { it.title })
+        assertEquals(listOf("Lower"), CueSheetPolicy.tracksForAudio(sheet, "a.flac").map { it.title })
+        assertEquals("Album.FLA", CueSheetPolicy.matchAudioName("Album.wav", listOf("Album.FLA")))
+    }
+
+    @Test
     fun framesConvertToMilliseconds() {
         assertEquals(0L, CueSheetPolicy.framesToMs(0, 0, 0))
         assertEquals(1000L, CueSheetPolicy.framesToMs(0, 1, 0))

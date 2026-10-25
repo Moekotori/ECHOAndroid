@@ -61,6 +61,7 @@ internal fun SignalEqUserPresets(
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
     onImportShareCode: (String) -> Unit,
+    onImportBundle: suspend (List<app.echo.android.model.playback.EchoEqualizerUserPreset>, app.echo.android.model.playback.EchoEqImportConflict) -> Unit = { _, _ -> },
     outputDeviceLabel: String? = null,
     outputBound: Boolean = false,
     onBindToOutput: () -> Unit = {},
@@ -72,6 +73,7 @@ internal fun SignalEqUserPresets(
     var showImport by remember { mutableStateOf(false) }
     val canSave = presets.size < EchoEqualizerUserPresets.MaxCount
     val activeName = presets.firstOrNull { it.id == activeId }?.name
+    EqBundleControls(presets, enabled, onImportBundle)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(

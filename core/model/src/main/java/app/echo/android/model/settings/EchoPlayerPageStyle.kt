@@ -9,11 +9,18 @@ enum class EchoPlayerPageStyle(val id: String, val lyricsPreset: EchoLyricsPageS
     AfterglowMist("afterglow_mist", EchoLyricsPageStyle.AfterglowMist),
     AfterglowNight("afterglow_night", EchoLyricsPageStyle.AfterglowNight),
     Terminal("terminal", EchoLyricsPageStyle.Mist),
-    Scrapbook("scrapbook", EchoLyricsPageStyle.Paper);
+    Scrapbook("scrapbook", EchoLyricsPageStyle.Paper),
+    MetroLine("metro_line", EchoLyricsPageStyle.Paper),
+    ChatThread("chat_thread", EchoLyricsPageStyle.Paper),
+    Halftone("halftone", EchoLyricsPageStyle.Mist),
+    PixelMosaic("pixel_mosaic", EchoLyricsPageStyle.Mist),
+    Contours("contours", EchoLyricsPageStyle.Mist),
+    Dither("dither", EchoLyricsPageStyle.Mist),
+    GlyphField("glyph_field", EchoLyricsPageStyle.Mist);
 
     val isLight: Boolean
         get() = when (this) {
-            RecordSleeve, PixelHandheld, TypePoster, AfterglowMist, Scrapbook -> true
+            RecordSleeve, PixelHandheld, TypePoster, AfterglowMist, Scrapbook, MetroLine, ChatThread -> true
             else -> false
         }
     val defaultFontFamily: String get() = if (lyricsPreset.isAfterglow) lyricsPreset.defaultFontFamily else "system"

@@ -80,10 +80,15 @@ object LibraryScanPolicy {
     }
 
     /** Map a SAF id onto the MediaStore row emitted for the same file, including cue movements. */
-    fun safDuplicateAliases(safBaseId: String, expandedIds: List<String>): List<Pair<String, String>> {
+    fun safDuplicateAliases(
+        safBaseId: String,
+        expandedIds: List<String>,
+        previousCueIds: Collection<String> = emptyList(),
+    ): List<Pair<String, String>> {
         if (safBaseId.isBlank() || expandedIds.isEmpty()) return emptyList()
         val cueIds = expandedIds.filter { CueSheetPolicy.isCueTrackId(it) }
-        if (cueIds.isEmpty()) return listOf(safBaseId to expandedIds.first())
+        if (cueIds.isEmpty()) return listOf(safBaseId to expandedIds.first()) +
+            previousCueIds.filter { CueSheetPolicy.baseTrackId(it) == safBaseId }.map { it to expandedIds.first() }
         val firstCue = cueIds.minWithOrNull(compareBy {
             it.substringAfterLast(CueSheetPolicy.CueSuffix).toIntOrNull() ?: Int.MAX_VALUE
         }) ?: cueIds.first()
@@ -111,6 +116,14 @@ object LibraryScanPolicy {
         }
     }
 
+    /** A successfully restored whole file inherits references from its retired CUE movements. */
+    fun cueRowsSupersededByWholeFiles(seenIds: Set<String>, existingIds: Set<String>): List<Pair<String, String>> =
+        cueChildrenByBase(existingIds).flatMap { (base, children) ->
+            // Seeing any child may mean a failed read retained it; that never authorizes a merge.
+            if (base !in seenIds || children.any(seenIds::contains)) emptyList()
+            else children.map { it to base }
+        }
+
     /**
      * Where an existing SAF row should land after a MediaStore row for the same file is in the library.
      * Cue movements merge onto the same movement number. A whole-file SAF row merges onto the
@@ -121,12 +134,18 @@ object LibraryScanPolicy {
         nativeBaseId: String,
         liveIds: Set<String>,
         cueChildren: Map<String, List<String>>,
+        confirmedIds: Set<String>? = null,
     ): String? {
         if (sourceId.isBlank() || nativeBaseId.isBlank() || sourceId == nativeBaseId) return null
         if (CueSheetPolicy.isCueTrackId(sourceId)) {
             val number = sourceId.substringAfterLast(CueSheetPolicy.CueSuffix).toIntOrNull() ?: return null
             val cueId = CueSheetPolicy.cueTrackId(nativeBaseId, number)
-            return cueId.takeIf { it in liveIds }
+            if (cueId in liveIds && (confirmedIds == null || cueId in confirmedIds)) return cueId
+            // A different source identity may already have successfully returned to a whole file.
+            return nativeBaseId.takeIf { base ->
+                confirmedIds != null && base in confirmedIds && base in liveIds &&
+                    cueChildren[base].orEmpty().none { it in confirmedIds && it in liveIds }
+            }
         }
         if (nativeBaseId in liveIds) return nativeBaseId
         return cueChildren[nativeBaseId]?.minWithOrNull(compareBy {

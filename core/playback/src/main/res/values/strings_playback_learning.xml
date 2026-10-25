@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_focus_waiting">Waiting for audio focus. Playback will resume when it becomes available.</string>
+    <string name="audio_focus_denied">Android denied audio focus. End the other audio session or return to ECHO and try again.</string>
+</resources>

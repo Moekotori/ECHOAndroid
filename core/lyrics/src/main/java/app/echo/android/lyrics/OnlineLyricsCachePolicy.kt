@@ -9,7 +9,7 @@ object OnlineLyricsCachePolicy {
     private const val Revision = "5"
 
     fun matches(lyrics: EchoLyrics, request: EchoLyricsSearchRequest): Boolean =
-        lyrics.metadata[Key] == fingerprint(request)
+        lyrics.metadata["text_decoding_lossy"] != "true" && lyrics.metadata[Key] == fingerprint(request)
 
     fun stamp(lyrics: EchoLyrics, request: EchoLyricsSearchRequest): EchoLyrics =
         lyrics.copy(metadata = lyrics.metadata + (Key to fingerprint(request)))

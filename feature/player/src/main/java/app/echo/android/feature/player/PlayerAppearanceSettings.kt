@@ -86,12 +86,15 @@ internal fun playerPageStyleLabel(style: EchoPlayerPageStyle): Int = when (style
     EchoPlayerPageStyle.TypePoster -> R.string.player_appearance_type_poster
     EchoPlayerPageStyle.AfterglowMist -> R.string.afterglow_mist
     EchoPlayerPageStyle.AfterglowNight -> R.string.afterglow_night
-    EchoPlayerPageStyle.HoloPrism -> R.string.player_appearance_holo_prism
-    EchoPlayerPageStyle.StarlightOrbit -> R.string.player_appearance_starlight_orbit
-    EchoPlayerPageStyle.SakuraLetter -> R.string.player_appearance_sakura_letter
-    EchoPlayerPageStyle.NeonRain -> R.string.player_appearance_neon_rain
-    EchoPlayerPageStyle.SodaPop -> R.string.player_appearance_soda_pop
-    EchoPlayerPageStyle.AmberFilm -> R.string.player_appearance_amber_film
+    EchoPlayerPageStyle.Terminal -> R.string.player_appearance_terminal
+    EchoPlayerPageStyle.Scrapbook -> R.string.player_appearance_scrapbook
+    EchoPlayerPageStyle.MetroLine -> R.string.player_appearance_metro_line
+    EchoPlayerPageStyle.ChatThread -> R.string.player_appearance_chat_thread
+    EchoPlayerPageStyle.Halftone -> R.string.player_appearance_halftone
+    EchoPlayerPageStyle.PixelMosaic -> R.string.player_appearance_pixel_mosaic
+    EchoPlayerPageStyle.Contours -> R.string.player_appearance_contours
+    EchoPlayerPageStyle.Dither -> R.string.player_appearance_dither
+    EchoPlayerPageStyle.GlyphField -> R.string.player_appearance_glyph_field
 }
 
 @Composable

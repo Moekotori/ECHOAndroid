@@ -40,6 +40,7 @@ internal fun EchoSmbFileEntry.toLibraryTrackEntity(
         id = "${endpoint.sourceId}:file:${smbStableHash(uri)}",
         contentUri = uri,
         title = title,
+        fileName = name,
         artist = SmbArtistPlaceholder,
         album = album,
         albumArtist = SmbArtistPlaceholder,
@@ -64,7 +65,7 @@ internal suspend fun EchoSmbScanner.scanAudio(
 ): RemoteSyncVisit {
     val result = scan(
         endpoint = endpoint,
-        accept = { name -> LocalAudioFileTypes.isSupported(name, null) },
+        accept = { name -> LocalAudioFileTypes.isSupported(name, null) || LocalAudioFileTypes.isCueSheet(name, null) },
         onFile = onFile,
     )
     return RemoteSyncVisit(visitedCount = result.fileCount, hitVisitCap = result.hitLimit)

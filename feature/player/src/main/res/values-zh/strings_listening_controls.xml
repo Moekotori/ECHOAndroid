@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sleep_timer_finishing">时间已到 · 等待本曲结束（剩余 %1$s）</string>
+</resources>

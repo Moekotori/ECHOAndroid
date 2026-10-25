@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="listening_interruption">短暂音频中断</string>
+    <string name="listening_interruption_detail">选择导航提示等短暂中断时的处理方式。长期失去焦点会暂停；手动暂停、输出变化或错误会取消自动恢复。Bit-perfect 输出以暂停代替修改 PCM 音量。</string>
+    <string name="listening_duck">降低音量</string>
+    <string name="listening_pause">暂停后恢复</string>
+    <string name="listening_finish_track">定时到点播完当前歌曲</string>
+    <string name="listening_finish_track_detail">倒计时结束后等待正在播放的歌曲结束。直播或未知时长音频到点停止；等待期间手动操作播放控制会取消定时。</string>
+</resources>

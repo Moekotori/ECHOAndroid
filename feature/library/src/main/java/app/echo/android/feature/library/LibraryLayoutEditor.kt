@@ -8,6 +8,8 @@ import app.echo.android.design.echoItemMotion
 import app.echo.android.design.EchoIcon
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.automirrored.rounded.Sort
@@ -31,8 +33,10 @@ import app.echo.android.model.settings.EchoLibraryCategory
 private val LibraryLayoutDraftSaver = listSaver<EchoLibraryLayout, String>(
     save = { layout -> layout.normalized().order.map { section ->
         if (section in layout.hidden) "-${section.id}" else section.id
-    } },
+    } + (if (layout.showFileNames) listOf("@fileNames") else emptyList()) + layout.hiddenTrackActions.map { "@menu:${it.id}" } },
     restore = { saved -> EchoLibraryLayout(
+        showFileNames = "@fileNames" in saved,
+        hiddenTrackActions = saved.filter { it.startsWith("@menu:") }.mapNotNull { app.echo.android.model.settings.EchoTrackMenuAction.fromId(it.removePrefix("@menu:")) }.toSet(),
         order = saved.mapNotNull { EchoLibraryCategory.fromId(it.removePrefix("-")) },
         hidden = saved.filter { it.startsWith("-") }
             .mapNotNull { EchoLibraryCategory.fromId(it.removePrefix("-")) }.toSet(),
@@ -65,6 +69,17 @@ internal fun LibraryLayoutEditor(
                 subtitle = stringResource(R.string.library_layout_detail),
             )
             LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                item(key = "file-names") {
+                    Row(Modifier.fillMaxWidth().toggleable(value = draft.showFileNames, role = Role.Switch,
+                        onValueChange = { draft = draft.copy(showFileNames = it) }).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.library_file_names))
+                            Text(stringResource(R.string.library_file_names_note), style = MaterialTheme.typography.bodySmall)
+                        }
+                        app.echo.android.design.EchoSwitch(draft.showFileNames, onCheckedChange = null)
+                    }
+                }
+                item(key = "track-menu") { TrackMenuEditorRows(draft) { draft = it } }
                 itemsIndexed(draft.order, key = { _, section -> section.id }) { index, section ->
                     val label = section.viewMode().label()
                     EchoSheetOrderRow(

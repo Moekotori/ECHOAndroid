@@ -41,6 +41,7 @@ class EchoRadioController(
     private var favoritesOnly = false
     private var directoryOpen = false
     private var foreground = true
+    private var importProbeJob: Job? = null
     private val inspector = app.echo.android.data.RadioStreamInspector()
     private val mutex = Mutex()
     private val mutableLoadFailed = MutableStateFlow(false)
@@ -86,7 +87,7 @@ class EchoRadioController(
     fun closeDirectory() { directoryOpen = false; browseJob?.cancel(); mutableDiscovery.value = RadioDiscoveryState(query = mutableDiscovery.value.query) }
     fun foreground(active: Boolean) {
         foreground = active
-        if (!active) { browseJob?.cancel(); mutableDiscovery.update { it.copy(rows = emptyList(), loading = false) } }
+        if (!active) { browseJob?.cancel(); importProbeJob?.cancel(); mutableDiscovery.update { it.copy(rows = emptyList(), loading = false) } }
         else { reload(); if (directoryOpen) browse(mutableDiscovery.value.query) }
     }
 
@@ -102,7 +103,25 @@ class EchoRadioController(
         require(entries.isNotEmpty())
         importStations(entries)
     }
-    suspend fun importStations(entries: List<EchoRadioStation>) = mutex.withLock { changed(store.importStations(entries)) }
+    suspend fun importStations(entries: List<EchoRadioStation>) {
+        val added = mutex.withLock {
+            val existing = mutableStations.value.mapTo(HashSet()) { it.url }
+            changed(store.importStations(entries))
+            mutableStations.value.filter { it.url !in existing }.take(10)
+        }
+        importProbeJob?.cancel()
+        importProbeJob = scope.launch {
+            for (station in added) {
+                try {
+                    val facts = inspector.inspect(station.url)
+                    mutex.withLock {
+                        changed(store.enrich(station.id, station.url, facts))
+                    }
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) { /* Imported stations remain available when enrichment fails. */ }
+            }
+        }
+    }
     suspend fun exportText(): String = withContext(Dispatchers.Default) { app.echo.android.data.RadioPlaylistCodec.export(mutableStations.value) }
     suspend fun exportPlaylist(): String = withContext(Dispatchers.Default) { app.echo.android.data.RadioPlaylistCodec.exportM3u(mutableStations.value) }
     suspend fun probe(url: String) = inspector.inspect(url)

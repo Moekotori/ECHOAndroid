@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sleep_cancel_playback">Sleep timer cancelled by a playback control.</string>
+    <string name="sleep_cancel_track">Sleep timer cancelled because the song was changed.</string>
+    <string name="sleep_cancel_seek">Sleep timer cancelled because the playback position was changed.</string>
+    <string name="sleep_cancel_queue">Sleep timer cancelled because the playback queue was changed.</string>
+    <string name="sleep_cancel_focus">Sleep timer cancelled because audio focus was lost.</string>
+    <string name="sleep_cancel_output">Sleep timer cancelled because the audio output changed.</string>
+    <string name="sleep_cancel_error">Sleep timer cancelled because playback failed.</string>
+</resources>

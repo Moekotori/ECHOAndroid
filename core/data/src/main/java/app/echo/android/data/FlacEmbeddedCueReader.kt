@@ -8,7 +8,6 @@ import java.io.IOException
 /** Metadata only; bounded allocation and traversal, never reads PCM or opens per movement. */
 internal object FlacEmbeddedCueReader {
     private const val MaxMetadataBytes = 32 * 1024 * 1024
-    private const val MaxCommentBytes = 2 * 1024 * 1024
 
     fun read(input: InputStream): CueSheet? = try { readChecked(input) } catch (_: IOException) { null }
 
@@ -68,9 +67,10 @@ internal object FlacEmbeddedCueReader {
                     if (rate <= 0) invalid()
                 }
                 4 -> {
-                    if (size > MaxCommentBytes) invalid()
-                    val payload = bytes(size) ?: invalid()
-                    text = commentCue(payload) ?: text
+                    commentCue(size, ::bytes, ::skip)?.let { next ->
+                        if (text != null && text != next) invalid()
+                        text = next
+                    }
                 }
                 5 -> {
                     if (size > CueSheetPolicy.MaxCueBytes || binary != null) invalid()
@@ -79,8 +79,9 @@ internal object FlacEmbeddedCueReader {
                 else -> if (!skip(size)) invalid()
             }
             if (header[0].toInt() and 128 != 0) {
-                val sheet = if (text != null) {
-                    CueSheetParser.parseText(text)?.let { parsed ->
+                val cueText = text
+                val sheet = if (cueText != null) {
+                    CueSheetParser.parseText(cueText)?.let { parsed ->
                         // FILE labels in embedded text refer to this physical FLAC, never another file.
                         parsed.copy(fileName = null, tracks = parsed.tracks.map { it.copy(fileName = null) })
                     }
@@ -101,34 +102,48 @@ internal object FlacEmbeddedCueReader {
 
     private fun invalid(): Nothing = throw IOException("Incomplete, invalid or oversized FLAC CUE metadata")
 
-    private fun commentCue(payload: ByteArray): String? {
-        fun number(offset: Int): Int? {
-            if (offset < 0 || offset > payload.size - 4) return null
-            val value = (0..3).fold(0L) { value, i -> value or ((payload[offset + i].toLong() and 255) shl (8 * i)) }
-            return value.takeIf { it <= Int.MAX_VALUE }?.toInt()
+    private fun commentCue(size: Int, read: (Int) -> ByteArray?, skip: (Int) -> Boolean): String? {
+        var remaining = size
+        fun take(count: Int): ByteArray {
+            if (count < 0 || count > remaining) invalid()
+            remaining -= count
+            return read(count) ?: invalid()
         }
-        val vendor = number(0) ?: invalid()
-        if (vendor > payload.size - 4) invalid()
-        var offset = 4 + vendor
-        val count = number(offset) ?: invalid()
+        fun discard(count: Int) {
+            if (count < 0 || count > remaining || !skip(count)) invalid()
+            remaining -= count
+        }
+        fun number(): Int {
+            val bytes = take(4)
+            val value = (0..3).fold(0L) { value, i -> value or ((bytes[i].toLong() and 255) shl (8 * i)) }
+            if (value > Int.MAX_VALUE) invalid()
+            return value.toInt()
+        }
+        discard(number()) // Vendor text provides no CUE facts.
+        val count = number()
         if (count > 4096) invalid()
-        offset += 4
+        var cue: String? = null
         repeat(count) {
-            val size = number(offset) ?: invalid()
-            offset += 4
-            if (size > payload.size - offset) invalid()
-            // Only decode a CUESHEET value; artwork and unrelated comments stay as bytes.
-            val keyEnd = (offset until minOf(offset + size, offset + 32)).firstOrNull { payload[it] == 61.toByte() }
-            if (keyEnd != null) {
-                val key = String(payload, offset, keyEnd - offset, Charsets.US_ASCII).filter(Char::isLetterOrDigit)
-                if (key.equals("CUESHEET", true)) {
-                    val valueSize = offset + size - keyEnd - 1
-                    if (valueSize > CueSheetPolicy.MaxCueBytes) invalid()
-                    return String(payload, keyEnd + 1, valueSize, Charsets.UTF_8).takeIf { it.isNotBlank() }
+            val length = number()
+            if (length > remaining) invalid()
+            // Inspect only the key prefix. Large artwork/comments are skipped without allocation.
+            val prefix = take(minOf(length, 32))
+            val keyEnd = prefix.indexOf(61.toByte())
+            val key = if (keyEnd < 0) "" else String(prefix, 0, keyEnd, Charsets.US_ASCII).filter(Char::isLetterOrDigit)
+            if (key.equals("CUESHEET", true)) {
+                val valueSize = length - keyEnd - 1
+                if (valueSize > CueSheetPolicy.MaxCueBytes) invalid()
+                val payload = prefix.copyOfRange(keyEnd + 1, prefix.size) + take(length - prefix.size)
+                val value = try {
+                    Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(payload)).toString()
+                } catch (_: java.nio.charset.CharacterCodingException) { invalid() }
+                if (value.isNotBlank()) {
+                    if (cue != null && cue != value) invalid()
+                    cue = value
                 }
-            }
-            offset += size
+            } else discard(length - prefix.size)
         }
-        return null
+        if (remaining != 0) invalid()
+        return cue
     }
 }

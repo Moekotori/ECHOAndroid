@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="manual_fade_title">Fade manual play and pause</string>
+    <string name="manual_fade_detail">Use a short 180 ms fade for manual controls. Calls, output loss and timers still pause immediately. Strict bit-perfect output bypasses this fade.</string>
+    <string name="mix_status_title">Actual state</string>
+    <string name="mix_status_idle">Idle</string>
+    <string name="mix_status_bypassed">Normal playback</string>
+    <string name="mix_status_analyzing">Analyzing this pair</string>
+    <string name="mix_status_preparing">Preparing transition audio</string>
+    <string name="mix_status_armed">Transition prepared</string>
+    <string name="mix_status_mixing">Mixing now</string>
+    <string name="mix_status_failed">Preparation failed; normal playback continues</string>
+    <string name="mix_status_paused">Paused; transition retained</string>
+    <string name="mix_status_mode">Prepared mode</string>
+    <string name="mix_status_confidence">Tempo confidence (lower of the two estimates)</string>
+    <string name="mix_reason_disabled">AutoMix is off.</string>
+    <string name="mix_reason_lightweight">The lightweight performance mode preserves normal playback.</string>
+    <string name="mix_reason_usb">This USB output preserves its original playback path.</string>
+    <string name="mix_reason_album">Adjacent tracks from the same album preserve their original join.</string>
+    <string name="mix_reason_next">No eligible next track. Clipped sources retain their original boundaries.</string>
+    <string name="mix_reason_not_playing">Waiting for playback.</string>
+    <string name="mix_reason_source">This live or remote source uses normal playback.</string>
+    <string name="mix_reason_mode">Looping or the sleep timer requires the original track boundary.</string>
+    <string name="mix_reason_speed">AutoMix requires normal playback speed.</string>
+    <string name="mix_reason_format">Duration, remaining time or output format is unsuitable for this transition.</string>
+    <string name="mix_reason_stream">Waiting for an eligible output stream.</string>
+    <string name="mix_reason_failed">Transition audio could not be prepared. Playback continues without mixing.</string>
+    <string name="mix_reason_window">No usable transition window, or playback conditions changed.</string>
+    <string name="mix_status_waiting">Plan analyzed; waiting to prepare audio</string>
+</resources>

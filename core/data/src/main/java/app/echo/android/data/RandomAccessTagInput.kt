@@ -8,7 +8,7 @@ internal class RandomAccessTagInput(
     private val length: Long,
     private val checkActive: () -> Unit = {},
     private val readRange: (Long, Int) -> ByteArray,
-) : InputStream() {
+) : InputStream(), TagTailReader {
     private var position = 0L
     private var cacheStart = -1L
     private var cache = ByteArray(0)
@@ -35,11 +35,17 @@ internal class RandomAccessTagInput(
         position += skipped
         return skipped
     }
-    fun tail(count: Int): ByteArray? {
+    override fun tail(count: Int): ByteArray? {
         if (length < count) return null
         val previous = position
+        val previousCacheStart = cacheStart
+        val previousCache = cache
         position = length - count
-        return try { tagBytes(count) } finally { position = previous }
+        return try { tagBytes(count) } finally {
+            position = previous
+            cacheStart = previousCacheStart
+            cache = previousCache
+        }
     }
     private fun fill(): Boolean {
         checkActive()
@@ -48,7 +54,8 @@ internal class RandomAccessTagInput(
         if (requests >= 64 || transferred >= MaxTransfer || System.nanoTime() - startedAt > MaxReadNanos) {
             throw IOException("Embedded tag range budget exceeded")
         }
-        val count = minOf(ChunkBytes.toLong(), length - position, (MaxTransfer - transferred).toLong()).toInt()
+        val pageSize = if (requests == 0) 16 * 1024 else ChunkBytes
+        val count = minOf(pageSize.toLong(), length - position, (MaxTransfer - transferred).toLong()).toInt()
         requests++
         cacheStart = position
         cache = readRange(position, count)

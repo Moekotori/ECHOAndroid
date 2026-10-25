@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="listening_interruption">Transient audio interruption</string>
+    <string name="listening_interruption_detail">Choose how navigation prompts and other brief interruptions affect playback. Permanent focus loss pauses playback. Manual pause, output changes and errors cancel automatic resume. Bit-perfect output pauses instead of changing PCM volume.</string>
+    <string name="listening_duck">Lower volume</string>
+    <string name="listening_pause">Pause, then resume</string>
+    <string name="listening_finish_track">Finish the current song when the timer expires</string>
+    <string name="listening_finish_track_detail">At the deadline, finish the song that is playing before stopping. Live streams and unknown durations stop at the deadline. Manual playback controls cancel the finishing phase.</string>
+</resources>

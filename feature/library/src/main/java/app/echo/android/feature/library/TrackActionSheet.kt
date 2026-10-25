@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Person
@@ -79,9 +80,12 @@ internal fun TrackActionSheet(
     onSelectForBatch: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     onVersions: (() -> Unit)? = null,
+    onHide: (() -> Unit)? = null,
 ) {
     // Constrain content, not the ModalBottomSheet: its anchors need the full window height.
     // Short windows need more room for actions while retaining the handle and safe insets.
+    val hiddenActions = LocalHiddenTrackActions.current
+    fun shown(action: app.echo.android.model.settings.EchoTrackMenuAction) = action !in hiddenActions
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val maxHeight = minOf(500.dp, screenHeight * if (screenHeight < 600.dp) 0.82f else 0.58f)
     Column(Modifier.fillMaxWidth().heightIn(max = maxHeight)) {
@@ -163,24 +167,28 @@ internal fun TrackActionSheet(
                     onClick = onRemoveFromPlaylist,
                 )
             }
-            TrackActionRow(stringResource(L10nR.string.feature_library_edit_tags_c8ec75), Icons.Rounded.Edit, enabled = canEditMetadata, onClick = onEdit)
-            TrackActionRow(
+            if (shown(app.echo.android.model.settings.EchoTrackMenuAction.EditTags)) TrackActionRow(stringResource(L10nR.string.feature_library_edit_tags_c8ec75), Icons.Rounded.Edit, enabled = canEditMetadata, onClick = onEdit)
+            if (shown(app.echo.android.model.settings.EchoTrackMenuAction.ImportLyrics)) TrackActionRow(
                 stringResource(L10nR.string.feature_library_import_lrc_lyrics_8e2810),
                 Icons.Rounded.UploadFile,
                 enabled = canImportLyrics,
                 onClick = onImportLyrics,
             )
-            TrackActionRow(
+            if (shown(app.echo.android.model.settings.EchoTrackMenuAction.Artwork)) TrackActionRow(
                 stringResource(L10nR.string.feature_library_custom_artwork_c8c999),
                 Icons.Rounded.Album,
                 enabled = canPickArtwork,
                 onClick = onPickArtwork,
             )
-            if (onVersions != null) {
+            if (onVersions != null && shown(app.echo.android.model.settings.EchoTrackMenuAction.Versions)) {
                 TrackActionRow(stringResource(L10nR.string.track_versions_title), Icons.Rounded.Album, enabled = true, onClick = onVersions)
             }
             TrackActionRow(stringResource(L10nR.string.feature_library_track_info_36a07b), Icons.Rounded.Info, enabled = true, onClick = onInfo)
-            if (onDelete != null) {
+            if (onHide != null && shown(app.echo.android.model.settings.EchoTrackMenuAction.Hide)) {
+                TrackActionRow(stringResource(L10nR.string.hidden_track_hide), Icons.Rounded.VisibilityOff,
+                    enabled = true, onClick = onHide)
+            }
+            if (onDelete != null && shown(app.echo.android.model.settings.EchoTrackMenuAction.Delete)) {
                 TrackActionRow(stringResource(L10nR.string.feature_library_delete_138ccf), Icons.Rounded.DeleteOutline, enabled = true, danger = true, onClick = onDelete)
             }
         }

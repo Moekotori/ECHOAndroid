@@ -149,7 +149,8 @@ class EchoLibraryPlaybackCatalog(
                 if (EchoRadioStation.isRadio(mediaId)) {
                     return@withContext radioStationItem(mediaId)
                 }
-                database.trackDao().getTrackById(mediaId)?.toBrowseItem()
+                if (database.hiddenTrackDao().hiddenIds(listOf(mediaId)).isNotEmpty()) null
+                else database.trackDao().getTrackById(mediaId)?.toBrowseItem()
             }
         }
     }
@@ -226,6 +227,7 @@ class EchoLibraryPlaybackCatalog(
                         return@withContext listOfNotNull(radioStationItem(mediaId))
                     }
                     if (EchoPlaybackLibraryIds.isTrackMediaId(mediaId)) {
+                        if (database.hiddenTrackDao().hiddenIds(listOf(mediaId)).isNotEmpty()) return@withContext emptyList()
                         val track = database.trackDao().getTrackById(mediaId) ?: return@withContext emptyList()
                         val albumKey = track.albumKey.takeIf { it.isNotBlank() }
                         val albumTracks = albumKey?.let { key ->

@@ -21,4 +21,14 @@ data class EchoTrack(
     val composer: String? = null,
     val clipStartMs: Long = 0L,
     val clipEndMs: Long = 0L,
+    val fileName: String? = null,
 )
+
+/** Display only: never changes tags, playback identity, search or ordering. No URI decoding or I/O. */
+fun EchoTrack.libraryDisplayTitle(showFileNames: Boolean): String {
+    val name = fileName?.trim()?.takeIf { it.isNotEmpty() } ?: return title
+    if (!showFileNames) return title
+    return if (clipStartMs > 0 || clipEndMs > 0 || id.contains("#cue:"))
+        listOf(name, title.ifBlank { trackNumber?.toString().orEmpty() }).filter(String::isNotBlank).joinToString(" · ")
+    else name
+}

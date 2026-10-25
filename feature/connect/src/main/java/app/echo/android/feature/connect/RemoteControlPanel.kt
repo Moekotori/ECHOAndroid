@@ -44,6 +44,8 @@ internal fun RemoteNowPlaying(
     currentTrackId: String?,
     queueCount: Int,
     active: Boolean,
+    recovering: Boolean = false,
+    pending: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val hasTrack = currentTrackId != null || title.isNotBlank()
@@ -67,12 +69,13 @@ internal fun RemoteNowPlaying(
                 }
             }
         }
+        if (pending) Text(stringResource(R.string.remote_control_pending), style = MaterialTheme.typography.bodySmall)
         // A seek hold belongs to one track; never carry it across a PC track change.
         key(currentTrackId, title) {
-            RemoteSeekControl(positionMs, durationMs, isPlaying, controlsEnabled && hasTrack, active, onSeek)
+            RemoteSeekControl(positionMs, durationMs, isPlaying, controlsEnabled && hasTrack, active, onSeek, interpolate = !pending && !recovering)
         }
         RemoteTransportControls(isPlaying, controlsEnabled && (hasTrack || queueCount > 0),
-            onPrevious, onPlayPause, onNext)
+            onPrevious, onPlayPause, onNext, relativeEnabled = controlsEnabled && !recovering)
         HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.6f))
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             key(volumeControlEnabled) {

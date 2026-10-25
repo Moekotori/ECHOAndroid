@@ -18,6 +18,7 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
+    implementation(libs.juniversalchardet)
 
     testImplementation(libs.junit)
     testImplementation(libs.json)

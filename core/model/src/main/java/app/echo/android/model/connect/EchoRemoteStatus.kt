@@ -5,4 +5,5 @@ data class EchoRemoteStatus(
     val endpoint: EchoRemoteEndpoint? = null,
     val playback: EchoRemotePlaybackSnapshot = EchoRemotePlaybackSnapshot(),
     val error: String? = null,
+    val controlPending: Boolean = false,
 )

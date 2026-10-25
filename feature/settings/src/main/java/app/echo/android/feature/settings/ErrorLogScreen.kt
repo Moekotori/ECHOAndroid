@@ -65,6 +65,7 @@ fun ErrorLogScreen(
     onClear: () -> Unit,
     onDelete: (Long) -> Unit,
     onBack: () -> Unit,
+    capture: DiagnosticCaptureActions? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -105,6 +106,7 @@ fun ErrorLogScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
+            capture?.let { DiagnosticCapturePanel(it) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
                     EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.error_log_back))

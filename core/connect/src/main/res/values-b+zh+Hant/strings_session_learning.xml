@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_control_queued">連線中斷，暫時保留最後的播放或拖動目標。</string>
+    <string name="remote_control_uncertain">無法確認播放／暫停是否生效，已停止自動重發，請查看狀態後重試。</string>
+    <string name="remote_control_expired">遠端操作未及時確認，已清除待執行目標。</string>
+    <string name="remote_control_unsupported">接收端未提供播放狀態，已清除待執行控制。</string>
+    <string name="remote_control_relative_offline">請恢復連線後再切歌或編輯佇列，這類操作不會自動補發。</string>
+</resources>

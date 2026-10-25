@@ -28,6 +28,9 @@ internal fun RadioStationEditor(station: EchoRadioStation?, actions: RadioAction
     var probeUrl by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
+    var advanced by rememberSaveable(station?.id) { mutableStateOf(station?.let {
+        !it.artworkUrl.isNullOrBlank() || !it.videoUrl.isNullOrBlank() || it.description.isNotBlank() || it.streams.isNotEmpty()
+    } == true) }
     val scope = rememberCoroutineScope()
     val streams = remember(alternatives) { alternatives.lines().map(String::trim).filter(String::isNotEmpty) }
     val valid = EchoRadioStation.validUrl(url) && listOf(cover, video).all { it.isBlank() || EchoRadioStation.validUrl(it) } &&
@@ -35,8 +38,10 @@ internal fun RadioStationEditor(station: EchoRadioStation?, actions: RadioAction
     fun draft(): EchoRadioStation {
         val facts = probe?.takeIf { probeUrl == url.trim() }
         val parsed = facts?.stations?.firstOrNull()
-        val base = station ?: EchoRadioStation(UUID.randomUUID().toString(), "", url.trim())
         val streamUrl = parsed?.url ?: url.trim()
+        val original = station ?: EchoRadioStation(UUID.randomUUID().toString(), "", url.trim())
+        val base = if (original.url == streamUrl) original else original.copy(
+            genre = "", codec = null, bitrateKbps = null, homepage = null, lastPlayedMs = 0)
         val default = base.defaultStreamUrl?.takeIf { it == streamUrl || it in streams }
         return base.copy(name = name.trim().ifBlank { parsed?.name ?: facts?.name ?: URI(url.trim()).host }, url = streamUrl,
             artworkUrl = cover.trim().takeIf { it.isNotEmpty() }, videoUrl = video.trim().takeIf { it.isNotEmpty() },
@@ -63,15 +68,20 @@ internal fun RadioStationEditor(station: EchoRadioStation?, actions: RadioAction
                     if (facts.stations.size > 1) Text(pluralStringResource(R.plurals.radio_playlist_count, facts.stations.size, facts.stations.size))
                 }
                 OutlinedTextField(name, { name = it.take(120) }, singleLine = true, enabled = !busy, label = { Text(stringResource(R.string.radio_name)) })
+                TextButton(onClick = { advanced = !advanced }) { Text(stringResource(R.string.radio_more_fields)) }
+                if (advanced) {
                 OutlinedTextField(description, { description = it.take(512) }, enabled = !busy, label = { Text(stringResource(R.string.radio_description)) })
                 OutlinedTextField(cover, { cover = it.take(2048) }, singleLine = true, enabled = !busy, label = { Text(stringResource(R.string.radio_cover)) })
                 OutlinedTextField(video, { video = it.take(2048) }, singleLine = true, enabled = !busy, label = { Text(stringResource(R.string.radio_video)) })
                 OutlinedTextField(alternatives, { alternatives = it.take(65_536) }, enabled = !busy, label = { Text(stringResource(R.string.radio_alternatives)) }, supportingText = { Text(stringResource(R.string.radio_alternatives_hint)) })
+                }
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (failed) Text(stringResource(R.string.radio_error), color = MaterialTheme.colorScheme.error)
             }
         },
-        confirmButton = { TextButton(enabled = valid && !busy, onClick = {
+        confirmButton = { Row {
+            TextButton(enabled = valid && !busy, onClick = { actions.play(draft(), null); onDismiss() }) { Text(stringResource(R.string.radio_play)) }
+            TextButton(enabled = valid && !busy, onClick = {
             busy = true
             scope.launch {
                 try {
@@ -82,6 +92,6 @@ internal fun RadioStationEditor(station: EchoRadioStation?, actions: RadioAction
                 catch (_: Exception) { failed = true }
                 finally { busy = false }
             }
-        }) { Text(stringResource(R.string.radio_save)) } },
+        }) { Text(stringResource(R.string.radio_save)) } } },
         dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text(stringResource(R.string.radio_cancel)) } })
 }

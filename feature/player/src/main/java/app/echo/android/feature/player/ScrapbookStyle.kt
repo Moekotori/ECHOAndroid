@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,7 +36,7 @@ import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.model.playback.EchoTrackRef
 
-/** Diary-page palette. Handwriting uses the platform cursive family, so no font ships with the app. */
+/** Diary-page palette. Ma Shan Zheng (OFL, licence in assets/fonts), subset to GB2312 level 1, kana and ASCII. */
 internal object ScrapbookStyle {
     val Paper = Color(0xFFF3E8D2)
     val Ink = Color(0xFF3B2F4A)
@@ -45,7 +46,7 @@ internal object ScrapbookStyle {
     val Yellow = Color(0xFFFFE45C)
     val Mint = Color(0xFFA8E0D0)
     val Sky = Color(0xFFB9D4F5)
-    val Hand = FontFamily.Cursive
+    val Hand = FontFamily(Font(R.font.scrapbook_hand, FontWeight.Normal))
 }
 
 /** A pastel highlighter stroke across the lower part of the text box. */

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_focus_waiting">正在等待音訊焦點，可用後將恢復播放。</string>
+    <string name="audio_focus_denied">Android 未允許取得音訊焦點，請結束其他音訊工作階段或返回 ECHO 後重試。</string>
+</resources>

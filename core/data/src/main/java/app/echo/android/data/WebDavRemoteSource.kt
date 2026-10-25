@@ -82,7 +82,8 @@ internal class WebDavClient(
                         hitVisitCap = true
                     }
                     queue += entry.href
-                } else if (LocalAudioFileTypes.isSupported(entry.href.path.substringAfterLast('/'), entry.contentType)) {
+                } else if (LocalAudioFileTypes.isSupported(entry.href.path.substringAfterLast('/'), entry.contentType) ||
+                    LocalAudioFileTypes.isCueSheet(entry.href.path.substringAfterLast('/'), entry.contentType)) {
                     onFile(entry.toAudioFile(root))
                     trackCount += 1
                     if (trackCount >= maxTracks) {
@@ -152,6 +153,7 @@ internal fun WebDavAudioFile.toLibraryTrackEntity(
         id = id,
         contentUri = url,
         title = title,
+        fileName = java.net.URI(url).path.substringAfterLast('/'),
         artist = artist,
         album = album,
         albumArtist = artist,

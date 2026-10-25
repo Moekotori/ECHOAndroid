@@ -110,6 +110,12 @@ internal object WavTagRewriter {
                     null
                 }
                 if (listType == "INFO" && size > MAX_TAG_BYTES) return@use null
+                if (listType == "INFO") {
+                    val payload = ByteArray(size.toInt())
+                    raf.seek(dataOffset)
+                    raf.readFully(payload)
+                    if (parseInfoItems(payload) == null) return@use null
+                }
                 chunks += WavChunk(id, dataOffset, size, listType)
                 position = dataOffset + padded
                 remaining -= 8 + padded
@@ -194,18 +200,18 @@ internal object WavTagRewriter {
     }
 
     private fun encodeInfoList(existing: ByteArray?, fields: AudioTagFields): ByteArray {
-        val values = linkedMapOf<String, ByteArray>()
-        existing?.let { parseInfoItems(it) }?.forEach { (key, value) ->
-            if (key !in ManagedInfoKeys && !(key == "IGNR" && (fields.genre != null || fields.genreModified))) values[key] = value
+        val values = ArrayList<Pair<String, ByteArray>>()
+        val originalValues = existing?.let { requireNotNull(parseInfoItems(it)) }.orEmpty()
+        originalValues.forEach { (key, value) ->
+            if (key !in ManagedInfoKeys && !(key == "IGNR" && (fields.genre != null || fields.genreModified))) values += key to value
         }
-        values["INAM"] = utf8Z(fields.title)
-        values["IART"] = utf8Z(fields.artist)
-        fields.album?.let { values["IPRD"] = utf8Z(it) }
-        fields.genre?.let { values["IGNR"] = utf8Z(it) }
-        val originalValues = existing?.let(::parseInfoItems).orEmpty().toMap()
-        fun original(key: String): String? = originalValues[key]?.let(::decodeLegacyTagText)
-        tagNumberWithTotal(fields.trackNumber, original("ITRK") ?: original("IPRT"))?.let { values["ITRK"] = utf8Z(it) }
-        tagDateWithYear(fields.year, original("ICRD"))?.let { values["ICRD"] = utf8Z(it) }
+        values += "INAM" to utf8Z(fields.title)
+        values += "IART" to utf8Z(fields.artist)
+        fields.album?.let { values += "IPRD" to utf8Z(it) }
+        fields.genre?.let { values += "IGNR" to utf8Z(it) }
+        fun original(key: String): String? = originalValues.lastOrNull { it.first == key }?.second?.let(::decodeLegacyTagText)
+        tagNumberWithTotal(fields.trackNumber, original("ITRK") ?: original("IPRT") ?: original("TRCK"))?.let { values += "ITRK" to utf8Z(it) }
+        tagDateWithYear(fields.year, original("ICRD"))?.let { values += "ICRD" to utf8Z(it) }
         val payload = ArrayList<Byte>()
         "INFO".toByteArray(StandardCharsets.US_ASCII).forEach { payload += it }
         values.forEach { (id, value) ->
@@ -214,17 +220,19 @@ internal object WavTagRewriter {
         return payload.toByteArray()
     }
 
-    private fun parseInfoItems(payload: ByteArray): List<Pair<String, ByteArray>> {
-        if (payload.size < 4 || payload.decodeToString(0, 4) != "INFO") return emptyList()
+    private fun parseInfoItems(payload: ByteArray): List<Pair<String, ByteArray>>? {
+        if (payload.size < 4 || payload.decodeToString(0, 4) != "INFO") return null
         val items = ArrayList<Pair<String, ByteArray>>()
         var offset = 4
-        while (offset + 8 <= payload.size) {
+        while (offset < payload.size) {
+            if (payload.size - offset < 8) return null
             val id = payload.decodeToString(offset, offset + 4)
-            val size = u32le(payload, offset + 4).toInt()
+            val size = u32le(payload, offset + 4)
             offset += 8
-            if (size < 0 || offset + size > payload.size) break
-            items += id to payload.copyOfRange(offset, offset + size)
-            offset += size + (size and 1)
+            val padded = size + (size and 1L)
+            if (padded > payload.size - offset) return null
+            items += id to payload.copyOfRange(offset, offset + size.toInt())
+            offset += padded.toInt()
         }
         return items
     }
@@ -317,7 +325,7 @@ internal object WavTagRewriter {
         data class Memory(val id: String, val payload: ByteArray) : WavBodyPart()
     }
 
-    private val ManagedInfoKeys = setOf("INAM", "IART", "IPRD", "ITRK", "IPRT", "ICRD")
+    private val ManagedInfoKeys = setOf("INAM", "IART", "IPRD", "ITRK", "IPRT", "TRCK", "ICRD")
     private const val COPY_BUFFER = 64 * 1024
     private const val MAX_CHUNKS = 256
     private const val MAX_TAG_BYTES = 2 * 1024 * 1024
