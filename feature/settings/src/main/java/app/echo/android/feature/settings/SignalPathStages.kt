@@ -27,6 +27,7 @@ internal fun signalPathStages(
     val d = status.diagnostics
     val live = status.isPlaying && status.state != EchoPlaybackState.Error
     val unknown = stringResource(R.string.diag_unreported)
+    val decoderName = d.decoder.name
     val sourceRate = d.sampleRateHz?.takeIf { it > 0 }
     // The mapper omits decodedSampleRateHz when the reported stream rate equals the source.
     // This is a stream-format readout, not a measurement of the final output clock.
@@ -54,6 +55,7 @@ internal fun signalPathStages(
         add(SignalPathStage(
             label = stringResource(R.string.diag_decoder),
             value = when {
+                decoderName != null -> decoderName
                 !reported -> stringResource(R.string.diag_waiting_decode)
                 d.isDsdDopOutput() -> stringResource(R.string.diag_dsd_dop)
                 d.isDsdSource() -> stringResource(R.string.diag_dsd_converted)
@@ -69,6 +71,8 @@ internal fun signalPathStages(
             },
             icon = Icons.Rounded.Memory, highlighted = live && reported,
             facts = listOf(
+                stringResource(R.string.decoder_runtime_kind) to decoderImplementationText(d.decoder.implementation),
+                stringResource(R.string.evidence_source_label) to stringResource(R.string.evidence_decoder_events),
                 stringResource(R.string.path_stream_rate) to (streamRate?.let(::formatSampleRate) ?: unknown),
                 stringResource(R.string.path_decoded_bits) to (d.bitPerfectDecodedBits?.takeIf { it > 0 }?.let { "$it bit" } ?: unknown),
             ),

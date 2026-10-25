@@ -1,5 +1,7 @@
 package app.echo.android.playback
 
+import app.echo.android.model.playback.withAudioPipeline
+
 import app.echo.android.model.radio.EchoRadioStation
 import android.net.Uri
 import android.os.Bundle
@@ -255,6 +257,7 @@ fun Player.toPlaybackDiagnosticsState(
     usbAudioStatus: EchoUsbAudioStatus = EchoUsbAudioStatus(),
     sourceSampleRateHz: Int? = null,
     outputRoute: EchoOutputRoute = EchoOutputRoute(),
+    audioPipeline: app.echo.android.model.playback.EchoAudioPipelineDiagnostics = app.echo.android.model.playback.EchoAudioPipelineDiagnostics(),
 ): PlaybackDiagnosticsState {
     val item = currentMediaItem
     val format = currentAudioFormat()
@@ -284,6 +287,7 @@ fun Player.toPlaybackDiagnosticsState(
         requestToken = item?.mediaId?.hashCode()?.toLong() ?: 0L,
         lastCommand = if (isPlaying) "play" else "idle",
     ).withUsbAudioStatus(usbAudioStatus).withOutputRoute(outputRoute)
+        .withAudioPipeline(audioPipeline)
     return PlaybackDiagnosticsState(
         diagnostics = diagnostics,
         lastError = diagnostics.lastError,

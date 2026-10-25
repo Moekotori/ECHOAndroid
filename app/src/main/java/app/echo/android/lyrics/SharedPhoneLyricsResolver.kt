@@ -16,7 +16,7 @@ internal class SharedPhoneLyricsResolver(context: Context, private val library: 
 
     suspend fun read(id: String): EchoPhoneLyrics? = withContext(Dispatchers.IO) {
         val track = library.track(id) ?: return@withContext null
-        val selected = stored.readSaved(id, selected = true, touchLastAccess = false)
+        val selected = LyricsContentPolicy.readable(stored.readSaved(id, selected = true, touchLastAccess = false))
         val imported = if (selected == null) stored.lyricsUriForTrack(id)?.let(local::loadFromUri) else null
         val sourceOrder = settings.appSettings.first().lyricsOptions.sourceOrder
         val localLyrics = if (selected == null && imported == null) runCatching { local.loadForTrack(track, sourceOrder) }.getOrNull() else null

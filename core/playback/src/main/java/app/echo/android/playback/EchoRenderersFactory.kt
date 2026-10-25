@@ -17,6 +17,7 @@ internal class EchoRenderersFactory(
     private val equalizerProcessor: AudioProcessor,
     private val smartTransitionProcessor: AudioProcessor = EchoSmartTransitionMixer(),
     private val channelBalanceProcessor: AudioProcessor = EchoChannelBalanceAudioProcessor(),
+    private val audioPipelineState: EchoAudioPipelineState = EchoAudioPipelineState(),
 ) : DefaultRenderersFactory(context) {
     init {
         // Keep platform decoding first; use the bundled software renderer for unsupported formats.
@@ -45,7 +46,7 @@ internal class EchoRenderersFactory(
             // Custom DSP uses internal float buffers and preserves the negotiated output encoding.
             .setEnableFloatOutput(false)
             .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-            .setAudioProcessors(arrayOf(processor, EchoUsbFormatAudioProcessor(context)))
+            .setAudioProcessors(arrayOf(processor, EchoUsbFormatAudioProcessor(context, audioPipelineState)))
             .setAudioOutputProvider(EchoAudioOutputProvider(context))
             .build()
         return EchoTransitionClockAudioSink(sink, processor)

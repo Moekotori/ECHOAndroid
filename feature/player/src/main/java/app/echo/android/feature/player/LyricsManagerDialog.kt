@@ -6,8 +6,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.lyrics.EchoLyricsCandidate
 
@@ -26,13 +28,15 @@ fun LyricsManagerDialog(
     onDismiss: () -> Unit,
     onEdit: (() -> Unit)? = null,
 ) {
-    var previewId by remember(trackTitle) { mutableStateOf<String?>(null) }
-    var searched by remember(trackTitle) { mutableStateOf(false) }
+    var previewId by rememberSaveable(trackTitle) { mutableStateOf<String?>(null) }
+    var searched by rememberSaveable(trackTitle) { mutableStateOf(false) }
+    val sizing = playerDialogWindowSizing()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.lyrics_manager_title, trackTitle)) },
+        modifier = Modifier.heightIn(max = sizing.heightDp.dp),
+        title = { Text(stringResource(R.string.lyrics_manager_title, trackTitle), maxLines = 2, overflow = TextOverflow.Ellipsis) },
         text = {
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 480.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(Modifier.fillMaxWidth().heightIn(max = minOf(480f, sizing.bodyHeightDp).dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     Text(stringResource(R.string.lyrics_manager_hint))
                     TextButton(onClick = { searched = true; onSearch() }, enabled = !searching) {

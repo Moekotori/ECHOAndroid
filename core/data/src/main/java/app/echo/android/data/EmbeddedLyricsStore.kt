@@ -4,6 +4,18 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.security.MessageDigest
+import app.echo.android.model.library.CueSheetPolicy
+
+internal fun remoteEmbeddedLyricsDirectory(cacheRoot: File): File = File(cacheRoot, "remote-embedded-lyrics-v1")
+
+/** Worker-thread lookup shared by playback and the metadata editor. No remote I/O. */
+fun readCachedRemoteEmbeddedLyrics(cacheRoot: File, track: LibraryTrackEntity): String? {
+    if (!track.source.startsWith("smb:") && !track.source.startsWith("webdav:")) return null
+    val store = EmbeddedLyricsStore(remoteEmbeddedLyricsDirectory(cacheRoot))
+    store.read(track)?.let { return it }
+    val baseUri = CueSheetPolicy.playbackUri(track.contentUri)
+    return if (baseUri != track.contentUri) store.read(track.copy(contentUri = baseUri)) else null
+}
 
 /** Remote embedded lyrics are kept locally so opening a player needs no tag rescan. */
 internal class EmbeddedLyricsStore(private val directory: File) {

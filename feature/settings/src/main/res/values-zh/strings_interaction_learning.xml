@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="eq_edits_modified">%1$s（已修改）</string>
+    <string name="eq_edits_restore">恢复已保存参数</string>
+    <string name="eq_edits_save_as">另存为新预设</string>
+    <string name="usb_format_recovery_note">固定输出格式不受支持。可改为跟随音源，保留音量、缓冲和设备规则；音源格式仍需 DAC 支持。</string>
+    <string name="usb_format_recovery_action">恢复自适应格式</string>
+</resources>

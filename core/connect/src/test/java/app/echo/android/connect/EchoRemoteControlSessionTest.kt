@@ -43,6 +43,34 @@ class EchoRemoteControlSessionTest {
         } finally { owner.cancel() }
     }
 
+    @Test fun aNewPlayIntentIsNotAcknowledgedByAnOldSnapshotDuringPause() = runBlocking {
+        val owner = CoroutineScope(coroutineContext + SupervisorJob())
+        val firstSent = CompletableDeferred<Unit>(); val release = CompletableDeferred<Unit>()
+        var actual = snapshot(); var calls = 0
+        lateinit var session: EchoRemoteControlSession
+        val transport = object : EchoLinkTransport by FakeEchoLinkTransport() {
+            override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint) = EchoLinkStatusResponse("PC", actual)
+            override suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse {
+                calls++
+                if (calls == 1) { firstSent.complete(Unit); release.await() }
+                actual = actual.copy(state = if (actual.state == EchoRemotePlaybackState.Playing) EchoRemotePlaybackState.Paused else EchoRemotePlaybackState.Playing)
+                return EchoLinkStatusResponse("PC", actual)
+            }
+        }
+        session = EchoRemoteControlSession(owner, transport, { _, response -> session.observe(response.playback!!) }, {}, { _, _ -> }, {})
+        try {
+            session.bind(endpoint); session.observe(actual)
+            session.request(EchoRemoteCommand.PlayPause) {}
+            firstSent.await()
+            session.request(EchoRemoteCommand.PlayPause) {}
+            session.observe(actual) // old playing snapshot cannot confirm the newer play intent yet
+            assertTrue(session.pending)
+            release.complete(Unit)
+            eventually { !session.pending }
+            assertEquals(2, calls); assertEquals(EchoRemotePlaybackState.Playing, actual.state)
+        } finally { owner.cancel() }
+    }
+
     @Test fun anAmbiguousToggleIsNeverAutomaticallySentAgain() = runBlocking {
         val owner = CoroutineScope(coroutineContext + SupervisorJob())
         var calls = 0
@@ -83,6 +111,49 @@ class EchoRemoteControlSessionTest {
             assertFalse(session.pending)
             assertEquals(0, commands)
             assertEquals("two", session.projected().track?.id)
+        } finally { owner.cancel() }
+    }
+
+    @Test fun aDelayedSeekConfirmationIncludesRealPlaybackAdvance() = runBlocking {
+        val owner = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        var time = 100L
+        var actual = snapshot()
+        var calls = 0
+        lateinit var session: EchoRemoteControlSession
+        val transport = object : EchoLinkTransport by FakeEchoLinkTransport() {
+            override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint) = EchoLinkStatusResponse("PC", actual)
+            override suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse {
+                calls++; time += 2_000
+                actual = actual.copy(positionMs = (command as EchoRemoteCommand.SeekTo).positionMs + 1_500)
+                return EchoLinkStatusResponse("PC", actual)
+            }
+        }
+        session = EchoRemoteControlSession(owner, transport, { _, response -> session.observe(response.playback!!) }, {}, { _, _ -> }, {}, now = { time })
+        try {
+            session.bind(endpoint); session.observe(actual)
+            session.request(EchoRemoteCommand.SeekTo(10_000)) {}
+            assertFalse(session.pending); assertEquals(1, calls)
+            assertEquals(11_500L, session.projected().positionMs)
+        } finally { owner.cancel() }
+    }
+
+    @Test fun synchronousAcknowledgementsCannotStartASecondWorkerReentrantly() = runBlocking {
+        val owner = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        var actual = snapshot(); var reads = 0; var sends = 0
+        lateinit var session: EchoRemoteControlSession
+        val transport = object : EchoLinkTransport by FakeEchoLinkTransport() {
+            override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse { reads++; return EchoLinkStatusResponse("PC", actual) }
+            override suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse {
+                sends++; actual = actual.copy(positionMs = (command as EchoRemoteCommand.SeekTo).positionMs)
+                return EchoLinkStatusResponse("PC", actual)
+            }
+        }
+        session = EchoRemoteControlSession(owner, transport, { _, response -> session.observe(response.playback!!) }, {}, { _, _ -> }, {})
+        try {
+            session.bind(endpoint); session.observe(actual)
+            session.request(EchoRemoteCommand.SeekTo(1_000)) { session.request(EchoRemoteCommand.SeekTo(2_000)) {} }
+            assertEquals(1, reads); assertEquals(1, sends)
+            assertEquals(2_000L, session.projected().positionMs)
         } finally { owner.cancel() }
     }
 

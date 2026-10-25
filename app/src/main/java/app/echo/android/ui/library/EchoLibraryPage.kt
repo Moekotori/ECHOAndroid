@@ -226,7 +226,8 @@ internal fun EchoLibraryPage(
     app.echo.android.feature.library.LibraryPresentationProvider(remember(viewModel) {
         app.echo.android.feature.library.LibraryHiddenTrackActions(viewModel.observeHiddenTracksCount(), viewModel::hiddenTracks,
             viewModel::hideLibraryTracks, viewModel::restoreLibraryTracks, viewModel::restoreAllLibraryTracks)
-    }, showFileNames = appSettings.libraryLayout.showFileNames, hiddenTrackActions = appSettings.libraryLayout.hiddenTrackActions) {
+    }, showFileNames = appSettings.libraryLayout.showFileNames, hiddenTrackActions = appSettings.libraryLayout.hiddenTrackActions,
+        showPlayNext = appSettings.libraryLayout.showPlayNext) {
     app.echo.android.feature.library.TrackVersionsProvider(
         load = viewModel::trackVersions, save = viewModel::setPreferredTrackVersion,
     ) {

@@ -19,7 +19,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import app.echo.android.connect.EchoLinkRemoteControlHold
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.formatDuration
 import kotlinx.coroutines.delay

@@ -57,7 +57,10 @@ class EchoRemoteClient internal constructor(
     }
     private val remoteCommandMutex = kotlinx.coroutines.sync.Mutex()
     private val controls: EchoRemoteControlSession by lazy {
-        EchoRemoteControlSession(scope, transport, ::applyStatus, ::publishControls,
+        EchoRemoteControlSession(scope, transport, { target, response ->
+            statusRefreshGeneration += 1
+            applyStatus(target, response)
+        }, ::publishControls,
             onFailure = { target, error ->
                 if (!rejectAuthentication(target, error)) {
                     val code = (error as? EchoLinkHttpException)?.statusCode
@@ -110,7 +113,13 @@ class EchoRemoteClient internal constructor(
     fun cancelQueueRequests() = queueBrowser.stopWatching()
     fun setQueueVisibleAnchor(index: Int) = queueBrowser.setVisibleAnchor(index)
     fun moveQueueItem(queueId: String, toIndex: Int) = queueBrowser.move(queueId, toIndex)
-    fun confirmQueueSelection(queueId: String) = queueBrowser.confirmSelection(queueId)
+    fun confirmQueueSelection(queueId: String) {
+        controls.clear()
+        if (_status.value.connectionState != EchoRemoteConnectionState.Connected) {
+            notice("relative:offline", text(R.string.remote_control_relative_offline)); return
+        }
+        queueBrowser.confirmSelection(queueId)
+    }
 
     private var refreshOnForeground = false
     private var foreground = true
@@ -1181,6 +1190,13 @@ class EchoRemoteClient internal constructor(
         onSuccess: () -> Unit = {},
         onFailure: (Throwable) -> Unit = {},
     ): Boolean {
+        when (command) {
+            EchoRemoteCommand.Next, EchoRemoteCommand.Previous, EchoRemoteCommand.Stop,
+            is EchoRemoteCommand.PlayQueueItem, is EchoRemoteCommand.PlayTrackOnPc,
+            is EchoRemoteCommand.HandoffToPc, is EchoRemoteCommand.QueueReplace,
+            is EchoRemoteCommand.PlayRemoteStream, is EchoRemoteCommand.QueueReplaceRemote -> controls.clear()
+            else -> Unit
+        }
         val generation = ++statusRefreshGeneration
         val commandRequest = ++commandGeneration
         lastCommandError = null
@@ -1357,8 +1373,8 @@ class EchoRemoteClient internal constructor(
                 error = lastCommandError,
             )
         }
-        if (response.playback?.queueIdentityAvailable == true) {
-            queueBrowser.observe(response.playback.queue.revision, response.playback.queue.currentQueueId)
+        if (playback.queueIdentityAvailable) {
+            queueBrowser.observe(playback.queue.revision, playback.queue.currentQueueId)
         }
     }
 

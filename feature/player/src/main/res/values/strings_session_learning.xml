@@ -9,5 +9,8 @@
     <string name="saved_clips_name">Clip name</string>
     <string name="saved_clips_confirm">Save</string>
     <string name="saved_clips_cancel">Cancel</string>
-    <string name="saved_clips_error">Could not complete the clip action. Check the range, name and available storage.</string>
+    <string name="saved_clips_error">Could not complete the clip action. Check the range or name, or delete some clips and try again.</string>
+    <string name="saved_clips_all">All clips on this device</string>
+    <string name="saved_clips_current">Clips for this song</string>
+    <string name="saved_clips_other_track">Another song</string>
 </resources>

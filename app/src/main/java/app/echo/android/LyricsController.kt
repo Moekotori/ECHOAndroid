@@ -11,6 +11,7 @@ import app.echo.android.lyrics.LyricsSelectionWrites
 import app.echo.android.lyrics.withUserOffset
 import app.echo.android.model.lyrics.EchoLyricsCandidate
 import app.echo.android.lyrics.LyricsApplyPolicy
+import app.echo.android.lyrics.LyricsContentPolicy
 import app.echo.android.lyrics.OnlineLyricsCachePolicy
 import app.echo.android.lyrics.OnlineLyricsResolver
 import app.echo.android.model.connect.EchoRemoteLyrics
@@ -127,18 +128,7 @@ internal class LyricsController(
         uri: Uri,
         currentTrackId: String?,
         onImported: ((EchoLyrics, Long) -> Unit)? = null,
-    ) = importLyricsDocument(currentTrackId, onImported) { lyricsResolver.importFromUri(uri) }
-
-    private val importPreviewMutex = Mutex()
-
-    suspend fun previewImport(uri: Uri, charset: String?): EchoLyrics = importPreviewMutex.withLock {
-        withContext(Dispatchers.IO) { lyricsResolver.importFromUri(uri, charset) }
-    }
-
-    fun importLyricsDocument(lyrics: EchoLyrics, trackId: String, onImported: ((EchoLyrics, Long) -> Unit)? = null) =
-        importLyricsDocument(trackId, onImported) { lyrics }
-
-    private fun importLyricsDocument(currentTrackId: String?, onImported: ((EchoLyrics, Long) -> Unit)?, load: () -> EchoLyrics) {
+    ) {
         val target = currentTrackId ?: return
         val version = beginSelectionChange(target)
         _managementError.value = null
@@ -146,7 +136,7 @@ internal class LyricsController(
         importJob = scope.launch {
             try {
                 val parsed = withContext(Dispatchers.IO) {
-                    val imported = load()
+                    val imported = lyricsResolver.importFromUri(uri)
                     // The atomic selected file is self-contained; URI bindings are legacy fallback only.
                     if (!withCurrentSelection(target, version) {
                         importedLyricsStore.save(target, imported, selected = true)
@@ -286,8 +276,9 @@ internal class LyricsController(
         lyricsJob = scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val selected = importedLyricsStore.readSaved(trackId, selected = true)
-                    val echoLinkLyrics = selected ?: cachedEchoLinkLyrics(trackId) ?: fetchEchoLinkLyrics(trackId)
+                    val selected = LyricsContentPolicy.readable(importedLyricsStore.readSaved(trackId, selected = true))
+                    val echoLinkLyrics = selected ?: LyricsContentPolicy.readable(cachedEchoLinkLyrics(trackId))
+                        ?: LyricsContentPolicy.readable(fetchEchoLinkLyrics(trackId))
                     if (echoLinkLyrics != null) {
                         val userOffsetMs = importedLyricsStore.lyricsOffsetForTrack(trackId)
                         LyricsLoadResult(
@@ -309,7 +300,7 @@ internal class LyricsController(
                             val localLyrics = selected ?: importedLyrics ?: runCatching { lyricsResolver.loadForTrack(track, sourceOrder) }.getOrNull()
                                 ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
                             val serverLyrics = if (localLyrics == null) {
-                                runCatching { subsonicLyricsLoader(track) }.getOrNull()
+                                LyricsContentPolicy.readable(runCatching { subsonicLyricsLoader(track) }.getOrNull())
                             } else {
                                 null
                             }
@@ -317,10 +308,11 @@ internal class LyricsController(
                             val savedOnlineLyrics = if (localLyrics == null && serverLyrics == null) {
                                 importedLyricsStore.readSaved(trackId, selected = false)
                                     ?.takeIf { OnlineLyricsCachePolicy.matches(it, searchRequest) }
+                                    ?.let(LyricsContentPolicy::readable)
                             } else null
                             val onlineLyrics = if (localLyrics == null && serverLyrics == null) {
-                                savedOnlineLyrics ?: directNeteaseLyrics(track)
-                                    ?: if (onlineLyricsEnabled) cachedOnlineLyrics(track) else null
+                                savedOnlineLyrics ?: LyricsContentPolicy.readable(directNeteaseLyrics(track))
+                                    ?: if (onlineLyricsEnabled) LyricsContentPolicy.readable(cachedOnlineLyrics(track)) else null
                             } else {
                                 null
                             }
@@ -328,7 +320,7 @@ internal class LyricsController(
                                 importedLyricsStore.save(trackId, OnlineLyricsCachePolicy.stamp(onlineLyrics, searchRequest), selected = false)
                             }
                             (localLyrics ?: serverLyrics ?: onlineLyrics)
-                                ?.takeIf { it.lines.isNotEmpty() }
+                                ?.let(LyricsContentPolicy::readable)
                                 ?.let(EchoLyricsLoadState::Ready)
                                 ?.let { LyricsLoadResult(state = it, userOffsetMs = userOffsetMs) }
                                 ?: LyricsLoadResult(EchoLyricsLoadState.Missing)
@@ -388,9 +380,10 @@ internal class LyricsController(
 
     private suspend fun cachedOnlineLyrics(track: LibraryTrackEntity): EchoLyrics? {
         val cacheKey = onlineLyricsCacheKey(track)
-        synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] }?.let { return it }
+        LyricsContentPolicy.readable(synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] })?.let { return it }
         val context = coroutineContext
         return onlineLyricsResolver.loadForTrack(track.toLyricsSearchRequest()) { context.ensureActive() }
+            ?.let(LyricsContentPolicy::readable)
             ?.also { synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] = it } }
     }
 
@@ -406,7 +399,7 @@ internal class LyricsController(
         val parsed = EchoLyricsParser.parse(
             rawText = remote.rawText,
             sourceLabel = remote.sourceLabel ?: "PC ECHO",
-        ).takeIf { it.lines.isNotEmpty() } ?: return null
+        ).let(LyricsContentPolicy::readable) ?: return null
         synchronized(echoLinkLyricsLock) {
             echoLinkLyricsCache[trackId] = parsed
         }
@@ -416,9 +409,10 @@ internal class LyricsController(
     private suspend fun directNeteaseLyrics(track: LibraryTrackEntity): EchoLyrics? {
         val songId = parseNeteaseSongId(track.id) ?: return null
         val cacheKey = "netease:$songId"
-        synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] }?.let { return it }
+        LyricsContentPolicy.readable(synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] })?.let { return it }
         val context = coroutineContext
         return onlineLyricsResolver.loadFromNeteaseSongId(songId) { context.ensureActive() }
+            ?.let(LyricsContentPolicy::readable)
             ?.also { synchronized(onlineCacheLock) { onlineLyricsCache[cacheKey] = it } }
     }
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="eq_edits_modified">%1$s (modified)</string>
+    <string name="eq_edits_restore">Restore saved values</string>
+    <string name="eq_edits_save_as">Save as new preset</string>
+    <string name="usb_format_recovery_note">The fixed output format is unsupported. Follow the source format; volume, buffering and device rules will be kept. Playback may still require a DAC-supported source format.</string>
+    <string name="usb_format_recovery_action">Restore adaptive format</string>
+</resources>

@@ -30,7 +30,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @UnstableApi
-class EchoApplication : Application(), ImageLoaderFactory {
+class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.playback.EchoAudioPipelineOwner {
+    override val audioPipelineState = app.echo.android.playback.EchoAudioPipelineState()
     internal val radioSession by lazy { app.echo.android.radio.EchoRadioSession(EchoRadioStore(this)) }
     internal val podcasts by lazy {
         app.echo.android.data.PodcastRepository(app.echo.android.data.PodcastStore(this),

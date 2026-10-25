@@ -13,18 +13,9 @@ object EchoLyricsTextDecoder {
             mapOf("text_encoding" to charset, "text_decoding_lossy" to lossy.toString()))
     }
     fun decode(bytes: ByteArray): String? = decodeResult(bytes)?.text
-    val selectableCharsets = listOf("UTF-8", "UTF-16LE", "UTF-16BE", "GB18030", "Big5", "Shift_JIS", "EUC-JP", "EUC-KR", "MS949", "windows-1252", "windows-1251")
-        .filter { runCatching { Charset.isSupported(it) }.getOrDefault(false) }
-
-    fun decodeResult(bytes: ByteArray, charsetOverride: String? = null): Result? {
+    fun decodeResult(bytes: ByteArray): Result? {
         if (bytes.size >= 4 && bytes.copyOfRange(0, 4).contentEquals("krc1".toByteArray())) {
-            if (charsetOverride != null && runCatching { Charset.forName(charsetOverride) }.getOrNull() != StandardCharsets.UTF_8) return null
             return decodeKrc(bytes)?.takeIf { it.isReadableText() }?.let { Result(it, "UTF-8") }
-        }
-        if (charsetOverride != null) {
-            val charset = runCatching { Charset.forName(charsetOverride) }.getOrNull() ?: return null
-            return decodeStrict(bytes, charset)?.removePrefix("\uFEFF")?.takeIf { it.isReadableText() }
-                ?.let { Result(it, charset.name()) }
         }
         if (bytes.isEmpty()) return Result("", "UTF-8")
         val bom = when {
@@ -59,7 +50,11 @@ object EchoLyricsTextDecoder {
 
     private fun detectLegacyCharset(bytes: ByteArray): Charset? {
         val detector = UniversalDetector()
-        detector.handleData(bytes, 0, minOf(bytes.size, 64 * 1024))
+        // Long ASCII metadata must not consume the entire detection sample. Include
+        // the first non-ASCII byte (or ISO-2022 escape), retaining a little context.
+        val firstEncodedByte = bytes.indexOfFirst { it < 0 || it == 0x1B.toByte() }
+        val start = (firstEncodedByte - 256).coerceAtLeast(0)
+        detector.handleData(bytes, start, minOf(bytes.size - start, 64 * 1024))
         detector.dataEnd()
         return detector.detectedCharset?.let { name -> runCatching { Charset.forName(name) }.getOrNull() }
     }

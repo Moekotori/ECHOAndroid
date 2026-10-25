@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_inline_play_next">在歌曲列顯示「下一首播放」</string>
+    <string name="library_inline_play_next_note">無需開啟選單即可點歌，多選時隱藏。</string>
+    <string name="library_inline_play_next_track">下一首播放：%1$s</string>
+</resources>

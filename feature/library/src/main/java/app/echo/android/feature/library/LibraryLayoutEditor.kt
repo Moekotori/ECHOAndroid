@@ -33,9 +33,11 @@ import app.echo.android.model.settings.EchoLibraryCategory
 private val LibraryLayoutDraftSaver = listSaver<EchoLibraryLayout, String>(
     save = { layout -> layout.normalized().order.map { section ->
         if (section in layout.hidden) "-${section.id}" else section.id
-    } + (if (layout.showFileNames) listOf("@fileNames") else emptyList()) + layout.hiddenTrackActions.map { "@menu:${it.id}" } },
+    } + (if (layout.showFileNames) listOf("@fileNames") else emptyList()) +
+        (if (layout.showPlayNext) listOf("@playNext") else emptyList()) + layout.hiddenTrackActions.map { "@menu:${it.id}" } },
     restore = { saved -> EchoLibraryLayout(
         showFileNames = "@fileNames" in saved,
+        showPlayNext = "@playNext" in saved,
         hiddenTrackActions = saved.filter { it.startsWith("@menu:") }.mapNotNull { app.echo.android.model.settings.EchoTrackMenuAction.fromId(it.removePrefix("@menu:")) }.toSet(),
         order = saved.mapNotNull { EchoLibraryCategory.fromId(it.removePrefix("-")) },
         hidden = saved.filter { it.startsWith("-") }
@@ -77,6 +79,16 @@ internal fun LibraryLayoutEditor(
                             Text(stringResource(R.string.library_file_names_note), style = MaterialTheme.typography.bodySmall)
                         }
                         app.echo.android.design.EchoSwitch(draft.showFileNames, onCheckedChange = null)
+                    }
+                }
+                item(key = "play-next") {
+                    Row(Modifier.fillMaxWidth().toggleable(value = draft.showPlayNext, role = Role.Switch,
+                        onValueChange = { draft = draft.copy(showPlayNext = it) }).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.library_inline_play_next))
+                            Text(stringResource(R.string.library_inline_play_next_note), style = MaterialTheme.typography.bodySmall)
+                        }
+                        app.echo.android.design.EchoSwitch(draft.showPlayNext, onCheckedChange = null)
                     }
                 }
                 item(key = "track-menu") { TrackMenuEditorRows(draft) { draft = it } }

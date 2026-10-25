@@ -112,7 +112,7 @@ internal class LibraryLyricsInspector(
 
             val audioUri = Uri.parse(CueSheetPolicy.playbackUri(row.contentUri))
             val relativePath = row.relativePath
-            val fileName = row.fileName ?: try {
+            val fileName = row.fileName ?: if (audioUri.scheme == ContentResolver.SCHEME_FILE) File(audioUri.path.orEmpty()).name else try {
                 resolver.query(audioUri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use {
                     jobContext.ensureActive()
                     if (it.moveToFirst()) it.getString(0) else null
@@ -120,14 +120,16 @@ internal class LibraryLyricsInspector(
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { failed = true; null }
             if (fileName == null && audioUri.scheme != ContentResolver.SCHEME_FILE) failed = true
-            val names = LyricsSidecarNames.candidates(fileName ?: if (audioUri.scheme == ContentResolver.SCHEME_FILE)
-                File(audioUri.path.orEmpty()).name else null, row.title)
+            val clipped = row.clipStartMs > 0L || row.clipEndMs > 0L
+            val names = LyricsSidecarNames.candidates(fileName, row.title, preferTitle = clipped)
+            fun sidecar(uri: Uri, name: String? = null): EchoLyrics? =
+                LyricsClipPolicy.sidecar(parseUri(uri, name), fileName, row.clipStartMs, row.clipEndMs)
             if (audioUri.scheme == ContentResolver.SCHEME_FILE) {
                 val parent = File(audioUri.path.orEmpty()).parentFile
                 if (parent == null || !parent.canRead()) failed = true
-                names.forEach { name ->
+                if (!clipped) names.forEach { name ->
                     val file = parent?.let { File(it, name) }
-                    if (file?.isFile == true && attempt { parseUri(Uri.fromFile(file)) } != null) return Outcome.Found
+                    if (file?.isFile == true && attempt { sidecar(Uri.fromFile(file)) } != null) return Outcome.Found
                 }
                 var complete = true
                 val files = try {
@@ -144,9 +146,9 @@ internal class LibraryLyricsInspector(
                     }
                 } catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: Exception) { failed = true; complete = false; emptyList() }
-                LyricsSidecarNames.matching(names, files, complete).forEach { name ->
+                (LyricsSidecarNames.matching(names, files, complete) + if (clipped) names else emptyList()).distinct().forEach { name ->
                     val file = parent?.let { File(it, name) }
-                    if (file?.isFile == true && attempt { parseUri(Uri.fromFile(file)) } != null) return Outcome.Found
+                    if (file?.isFile == true && attempt { sidecar(Uri.fromFile(file)) } != null) return Outcome.Found
                 }
             } else if (audioUri.authority == MediaStore.AUTHORITY && !relativePath.isNullOrBlank() &&
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -157,7 +159,7 @@ internal class LibraryLyricsInspector(
                     if (!folder.complete) failed = true
                     LyricsSidecarNames.matching(names, folder.files.keys, folder.complete).forEach { name ->
                         folder.files[name]?.let { uri ->
-                            if (attempt { parseUri(uri, name) } != null) return Outcome.Found
+                            if (attempt { sidecar(uri, name) } != null) return Outcome.Found
                         }
                     }
                 } catch (cancelled: CancellationException) {
@@ -176,7 +178,7 @@ internal class LibraryLyricsInspector(
                     if (folder == null || !folder.complete) failed = true
                     if (folder != null) {
                         LyricsSidecarNames.matching(names, folder.files.keys, folder.complete).forEach { name ->
-                            if (attempt { parseUri(folder.files.getValue(name), name) } != null) return Outcome.Found
+                            if (attempt { sidecar(folder.files.getValue(name), name) } != null) return Outcome.Found
                         }
                     }
                 } catch (cancelled: CancellationException) { throw cancelled }
@@ -187,6 +189,7 @@ internal class LibraryLyricsInspector(
                     input.use {
                         EmbeddedLyricsReader.readForInspection(input) { jobContext.ensureActive() }
                             ?.let(EmbeddedLyricsReader::parse)
+                            ?.let { LyricsClipPolicy.embedded(it, row.clipStartMs, row.clipEndMs) }
                     }
                 } != null) return Outcome.Found
             return if (failed) Outcome.Unverified else Outcome.Missing

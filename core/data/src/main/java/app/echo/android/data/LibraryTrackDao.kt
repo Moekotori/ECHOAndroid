@@ -74,7 +74,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, title, artist, album, durationMs, relativePath, fileName FROM library_tracks
+        SELECT id, contentUri, title, artist, album, durationMs, relativePath, fileName, clipStartMs, clipEndMs FROM library_tracks
         WHERE (source = 'mediastore' OR source = 'saf') AND id > :afterId AND id <= :lastId
         ORDER BY id LIMIT 64
         """,

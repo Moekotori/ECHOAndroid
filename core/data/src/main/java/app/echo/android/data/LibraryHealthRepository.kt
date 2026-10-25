@@ -14,6 +14,8 @@ data class LibraryLyricsInspectionTrack(
     val durationMs: Long,
     val relativePath: String?,
     val fileName: String?,
+    val clipStartMs: Long = 0L,
+    val clipEndMs: Long = 0L,
 )
 
 suspend fun EchoLibraryRepository.libraryHealthStats(): LibraryHealthStats = withContext(Dispatchers.IO) {

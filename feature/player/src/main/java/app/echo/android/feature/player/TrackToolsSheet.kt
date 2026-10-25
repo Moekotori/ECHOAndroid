@@ -41,7 +41,7 @@ class TrackToolsActions(
     val saveClip: suspend (EchoTrack, String, Long, Long) -> Unit,
     val renameClip: suspend (String, String) -> Unit,
     val deleteClip: suspend (String) -> Unit,
-    val resumePlayback: () -> Unit,
+    val playClip: suspend (EchoSavedTrackClip) -> Boolean,
 
 )
 
@@ -57,7 +57,6 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
     loopAvailable: Boolean = true) {
     val bookmarks by remember(track.id) { actions.bookmarks(track.id) }.collectAsState(emptyList())
     val scope = rememberCoroutineScope()
-    val currentTrackId by rememberUpdatedState(track.id)
     var a by remember(track.id) { mutableLongStateOf(if (loop.active && loop.trackId == track.id) loop.startMs
         else position().coerceIn(0, (track.durationMs - 500).coerceAtLeast(0))) }
     var b by remember(track.id) { mutableLongStateOf(if (loop.active && loop.trackId == track.id) loop.endMs
@@ -77,9 +76,12 @@ fun TrackToolsSheet(track: EchoTrack, position: () -> Long, loop: EchoAbLoopStat
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                SavedClipControls(track, a, b, actions, loopAvailable, onLoad = { clip ->
-                    a = clip.startMs; b = clip.endMs
-                    if (actions.setLoop(track.id, clip.startMs, clip.endMs) && currentTrackId == clip.trackId) { onSeek(clip.startMs); actions.resumePlayback() } else error = true
+                SavedClipControls(track, a, b, actions, loopAvailable && !busy, onLoad = { clip ->
+                    busy = true
+                    try {
+                        a = clip.startMs; b = clip.endMs
+                        if (!actions.playClip(clip)) error = true
+                    } finally { busy = false }
                 })
             }
             item {

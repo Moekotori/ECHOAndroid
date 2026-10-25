@@ -17,21 +17,20 @@ internal fun LyricsPageLayout(
     controls: @Composable (landscape: Boolean) -> Unit,
     supportingPane: Boolean = false,
 ) {
+    val controlsScroll = rememberScrollState()
+    val headingScroll = rememberScrollState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val viewportHeight = maxHeight
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
-        val controlsMinimum = 264.dp * fontScale
-        val shortLandscape = maxWidth > maxHeight && maxHeight < 600.dp
-        if (!supportingPane && maxWidth >= controlsMinimum + 216.dp + 20.dp &&
-            (shortLandscape || maxWidth >= 720.dp * fontScale)) {
+        val controlsWidth = playerSidePaneWidth(maxWidth.value, maxHeight.value, fontScale,
+            264f, 216f * fontScale, 20f, 0.45f)
+        if (!supportingPane && controlsWidth != null) {
             // Controls retain touch areas and font scaling while lyrics keep a readable pane.
-            val controlsWidth = minOf(maxWidth * 0.45f, 320.dp * fontScale)
-                .coerceIn(controlsMinimum, maxWidth - 216.dp - 20.dp)
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 Box(Modifier.weight(1f).fillMaxHeight()) { lyrics() }
                 Column(
-                    Modifier.width(controlsWidth).fillMaxHeight()
-                        .verticalScroll(rememberScrollState()).heightIn(min = viewportHeight),
+                    Modifier.width(minOf(controlsWidth, 320f * fontScale).dp).fillMaxHeight()
+                        .verticalScroll(controlsScroll).heightIn(min = viewportHeight),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -41,13 +40,18 @@ internal fun LyricsPageLayout(
             }
         } else {
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                heading(false)
+                val compact = supportingPane || viewportHeight < 600.dp
+                if (compact) {
+                    // Large text must not consume the lyrics viewport when split panes no longer fit.
+                    Column(Modifier.fillMaxWidth().heightIn(max = viewportHeight * 0.25f)
+                        .verticalScroll(headingScroll)) { heading(false) }
+                } else heading(false)
                 Box(Modifier.fillMaxWidth().weight(1f)) { lyrics() }
-                if (supportingPane || viewportHeight < 600.dp) {
+                if (compact) {
                     // Enlarged text can prevent a side-by-side layout even in landscape.
                     // Bound and scroll the controls so the lyrics retain a visible viewport.
                     Column(Modifier.fillMaxWidth().heightIn(max = viewportHeight * 0.35f)
-                        .verticalScroll(rememberScrollState())) { controls(false) }
+                        .verticalScroll(controlsScroll)) { controls(false) }
                 } else controls(false)
             }
         }

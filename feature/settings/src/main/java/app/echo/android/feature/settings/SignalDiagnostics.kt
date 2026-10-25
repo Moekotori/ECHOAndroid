@@ -31,6 +31,7 @@ internal fun HealthPanel(
     onRequestBluetoothCodecPermission: () -> Unit = {},
 ) {
     val d = status.diagnostics
+    AudioPipelineReadouts(status)
     SignalSection("AutoMix") { AutoMixStatusReadout(status.autoMix) }
     SignalSection(stringResource(R.string.diag_health), stringResource(R.string.diag_no_error).takeIf { d.lastError == null }) {
         SignalReadout(stringResource(R.string.diag_output_route), d.outputDeviceReadout())

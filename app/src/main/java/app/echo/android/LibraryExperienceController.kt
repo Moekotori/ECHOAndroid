@@ -26,7 +26,7 @@ internal class LibraryExperienceController(
     }
     private val clips = SavedTrackClipStore(context)
     fun clips(id: String) = clips.observe(id)
-    suspend fun saveClip(track: EchoTrack, name: String, start: Long, end: Long) = clips.save(track.id, name, start, end, track.durationMs)
+    suspend fun saveClip(track: EchoTrack, name: String, start: Long, end: Long) = clips.save(track.id, name, start, end, track.durationMs, track.title)
     suspend fun renameClip(id: String, name: String) = clips.rename(id, name)
     suspend fun deleteClip(id: String) = clips.delete(id)
     fun bookmarks(id: String) = repository.observeBookmarks(id)

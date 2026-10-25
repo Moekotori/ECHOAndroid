@@ -23,15 +23,15 @@ internal fun PlayerCoverLayout(
     artwork: @Composable ColumnScope.() -> Unit,
     details: @Composable ColumnScope.() -> Unit,
 ) {
+    // Keep the two scroll positions when resizing crosses the layout breakpoint.
+    val portraitScroll = rememberScrollState()
+    val detailsScroll = rememberScrollState()
     BoxWithConstraints(modifier) {
         val viewportHeight = maxHeight
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
-        val detailsMinimum = minimumDetailsWidth * fontScale
-        // Leave a usable artwork pane even when the style needs a wider transport row.
-        val shortLandscape = maxWidth > maxHeight && maxHeight < 600.dp
-        if (maxWidth >= maxOf(480.dp, detailsMinimum + 144.dp + 24.dp) &&
-            (shortLandscape || maxWidth >= 720.dp * fontScale)) {
-            val detailsWidth = maxOf((maxWidth - 24.dp) * (1.3f / 2.3f), detailsMinimum)
+        val detailsWidth = playerSidePaneWidth(maxWidth.value, maxHeight.value, fontScale,
+            minimumDetailsWidth.value, 144f, 24f, 1.3f / 2.3f)
+        if (detailsWidth != null) {
             CompositionLocalProvider(LocalPlayerCoverLandscape provides true) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 Column(
@@ -40,8 +40,8 @@ internal fun PlayerCoverLayout(
                     content = artwork,
                 )
                 Column(
-                    Modifier.width(detailsWidth).fillMaxHeight()
-                        .verticalScroll(rememberScrollState()).heightIn(min = viewportHeight),
+                    Modifier.width(detailsWidth.dp).fillMaxHeight()
+                        .verticalScroll(detailsScroll).heightIn(min = viewportHeight),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                     content = details,
@@ -50,7 +50,7 @@ internal fun PlayerCoverLayout(
             }
         } else {
             Column(
-                Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                Modifier.fillMaxWidth().verticalScroll(portraitScroll)
                     .height(maxOf(maxHeight, minimumPortraitHeight)),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_inline_play_next">Show Play next in song rows</string>
+    <string name="library_inline_play_next_note">Add songs without opening the action menu. Hidden during selection.</string>
+    <string name="library_inline_play_next_track">Play %1$s next</string>
+</resources>

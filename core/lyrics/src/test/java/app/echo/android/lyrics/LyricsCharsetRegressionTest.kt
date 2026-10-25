@@ -5,15 +5,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class LyricsCharsetRegressionTest {
-    @Test fun explicitEncodingResolvesAmbiguousShortTextAndStripsBom() {
-        val bytes = "안녕".toByteArray(Charset.forName("EUC-KR"))
-        val selected = EchoLyricsTextDecoder.decodeResult(bytes, "EUC-KR")!!
-        assertEquals("안녕", selected.text)
-        assertEquals("EUC-KR", selected.charset)
-        assertFalse(selected.lossy)
-        assertEquals("Hello", EchoLyricsTextDecoder.decodeResult(byteArrayOf(-17, -69, -65) + "Hello".toByteArray(), "UTF-8")?.text)
-        assertNull(EchoLyricsTextDecoder.decodeResult(byteArrayOf(0xe9.toByte()), "UTF-8"))
-        assertNull(EchoLyricsTextDecoder.decodeResult(bytes, "unknown-charset"))
+    @Test fun asciiHeaderDoesNotHideTheActualLyricEncoding() {
+        val header = "[ti:" + "Introduction ".repeat(6000) + "]\n"
+        val samples = listOf(
+            "Big5" to "繁體中文 愛音樂 今天我們一起聽歌",
+            "Shift_JIS" to "夜に駆ける 君の声が聞こえる カタオモイ",
+            "EUC-KR" to "사랑 노래 오늘 우리 함께 하늘 바다",
+        )
+        val failures = samples.mapNotNull { (encoding, body) ->
+            val text = header + "[00:01.00]$body\n[00:04.00]$body"
+            val decoded = EchoLyricsTextDecoder.decodeResult(text.toByteArray(Charset.forName(encoding)))
+            if (decoded?.text == text) null else "$encoding became ${decoded?.charset}"
+        }
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
     @Test fun legacyLyricsDoNotBecomeOtherLanguages() {
         val samples = listOf(

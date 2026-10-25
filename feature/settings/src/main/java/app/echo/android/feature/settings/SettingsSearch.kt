@@ -178,6 +178,7 @@ private val indexedSettings = listOf(
         keywords = *intArrayOf(R.string.settings_shuffle_rules_summary)),
     item(SettingsCategory.Playback, R.string.settings_section_transition),
     item(SettingsCategory.Playback, R.string.settings_section_volume),
+    item(SettingsCategory.Playback, R.string.effects_panel_open, anchor = R.string.effects_panel_title),
     item(SettingsCategory.Playback, R.string.stop_on_task_removed_title, anchor = R.string.settings_section_listening,
         keywords = *intArrayOf(R.string.stop_on_task_removed_detail)),
     item(SettingsCategory.Playback, R.string.settings_section_lyrics),

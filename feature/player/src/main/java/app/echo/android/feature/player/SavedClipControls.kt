@@ -16,7 +16,8 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun SavedClipControls(track: EchoTrack, start: Long, end: Long, actions: TrackToolsActions,
     available: Boolean, onLoad: suspend (EchoSavedTrackClip) -> Unit) {
-    val clips by remember(track.id) { actions.clips(track.id) }.collectAsState(emptyList())
+    var showAll by remember { mutableStateOf(false) }
+    val clips by remember(track.id, showAll) { actions.clips(if (showAll) "" else track.id) }.collectAsState(emptyList())
     val scope = rememberCoroutineScope()
     var editing by remember(track.id) { mutableStateOf(false) }
     var selected by remember(track.id) { mutableStateOf<EchoSavedTrackClip?>(null) }
@@ -31,20 +32,23 @@ internal fun SavedClipControls(track: EchoTrack, start: Long, end: Long, actions
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(stringResource(R.string.saved_clips_title), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(R.string.saved_clips_detail), style = MaterialTheme.typography.bodySmall)
-        OutlinedButton(onClick = { selected = null; name = ""; editing = true },
+        Text("${trackToolsTime(start)} – ${trackToolsTime(end)}", style = MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick = { selected = null; name = ""; failed = false; editing = true },
             enabled = !busy && EchoSavedTrackClip("", track.id, "", start, end).isPlayable(track.durationMs)) {
             Text(stringResource(R.string.saved_clips_save))
         }
+        TextButton(onClick = { showAll = !showAll }) { Text(stringResource(if (showAll) R.string.saved_clips_current else R.string.saved_clips_all)) }
         if (failed) Text(stringResource(R.string.saved_clips_error), color = MaterialTheme.colorScheme.error)
-        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 260.dp)) { items(clips, key = { it.id }) { clip ->
+        if (clips.isNotEmpty()) LazyColumn(Modifier.fillMaxWidth().heightIn(max = 260.dp)) { items(clips, key = { it.id }) { clip ->
             Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                 Text(clip.label, style = MaterialTheme.typography.titleSmall)
+                if (showAll) Text(clip.trackTitle.ifBlank { stringResource(R.string.saved_clips_other_track) }, style = MaterialTheme.typography.bodySmall)
                 Text("${trackToolsTime(clip.startMs)} – ${trackToolsTime(clip.endMs)}", style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { run { onLoad(clip) } }, enabled = !busy && available && clip.isPlayable(track.durationMs)) {
+                    TextButton(onClick = { run { onLoad(clip) } }, enabled = !busy && available && clip.trackId == track.id && clip.isPlayable(track.durationMs)) {
                         Text(stringResource(R.string.saved_clips_load))
                     }
-                    TextButton(onClick = { selected = clip; name = clip.label; editing = true }, enabled = !busy) {
+                    TextButton(onClick = { selected = clip; name = clip.label; failed = false; editing = true }, enabled = !busy) {
                         Text(stringResource(R.string.saved_clips_rename))
                     }
                     TextButton(onClick = { run { actions.deleteClip(clip.id) } }, enabled = !busy) {
@@ -56,8 +60,11 @@ internal fun SavedClipControls(track: EchoTrack, start: Long, end: Long, actions
     }
     if (editing) AlertDialog(onDismissRequest = { if (!busy) editing = false },
         title = { Text(stringResource(if (selected == null) R.string.saved_clips_save else R.string.saved_clips_rename)) },
-        text = { OutlinedTextField(name, { name = it.take(100) }, singleLine = true, enabled = !busy,
-            label = { Text(stringResource(R.string.saved_clips_name)) }) },
+        text = { Column {
+            OutlinedTextField(name, { name = it.take(100) }, singleLine = true, enabled = !busy,
+                label = { Text(stringResource(R.string.saved_clips_name)) })
+            if (failed) Text(stringResource(R.string.saved_clips_error), color = MaterialTheme.colorScheme.error)
+        } },
         confirmButton = { TextButton(enabled = !busy && name.isNotBlank(), onClick = {
             val clip = selected
             run {

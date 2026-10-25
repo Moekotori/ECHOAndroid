@@ -42,6 +42,8 @@ class EchoPlaybackService : MediaLibraryService() {
     private var audioRoutePlayback: EchoAudioRoutePlaybackController? = null
     private var surfaceProgressJob: Job? = null
     private var podcastProgress: EchoPodcastProgressBinding? = null
+    private var audioPipelineBinding: EchoAudioPipelineBinding? = null
+    private val audioPipelineState by lazy { (application as? EchoAudioPipelineOwner)?.audioPipelineState ?: EchoAudioPipelineState() }
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun attachBaseContext(base: Context) {
@@ -138,6 +140,7 @@ class EchoPlaybackService : MediaLibraryService() {
                     EchoPlaybackProcessRuntime.equalizerController().processor,
                     smartMixer,
                     EchoPlaybackProcessRuntime.channelBalanceController().processor,
+                    audioPipelineState = audioPipelineState,
                 ),
             )
             .setLoadControl(EchoPlaybackLoadControl())
@@ -169,6 +172,7 @@ class EchoPlaybackService : MediaLibraryService() {
             }
 
         player = exoPlayer
+        audioPipelineBinding = EchoAudioPipelineBinding(exoPlayer, audioPipelineState)
         audioFocus = EchoAudioFocusController(this, exoPlayer, serviceScope,
             EchoPlaybackProcessRuntime::canContinueAudioInteraction)
         podcastProgress = EchoPodcastProgressBinding(exoPlayer, serviceScope).also(exoPlayer::addListener)
@@ -298,6 +302,8 @@ class EchoPlaybackService : MediaLibraryService() {
 
     override fun onDestroy() {
         EchoPlaybackProcessRuntime.setAudioInteractionGate(null)
+        audioPipelineBinding?.close()
+        audioPipelineBinding = null
         manualFade?.close()
         manualFade = null
         abLoop?.close()

@@ -9,5 +9,8 @@
     <string name="saved_clips_name">片段名称</string>
     <string name="saved_clips_confirm">保存</string>
     <string name="saved_clips_cancel">取消</string>
-    <string name="saved_clips_error">片段操作失败，请检查区间、名称和可用存储空间。</string>
+    <string name="saved_clips_error">片段操作失败，请检查区间和名称，或删除部分片段后重试。</string>
+    <string name="saved_clips_all">查看本机所有片段</string>
+    <string name="saved_clips_current">仅查看当前歌曲</string>
+    <string name="saved_clips_other_track">其他歌曲</string>
 </resources>

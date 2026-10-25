@@ -38,6 +38,7 @@ internal fun SettingsUsbContent(
     var showDetails by rememberSaveable { mutableStateOf(false) }
     var showTestResult by rememberSaveable { mutableStateOf(false) }
     UsbOutputDevicePanel(output)
+    UsbFormatRecovery(status.diagnostics, usbBitPerfectEnabled, options, onOptionsChange)
     UsbSettingsSection(title = stringResource(R.string.usb_page_output_mode), contentSpacing = 8.dp) {
         SettingsSwitchRow(
             title = stringResource(R.string.settings_usb_exclusive),
@@ -49,6 +50,7 @@ internal fun SettingsUsbContent(
     }
     UsbDopControls(options, status.diagnostics, onOptionsChange)
     UsbOutputFormatControls(options, status.diagnostics, usbBitPerfectEnabled, onOptionsChange)
+    UsbConversionReadout(status.diagnostics)
     UsbSettingsSection(stringResource(R.string.usb_param_transport), secondary = true) {
         val bufferLabel = stringResource(when (options.bufferMode) {
             EchoUsbBufferMode.Responsive -> R.string.usb_buffer_responsive

@@ -68,8 +68,6 @@ class LyricsRegressionTest {
         }
         val bytes = encoded(text)
         assertEquals(text, EchoLyricsTextDecoder.decode(bytes))
-        assertEquals(text, EchoLyricsTextDecoder.decodeResult(bytes, "UTF-8")?.text)
-        assertNull(EchoLyricsTextDecoder.decodeResult(bytes, "GB18030"))
         assertNull(EchoLyricsTextDecoder.decodeResult(encoded("\u0000")))
     }
 }

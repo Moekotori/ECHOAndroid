@@ -291,7 +291,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             "echo_title" to track.title, "echo_artist" to track.artist, "echo_album" to track.album.orEmpty(), "echo_duration_ms" to track.durationMs.toString()))
         lyricsController.saveEditedLyrics(trackId, enriched)
     }
-    fun resumeLocalPlayback() = playbackController.resumePlayback()
+    suspend fun playSavedClip(clip: app.echo.android.model.library.EchoSavedTrackClip) =
+        playbackController.setAbLoop(clip.trackId, clip.startMs, clip.endMs, startPlayback = true)
 
     suspend fun setAbLoop(trackId: String?, startMs: Long, endMs: Long) = playbackController.setAbLoop(trackId, startMs, endMs)
     val playbackControls: StateFlow<PlaybackControlsState> = playbackController.playbackControls
@@ -1272,16 +1273,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    suspend fun previewLyricsImport(uri: Uri, charset: String?): EchoLyrics = lyricsController.previewImport(uri, charset)
-
-    fun importLyricsDocument(trackId: String, lyrics: EchoLyrics) {
-        lyricsController.importLyricsDocument(lyrics, trackId) { imported, version ->
-            writeImportedLyricsToFile(trackId, imported, version)
-        }
-    }
-
     private fun writeImportedLyricsToFile(trackId: String, lyrics: EchoLyrics, version: Long) {
         viewModelScope.launch {
+            val track = libraryController.trackById(trackId) ?: return@launch
+            if (!app.echo.android.lyrics.LyricsClipPolicy.canMirrorToWholeFile(trackId, track.clipStartMs, track.clipEndMs)) return@launch
             // The full imported selection is already durable. Only mirror it to audio tags
             // when ordinary LRC can retain its timing, auxiliary text and vocal fields.
             val text = withContext(Dispatchers.Default) {

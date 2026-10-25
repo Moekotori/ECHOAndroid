@@ -1,5 +1,7 @@
 package app.echo.android.playback
 
+import app.echo.android.model.playback.EchoPcmReadout
+import app.echo.android.model.playback.EchoUsbConversionDiagnostics
 import android.content.Context
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
@@ -16,8 +18,10 @@ import kotlin.math.abs
 internal class EchoUsbFormatAudioProcessor(
     private val selectOutput: (AudioProcessor.AudioFormat) -> AudioProcessor.AudioFormat?,
     private val backend: UsbResamplerBackend,
+    private val diagnostics: (EchoUsbConversionDiagnostics?) -> Unit = {},
 ) : BaseAudioProcessor() {
-    constructor(context: Context) : this(usbFormatSelector(context), EchoUsbResamplerNative)
+    constructor(context: Context, pipeline: EchoAudioPipelineState) : this(usbConversionComponents(context, pipeline))
+    private constructor(parts: UsbConversionComponents) : this(parts.selector, EchoUsbResamplerNative, parts.reporter)
     private var handle = 0L
     private var pendingConversion = false
     private var draining = false
@@ -30,7 +34,16 @@ internal class EchoUsbFormatAudioProcessor(
 
     override fun onConfigure(format: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         pendingConversion = false
-        val target = selectOutput(format) ?: return AudioProcessor.AudioFormat.NOT_SET
+        diagnostics(null)
+        val target = selectOutput(format)
+        if (target == null) {
+            format.pcmReadout()?.let { diagnostics(EchoUsbConversionDiagnostics(it, it)) }
+            return AudioProcessor.AudioFormat.NOT_SET
+        }
+        val sourceReadout = format.pcmReadout()
+        val targetReadout = target.pcmReadout()
+        val negotiation = if (sourceReadout != null && targetReadout != null)
+            EchoUsbConversionDiagnostics(sourceReadout, targetReadout) else null
         bits = when (format.encoding) {
             C.ENCODING_PCM_16BIT, C.ENCODING_PCM_16BIT_BIG_ENDIAN -> 16
             C.ENCODING_PCM_24BIT, C.ENCODING_PCM_24BIT_BIG_ENDIAN -> 24
@@ -42,12 +55,15 @@ internal class EchoUsbFormatAudioProcessor(
             C.ENCODING_PCM_24BIT_BIG_ENDIAN, C.ENCODING_PCM_32BIT_BIG_ENDIAN)
         if (format.sampleRate !in 8_000..384_000 || format.channelCount !in 1..8)
             throw AudioProcessor.UnhandledAudioFormatException(format)
-        if (target == format)
+        if (target == format) {
+            diagnostics(negotiation)
             return AudioProcessor.AudioFormat.NOT_SET
+        }
         if (!backend.available) throw AudioProcessor.UnhandledAudioFormatException(format)
         inputFrameBytes = format.channelCount * abs(bits) / 8
         chunkFrames = minOf(1024, (6144L * format.sampleRate / target.sampleRate).toInt().coerceAtLeast(1))
         pendingConversion = true
+        diagnostics(negotiation)
         return target
     }
 
@@ -106,7 +122,7 @@ internal class EchoUsbFormatAudioProcessor(
         tailDrained = written == 0
     }
     private fun close() { if (handle != 0L) backend.close(handle); handle = 0L }
-    override fun onReset() { close(); inputScratch = EMPTY_BUFFER; pendingConversion = false; draining = false; tailDrained = true }
+    override fun onReset() { diagnostics(null); close(); inputScratch = EMPTY_BUFFER; pendingConversion = false; draining = false; tailDrained = true }
     companion object { private const val OUTPUT_BYTES = 8192 * 2 * 4 }
 }
 
@@ -132,11 +148,12 @@ internal object EchoUsbResamplerNative : UsbResamplerBackend {
 }
 
 @UnstableApi
-private fun usbFormatSelector(context: Context): (AudioProcessor.AudioFormat) -> AudioProcessor.AudioFormat? {
+private fun usbFormatSelector(context: Context, requested: (app.echo.android.model.playback.EchoUsbOutputOptions) -> Unit): (AudioProcessor.AudioFormat) -> AudioProcessor.AudioFormat? {
     val probe = UsbAudioProbe(context)
     return selector@ { format ->
         if (!EchoPlaybackProcessRuntime.usbExclusiveEnabled || EchoPlaybackProcessRuntime.usbBitPerfectEnabled) return@selector null
         val options = EchoPlaybackProcessRuntime.usbOutputOptions
+        requested(options)
         if (options.sampleRateHz == 0 && options.bitDepth == 0 && options.channelCount == 0) return@selector null
         val snapshot = probe.snapshot()
         if (!snapshot.connected || !snapshot.permissionGranted) return@selector null
@@ -158,4 +175,28 @@ private fun usbFormatSelector(context: Context): (AudioProcessor.AudioFormat) ->
         val encoding = when (depth) { 16 -> C.ENCODING_PCM_16BIT; 24 -> C.ENCODING_PCM_24BIT; else -> C.ENCODING_PCM_32BIT }
         AudioProcessor.AudioFormat(rate, channels, encoding)
     }
+}
+
+@UnstableApi
+private fun AudioProcessor.AudioFormat.pcmReadout(): EchoPcmReadout? = pcmBits(encoding)?.let {
+    EchoPcmReadout(sampleRate, it, channelCount, encoding == C.ENCODING_PCM_FLOAT).takeIf { value -> value.valid }
+}
+
+private data class UsbConversionComponents(
+    val selector: (AudioProcessor.AudioFormat) -> AudioProcessor.AudioFormat?,
+    val reporter: (EchoUsbConversionDiagnostics?) -> Unit,
+)
+
+@UnstableApi
+private fun usbConversionComponents(context: Context, pipeline: EchoAudioPipelineState): UsbConversionComponents {
+    val owner = Any()
+    var options = app.echo.android.model.playback.EchoUsbOutputOptions()
+    val selector = usbFormatSelector(context) { options = it }
+    val reporter: (EchoUsbConversionDiagnostics?) -> Unit = { value ->
+        val enabled = EchoPlaybackProcessRuntime.usbExclusiveEnabled && !EchoPlaybackProcessRuntime.usbBitPerfectEnabled
+        pipeline.conversion(owner, if (enabled) value?.copy(
+            requestedSampleRateHz = options.sampleRateHz, requestedBitDepth = options.bitDepth,
+            requestedChannelCount = options.channelCount) else null)
+    }
+    return UsbConversionComponents(selector, reporter)
 }

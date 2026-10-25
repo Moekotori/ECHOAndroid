@@ -18,6 +18,11 @@ class SavedTrackClipCodecTest {
         try { SavedTrackClipCodec.encode(List(501) { clip.copy(id = "$it") }); fail("overflow accepted") }
         catch (_: IllegalArgumentException) { }
     }
+    @Test fun utf8CapacityIsEnforcedBeforeTheCharacterCountLimit() {
+        val clip = EchoSavedTrackClip("clip", "one", "歌".repeat(100), 0, 1_000, "曲".repeat(256))
+        try { SavedTrackClipCodec.encode(List(200) { clip.copy(id = "$it") }); fail("byte capacity accepted") }
+        catch (_: IllegalArgumentException) { }
+    }
     @Test fun hiddenMenuActionsSurvivePreferencesAndUnknownIdsAreIgnored() {
         val preferences = mutablePreferencesOf()
         val layout = EchoLibraryLayout(hiddenTrackActions = setOf(EchoTrackMenuAction.Delete, EchoTrackMenuAction.EditTags))

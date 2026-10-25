@@ -69,7 +69,7 @@ internal fun EchoNowPlayingHost(
         val tools = remember(viewModel) {
             val library = viewModel.libraryExperience
             app.echo.android.feature.player.TrackToolsActions(library::bookmarks, library::saveBookmark,
-                library::deleteBookmark, viewModel::setAbLoop, library::clips, library::saveClip, library::renameClip, library::deleteClip, viewModel::resumeLocalPlayback)
+                library::deleteBookmark, viewModel::setAbLoop, library::clips, library::saveClip, library::renameClip, library::deleteClip, viewModel::playSavedClip)
         }
         val libraryTrack = remember(track) { app.echo.android.model.library.EchoTrack(track.id, track.uri, track.title, track.artist,
             album = track.album, artworkUri = track.artworkUri, durationMs = track.durationMs, sampleRateHz = track.sampleRateHz,

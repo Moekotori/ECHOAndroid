@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="effects_session_changed">音频输出会话已变化，请开始系统输出播放后重试。</string>
+    <string name="effects_panel_missing">设备未提供系统音效面板。</string>
+    <string name="effects_panel_blocked">Android 未允许打开音效面板。</string>
+</resources>

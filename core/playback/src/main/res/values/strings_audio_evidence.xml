@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="effects_session_changed">The audio output session changed. Start system playback and try again.</string>
+    <string name="effects_panel_missing">No system audio effects panel is installed.</string>
+    <string name="effects_panel_blocked">Android did not allow opening the audio effects panel.</string>
+</resources>

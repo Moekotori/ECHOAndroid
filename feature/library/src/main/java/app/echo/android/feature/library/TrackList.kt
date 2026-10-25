@@ -34,6 +34,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
@@ -456,6 +457,13 @@ internal fun TrackContextMenu(
                 ).then(if (selecting) Modifier.semantics {
                     toggleableState = if (selected) ToggleableState.On else ToggleableState.Off
                 } else Modifier))
+            }
+            if (LocalLibraryPlayNext.current && !selecting && onPlayNext != null) {
+                IconButton(onClick = { onPlayNext(track) }) {
+                    EchoIcon(Icons.Rounded.PlaylistPlay,
+                        contentDescription = stringResource(L10nR.string.library_inline_play_next_track, track.libraryDisplayTitle(LocalLibraryFileNames.current)),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             AnimatedVisibility(
                 visible = showMoreAction && !selecting,

@@ -318,24 +318,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     migrationPreview?.let { preview -> app.echo.android.feature.settings.BackupMigrationPreview(preview, migrationBusy,
         onApply = viewModel::applyMigrationBackup, onDismiss = viewModel.libraryMigration::dismiss) }
     var lyricsImportTrackId by rememberSaveable { mutableStateOf<String?>(null) }
-    var lyricsPreviewTrackId by rememberSaveable { mutableStateOf<String?>(null) }
-    var lyricsPreviewUri by rememberSaveable { mutableStateOf<String?>(null) }
     val lyricsImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { lyricsUri ->
             persistReadPermission(lyricsUri)
             lyricsImportTrackId?.let { trackId ->
-                lyricsPreviewTrackId = trackId
-                lyricsPreviewUri = lyricsUri.toString()
+                viewModel.importLyricsForTrack(trackId, lyricsUri)
             }
         }
         lyricsImportTrackId = null
     }
-    lyricsPreviewTrackId?.let { trackId -> lyricsPreviewUri?.let { uri ->
-        app.echo.android.ui.playback.EchoLyricsImportPreviewHost(trackId, uri, viewModel) {
-            lyricsPreviewTrackId = null
-            lyricsPreviewUri = null
-        }
-    } }
     var artworkImportTrackId by rememberSaveable { mutableStateOf<String?>(null) }
     val artworkImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { artworkUri ->
@@ -1603,6 +1594,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onResumeOnAudioReconnectChange = viewModel::setResumeOnAudioReconnect,
                                 onReplayGainChange = viewModel::setReplayGain,
                                 onReplayGainModeChange = viewModel::setReplayGainMode,
+                                onOpenSystemAudioEffects = { app.echo.android.playback.EchoSystemAudioEffects.open(context, (context.applicationContext as EchoApplication).audioPipelineState, !echoLinkSession.castActive.value) },
+                                systemEffectsLocalPlayback = !castSessionActive,
                                 onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
                                 onPickImageBackground = { backgroundImageLauncher.launch(arrayOf("image/*")) },
                                 onPickStartupBackground = { startupBackgroundLauncher.launch(arrayOf("image/*")) },

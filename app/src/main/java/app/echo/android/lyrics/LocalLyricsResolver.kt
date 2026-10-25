@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import app.echo.android.data.LibraryTrackEntity
 import app.echo.android.data.DocumentSiblingFiles
+import app.echo.android.data.readCachedRemoteEmbeddedLyrics
 import app.echo.android.model.library.CueSheetPolicy
 import kotlinx.coroutines.CancellationException
 import app.echo.android.R
@@ -23,15 +24,17 @@ class LocalLyricsResolver(
     private val contentResolver: ContentResolver = context.contentResolver
     fun loadForTrack(track: LibraryTrackEntity, order: List<EchoLyricsSource> = EchoLyricsSource.entries.toList()): EchoLyrics? {
         val audioUri = CueSheetPolicy.playbackUri(track.contentUri)
-        val candidates by lazy { buildCandidateNames(track) }
+        val fileName by lazy { track.fileName ?: safely { audioDisplayName(audioUri) } }
+        val candidates by lazy { LyricsSidecarNames.candidates(fileName, track.title, track.clipStartMs > 0L || track.clipEndMs > 0L) }
+        val adaptSidecar: (EchoLyrics) -> EchoLyrics? = { LyricsClipPolicy.sidecar(it, fileName, track.clipStartMs, track.clipEndMs) }
         EchoLyricsOptions(sourceOrder = order).normalized.sourceOrder.forEach { source ->
             val result = if (source == EchoLyricsSource.Embedded) {
-                safely { loadEmbeddedLyrics(audioUri) }
+                safely { loadEmbeddedLyrics(track, audioUri)?.let { LyricsClipPolicy.embedded(it, track.clipStartMs, track.clipEndMs) } }
             } else {
                 val names = candidates.filter { it.endsWith(".spl", true) == (source == EchoLyricsSource.Spl) }
-                safely { loadFromFileUri(audioUri, names) } ?:
-                    safely { loadFromDocumentTree(audioUri, names) } ?:
-                    safely { loadFromMediaStore(track, names) }
+                safely { loadFromFileUri(audioUri, names, adaptSidecar, track.clipStartMs > 0L || track.clipEndMs > 0L) } ?:
+                    safely { loadFromDocumentTree(audioUri, names, adaptSidecar) } ?:
+                    safely { loadFromMediaStore(track, names, adaptSidecar) }
             }
             if (result != null) return result
         }
@@ -45,9 +48,9 @@ class LocalLyricsResolver(
             ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
     }
 
-    fun importFromUri(uri: Uri, charsetOverride: String? = null): EchoLyrics {
+    fun importFromUri(uri: Uri): EchoLyrics {
         val sourceLabel = displayName(uri) ?: uri.lastPathSegment
-        val text = readText(uri, charsetOverride)
+        val text = readText(uri)
             ?: throw IllegalArgumentException(context.getString(R.string.lyrics_read_failed))
         val lyrics = runCatching { text.attach(EchoLyricsParser.parse(text.text, sourceLabel = sourceLabel)) }
             .getOrElse { error ->
@@ -61,14 +64,14 @@ class LocalLyricsResolver(
             ?: throw IllegalArgumentException(context.getString(R.string.lyrics_file_empty))
     }
 
-    private fun loadFromFileUri(contentUri: String, candidates: List<String>): EchoLyrics? {
+    private fun loadFromFileUri(contentUri: String, candidates: List<String>, adapt: (EchoLyrics) -> EchoLyrics?, rankBeforeRead: Boolean): EchoLyrics? {
         val uri = runCatching { Uri.parse(contentUri) }.getOrNull() ?: return null
         if (uri.scheme != ContentResolver.SCHEME_FILE) return null
         val audioFile = uri.path?.let(::File) ?: return null
         val parent = audioFile.parentFile ?: return null
 
         val matches = sequence {
-            yieldAll(candidates)
+            if (!rankBeforeRead) yieldAll(candidates)
             var complete = true
             val files = java.nio.file.Files.newDirectoryStream(parent.toPath()).use { paths ->
                 paths.asSequence().take(4097).mapIndexedNotNull { index, path ->
@@ -77,29 +80,36 @@ class LocalLyricsResolver(
                     .map { it.fileName.toString() }
                     .filter { name -> LYRICS_EXTENSIONS.any { name.endsWith(it, true) } }.toList()
             }
-            yieldAll(LyricsSidecarNames.matching(candidates, files, complete).filter { it !in candidates })
+            val ranked = LyricsSidecarNames.matching(candidates, files, complete)
+            yieldAll(if (rankBeforeRead) ranked else ranked.filter { it !in candidates })
+            if (rankBeforeRead) yieldAll(candidates.filter { it !in ranked })
         }
         return matches
             .map { File(parent, it) }
             .filter { it.isFile && it.canRead() }
             .mapNotNull { file ->
                 readText(file)?.let { text -> runCatching { text.attach(EchoLyricsParser.parse(text.text, sourceLabel = file.name)) }.getOrNull() }
+                    ?.let(adapt)
                     ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
             }
             .firstOrNull()
     }
 
-    private fun loadFromDocumentTree(contentUri: String, candidates: List<String>): EchoLyrics? {
+    private fun loadFromDocumentTree(contentUri: String, candidates: List<String>, adapt: (EchoLyrics) -> EchoLyrics?): EchoLyrics? {
         val listing = DocumentSiblingFiles.read(contentResolver, Uri.parse(contentUri), LYRICS_EXTENSIONS) ?: return null
         val byName = listing.files.associateBy { it.name }
         return LyricsSidecarNames.matching(candidates, byName.keys, listing.complete).firstNotNullOfOrNull { name ->
             readText(byName.getValue(name).uri)?.let { text ->
                 safely { text.attach(EchoLyricsParser.parse(text.text, sourceLabel = name)) }
-            }?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
+            }?.let(adapt)?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
         }
     }
 
-    private fun loadEmbeddedLyrics(contentUri: String): EchoLyrics? {
+    private fun loadEmbeddedLyrics(track: LibraryTrackEntity, contentUri: String): EchoLyrics? {
+        if (track.source.startsWith("smb:") || track.source.startsWith("webdav:")) {
+            val text = readCachedRemoteEmbeddedLyrics(context.cacheDir, track) ?: return null
+            return EmbeddedLyricsReader.parse(EmbeddedLyricsText(text, "Embedded tags"))
+        }
         val uri = runCatching { Uri.parse(contentUri) }.getOrNull() ?: return null
         val embeddedText = runCatching {
             openLyricsInputStream(uri)?.use(EmbeddedLyricsReader::read)
@@ -110,7 +120,7 @@ class LocalLyricsResolver(
         }.getOrNull()
     }
 
-    private fun loadFromMediaStore(track: LibraryTrackEntity, candidates: List<String>): EchoLyrics? {
+    private fun loadFromMediaStore(track: LibraryTrackEntity, candidates: List<String>, adapt: (EchoLyrics) -> EchoLyrics?): EchoLyrics? {
         if (Uri.parse(CueSheetPolicy.playbackUri(track.contentUri)).authority != MediaStore.AUTHORITY) return null
         val location = LyricsSidecarLocation.fromLibraryFolder(track.relativePath) ?: return null
         if (candidates.isEmpty()) return null
@@ -160,15 +170,16 @@ class LocalLyricsResolver(
                 }
                 LyricsSidecarNames.matching(candidates, matches.keys, complete).firstNotNullOfOrNull { name ->
                     readText(matches.getValue(name))?.let { runCatching { it.attach(EchoLyricsParser.parse(it.text, sourceLabel = name)) }.getOrNull() }
+                        ?.let(adapt)
                         ?.takeIf { parsed -> parsed.lines.any { it.text.isNotBlank() } }
                 }
             }
     }
 
-    private fun readText(uri: Uri, charsetOverride: String? = null): EchoLyricsTextDecoder.Result? =
+    private fun readText(uri: Uri): EchoLyricsTextDecoder.Result? =
         runCatching {
             openLyricsInputStream(uri)?.use { input ->
-                EchoLyricsTextDecoder.decodeResult(input.readLimitedLyricsBytes(), charsetOverride)?.takeUnless { it.lossy }
+                EchoLyricsTextDecoder.decodeResult(input.readLimitedLyricsBytes())?.takeUnless { it.lossy }
             }
         }.getOrNull()
 
@@ -191,11 +202,6 @@ class LocalLyricsResolver(
 
     private tailrec fun Throwable.rootCause(): Throwable =
         cause?.takeIf { it !== this }?.rootCause() ?: this
-
-    private fun buildCandidateNames(track: LibraryTrackEntity): List<String> {
-        val fileName = track.fileName ?: safely { audioDisplayName(CueSheetPolicy.playbackUri(track.contentUri)) }
-        return LyricsSidecarNames.candidates(fileName, track.title)
-    }
 
     private fun audioDisplayName(contentUri: String): String? {
         val uri = runCatching { Uri.parse(contentUri) }.getOrNull() ?: return null

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -72,17 +73,20 @@ internal fun SignalEqUserPresets(
     var shareCurve by remember { mutableStateOf<List<EchoEqResponsePoint>>(emptyList()) }
     var showImport by remember { mutableStateOf(false) }
     val canSave = presets.size < EchoEqualizerUserPresets.MaxCount
-    val activeName = presets.firstOrNull { it.id == activeId }?.name
+    val activePreset = presets.firstOrNull { it.id == activeId }
+    val activeName = activePreset?.name
+    val modified = remember(activePreset, currentShare) {
+        activePreset != null && currentShare != null && activePreset.hasEdits(currentShare)
+    }
     EqBundleControls(presets, enabled, onImportBundle)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.eq_user_presets),
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-            )
-            if (activeId != null) {
+        Text(
+            stringResource(R.string.eq_user_presets),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium,
+        )
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (activeName != null && modified) {
                 EchoTextButton(
                     text = stringResource(R.string.eq_user_preset_update),
                     onClick = onUpdate,
@@ -90,7 +94,7 @@ internal fun SignalEqUserPresets(
                 )
             }
             EchoTextButton(
-                text = stringResource(R.string.eq_user_preset_save),
+                text = stringResource(if (activeName != null) R.string.eq_edits_save_as else R.string.eq_user_preset_save),
                 onClick = { editor = EqUserPresetEditor.Save(defaultSaveName) },
                 enabled = enabled && canSave,
             )
@@ -110,7 +114,12 @@ internal fun SignalEqUserPresets(
             }
         }
         if (activeName != null) {
-            SignalNote(stringResource(R.string.eq_user_preset_active, activeName))
+            SignalNote(stringResource(if (modified) R.string.eq_edits_modified else R.string.eq_user_preset_active, activeName))
+            if (modified) {
+                TextButton(onClick = { onApply(activePreset.id) }, enabled = enabled) {
+                    Text(stringResource(R.string.eq_edits_restore))
+                }
+            }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { showImport = true }, enabled = enabled && canSave, contentPadding = PaddingValues(horizontal = 0.dp)) {

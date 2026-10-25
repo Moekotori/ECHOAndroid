@@ -58,6 +58,18 @@ fun EchoPlaybackDiagnostics.toReadableLines(): List<String> = buildList {
     }
     add("bufferedMs=$bufferedMs")
     add("requestToken=$requestToken")
+    decoder.name?.let { add("decoder.name=$it") }
+    add("decoder.implementation=${decoder.implementation}")
+    add("decoder.audioEnabled=${decoder.audioEnabled}")
+    decoder.audioSessionId?.let { add("decoder.audioSessionId=$it") }
+    decoder.initializationDurationMs?.let { add("decoder.initializationMs=$it") }
+    add("decoder.initializations=${decoder.initializationCount}")
+    add("decoder.initializationFailures=${decoder.initializationFailureCount}")
+    decoder.failureStage?.let { add("decoder.lastFailureStage=$it") }
+    decoder.failureType?.let { add("decoder.lastFailureType=$it") }
+    add("decoder.initializationRecoveryObserved=${decoder.initializationRecoveryObserved}")
+    decoder.systemOutput?.let { add("systemOutput.audioTrackReported=$it") }
+    usbConversion?.let { add("usbConversion.negotiated=$it"); add("usbConversion.precision=${it.precision}") }
     codec?.let { add("codec=$it") }
     sampleRateHz?.let { add("sampleRateHz=$it") }
     decodedSampleRateHz?.let { add("decodedSampleRateHz=$it") }

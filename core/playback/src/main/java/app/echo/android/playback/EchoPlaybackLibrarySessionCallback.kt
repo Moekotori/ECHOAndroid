@@ -304,7 +304,18 @@ internal class EchoPlaybackLibrarySessionCallback(
                 }
             }
             EchoPlaybackSessionCommands.SET_AB_LOOP -> {
+                val playNow = args.getBoolean(EchoPlaybackSessionCommands.AB_LOOP_PLAY_NOW)
+                if (playNow && (controller.uid != android.os.Process.myUid() || args.getString("trackId") == null ||
+                        !EchoPlaybackProcessRuntime.canContinueAudioInteraction())) {
+                    return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))
+                }
                 val accepted = abLoop()?.set(args.getString("trackId"), args.getLong("startMs"), args.getLong("endMs")) == true
+                if (accepted && playNow) {
+                    // One application-looper command: a closed UI cannot leave only half the action applied.
+                    onUserCommand(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                    session.player.seekTo(args.getLong("startMs"))
+                    session.player.play()
+                }
                 Futures.immediateFuture(SessionResult(if (accepted) SessionResult.RESULT_SUCCESS else SessionError.ERROR_BAD_VALUE))
             }
             EchoPlaybackSessionCommands.EDIT_QUEUE -> {

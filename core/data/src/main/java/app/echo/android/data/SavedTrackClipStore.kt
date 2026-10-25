@@ -18,14 +18,14 @@ private val Context.savedTrackClips by preferencesDataStore(name = "echo-saved-t
 class SavedTrackClipStore(context: Context) {
     private val data = context.applicationContext.savedTrackClips
     private val key = stringPreferencesKey("clips")
-    fun observe(trackId: String) = data.data.map { SavedTrackClipCodec.decode(it[key]).filter { clip -> clip.trackId == trackId }
+    fun observe(trackId: String) = data.data.map { SavedTrackClipCodec.decode(it[key]).filter { clip -> trackId.isBlank() || clip.trackId == trackId }
         .sortedWith(compareBy({ it.startMs }, { it.endMs }, { it.id })) }.catch { error ->
         app.echo.android.model.error.EchoErrorLog.record(app.echo.android.model.error.EchoErrorSource.Library, "Saved clips could not be read", throwable = error)
         emit(emptyList())
     }.flowOn(kotlinx.coroutines.Dispatchers.Default)
-    suspend fun save(trackId: String, label: String, startMs: Long, endMs: Long, durationMs: Long) {
+    suspend fun save(trackId: String, label: String, startMs: Long, endMs: Long, durationMs: Long, trackTitle: String = "") = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         require(trackId.isNotBlank() && trackId.length <= 2048 && label.trim().length in 1..100)
-        val value = EchoSavedTrackClip(UUID.randomUUID().toString(), trackId, label.trim(), startMs, endMs)
+        val value = EchoSavedTrackClip(UUID.randomUUID().toString(), trackId, label.trim(), startMs, endMs, trackTitle.take(256))
         require(value.isPlayable(durationMs))
         data.edit { preferences ->
             val records = SavedTrackClipCodec.decode(preferences[key]).toMutableList()
@@ -33,14 +33,20 @@ class SavedTrackClipStore(context: Context) {
             if (index >= 0) records[index] = value.copy(id = records[index].id) else records.add(value)
             preferences[key] = SavedTrackClipCodec.encode(records)
         }
+
+        Unit
     }
-    suspend fun rename(id: String, label: String) {
+    suspend fun rename(id: String, label: String) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         require(label.trim().length in 1..100)
         data.edit { p -> p[key] = SavedTrackClipCodec.encode(SavedTrackClipCodec.decode(p[key]).map {
             if (it.id == id) it.copy(label = label.trim()) else it }) }
+
+        Unit
     }
-    suspend fun delete(id: String) {
+    suspend fun delete(id: String) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         data.edit { p -> p[key] = SavedTrackClipCodec.encode(SavedTrackClipCodec.decode(p[key]).filterNot { it.id == id }) }
+
+        Unit
     }
 }
 
@@ -54,7 +60,7 @@ internal object SavedTrackClipCodec {
         require(array.length() <= MaxRecords)
         return (0 until array.length()).map { i -> array.getJSONObject(i).let { value ->
             EchoSavedTrackClip(value.getString("id"), value.getString("trackId"), value.getString("label"),
-                value.getLong("startMs"), value.getLong("endMs"))
+                value.getLong("startMs"), value.getLong("endMs"), value.optString("trackTitle", "").take(256))
         } }.also { records ->
             require(records.map { it.id }.distinct().size == records.size)
             require(records.all { it.id.length in 1..100 && it.trackId.length in 1..2048 &&
@@ -65,7 +71,7 @@ internal object SavedTrackClipCodec {
         require(records.size <= MaxRecords)
         val array = JSONArray()
         records.forEach { clip -> array.put(JSONObject().put("id", clip.id).put("trackId", clip.trackId)
-            .put("label", clip.label).put("startMs", clip.startMs).put("endMs", clip.endMs)) }
+            .put("label", clip.label).put("trackTitle", clip.trackTitle.take(256)).put("startMs", clip.startMs).put("endMs", clip.endMs)) }
         return array.toString().also { require(it.length <= MaxChars && it.toByteArray(Charsets.UTF_8).size <= MaxChars) }
     }
 }

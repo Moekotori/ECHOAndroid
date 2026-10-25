@@ -53,4 +53,6 @@ data class EchoPlaybackDiagnostics(
     val requestToken: Long = 0L,
     val lastCommand: String? = null,
     val lastError: EchoPlaybackError? = null,
+    val decoder: EchoDecoderDiagnostics = EchoDecoderDiagnostics(),
+    val usbConversion: EchoUsbConversionDiagnostics? = null,
 )

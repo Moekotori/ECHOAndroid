@@ -70,7 +70,7 @@ class EchoLibraryRepository(
         DocumentTreeListingCache(java.io.File(appContext.cacheDir, "scan-saf-listings-v1.json"))
     }
     private val embeddedLyricsStore by lazy {
-        EmbeddedLyricsStore(java.io.File(appContext.cacheDir, "remote-embedded-lyrics-v1"))
+        EmbeddedLyricsStore(remoteEmbeddedLyricsDirectory(appContext.cacheDir))
     }
 
     private val maintenanceJob = repositoryScope.launch {
@@ -806,7 +806,7 @@ class EchoLibraryRepository(
     suspend fun readEmbeddedLyrics(trackId: String): String? = withContext(LibraryScanDispatchers.Limited) {
         val track = database.trackDao().getTrackById(trackId) ?: return@withContext null
         if (track.source.startsWith("smb:") || track.source.startsWith("webdav:")) {
-            return@withContext embeddedLyricsStore.read(track)
+            return@withContext readCachedRemoteEmbeddedLyrics(appContext.cacheDir, track)
         }
         val uri = android.net.Uri.parse(
             CueSheetPolicy.playbackUri(track.contentUri),

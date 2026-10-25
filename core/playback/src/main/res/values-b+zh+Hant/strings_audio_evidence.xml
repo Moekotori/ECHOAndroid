@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="effects_session_changed">音訊輸出工作階段已變更，請開始系統輸出播放後重試。</string>
+    <string name="effects_panel_missing">裝置未提供系統音效面板。</string>
+    <string name="effects_panel_blocked">Android 未允許開啟音效面板。</string>
+</resources>

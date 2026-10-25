@@ -17,13 +17,20 @@ class PlaybackDetailPreferencesTest {
     }
 
     @Test fun newDisplayAndFadeChoicesSurvivePreferencesAndBackup() {
-        val layout = EchoLibraryLayout(showFileNames = true)
+        val layout = EchoLibraryLayout(showFileNames = true, showPlayNext = true)
         val preferences = mutablePreferencesOf()
         LibraryLayoutPreferences.write(preferences, layout)
         assertTrue(LibraryLayoutPreferences.read(preferences).showFileNames)
+        assertTrue(LibraryLayoutPreferences.read(preferences).showPlayNext)
+        assertFalse(LibraryLayoutPreferences.read(mutablePreferencesOf()).showPlayNext)
+        LibraryLayoutPreferences.write(preferences, layout.copy(showPlayNext = false))
+        assertFalse(LibraryLayoutPreferences.read(preferences).showPlayNext)
+        val oldLayout = BackupExperienceCodec.library(org.json.JSONObject("{\"libraryLayout\":{\"showFileNames\":true}}"))!!
+        assertFalse(oldLayout.showPlayNext)
         val settings = EchoAppSettings(libraryLayout = layout, trackTransitions = EchoTrackTransitionOptions(playPauseFadeEnabled = false)).toBackupSettings()
         val decoded = EchoBackupCodec.decode(EchoBackupCodec.encode(EchoBackupDocument(settings = settings))).settings!!
         assertTrue(decoded.libraryLayout!!.showFileNames)
+        assertTrue(decoded.libraryLayout!!.showPlayNext)
         assertFalse(decoded.trackTransitions!!.playPauseFadeEnabled)
     }
 }

@@ -1,5 +1,7 @@
 package app.echo.android
 
+import app.echo.android.model.playback.withAudioPipeline
+
 import app.echo.android.model.radio.EchoRadioStation
 
 import android.app.Application
@@ -109,6 +111,8 @@ internal class PlaybackController(
     private val onTrackChanged: (String?) -> Unit,
     private val onTrackActivated: (String) -> Unit,
 ) {
+    private val audioPipelineState = (application as? app.echo.android.playback.EchoAudioPipelineOwner)?.audioPipelineState
+        ?: app.echo.android.playback.EchoAudioPipelineState()
     private var echoLinkPlaybackResolver: (suspend (EchoTrackRef) -> EchoTrackRef)? = null
     private val _playbackStatus = MutableStateFlow(EchoPlaybackStatus())
     val playbackStatus: StateFlow<EchoPlaybackStatus> = _playbackStatus.asStateFlow()
@@ -468,10 +472,6 @@ internal class PlaybackController(
         if (currentTrackId == trackId) resume?.invoke()
     }
 
-    fun resumePlayback() {
-        withController(playWhenReady = true) { recoverAndPlay() }
-    }
-
     fun playPause() {
         val playWhenReady = pendingControllerActions.playWhenReady ?: EchoPlaybackProcessRuntime.manualPlayIntent ?: controller
             ?.takeIf { it.isConnected && !shouldQueueControllerActionUntilSessionReady(sessionReadyForCommands) }
@@ -510,10 +510,11 @@ internal class PlaybackController(
     fun currentPositionMs(): Long = controller?.currentPosition?.coerceAtLeast(0L)
         ?: _playbackPosition.value.positionMs
 
-    suspend fun setAbLoop(trackId: String?, startMs: Long, endMs: Long): Boolean {
+    suspend fun setAbLoop(trackId: String?, startMs: Long, endMs: Long, startPlayback: Boolean = false): Boolean {
         val live = controller ?: return false
         val args = android.os.Bundle().apply {
             putString("trackId", trackId); putLong("startMs", startMs); putLong("endMs", endMs)
+            putBoolean(EchoPlaybackSessionCommands.AB_LOOP_PLAY_NOW, startPlayback)
         }
         val future = live.sendCustomCommand(EchoPlaybackSessionCommands.setAbLoop, args)
         return kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
@@ -934,6 +935,7 @@ internal class PlaybackController(
         usbAudioJob?.cancel()
         usbAudioJob = scope.launch {
             launch { EchoPlaybackProcessRuntime.autoMixStatus.collect { updatePlaybackStatusOptions() } }
+            launch { audioPipelineState.diagnostics.collect { updateUsbDiagnostics(usbAudioMonitor.status.value) } }
             launch {
                 EchoPlaybackProcessRuntime.bitPerfectStates.collect {
                     updateUsbDiagnostics(usbAudioMonitor.status.value)
@@ -999,6 +1001,7 @@ internal class PlaybackController(
             usbAudioStatus = usbAudioMonitor.status.value,
             sourceSampleRateHz = sourceSampleRateHz,
             outputRoute = outputRouteMonitor.route.value,
+            audioPipeline = audioPipelineState.diagnostics.value,
         ).withPlaybackError(displayedError).let { state ->
             if (displayedError != null && stickyErrorAutoSkipped && activePlaybackError == null) {
                 state.copy(
@@ -1059,6 +1062,7 @@ internal class PlaybackController(
         val diagnostics = _playbackDiagnostics.value.diagnostics
             .withUsbAudioStatus(status)
             .withOutputRoute(outputRouteMonitor.route.value)
+            .withAudioPipeline(audioPipelineState.diagnostics.value)
         updateState(_playbackDiagnostics, PlaybackDiagnosticsState(diagnostics, diagnostics.lastError))
         updateState(_playbackStatus, _playbackStatus.value.copy(diagnostics = diagnostics).withPlaybackOptions())
     }
@@ -1130,6 +1134,7 @@ internal class PlaybackController(
     private fun EchoPlaybackStatus.withPlaybackOptions(): EchoPlaybackStatus =
         copy(
             autoMix = EchoPlaybackProcessRuntime.autoMixStatus.value,
+            diagnostics = diagnostics.withAudioPipeline(audioPipelineState.diagnostics.value),
             sleepTimerRemainingMs = sleepTimerRemainingMs(),
             sleepTimerMode = EchoPlaybackProcessRuntime.sleepTimerMode,
             sleepTimerMinutes = EchoPlaybackProcessRuntime.sleepTimerRequestedMinutes,

@@ -27,6 +27,9 @@ internal fun SettingsPlaybackContent(
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
     audioInterruptionPolicy: String = "duck",
     sleepTimerFinishTrack: Boolean = true,
+    audioDiagnostics: app.echo.android.model.playback.EchoPlaybackDiagnostics = app.echo.android.model.playback.EchoPlaybackDiagnostics(),
+    onOpenSystemAudioEffects: () -> Unit = {},
+    systemEffectsLocalPlayback: Boolean = true,
     stopOnTaskRemoved: Boolean = false,
     onStopOnTaskRemovedChange: (Boolean) -> Unit = {},
     onAudioInterruptionPolicyChange: (String) -> Unit = {},
@@ -49,6 +52,7 @@ internal fun SettingsPlaybackContent(
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
 ) {
+    SystemAudioEffectsControl(audioDiagnostics, systemEffectsLocalPlayback, onOpenSystemAudioEffects)
     SettingsShuffleModeRow(shuffleOptions, onShuffleOptionsChange)
     SettingsSectionCard(title = stringResource(R.string.settings_section_listening)) {
         SettingsSwitchRow(title = stringResource(R.string.manual_fade_title),

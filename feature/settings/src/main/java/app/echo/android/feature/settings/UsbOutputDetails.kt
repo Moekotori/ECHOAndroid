@@ -83,6 +83,7 @@ internal fun UsbOutputDetails(d: EchoPlaybackDiagnostics, output: UsbOutputPrese
     }
     val evidenceNote = stringResource(R.string.dac_evidence_note)
     val ratesNote = stringResource(R.string.dac_rates_note)
+    SignalNote(stringResource(R.string.evidence_note))
     SignalNote(evidenceNote)
     SignalNote(ratesNote)
     val title = stringResource(R.string.settings_usb_exclusive)
