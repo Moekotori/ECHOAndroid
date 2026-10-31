@@ -166,7 +166,7 @@ internal fun AlbumDetailPage(
                     ) {
                         Spacer(Modifier.height(4.dp))
                         AlbumHero(album = album, palette = palette, tracks = loadedTracks, onOpenArtist = onOpenArtist)
-                        if (albumHasCueMovements(loadedTracks)) {
+                        if (remember(loadedTracks) { albumHasCueMovements(loadedTracks) }) {
                             Spacer(Modifier.height(14.dp))
                             AlbumCueBanner()
                         }

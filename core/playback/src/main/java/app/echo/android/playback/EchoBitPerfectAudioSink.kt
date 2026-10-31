@@ -46,7 +46,12 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         nextDsdDop = dsdDop
     }
 
-    override fun setListener(listener: AudioSink.Listener) { this.listener = listener }
+    override fun setListener(listener: AudioSink.Listener) {
+        this.listener = listener
+        // Forwarded methods still reach the wrapped DefaultAudioSink; it needs the listener
+        // too or its own callbacks can dereference a null one.
+        super.setListener(listener)
+    }
     override fun getFormatSupport(format: Format): Int =
         if (format.sampleMimeType == MimeTypes.AUDIO_RAW && format.pcmEncoding in INTEGER_ENCODINGS)
             SINK_FORMAT_SUPPORTED_DIRECTLY else SINK_FORMAT_UNSUPPORTED

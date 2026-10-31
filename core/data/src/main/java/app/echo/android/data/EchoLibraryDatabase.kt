@@ -546,6 +546,9 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
             }
         }
 
+        /** Summary-key prefix for album keys owned by non-local sources; see toSummaryKeySet. */
+        internal const val RemoteSummaryKeyPrefix = "remote||"
+
         internal const val RebuildAlbumSummariesSql =
             """
             INSERT INTO library_album_summaries (
@@ -623,7 +626,8 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
             GROUP BY COALESCE(NULLIF(relativePath, ''), '')
             """
 
-        internal const val RebuildAlbumSummariesForKeysSql =
+        /** WHERE must stay column-comparable so the (source, albumKey) index drives each scan batch. */
+        internal const val RebuildAlbumSummariesForLocalKeysSql =
             """
             INSERT INTO library_album_summaries (
                 albumKey, isRemote, title, albumArtist, artist, artworkUri,
@@ -652,13 +656,45 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 MAX(pinyinAlbum),
                 MAX(pinyinArtist)
             FROM visible_library_tracks AS library_tracks
-            WHERE albumKey IS NOT NULL AND trim(albumKey) != ''
-              AND (
+            WHERE (source = 'mediastore' AND albumKey IN (:keys))
+               OR (source = 'saf' AND albumKey IN (:keys))
+            GROUP BY
                 CASE
                     WHEN source = 'mediastore' OR source = 'saf' THEN albumKey
                     ELSE 'remote||' || source || '||' || albumKey
                 END
-              ) IN (:keys)
+            """
+
+        internal const val RebuildAlbumSummariesForRemoteKeysSql =
+            """
+            INSERT INTO library_album_summaries (
+                albumKey, isRemote, title, albumArtist, artist, artworkUri,
+                trackCount, durationMs, year, addedAtSeconds, pinyinTitle, pinyinArtist
+            )
+            SELECT
+                CASE
+                    WHEN source = 'mediastore' OR source = 'saf' THEN albumKey
+                    ELSE 'remote||' || source || '||' || albumKey
+                END,
+                CASE WHEN source = 'mediastore' OR source = 'saf' THEN 0 ELSE 1 END,
+                CASE WHEN album IS NULL OR trim(album) = '' THEN '未知专辑' ELSE album END,
+                CASE
+                    WHEN (source = 'mediastore' OR source = 'saf') AND albumKey LIKE '%::various artists' THEN '群星'
+                    WHEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END) IS NOT NULL
+                        THEN MAX(CASE WHEN albumArtist IS NOT NULL AND trim(albumArtist) != '' THEN albumArtist END)
+                    WHEN COUNT(DISTINCT artistKey) > 1 THEN '群星'
+                    ELSE MAX(CASE WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist END)
+                END,
+                MAX(CASE WHEN artist IS NOT NULL AND trim(artist) != '' THEN artist END),
+                MAX(artworkUri),
+                COUNT(*),
+                COALESCE(SUM(durationMs), 0),
+                MIN(CASE WHEN year IS NOT NULL AND year > 0 THEN year ELSE NULL END),
+                MAX(dateModifiedSeconds),
+                MAX(pinyinAlbum),
+                MAX(pinyinArtist)
+            FROM visible_library_tracks AS library_tracks
+            WHERE source IN (:sources) AND albumKey IN (:keys)
             GROUP BY
                 CASE
                     WHEN source = 'mediastore' OR source = 'saf' THEN albumKey
@@ -703,8 +739,10 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                 COALESCE(SUM(sizeBytes), 0),
                 MAX(dateModifiedSeconds)
             FROM visible_library_tracks AS library_tracks
-            WHERE (source = 'mediastore' OR source = 'saf')
-              AND COALESCE(NULLIF(relativePath, ''), '') IN (:keys)
+            WHERE (source = 'mediastore' AND relativePath IN (:keys))
+               OR (source = 'saf' AND relativePath IN (:keys))
+               OR (source = 'mediastore' AND relativePath IS NULL AND '' IN (:keys))
+               OR (source = 'saf' AND relativePath IS NULL AND '' IN (:keys))
             GROUP BY COALESCE(NULLIF(relativePath, ''), '')
             """
 

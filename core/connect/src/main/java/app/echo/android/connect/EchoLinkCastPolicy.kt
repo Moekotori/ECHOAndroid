@@ -52,12 +52,18 @@ object EchoLinkCastPolicy {
     const val PathPrefix = "/echo-link/cast/"
     const val ArtworkPathPrefix = "/echo-link/cast-art/"
     const val MaxConnections = 4
+    /** Phone-library streams stay open for a whole track; leave slots for paging and artwork. */
+    const val PhoneLibraryMaxConnections = 8
     const val TokenLength = 32
     const val IdleTimeoutMs = 20L * 60L * 1000L
     const val CopyBufferBytes = 128 * 1024
     const val SendBufferBytes = 256 * 1024
     const val HeaderSniffBytes = 256
+    /** soTimeout cannot bound writes; a peer that stops reading for this long is closed by a watchdog. */
+    const val WriteStallTimeoutMs = 30L * 1000L
     const val QualityOriginal = "original"
+
+    private val tokenRandom by lazy { SecureRandom() }
 
     fun kind(id: String, uri: String, sourceId: String?): EchoLinkCastKind {
         if (EchoLinkPlaybackUri.trackId(id, uri) != null) return EchoLinkCastKind.PcLibrary
@@ -127,7 +133,7 @@ object EchoLinkCastPolicy {
 
     fun newToken(): String {
         val bytes = ByteArray(TokenLength / 2)
-        SecureRandom().nextBytes(bytes)
+        tokenRandom.nextBytes(bytes)
         return bytes.joinToString("") { byte -> "%02x".format(byte) }
     }
 

@@ -359,34 +359,39 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         if (requestId != null) viewModel.onEmbeddedTagWriteAccessResult(requestId, granted)
     }
     LaunchedEffect(pendingEmbeddedTagWrite, launchedTagWriteRequestId) {
-        val pending = pendingEmbeddedTagWrite ?: return@LaunchedEffect
-        if (launchedTagWriteRequestId != null) return@LaunchedEffect
-        launchedTagWriteRequestId = pending.requestId
-        if (pending.needsStoragePermission) {
-            val permission = writeStoragePermissionName()
-            if (permission == null) {
-                launchedTagWriteRequestId = null
-                viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
-            } else {
-                storageTagWriteLauncher.launch(permission)
+        val pending = pendingEmbeddedTagWrite
+        when (tagWriteConsentLaunchDecision(pending?.requestId, launchedTagWriteRequestId)) {
+            TagWriteConsentLaunchDecision.Idle, TagWriteConsentLaunchDecision.DialogInFlight -> Unit
+            TagWriteConsentLaunchDecision.ClearLaunchedId -> launchedTagWriteRequestId = null
+            TagWriteConsentLaunchDecision.LaunchDialog -> if (pending != null) {
+                launchedTagWriteRequestId = pending.requestId
+                if (pending.needsStoragePermission) {
+                    val permission = writeStoragePermissionName()
+                    if (permission == null) {
+                        launchedTagWriteRequestId = null
+                        viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
+                    } else {
+                        storageTagWriteLauncher.launch(permission)
+                    }
+                    return@LaunchedEffect
+                }
+                val sender = pending.intentSender ?: runCatching {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        MediaStore.createWriteRequest(
+                            context.contentResolver,
+                            listOf(AndroidUri.parse(pending.contentUri)),
+                        ).intentSender
+                    } else {
+                        null
+                    }
+                }.getOrNull()
+                if (sender == null) {
+                    launchedTagWriteRequestId = null
+                    viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
+                } else {
+                    mediaStoreTagWriteLauncher.launch(IntentSenderRequest.Builder(sender).build())
+                }
             }
-            return@LaunchedEffect
-        }
-        val sender = pending.intentSender ?: runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                MediaStore.createWriteRequest(
-                    context.contentResolver,
-                    listOf(AndroidUri.parse(pending.contentUri)),
-                ).intentSender
-            } else {
-                null
-            }
-        }.getOrNull()
-        if (sender == null) {
-            launchedTagWriteRequestId = null
-            viewModel.onEmbeddedTagWriteAccessResult(pending.requestId, false)
-        } else {
-            mediaStoreTagWriteLauncher.launch(IntentSenderRequest.Builder(sender).build())
         }
     }
     val tagWriteSavedToFile = stringResource(R.string.tag_write_saved_to_file)
@@ -457,7 +462,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val lanCast by echoLinkSession.castPlayback.collectAsStateWithLifecycle()
     // 投送时播放页和迷你播放器显示远端设备的曲目与播放状态；进度走单独的 flow。
     val shellPlaybackStatus = remember(playbackStatus, lanCast) {
-        lanCast?.let { playbackStatus.withLanCast(it, echoLinkSession.castPosition.value.positionMs) } ?: playbackStatus
+        lanCast?.let { playbackStatus.withLanCast(it, positionMs = 0L) } ?: playbackStatus
     }
     val shellPositionFlow = if (lanCast != null) echoLinkSession.castPosition else viewModel.playbackPosition
     fun routedPlayPause() {

@@ -90,7 +90,17 @@ data class EchoListeningTrack(
     val album: String,
     val coverWebp: ByteArray?,
     val lines: List<EchoListeningLyricLine>,
-)
+) {
+    // ByteArray equality is reference-based by default, which defeats the StateFlow and
+    // remember() dedup that keeps identical room pushes from re-decoding the cover.
+    override fun equals(other: Any?): Boolean =
+        other is EchoListeningTrack && other.title == title && other.artist == artist &&
+            other.album == album && other.coverWebp.contentEquals(coverWebp) && other.lines == lines
+
+    override fun hashCode(): Int =
+        31 * (31 * (31 * title.hashCode() + artist.hashCode()) + album.hashCode()) +
+            (coverWebp?.contentHashCode() ?: 0) * 31 + lines.hashCode()
+}
 
 data class EchoListeningRoomSummary(
     val id: String,

@@ -425,9 +425,7 @@ fun ArtworkTile(
     placeholderIconSize: Dp? = null,
 ) {
     val shape = RoundedCornerShape(cornerRadius)
-    EchoArtworkImage(
-        artworkUri = artworkUri,
-        contentDescription = null,
+    BoxWithConstraints(
         modifier = modifier
             .then(
                 if (elevation > 0.dp) {
@@ -437,12 +435,26 @@ fun ArtworkTile(
                 },
             )
             .clip(shape),
-        shape = shape,
-        sizeClass = if (cornerRadius >= 24.dp) EchoArtworkSize.Hero else EchoArtworkSize.Thumbnail,
-        accent = accent,
-        showSignal = showSignal,
-        placeholderIconSize = placeholderIconSize,
-    )
+    ) {
+        EchoArtworkImage(
+            artworkUri = artworkUri,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            shape = shape,
+            // Decode tier follows the measured tile size; a style property like the corner
+            // radius says nothing about how many pixels the bitmap needs.
+            sizeClass = artworkSizeClassForWidth(maxWidth),
+            accent = accent,
+            showSignal = showSignal,
+            placeholderIconSize = placeholderIconSize,
+        )
+    }
+}
+
+internal fun artworkSizeClassForWidth(width: Dp): EchoArtworkSize = when {
+    width >= 180.dp -> EchoArtworkSize.Hero
+    width >= 96.dp -> EchoArtworkSize.Card
+    else -> EchoArtworkSize.Thumbnail
 }
 
 @Composable

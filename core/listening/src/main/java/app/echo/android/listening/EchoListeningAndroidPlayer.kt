@@ -13,6 +13,7 @@ import android.os.SystemClock
 import app.echo.android.model.listening.EchoListeningAudio
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -25,19 +26,25 @@ internal class EchoListeningAndroidPlayer(
     override val phase: StateFlow<EchoListeningAudio> = phaseFlow
 
     private val silence = ByteArray(FRAME_BYTES)
-    private var gain = 1f
-    @Volatile private var running = false
-    @Volatile private var halt = Halt.None
-    @Volatile private var session = 0
-    @Volatile private var track: AudioTrack? = null
+    @Volatile private var gain = 1f
+
+    // Every worker owns its control state; a previous worker that outlives its 1.5s join
+    // window must never see a revived "running" flag or clear the new session's track/focus.
+    private class SessionState(val pcmScratch: ByteArray = ByteArray(FRAME_BYTES)) {
+        @Volatile var running = true
+        @Volatile var halt = Halt.None
+        @Volatile var track: AudioTrack? = null
+        @Volatile var focusRequest: AudioFocusRequest? = null
+        @Volatile var floatOutput = false
+    }
+
+    @Volatile private var active: SessionState? = null
     private var worker: Thread? = null
-    private var focusRequest: AudioFocusRequest? = null
-    private var floatOutput = false
-    private val pcmScratch = ByteArray(FRAME_BYTES)
+    @Volatile private var session = 0
 
     override fun setVolume(volume: Float) {
         gain = volume.coerceIn(0f, 1f)
-        track?.setVolume(gain)
+        active?.track?.setVolume(gain)
     }
 
     override fun offer(packet: EchoListeningPacket) {
@@ -46,78 +53,87 @@ internal class EchoListeningAndroidPlayer(
 
     @Synchronized
     override fun startEpoch(epoch: Long) {
-        stopLocked()
+        val previousWorker = AtomicReference(stopLocked())
         jitter.reset(epoch)
         val id = ++session
-        halt = Halt.None
-        floatOutput = false
-        running = true
+        val state = SessionState()
+        active = state
         phaseFlow.value = EchoListeningAudio.Buffering
         worker = Thread({
             try {
-                runLoop()
+                previousWorker.getAndSet(null)?.join(1_500)
+                runLoop(state)
             } finally {
-                finishSession(id)
+                finishSession(id, state)
             }
         }, "echo-listening-audio").also { it.start() }
     }
 
     @Synchronized
     override fun stop() {
-        halt = Halt.User
+        active?.halt = Halt.User
         stopLocked()
         phaseFlow.value = EchoListeningAudio.Off
     }
 
-    private fun finishSession(id: Int) {
+    private fun finishSession(id: Int, state: SessionState) {
         if (id != session) return
-        phaseFlow.value = when (halt) {
+        phaseFlow.value = when (state.halt) {
             Halt.Focus -> EchoListeningAudio.Interrupted
             Halt.Failure -> EchoListeningAudio.Error
             else -> EchoListeningAudio.Off
         }
-        running = false
     }
 
-    private fun stopLocked() {
+    private fun stopLocked(): Thread? {
         session++
-        running = false
-        track?.pause()
+        val state = active
+        active = null
+        state?.running = false
+        state?.track?.pause()
         val current = worker
         worker = null
-        if (current != null && Thread.currentThread() !== current) current.join(1_500)
+        val previous = current?.takeIf { it !== Thread.currentThread() }
+        previous?.interrupt()
+        return previous
     }
 
-    private fun runLoop() {
+    private fun runLoop(state: SessionState) {
         var codec: MediaCodec? = null
         var audioTrack: AudioTrack? = null
         try {
-            if (!requestFocus()) {
-                halt = Halt.Failure
+            if (!state.running) return
+            if (!requestFocus(state)) {
+                state.halt = Halt.Failure
                 return
             }
+            if (!state.running) return
             codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_OPUS)
             codec.configure(opusFormat(), null, null, 0)
             codec.start()
             audioTrack = newTrack()
-            track = audioTrack
+            state.track = audioTrack
             audioTrack.setVolume(gain)
             audioTrack.play()
-            pump(codec, audioTrack)
+            pump(state, codec, audioTrack)
         } catch (_: Exception) {
-            if (halt == Halt.None) halt = Halt.Failure
+            if (state.halt == Halt.None) state.halt = Halt.Failure
         } finally {
-            track = null
+            state.track = null
             release(codec, audioTrack)
-            abandonFocus()
+            abandonFocus(state)
         }
     }
 
-    private fun pump(codec: MediaCodec, audioTrack: AudioTrack) {
+    private fun pump(state: SessionState, codec: MediaCodec, audioTrack: AudioTrack) {
         var pending: EchoListeningOutput? = null
         var receiving = false
-        while (running) {
-            if (pending == null) pending = jitter.poll(SystemClock.elapsedRealtime())
+        val bufferInfo = MediaCodec.BufferInfo()
+        while (state.running) {
+            if (pending == null) {
+                pending = jitter.poll(SystemClock.elapsedRealtime())
+                if (pending == null) jitter.awaitPacket(if (receiving) 5L else 10L)
+            }
             when (val frame = pending) {
                 is EchoListeningOutput.Packet -> {
                     val index = codec.dequeueInputBuffer(5_000)
@@ -137,34 +153,33 @@ internal class EchoListeningAndroidPlayer(
                     pending = null
                     if (!receiving) {
                         receiving = true
-                        phaseFlow.value = EchoListeningAudio.Receiving
+                        if (state === active) phaseFlow.value = EchoListeningAudio.Receiving
                     }
                 }
-                null -> Thread.sleep(if (receiving) 5 else 10)
+                null -> Unit
             }
-            drain(codec, audioTrack) {
+            drain(state, codec, audioTrack, bufferInfo) {
                 if (!receiving) {
                     receiving = true
-                    phaseFlow.value = EchoListeningAudio.Receiving
+                    if (state === active) phaseFlow.value = EchoListeningAudio.Receiving
                 }
             }
         }
     }
 
-    private fun drain(codec: MediaCodec, audioTrack: AudioTrack, onPcm: () -> Unit) {
-        val info = MediaCodec.BufferInfo()
-        while (running) {
+    private fun drain(state: SessionState, codec: MediaCodec, audioTrack: AudioTrack, info: MediaCodec.BufferInfo, onPcm: () -> Unit) {
+        while (state.running) {
             when (val index = codec.dequeueOutputBuffer(info, 0)) {
                 MediaCodec.INFO_TRY_AGAIN_LATER -> return
                 MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                     val format = codec.outputFormat
                     val rate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                     val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                    floatOutput = format.containsKey(MediaFormat.KEY_PCM_ENCODING) &&
+                    state.floatOutput = format.containsKey(MediaFormat.KEY_PCM_ENCODING) &&
                         format.getInteger(MediaFormat.KEY_PCM_ENCODING) == AudioFormat.ENCODING_PCM_FLOAT
                     if (rate != SAMPLE_RATE || channels != CHANNELS) {
-                        halt = Halt.Failure
-                        running = false
+                        state.halt = Halt.Failure
+                        state.running = false
                         return
                     }
                 }
@@ -173,7 +188,7 @@ internal class EchoListeningAndroidPlayer(
                     if (buffer != null && info.size > 0) {
                         buffer.position(info.offset)
                         buffer.limit(info.offset + info.size)
-                        writePcm(audioTrack, buffer, info.size)
+                        writePcm(state, audioTrack, buffer, info.size)
                         onPcm()
                     }
                     codec.releaseOutputBuffer(index, false)
@@ -184,45 +199,46 @@ internal class EchoListeningAndroidPlayer(
         }
     }
 
-    private fun writePcm(audioTrack: AudioTrack, buffer: ByteBuffer, size: Int) {
-        if (!floatOutput) {
+    private fun writePcm(state: SessionState, audioTrack: AudioTrack, buffer: ByteBuffer, size: Int) {
+        if (!state.floatOutput) {
             audioTrack.write(buffer, size, AudioTrack.WRITE_BLOCKING)
             return
         }
         buffer.order(ByteOrder.nativeOrder())
         val samples = size / 4
         var offset = 0
+        val scratch = state.pcmScratch
         while (offset < samples) {
-            val count = minOf(pcmScratch.size / 2, samples - offset)
+            val count = minOf(scratch.size / 2, samples - offset)
             for (index in 0 until count) {
                 val value = (buffer.float * 32767f).toInt().coerceIn(-32768, 32767)
-                pcmScratch[index * 2] = (value and 0xff).toByte()
-                pcmScratch[index * 2 + 1] = (value shr 8).toByte()
+                scratch[index * 2] = (value and 0xff).toByte()
+                scratch[index * 2 + 1] = (value shr 8).toByte()
             }
-            audioTrack.write(pcmScratch, 0, count * 2)
+            audioTrack.write(scratch, 0, count * 2)
             offset += count
         }
     }
 
-    private fun requestFocus(): Boolean {
+    private fun requestFocus(state: SessionState): Boolean {
         val manager = audioManager ?: return false
         val attributes = mediaAttributes()
         val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(attributes)
             .setOnAudioFocusChangeListener({ change ->
                 if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                    if (halt == Halt.None) halt = Halt.Focus
-                    running = false
+                    if (state.halt == Halt.None) state.halt = Halt.Focus
+                    state.running = false
                 }
             }, Handler(Looper.getMainLooper()))
             .build()
-        focusRequest = request
+        state.focusRequest = request
         return manager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
     }
 
-    private fun abandonFocus() {
-        val request = focusRequest ?: return
-        focusRequest = null
+    private fun abandonFocus(state: SessionState) {
+        val request = state.focusRequest ?: return
+        state.focusRequest = null
         audioManager?.abandonAudioFocusRequest(request)
     }
 

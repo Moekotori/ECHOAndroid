@@ -15,7 +15,9 @@ import java.net.Socket
 import java.net.SocketException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -67,6 +69,7 @@ class EchoLinkCastServer(
     private val metadata: ((String, Map<String, String>) -> EchoLinkHttpReply?)? = null,
     private val resolvePublication: ((String) -> Pair<EchoLinkCastPublication, Boolean>?)? = null,
     private val openArtwork: ((EchoLinkCastPublication, Long) -> EchoLinkCastBody?)? = null,
+    private val maxConnections: Int = EchoLinkCastPolicy.MaxConnections,
 ) {
     private val publications = ConcurrentHashMap<String, EchoLinkCastPublication>()
     private var preparedQueue: EchoLinkCastPreparedQueue? = null
@@ -76,7 +79,8 @@ class EchoLinkCastServer(
     private val serverSocket = AtomicReference<ServerSocket?>(null)
     private val acceptThread = AtomicReference<Thread?>(null)
     private val workers = AtomicReference(newWorkers())
-    private val connections = Semaphore(EchoLinkCastPolicy.MaxConnections)
+    private val stallWatchdog = AtomicReference<ScheduledExecutorService?>()
+    private val connections = Semaphore(maxConnections)
     private val lastActivityMs = AtomicLong(0L)
     private val activeClients = ConcurrentHashMap.newKeySet<Socket>()
 
@@ -98,6 +102,7 @@ class EchoLinkCastServer(
         lastActivityMs.set(nowMs())
         running.set(true)
         workers.set(newWorkers())
+        stallWatchdog.set(newStallWatchdog())
         val thread = Thread({ acceptLoop(socket) }, "echo-link-cast-accept")
         thread.isDaemon = true
         acceptThread.set(thread)
@@ -117,6 +122,7 @@ class EchoLinkCastServer(
         val abandoned = workers.getAndSet(newWorkers()).shutdownNow()
         // Cancelled queued tasks never reach their finally block to return the permit.
         repeat(abandoned.size) { connections.release() }
+        stallWatchdog.getAndSet(null)?.shutdownNow()
         port.set(0)
         lastActivityMs.set(0L)
     }
@@ -336,7 +342,7 @@ class EchoLinkCastServer(
                 return
             }
             client.soTimeout = 0
-            copyBody(source, output, contentLength)
+            copyBody(client, source, output, contentLength)
             output.flush()
         }
     }
@@ -420,7 +426,7 @@ class EchoLinkCastServer(
                 return
             }
             client.soTimeout = 0
-            copyBody(opened.stream, output, contentLength)
+            copyBody(client, opened.stream, output, contentLength)
             output.flush()
         }
     }
@@ -486,19 +492,33 @@ class EchoLinkCastServer(
         output.write(header.toByteArray(Charsets.US_ASCII))
     }
 
-    private fun copyBody(input: InputStream, output: OutputStream, limit: Long?) {
+    private fun copyBody(client: Socket, input: InputStream, output: OutputStream, limit: Long?) {
+        val progressMs = AtomicLong(nowMs())
+        val watchdog = stallWatchdog.get()
+        val check = watchdog?.scheduleWithFixedDelay({
+            if (nowMs() - progressMs.get() >= EchoLinkCastPolicy.WriteStallTimeoutMs) {
+                // Closing the socket unblocks the stalled write so the worker and its
+                // connection permit are freed instead of wedging all MaxConnections slots.
+                runCatching { client.close() }
+            }
+        }, EchoLinkCastPolicy.WriteStallTimeoutMs, EchoLinkCastPolicy.WriteStallTimeoutMs, TimeUnit.MILLISECONDS)
         val buffer = ByteArray(EchoLinkCastPolicy.CopyBufferBytes)
         var remaining = limit
-        while (remaining == null || remaining > 0L) {
-            val allowed = when (remaining) {
-                null -> buffer.size
-                else -> minOf(buffer.size.toLong(), remaining).toInt()
+        try {
+            while (remaining == null || remaining > 0L) {
+                val allowed = when (remaining) {
+                    null -> buffer.size
+                    else -> minOf(buffer.size.toLong(), remaining).toInt()
+                }
+                val read = input.read(buffer, 0, allowed)
+                if (read <= 0) break
+                output.write(buffer, 0, read)
+                progressMs.set(nowMs())
+                lastActivityMs.set(nowMs())
+                if (remaining != null) remaining -= read
             }
-            val read = input.read(buffer, 0, allowed)
-            if (read <= 0) break
-            output.write(buffer, 0, read)
-            lastActivityMs.set(nowMs())
-            if (remaining != null) remaining -= read
+        } finally {
+            check?.cancel(false)
         }
     }
 
@@ -509,8 +529,12 @@ class EchoLinkCastServer(
         if (totalLength != null) minOf(range?.second ?: Long.MAX_VALUE, totalLength - 1L)
         else range?.second
 
-    private fun newWorkers() = Executors.newFixedThreadPool(EchoLinkCastPolicy.MaxConnections) { runnable ->
+    private fun newWorkers() = Executors.newFixedThreadPool(maxConnections) { runnable ->
         Thread(runnable, "echo-link-cast-io").apply { isDaemon = true }
+    }
+
+    private fun newStallWatchdog() = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "echo-link-cast-stall").apply { isDaemon = true }
     }
 
     private data class CastHttpRequest(

@@ -143,13 +143,27 @@ class EchoLinkLanBrowser(
         resolving = true
         resolvingServiceName = next.serviceName
         val epoch = generation
+        val requestedName = next.serviceName
+        // Some OEM builds silently drop resolve callbacks; without a deadline one lost
+        // callback would leave `resolving` stuck and freeze every later discovery.
+        val deadline = Runnable {
+            if (epoch != generation || !started) return@Runnable
+            if (!resolving || resolvingServiceName != requestedName) return@Runnable
+            resolveAttempts.remove(requestedName.orEmpty())
+            lostServices.remove(requestedName)
+            resolvingServiceName = null
+            resolving = false
+            drainResolves()
+        }
+        mainHandler.postDelayed(deadline, ResolveTimeoutMs)
         runCatching {
             manager.resolveService(
                 next,
                 object : NsdManager.ResolveListener {
                     override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
                         mainHandler.post {
-                            if (epoch != generation || !started) return@post
+                            mainHandler.removeCallbacks(deadline)
+                            if (epoch != generation || !started || resolvingServiceName != requestedName) return@post
                             val name = serviceInfo.serviceName.orEmpty()
                             val attempts = (resolveAttempts[name] ?: 0) + 1
                             resolveAttempts[name] = attempts
@@ -173,7 +187,8 @@ class EchoLinkLanBrowser(
                             txt = EchoLinkDiscoveryPolicy.decodeTxt(serviceInfo.attributes.orEmpty()),
                         )
                         mainHandler.post {
-                            if (epoch != generation || !started) return@post
+                            mainHandler.removeCallbacks(deadline)
+                            if (epoch != generation || !started || resolvingServiceName != requestedName) return@post
                             resolveAttempts.remove(serviceInfo.serviceName.orEmpty())
                             if (device != null && device.serviceName !in lostServices) {
                                 _devices.update { current ->
@@ -189,6 +204,7 @@ class EchoLinkLanBrowser(
                 },
             )
         }.onFailure {
+            mainHandler.removeCallbacks(deadline)
             resolvingServiceName = null
             resolving = false
             drainResolves()
@@ -207,5 +223,6 @@ class EchoLinkLanBrowser(
 
     private companion object {
         const val MaxResolveAttempts = 3
+        const val ResolveTimeoutMs = 10_000L
     }
 }

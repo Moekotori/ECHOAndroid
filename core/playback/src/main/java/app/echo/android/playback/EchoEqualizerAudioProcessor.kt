@@ -155,6 +155,9 @@ class EchoEqualizerAudioProcessor(
         channelCount: Int,
         preampLinear: Float,
     ) {
+        // Buffer views follow the input order; big-endian sources must not be written native.
+        val order = inputBuffer.order()
+        output.order(order)
         val shortIn = inputBuffer.asShortBuffer()
         val shortOut = output.asShortBuffer()
         val frameCount = shortIn.remaining() / channelCount
@@ -200,6 +203,8 @@ class EchoEqualizerAudioProcessor(
         channelCount: Int,
         preampLinear: Float,
     ) {
+        val order = inputBuffer.order()
+        output.order(order)
         val intIn = inputBuffer.asIntBuffer()
         val intOut = output.asIntBuffer()
         val frameCount = intIn.remaining() / channelCount
