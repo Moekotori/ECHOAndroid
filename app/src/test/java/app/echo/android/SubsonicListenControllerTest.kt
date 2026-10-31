@@ -16,6 +16,23 @@ import org.junit.Test
 
 class SubsonicListenControllerTest {
     @Test
+    fun anotherAccountCannotReceiveThePreviousAccountListen() {
+        val first = SubsonicEndpoint("https://navidrome.example", "first", "pass")
+        val endpoint = AtomicReference<SubsonicEndpoint?>(first)
+        val submitted = ArrayList<SubmittedListen>()
+        val controller = SubsonicListenController(CoroutineScope(SupervisorJob() + Dispatchers.Unconfined), endpoint,
+            ioDispatcher = Dispatchers.Unconfined, submitListen = { _, song, submission, time ->
+                submitted += SubmittedListen(song, submission, time)
+            })
+        val status = playing(200_000).let { it.copy(track = it.track!!.copy(id = "${first.sourceId}:song:s1")) }
+        controller.onPlayback(status, position(0, 200_000))
+        val count = submitted.size
+        endpoint.set(SubsonicEndpoint(first.baseUrl, "second", "other"))
+        controller.onPlayback(status, position(150_000, 200_000))
+        assertEquals(count, submitted.size)
+    }
+
+    @Test
     fun scrobbleSendsListenTimeInMilliseconds() {
         val submitted = ArrayList<SubmittedListen>()
         val now = AtomicLong(1_700_000_000_000L)
@@ -106,7 +123,7 @@ class SubsonicListenControllerTest {
         EchoPlaybackStatus(
             state = EchoPlaybackState.Playing,
             track = EchoTrackRef(
-                id = "subsonic:demo:song:s1",
+                id = "${SubsonicEndpoint("https://navidrome.example", "user", "pass").sourceId}:song:s1",
                 uri = "https://navidrome.example/rest/stream.view?id=s1",
                 title = "Song",
                 artist = "Artist",

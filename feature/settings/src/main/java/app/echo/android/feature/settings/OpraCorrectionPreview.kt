@@ -92,7 +92,7 @@ internal fun OpraCorrectionPreview(
                         }
                     }
                     SignalEqCurve(state.previewCurve, live = !bypassed, showFrequencyLabels = true)
-                    if (bypassed) SignalNote(stringResource(L10nR.string.eq_bypassed), error = true)
+                    if (bypassed) SignalNote(stringResource(L10nR.string.signal_bypass_detail), error = true)
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -100,7 +100,7 @@ internal fun OpraCorrectionPreview(
                     ) {
                         Button(
                             onClick = onApplySelected,
-                            enabled = !state.loading && !current && !bypassed,
+                            enabled = !state.loading && !current && !bypassed && equalizer.supported,
                             modifier = Modifier.weight(1f).height(48.dp),
                             shape = RoundedCornerShape(16.dp),
                         ) {

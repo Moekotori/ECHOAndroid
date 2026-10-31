@@ -1,6 +1,8 @@
 package app.echo.android.feature.settings
 
-import androidx.compose.foundation.clickable
+import app.echo.android.design.echoClickable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -26,10 +28,11 @@ internal fun SignalDspSection(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val expansionLabel = stringResource(if (expanded) R.string.signal_expanded else R.string.signal_collapsed)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.65f))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.weight(1f).heightIn(min = 68.dp).clickable(onClick = onExpand),
+            Row(Modifier.weight(1f).heightIn(min = 68.dp).semantics { stateDescription = expansionLabel }.echoClickable(role = Role.Button, onClick = onExpand),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -40,14 +43,14 @@ internal fun SignalDspSection(
             EchoSwitch(checked, onChecked, enabled = enabled, modifier = Modifier.semantics { contentDescription = title })
         }
         EchoExpand(expanded) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                SignalNote(detail)
                 if (!checked && enabled) SignalNote(stringResource(R.string.signal_preset_while_off))
                 content()
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = onReset, enabled = enabled, contentPadding = PaddingValues(horizontal = 0.dp)) {
                         Text(stringResource(R.string.signal_reset_section))
                     }
-                    SignalHelpButton(title, detail)
                 }
             }
         }

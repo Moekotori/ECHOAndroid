@@ -45,6 +45,8 @@ Android 版可以独立使用；电脑联动需要运行支持 Echo Link 的 PC 
 
 声音功能的适用范围见 [均衡器与 OPRA](./docs/eq-opra.md)、[播放过渡](./docs/playback-transitions.md) 和 [USB 输出说明](./docs/usb-bit-perfect.md)。
 
+本地曲库的「音乐关系」可按作曲家、作品、乐章、指挥、演奏者、录音版本、参与者、厂牌与署名角色逐层查找，并查看范围统计、播放已载入曲目或加入队列；依赖文件中的明确标签，已有曲库可手动读取。支持范围见 [音乐关系浏览](./docs/music-relationships.md)。
+
 ### 歌词文件
 
 可以手动导入歌词，也会查找歌曲旁的同名歌词文件。支持 LRC / Enhanced LRC（`.lrc/.elrc/.lrcx`）、TTML（`.ttml/.dfxp/.xml`）、YRC、QRC（含 XML 包装）、KRC、SRT、WebVTT、ASS/SSA、SBV、SAMI（`.smi/.sami`）和纯文本。

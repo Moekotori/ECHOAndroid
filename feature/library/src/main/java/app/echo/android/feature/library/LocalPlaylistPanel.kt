@@ -96,7 +96,7 @@ internal fun LocalPlaylistPanel(
                 onCreateSmartPlaylist = experienceActions?.let { { editingSmart = null; smartEditorVisible = true } },
             )
             if (remoteManagement != null) TextButton(onClick = { remoteVisible = true }) {
-                Text(stringResource(L10nR.string.remote_playlist_manage))
+                Text(stringResource(L10nR.string.nav_manage))
             }
             if (toolsError) Text(stringResource(L10nR.string.smart_pin_error), color = MaterialTheme.colorScheme.error)
         }
@@ -137,7 +137,7 @@ internal fun LocalPlaylistPanel(
         }
     }
 
-    if (remoteVisible && remoteManagement != null) RemotePlaylistManager(remoteManagement) { remoteVisible = false }
+    if (remoteVisible && remoteManagement != null) NavidromeLibraryManager(remoteManagement) { remoteVisible = false }
     if (smartEditorVisible && experienceActions != null) SmartPlaylistEditor(editingSmart, experienceActions) { smartEditorVisible = false }
     if (createVisible) {
         PlaylistNameDialog(

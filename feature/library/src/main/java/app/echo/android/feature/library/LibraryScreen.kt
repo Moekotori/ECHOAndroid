@@ -11,6 +11,8 @@ import androidx.compose.foundation.border
 import app.echo.android.design.echoClickable
 import app.echo.android.design.echoCombinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +59,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -350,6 +353,7 @@ fun LibraryScreen(
     onRadioDirectoryQuery: (String) -> Unit = {},
     onOpenRadio: (() -> Unit)? = null,
     onOpenPodcasts: () -> Unit = {},
+    onOpenMusicRelations: (() -> Unit)? = null,
     onPinAlbumShortcut: ((AlbumSummary, Boolean) -> Unit)? = null,
     onPinPlaylistShortcut: ((EchoPlaylist, Boolean) -> Unit)? = null,
     libraryLayout: EchoLibraryLayout = EchoLibraryLayout(),
@@ -369,6 +373,10 @@ fun LibraryScreen(
     }
     val layout = remember(libraryLayout) { libraryLayout.normalized() }
     var editingLayout by rememberSaveable { mutableStateOf(false) }
+    var navidromeVisible by rememberSaveable { mutableStateOf(false) }
+    if (navidromeVisible && remotePlaylistManagement != null) NavidromeLibraryManager(remotePlaylistManagement) {
+        navidromeVisible = false
+    }
     val customizeLayout: (() -> Unit)? = if (onLibraryLayoutChange != null) ({ editingLayout = true }) else null
     val selectedMode = restoredLibraryViewMode(
         selectedModeIndex,
@@ -457,6 +465,13 @@ fun LibraryScreen(
 
     @Composable
     fun LocalLibraryBody(displayedSource: LibrarySourceMode) {
+        val modes = libraryPagerModes(displayedSource == LibrarySourceMode.Cloud, layout)
+        val pagerModes = if (selectedMode == LibraryViewMode.Radio) listOf(LibraryViewMode.Radio) else modes
+        val pager = key(pagerModes) {
+            rememberPagerState(
+                initialPage = pagerModes.indexOf(selectedMode).coerceAtLeast(0),
+            ) { pagerModes.size }
+        }
         Column(Modifier.fillMaxSize()) {
                 Column(Modifier.padding(end = 24.dp)) {
                     if (scanState.isScanning) LibraryScanStatus(scanState, onCancelScan)
@@ -467,7 +482,8 @@ fun LibraryScreen(
                         linkedLibraryAvailable = linkedLibraryAvailable,
                         onSelectSource = ::selectSource,
                         selectedMode = selectedMode,
-                        modes = libraryPagerModes(displayedSource == LibrarySourceMode.Cloud, layout),
+                        modes = modes,
+                        pager = pager.takeUnless { selectedMode == LibraryViewMode.Radio },
                         onCustomize = customizeLayout,
                         selectedSortMode = trackSortMode,
                         albumSortMode = albumSortMode,
@@ -484,12 +500,13 @@ fun LibraryScreen(
                         onAlbumSortModeChange = onAlbumSortModeChange,
                         onArtistSortModeChange = onArtistSortModeChange,
                         onFolderSortModeChange = onFolderSortModeChange,
+                        onOpenMusicRelations = onOpenMusicRelations.takeIf { displayedSource == LibrarySourceMode.Local },
                     )
                 }
                     Box(modifier = Modifier.weight(1f)) {
                         LibraryCategoryPager(
-                            modes = if (selectedMode == LibraryViewMode.Radio) listOf(LibraryViewMode.Radio)
-                                else libraryPagerModes(displayedSource == LibrarySourceMode.Cloud, layout),
+                            pager = pager,
+                            modes = pagerModes,
                             selectedMode = selectedMode,
                             onSelectMode = { selectedModeIndex = it.ordinal },
                             modifier = Modifier.fillMaxSize(),
@@ -707,7 +724,9 @@ fun LibraryScreen(
                             onRefresh = { onRefreshLinkedLibrary(libraryQuery.trim()) },
                         )
                     }
-                    LibrarySourceMode.Cloud -> Unit
+                    LibrarySourceMode.Cloud -> if (remotePlaylistManagement != null) {
+                        TextButton(onClick = { navidromeVisible = true }) { Text("Navidrome") }
+                    }
                 }
             },
         ) {
@@ -2003,6 +2022,7 @@ private fun LibraryBrowserHeader(
     onSelectSource: (LibrarySourceMode) -> Unit,
     selectedMode: LibraryViewMode,
     modes: List<LibraryViewMode>,
+    pager: PagerState?,
     onCustomize: (() -> Unit)?,
     selectedSortMode: LibraryTrackSortMode,
     albumSortMode: AlbumSortMode,
@@ -2013,6 +2033,7 @@ private fun LibraryBrowserHeader(
     onAlbumSortModeChange: (AlbumSortMode) -> Unit,
     onArtistSortModeChange: (ArtistSortMode) -> Unit,
     onFolderSortModeChange: (FolderSortMode) -> Unit,
+    onOpenMusicRelations: (() -> Unit)? = null,
 ) {
     if (showScanResultBanner) {
         LibraryScanResultBanner(scanState)
@@ -2020,7 +2041,10 @@ private fun LibraryBrowserHeader(
     if (selectedMode == LibraryViewMode.Radio) return
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
-            LibraryPagerTabs(selectedMode, onSelectMode, modes = modes)
+            LibraryPagerTabs(selectedMode, onSelectMode, modes = modes, pager = pager)
+        }
+        if (onOpenMusicRelations != null) TextButton(onClick = onOpenMusicRelations) {
+            Text(stringResource(L10nR.string.music_relations_title), color = MaterialTheme.colorScheme.onSurface)
         }
         when (selectedMode) {
             LibraryViewMode.Songs -> if (selectedSource == LibrarySourceMode.Local) {

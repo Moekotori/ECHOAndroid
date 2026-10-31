@@ -27,6 +27,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,11 +69,14 @@ internal fun SignalEqUserPresets(
     outputBound: Boolean = false,
     onBindToOutput: () -> Unit = {},
     onUnbindFromOutput: () -> Unit = {},
+    applyEnabled: Boolean = enabled,
 ) {
     var editor by remember { mutableStateOf<EqUserPresetEditor?>(null) }
     var sharePreset by remember { mutableStateOf<EchoEqualizerUserPreset?>(null) }
     var shareCurve by remember { mutableStateOf<List<EchoEqResponsePoint>>(emptyList()) }
     var showImport by remember { mutableStateOf(false) }
+    val canApply = enabled && applyEnabled
+    LaunchedEffect(canApply) { if (!canApply) showImport = false }
     val canSave = presets.size < EchoEqualizerUserPresets.MaxCount
     val activePreset = presets.firstOrNull { it.id == activeId }
     val activeName = activePreset?.name
@@ -116,13 +121,13 @@ internal fun SignalEqUserPresets(
         if (activeName != null) {
             SignalNote(stringResource(if (modified) R.string.eq_edits_modified else R.string.eq_user_preset_active, activeName))
             if (modified) {
-                TextButton(onClick = { onApply(activePreset.id) }, enabled = enabled) {
+                TextButton(onClick = { onApply(activePreset.id) }, enabled = canApply) {
                     Text(stringResource(R.string.eq_edits_restore))
                 }
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { showImport = true }, enabled = enabled && canSave, contentPadding = PaddingValues(horizontal = 0.dp)) {
+            TextButton(onClick = { showImport = true }, enabled = canApply && canSave, contentPadding = PaddingValues(horizontal = 0.dp)) {
                 Text(stringResource(R.string.eq_share_import))
             }
             TextButton(
@@ -136,16 +141,18 @@ internal fun SignalEqUserPresets(
                 Text(stringResource(R.string.eq_share_current))
             }
         }
+        if (enabled && !applyEnabled) SignalNote(stringResource(R.string.signal_presets_manage_only))
         if (!canSave) {
             SignalNote(stringResource(R.string.eq_user_preset_full))
         } else if (presets.isEmpty()) {
             SignalNote(stringResource(R.string.eq_user_preset_empty))
         }
         presets.forEach { preset ->
-            SignalEqUserPresetRow(
+            key(preset.id) { SignalEqUserPresetRow(
                 preset = preset,
                 active = preset.id == activeId,
                 enabled = enabled,
+                applyEnabled = canApply,
                 onApply = { onApply(preset.id) },
                 onRename = { editor = EqUserPresetEditor.Rename(preset.id, preset.name) },
                 onDelete = { onDelete(preset.id) },
@@ -154,7 +161,7 @@ internal fun SignalEqUserPresets(
                     shareCurve = emptyList()
                 },
                 showActions = true,
-            )
+            ) }
         }
     }
     editor?.let { current ->
@@ -180,68 +187,10 @@ internal fun SignalEqUserPresets(
         EqImportShareCodeDialog(
             onDismiss = { showImport = false },
             onImport = { code ->
-                onImportShareCode(code)
+                if (canApply) onImportShareCode(code)
                 showImport = false
             },
         )
-    }
-}
-
-@Composable
-internal fun SignalEqUserPresetRow(
-    preset: EchoEqualizerUserPreset,
-    active: Boolean,
-    enabled: Boolean,
-    onApply: () -> Unit,
-    onRename: () -> Unit = {},
-    onDelete: () -> Unit = {},
-    onShare: () -> Unit = {},
-    showActions: Boolean = false,
-    showEditDelete: Boolean = true,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val renameLabel = stringResource(R.string.eq_user_preset_rename)
-    val deleteLabel = stringResource(R.string.eq_user_preset_delete)
-    val shareLabel = stringResource(R.string.eq_share)
-    val detail = if (preset.parametric) {
-        stringResource(R.string.eq_user_preset_bands, preset.filters.size)
-    } else {
-        eqPresetLabel(preset.graphicPresetId)
-    }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .echoClickable(enabled = enabled, onClick = onApply)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                preset.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-                color = if (active) scheme.primary else scheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val source = preset.sourceLabel
-            SignalNote(if (preset.fromOpra && source != null) source else detail)
-        }
-        if (showActions) {
-            IconButton(onClick = onShare, enabled = enabled, modifier = Modifier.semantics { contentDescription = shareLabel }) {
-                EchoIcon(Icons.Outlined.Share, contentDescription = null)
-            }
-            if (showEditDelete) {
-                IconButton(onClick = onRename, enabled = enabled, modifier = Modifier.semantics { contentDescription = renameLabel }) {
-                    EchoIcon(Icons.Outlined.Edit, contentDescription = null)
-                }
-                IconButton(onClick = onDelete, enabled = enabled, modifier = Modifier.semantics { contentDescription = deleteLabel }) {
-                    EchoIcon(Icons.Outlined.Delete, contentDescription = null, tint = if (enabled) scheme.error else scheme.onSurfaceVariant)
-                }
-            }
-        }
     }
 }
 

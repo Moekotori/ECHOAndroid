@@ -10,11 +10,31 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 
 internal object EchoSubsonicListen {
+    private var outbox: app.echo.android.data.SubsonicScrobbleOutbox? = null
+    private var recoveryJob: Job? = null
+    fun configure(context: android.content.Context) { outbox = navidromeOutbox(context) }
+    fun onCredentialsReady() {
+        recoveryJob?.cancel()
+        val endpoint = EchoSubsonicEndpointRef.get() ?: return
+        val store = outbox ?: return
+        recoveryJob = EchoPlaybackProcessRuntime.scope.launch(Dispatchers.IO) {
+            val owner = currentCoroutineContext()
+            store.flushPending(endpoint) { owner.isActive && EchoSubsonicEndpointRef.get()?.sourceId == endpoint.sourceId }
+        }
+    }
     private val controller = SubsonicListenController(
         scope = EchoPlaybackProcessRuntime.scope,
         endpointRef = EchoSubsonicEndpointRef,
+        submitListen = { endpoint, songId, submission, timestamp ->
+            val store = outbox
+            if (submission && store != null && timestamp != null) store.submit(endpoint, songId, timestamp)
+            else app.echo.android.data.submitSubsonicListen(endpoint, songId, submission, timestamp)
+        },
     )
     private var surfaceJob: Job? = null
 

@@ -63,7 +63,9 @@ internal class SubsonicListenController(
     internal fun onPlayback(status: EchoPlaybackStatus, position: PlaybackPositionState) {
         val endpoint = endpointRef.get()
         val track = status.track
-        val songId = track?.id?.let { subsonicSongIdFromTrack(it) }
+        if (active?.sourceId != endpoint?.sourceId) active = null
+        val songId = track?.id?.takeIf { endpoint != null && it.startsWith("${endpoint.sourceId}:song:") }
+            ?.let { subsonicSongIdFromTrack(it) }
         val now = nowEpochMs()
         if (endpoint == null || track == null || songId.isNullOrBlank()) {
             val current = active
@@ -95,6 +97,7 @@ internal class SubsonicListenController(
                 submitScrobbleIfDue(endpoint, current.copy(accumulatedPlayMs = accumulated))
             }
             SubsonicListen(
+                sourceId = endpoint.sourceId,
                 trackId = track.id,
                 songId = songId,
                 durationMs = durationMs,
@@ -111,6 +114,7 @@ internal class SubsonicListenController(
             )
         ) {
             SubsonicListen(
+                sourceId = endpoint.sourceId,
                 trackId = track.id,
                 songId = songId,
                 durationMs = durationMs,
@@ -230,6 +234,7 @@ internal class SubsonicListenController(
 }
 
 private data class SubsonicListen(
+    val sourceId: String,
     val trackId: String,
     val songId: String,
     val durationMs: Long,

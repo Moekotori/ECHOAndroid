@@ -413,6 +413,7 @@ internal class PlaybackController(
         startIndex: Int,
         intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
         source: String? = queue.firstOrNull()?.album?.takeIf { album -> queue.all { it.album == album } },
+        startPositionMs: Long = 0L,
     ) {
         if (queue.isEmpty()) return
         val safeStartIndex = startIndex.coerceIn(0, queue.lastIndex)
@@ -427,7 +428,7 @@ internal class PlaybackController(
             enginePolicy.replaceQueueLookups(queue)
             shuffleModeEnabled = PlaybackSessionPolicy.shuffleEnabledForQueueReplace(intent)
             repeatMode = PlaybackSessionPolicy.repeatModeForQueueReplace(intent).toPlayerRepeatMode()
-            setMediaItems(mediaItems, safeStartIndex, 0L)
+            setMediaItems(mediaItems, safeStartIndex, startPositionMs.coerceAtLeast(0L))
             prepare()
             play()
         }

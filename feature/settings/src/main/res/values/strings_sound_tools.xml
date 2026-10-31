@@ -1,0 +1,13 @@
+<resources>
+    <string name="signal_value_change_sign">Change sign</string>
+    <string name="signal_reset_equalizer">Reset equalizer</string>
+    <string name="signal_mseb_tone">Tone &amp; bass</string>
+    <string name="signal_mseb_voice">Voice &amp; detail</string>
+    <string name="signal_mseb_space">Transients &amp; space</string>
+    <string name="signal_expanded">Expanded</string>
+    <string name="signal_collapsed">Collapsed</string>
+    <string name="signal_presets_manage_only">Applying presets is unavailable on this output. Saving, renaming and sharing remain available.</string>
+    <string name="signal_preset_actions">Actions for %1$s</string>
+    <string name="signal_delete_preset_confirm">Delete the preset %1$s?</string>
+    <string name="signal_retry_catalog">Reload catalog</string>
+</resources>

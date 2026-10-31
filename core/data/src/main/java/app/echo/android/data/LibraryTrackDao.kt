@@ -1047,6 +1047,12 @@ interface LibraryTrackDao {
     @Query("SELECT * FROM library_tracks WHERE id IN (:ids)")
     suspend fun getTracksByIds(ids: List<String>): List<LibraryTrackEntity>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM library_tracks WHERE source = :source AND (normalizedArtist = :artist OR normalizedAlbumArtist = :artist) LIMIT 1)")
+    suspend fun hasSubsonicArtist(source: String, artist: String): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM library_tracks WHERE source = :source AND normalizedAlbum = :album AND (normalizedAlbumArtist = :artist OR normalizedArtist = :artist) LIMIT 1)")
+    suspend fun hasSubsonicAlbum(source: String, album: String, artist: String): Boolean
+
     @Query("SELECT id, albumKey FROM library_tracks WHERE source = :source")
     suspend fun getTrackAlbumKeys(source: String): List<TrackAlbumKeyRow>
 
@@ -1059,6 +1065,12 @@ interface LibraryTrackDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertArtistMemberships(rows: List<LibraryTrackArtistEntity>)
 
+    @Query("DELETE FROM library_music_relations WHERE trackId IN (:ids)")
+    suspend fun deleteMusicRelationMemberships(ids: List<String>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMusicRelationMemberships(rows: List<LibraryMusicRelationEntity>)
+
     @Transaction
     suspend fun upsertBatch(tracks: List<LibraryTrackEntity>) {
         if (tracks.isEmpty()) return
@@ -1066,6 +1078,8 @@ interface LibraryTrackDao {
         deleteArtistMemberships(tracks.map { it.id })
         val memberships = tracks.flatMap(LibraryArtistPolicy::memberships)
         memberships.chunked(500).forEach { insertArtistMemberships(it) }
+        deleteMusicRelationMemberships(tracks.map { it.id })
+        tracks.flatMap(::musicRelationMemberships).chunked(500).forEach { insertMusicRelationMemberships(it) }
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

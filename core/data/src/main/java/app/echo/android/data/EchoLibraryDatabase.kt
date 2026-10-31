@@ -25,9 +25,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibrarySmartRuleEntity::class,
         LibraryBookmarkEntity::class,
         LibraryRepairArchiveEntity::class,
+        LibraryMusicRelationEntity::class,
     ],
     views = [VisibleLibraryTrackView::class],
-    version = 25,
+    version = 26,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -36,6 +37,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
     abstract fun playlistDao(): LibraryPlaylistDao
     abstract fun playEventDao(): LibraryPlayEventDao
     abstract fun experienceDao(): LibraryExperienceDao
+    abstract fun musicRelationDao(): LibraryMusicRelationDao
 
     companion object {
         @Volatile
@@ -74,6 +76,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         LibraryTitleSortMigration,
                         LibrarySearchSpeedMigration,
                         LibraryHiddenTrackMigration,
+                        LibraryMusicRelationMigration,
                     )
                     .build()
                     .also { instance = it }

@@ -87,6 +87,15 @@ internal fun AlbumOnlineInformation(album: AlbumSummary) {
                     if (result.stale || failed) Text(stringResource(R.string.album_online_stale), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     else if (result.partial) Text(stringResource(R.string.album_online_partial), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     val description = result.description
+                    result.serverDescription?.let { serverDescription ->
+                        Text("Navidrome", style = MaterialTheme.typography.labelLarge)
+                        Text(serverDescription, style = MaterialTheme.typography.bodyMedium,
+                            maxLines = if (expanded) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis)
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Text(stringResource(if (expanded) R.string.album_online_less else R.string.album_online_more))
+                        }
+                        result.serverUrl?.let { OnlineSourceLink("Last.fm", it) }
+                    }
                     if (description != null) {
                         Text(description, style = MaterialTheme.typography.bodyMedium,
                             maxLines = if (expanded) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis)
@@ -103,7 +112,7 @@ internal fun AlbumOnlineInformation(album: AlbumSummary) {
                     }
                     Text(stringResource(R.string.album_online_release), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                     Text("${result.releaseTitle} · ${result.artist}", style = MaterialTheme.typography.bodyMedium)
-                    Text(stringResource(R.string.album_online_release_note), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    if (result.releaseId.isNotBlank()) Text(stringResource(R.string.album_online_release_note), color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     result.date?.let { OnlineFact(stringResource(R.string.album_online_date), it) }
                     result.country?.let { OnlineFact(stringResource(R.string.album_online_country), it) }
                     if (result.labels.isNotEmpty()) OnlineFact(stringResource(R.string.album_online_label), result.labels.joinToString(" / "))
@@ -131,7 +140,7 @@ internal fun AlbumOnlineInformation(album: AlbumSummary) {
                             Text(stringResource(if (showCredits) R.string.album_online_less else R.string.album_online_more))
                         }
                     }
-                    OnlineSourceLink(stringResource(R.string.album_online_mb_source), "https://musicbrainz.org/release/${result.releaseId}")
+                    if (result.releaseId.isNotBlank()) OnlineSourceLink(stringResource(R.string.album_online_mb_source), "https://musicbrainz.org/release/${result.releaseId}")
                 }
             }
         }

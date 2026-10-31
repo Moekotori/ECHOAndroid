@@ -191,7 +191,7 @@ class SubsonicSyncPolicyTest {
     }
 
     @Test
-    fun emptyOrPartialRemotePlaylistMayReplace() {
+    fun emptyPlaylistMayReplaceButPartialPlaylistPreservesLocalCopy() {
         assertTrue(
             SubsonicSyncPolicy.shouldReplaceSyncedPlaylist(
                 fetchSucceeded = true,
@@ -199,7 +199,7 @@ class SubsonicSyncPolicyTest {
                 matchedTrackCount = 0,
             ),
         )
-        assertTrue(
+        assertFalse(
             SubsonicSyncPolicy.shouldReplaceSyncedPlaylist(
                 fetchSucceeded = true,
                 remoteSongCount = 8,

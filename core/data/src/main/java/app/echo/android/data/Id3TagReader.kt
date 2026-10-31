@@ -93,5 +93,5 @@ internal object Id3TagReader {
     private val V22Ids = mapOf("TT2" to "TIT2", "TP1" to "TPE1", "TAL" to "TALB", "TP2" to "TPE2",
         "TRK" to "TRCK", "TPA" to "TPOS", "TYE" to "TYER", "TCM" to "TCOM", "TCO" to "TCON", "ULT" to "USLT", "SLT" to "SYLT", "TXX" to "TXXX")
     private val ReadableIds = setOf("TIT2", "TPE1", "TALB", "TPE2", "TRCK", "TPOS", "TYER", "TDRC",
-        "TCOM", "TCON", "USLT", "SYLT", "TXXX", "APIC", "PIC")
+        "TCOM", "TCON", "TPE3", "MVNM", "TIPL", "IPLS", "TMCL", "TPUB", "USLT", "SYLT", "TXXX", "APIC", "PIC")
 }

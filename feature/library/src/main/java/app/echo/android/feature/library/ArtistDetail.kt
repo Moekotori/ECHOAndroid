@@ -56,6 +56,7 @@ internal fun ArtistDetailPage(
 ) {
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
     val onlineQuery = ArtistOnlineQuery(artist.name, albums?.itemSnapshotList?.items?.take(3)?.map { it.title }.orEmpty())
+    val serverArtwork = rememberServerArtistArtwork(onlineQuery)
     ArtistDetailPager(artist, onlineQuery, onBack, modifier) {
         LazyColumn(
             state = listState,
@@ -70,7 +71,7 @@ internal fun ArtistDetailPage(
                         .widthIn(max = EchoContentMaxWidth)
                         .padding(horizontal = 24.dp),
                 ) {
-                    ArtistProfileHeader(artist)
+                    ArtistProfileHeader(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist)
                     Spacer(Modifier.height(20.dp))
                     ArtistPlaybackActions(artist.trackCount > 0, onPlayAll, onShuffle)
                     Spacer(Modifier.height(24.dp))
@@ -153,6 +154,7 @@ internal fun ArtistDetailListPage(
     val onlineQuery = remember(artist.artistKey, artist.name, tracks) {
         ArtistOnlineQuery(artist.name, tracks.take(24).mapNotNull { it.album }.distinct().take(3))
     }
+    val serverArtwork = rememberServerArtistArtwork(onlineQuery)
     ArtistDetailPager(artist, onlineQuery, onBack, modifier) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -166,7 +168,7 @@ internal fun ArtistDetailListPage(
                         .widthIn(max = EchoContentMaxWidth)
                         .padding(horizontal = 24.dp),
                 ) {
-                    ArtistProfileHeader(artist)
+                    ArtistProfileHeader(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist)
                     Spacer(Modifier.height(18.dp))
                     ArtistPlaybackActions(tracks.isNotEmpty(), onPlayAll, onShuffle, onPlayOnPc)
                     Spacer(Modifier.height(24.dp))

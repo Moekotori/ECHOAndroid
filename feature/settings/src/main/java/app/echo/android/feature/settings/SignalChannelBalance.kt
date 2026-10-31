@@ -41,27 +41,19 @@ internal fun SignalChannelBalance(
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(R.string.signal_stereo_controls), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    SignalLiveDot(active = live)
-                    Text(stringResource(when {
-                        bypassed -> R.string.signal_bypass_locked
-                        !state.enabled -> R.string.eq_status_off
-                        !playing -> R.string.channel_balance_waiting
-                        !state.affectsSignal -> R.string.channel_balance_idle
-                        !live -> R.string.channel_balance_waiting
-                        else -> R.string.channel_balance_processing
-                    }), style = MaterialTheme.typography.bodySmall,
-                        color = if (live) scheme.primary else scheme.onSurfaceVariant)
-                }
-            }
-            TextButton(onClick = onReset, enabled = controlsEnabled) { Text(stringResource(R.string.feature_settings_reset_1106f5)) }
-            EchoSwitch(checked = state.enabled, enabled = controlsEnabled,
-                onCheckedChange = { onStateChange(state.copy(enabled = it)) },
-                modifier = Modifier.semantics { contentDescription = title })
-        }
+        SignalProcessorHeader(
+            label = title,
+            status = stringResource(when {
+                bypassed -> R.string.signal_bypass_locked
+                !state.enabled -> R.string.eq_status_off
+                !playing -> R.string.channel_balance_waiting
+                !state.affectsSignal -> R.string.channel_balance_idle
+                !live -> R.string.channel_balance_waiting
+                else -> R.string.channel_balance_processing
+            }),
+            live = live, checked = state.enabled, enabled = controlsEnabled,
+            onCheckedChange = { onStateChange(state.copy(enabled = it)) }, warning = bypassed,
+        )
         if (live) SignalNote(stringResource(R.string.channel_processing_rate, formatSampleRate(state.processingSampleRateHz!!)))
         if (bypassed) SignalNote(stringResource(R.string.signal_bypass_detail))
 
@@ -73,10 +65,6 @@ internal fun SignalChannelBalance(
                     EchoChannelBalance.MinBalance..EchoChannelBalance.MaxBalance, controlsEnabled,
                     { onStateChange(state.copy(balance = it)) },
                     valueLabel = formatBalanceBias(state.balance), unit = "%", scale = 100f, decimals = 0)
-                if (state.balance != 0f) TextButton(onClick = { onStateChange(state.copy(balance = 0f)) }, enabled = controlsEnabled,
-                    contentPadding = PaddingValues(horizontal = 0.dp)) {
-                    Text(stringResource(R.string.channel_balance_center))
-                }
                 SignalHelpButton(stringResource(R.string.channel_pan_title), stringResource(R.string.channel_pan_hint) + "\n\n" + stringResource(R.string.channel_edit_while_off))
             }
             ChannelValueSlider(
@@ -88,6 +76,10 @@ internal fun SignalChannelBalance(
                 showReadout = false,
                 unit = "%", scale = 100f, decimals = 0,
             )
+            if (state.balance != 0f) TextButton(
+                onClick = { onStateChange(state.copy(balance = 0f)) }, enabled = controlsEnabled,
+                contentPadding = PaddingValues(horizontal = 0.dp),
+            ) { Text(stringResource(R.string.channel_balance_center)) }
             HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.channel_trim_title), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
@@ -147,6 +139,9 @@ internal fun SignalChannelBalance(
             EchoExpand(showAdvanced) {
                 ChannelAdvancedControls(state, controlsEnabled, onStateChange)
             }
+        }
+        TextButton(onClick = onReset, enabled = controlsEnabled, contentPadding = PaddingValues(horizontal = 0.dp)) {
+            Text(stringResource(R.string.channel_reset_all))
         }
     }
 }

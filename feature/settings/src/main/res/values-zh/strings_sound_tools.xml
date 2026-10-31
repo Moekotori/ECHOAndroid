@@ -1,0 +1,13 @@
+<resources>
+    <string name="signal_value_change_sign">切换正负号</string>
+    <string name="signal_reset_equalizer">重置均衡器</string>
+    <string name="signal_mseb_tone">音色与低频</string>
+    <string name="signal_mseb_voice">人声与细节</string>
+    <string name="signal_mseb_space">瞬态与空间</string>
+    <string name="signal_expanded">已展开</string>
+    <string name="signal_collapsed">已收起</string>
+    <string name="signal_presets_manage_only">当前输出无法应用预设，仍可保存、重命名和分享。</string>
+    <string name="signal_preset_actions">%1$s 的操作</string>
+    <string name="signal_delete_preset_confirm">确定删除预设“%1$s”？</string>
+    <string name="signal_retry_catalog">重新加载目录</string>
+</resources>

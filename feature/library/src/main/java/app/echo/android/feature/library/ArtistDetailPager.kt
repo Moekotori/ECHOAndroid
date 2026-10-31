@@ -50,7 +50,7 @@ internal fun ArtistDetailPager(
         }
         Box(Modifier.padding(horizontal = 24.dp)) {
             LibraryTextTabs(listOf(stringResource(R.string.artist_page_music), stringResource(R.string.artist_page_information),
-                stringResource(R.string.artist_page_concerts)), pager.currentPage, onSelect = { page ->
+                stringResource(R.string.artist_page_concerts)), pager.currentPage, pager = pager, onSelect = { page ->
                 scope.launch { pager.animateSilkToPage(page, lightweight) }
             })
         }

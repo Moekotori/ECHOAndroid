@@ -57,6 +57,8 @@ class EchoLibraryRepository(
     private val tagWriter: EmbeddedTagWriter? = null,
     internal val appContext: Context,
 ) {
+    fun musicRelations() = LibraryMusicRelations(database, scanner::readAudioTagsFromUri)
+
     internal val playlistOrderStore by lazy { PlaylistOrderStore(appContext) }
     private fun text(@StringRes id: Int, vararg args: Any): String =
         if (args.isEmpty()) appContext.getString(id) else appContext.getString(id, *args)
@@ -641,21 +643,24 @@ class EchoLibraryRepository(
                 val localId = "${endpoint.sourceId}:playlist:${playlist.id}"
                 seenIds += localId
                 val songs = songsOrNull ?: continue
-                val trackIds = songs.map { "${endpoint.sourceId}:song:${it.id}" }.filter(knownTrackIds::contains)
+                val matchedTrackIds = songs.map { "${endpoint.sourceId}:song:${it.id}" }.filter(knownTrackIds::contains)
                 if (
                     !SubsonicSyncPolicy.shouldReplaceSyncedPlaylist(
                         fetchSucceeded = true,
                         remoteSongCount = songs.size,
-                        matchedTrackCount = trackIds.size,
+                        matchedTrackCount = matchedTrackIds.size,
                     )
                 ) {
                     continue
                 }
+                val trackIds = matchedTrackIds.distinct()
                 val incomingName = playlist.name.ifBlank { "Playlist" }
                 val existing = dao.getPlaylist(localId)
                 val existingTrackIds = existing?.let { dao.getPlaylistTrackIds(localId) }
+                val artworkUri = playlist.coverArt?.let(client::coverArtUrl)
+                    ?: trackIds.firstOrNull()?.let { trackId -> database.trackDao().getTrackById(trackId)?.artworkUri }
                 if (
-                    !SubsonicSyncPolicy.shouldRewriteSyncedPlaylist(
+                    existing?.artworkUri == artworkUri && !SubsonicSyncPolicy.shouldRewriteSyncedPlaylist(
                         existingName = existing?.name,
                         existingTrackIds = existingTrackIds,
                         incomingName = incomingName,
@@ -664,9 +669,6 @@ class EchoLibraryRepository(
                 ) {
                     continue
                 }
-                val artworkUri = playlist.coverArt
-                    ?.let(client::coverArtUrl)
-                    ?: trackIds.firstOrNull()?.let { trackId -> database.trackDao().getTrackById(trackId)?.artworkUri }
                 dao.replacePlaylist(
                     playlist = LibraryPlaylistEntity(
                         id = localId,
@@ -1752,6 +1754,12 @@ class EchoLibraryRepository(
             deletedCount = deletion.deletedCount
             changedSummaries.add(deletion.summaryKeys)
             rebuildSummariesIfNeeded(dao, changedSummaries.build())
+            try {
+                SubsonicUserLibrary(database, appContext).syncFavorites(resolved)
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                EchoErrorLog.record(EchoErrorSource.Library, "Navidrome favorites sync failed.", throwable = error)
+            }
             emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)

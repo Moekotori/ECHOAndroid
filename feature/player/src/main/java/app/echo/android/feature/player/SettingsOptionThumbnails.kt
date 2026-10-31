@@ -120,19 +120,27 @@ private fun pageStyleThumbnail(style: EchoPlayerPageStyle): DrawScope.(Color) ->
         drawCircle(Color.White, size.height * 0.11f, Offset(size.width * 0.72f, size.height * 0.74f), style = Stroke(2.4f))
     }
     EchoPlayerPageStyle.MetroLine -> { _ ->
-        val line = Color(0xFFE4002B)
-        drawRect(Color(0xFFF3F4F6))
-        drawRoundRect(Color(0xFF0A0A0A), Offset(size.width * 0.06f, size.height * 0.10f), Size(size.width * 0.88f, size.height * 0.18f), CornerRadius(5f))
-        drawCircle(line, size.height * 0.07f, Offset(size.width * 0.13f, size.height * 0.19f))
-        drawRect(Color(0xFFFFB000), Offset(size.width * 0.24f, size.height * 0.17f), Size(size.width * 0.50f, size.height * 0.04f))
-        val x = size.width * 0.16f
-        drawLine(Color(0xFFCFD3DA), Offset(x, size.height * 0.40f), Offset(x, size.height * 0.92f), 5f, StrokeCap.Round)
-        drawLine(line, Offset(x, size.height * 0.40f), Offset(x, size.height * 0.68f), 5f, StrokeCap.Round)
-        for (i in 0..3) {
-            val y = size.height * (0.40f + i * 0.17f)
-            drawCircle(Color.White, 6f, Offset(x, y))
-            drawCircle(if (i <= 1) line else Color(0xFFAAB0BB), 6f, Offset(x, y), style = Stroke(2.4f))
-            drawRoundRect(Color(0xFF1C1E24).copy(alpha = if (i == 1) 0.9f else 0.35f), Offset(size.width * 0.26f, y - 3f), Size(size.width * (0.50f - i * 0.04f), 6f), CornerRadius(3f))
+        drawRect(MetroStyle.Paper)
+        drawRoundRect(MetroStyle.Sign, Offset(size.width * 0.06f, size.height * 0.08f),
+            Size(size.width * 0.88f, size.height * 0.19f), CornerRadius(3f))
+        drawRoundRect(MetroStyle.Line, Offset(size.width * 0.09f, size.height * 0.12f),
+            Size(size.height * 0.11f, size.height * 0.11f), CornerRadius(2f))
+        drawRect(MetroStyle.Amber, Offset(size.width * 0.24f, size.height * 0.16f), Size(size.width * 0.57f, size.height * 0.025f))
+        drawRect(Color.White, Offset(size.width * 0.06f, size.height * 0.32f), Size(size.width * 0.88f, size.height * 0.20f))
+        drawRect(MetroStyle.Line, Offset(size.width * 0.06f, size.height * 0.32f), Size(size.width * 0.018f, size.height * 0.20f))
+        textBars(Offset(size.width * 0.12f, size.height * 0.36f), size.width * 0.43f, MetroStyle.Ink)
+        drawRect(MetroStyle.Rule, Offset(size.width * 0.76f, size.height * 0.345f), Size(size.height * 0.15f, size.height * 0.15f))
+        val x = size.width * 0.15f
+        drawLine(MetroStyle.Rail, Offset(x, size.height * 0.61f), Offset(x, size.height * 0.93f), 4f, StrokeCap.Round)
+        drawLine(MetroStyle.Line, Offset(x, size.height * 0.61f), Offset(x, size.height * 0.78f), 4f, StrokeCap.Round)
+        for (i in 0..2) {
+            val y = size.height * (0.61f + i * 0.16f)
+            if (i == 1) drawRect(Color.White, Offset(size.width * 0.25f, y - size.height * 0.06f), Size(size.width * 0.68f, size.height * 0.12f))
+            drawCircle(Color.White, 4f, Offset(x, y))
+            drawCircle(if (i <= 1) MetroStyle.Line else MetroStyle.Rail, 4f, Offset(x, y), style = Stroke(2f))
+            drawRoundRect(MetroStyle.Ink.copy(alpha = if (i == 1) 0.9f else 0.45f),
+                Offset(size.width * 0.30f, y - 2f), Size(size.width * 0.38f, 4f), CornerRadius(1f))
+            drawRect(MetroStyle.Muted.copy(alpha = 0.5f), Offset(size.width * 0.80f, y - 1f), Size(size.width * 0.09f, 2f))
         }
     }
     EchoPlayerPageStyle.ChatThread -> { _ ->

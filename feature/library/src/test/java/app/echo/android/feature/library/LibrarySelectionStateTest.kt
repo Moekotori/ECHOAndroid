@@ -53,4 +53,23 @@ class LibrarySelectionStateTest {
         assertNull(libraryTabIndicatorCenterPx(mapOf(1 to 80), 1, 2))
         assertEquals(120f, libraryTabIndicatorCenterPx(mapOf(0 to 80, 1 to 80), 1, 2)!!, 0f)
     }
+
+    @Test
+    fun indicatorTracksFractionalPagesWithUnequalTabWidthsAndSpacing() {
+        val widths = mapOf(0 to 80, 1 to 120, 2 to 60)
+        assertEquals(40f, libraryTabInterpolatedCenterPx(widths, 0f, 3, 20f)!!, 0f)
+        assertEquals(100f, libraryTabInterpolatedCenterPx(widths, 0.5f, 3, 20f)!!, 0f)
+        assertEquals(215f, libraryTabInterpolatedCenterPx(widths, 1.5f, 3, 20f)!!, 0f)
+        assertEquals(270f, libraryTabInterpolatedCenterPx(widths, 3f, 3, 20f)!!, 0f)
+        assertNull(libraryTabInterpolatedCenterPx(mapOf(0 to 80), 0.5f, 3, 20f))
+    }
+
+    @Test
+    fun tabRevealScrollOnlyMovesWhenSelectionIsClippedAndStaysInBounds() {
+        assertEquals(40, libraryTabRevealScroll(40, 200, 160, 80f, 180f))
+        assertEquals(120, libraryTabRevealScroll(40, 200, 160, 240f, 320f))
+        assertEquals(20, libraryTabRevealScroll(120, 200, 160, 20f, 100f))
+        assertEquals(160, libraryTabRevealScroll(0, 200, 160, 340f, 420f))
+        assertEquals(60, libraryTabRevealScroll(0, 200, 160, 60f, 300f))
+    }
 }

@@ -518,6 +518,7 @@ class DocumentTreeTrackScanner(
             year = metadata.year,
             genre = metadata.genre,
             composer = metadata.composer,
+            musicRelationsJson = metadata.musicRelations.encoded(),
             mimeType = mimeType,
             sizeBytes = sizeBytes,
             sampleRateHz = metadata.sampleRateHz,
@@ -558,6 +559,8 @@ class DocumentTreeTrackScanner(
                     year = dsd.tags?.year ?: fileTags?.year,
                     genre = dsd.tags?.genre ?: fileTags?.genre,
                     composer = dsd.tags?.composer ?: fileTags?.composer,
+                    musicRelations = (dsd.tags?.musicRelations ?: app.echo.android.model.library.EchoMusicRelationMetadata())
+                        .withFallback(fileTags?.musicRelations ?: app.echo.android.model.library.EchoMusicRelationMetadata()),
                     sampleRateHz = if (readSampleRate) dsd.sampleRateHz.takeIf { it > 0 } else null,
                     artworkUri = persistArtwork(dsd.tags?.artworkBytes ?: fileTags?.artworkBytes),
                 )
@@ -591,6 +594,7 @@ class DocumentTreeTrackScanner(
                         ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_GENRE),
                     composer = fileTags?.composer?.takeIf { it.isNotBlank() }
                         ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
+                    musicRelations = fileTags?.musicRelations ?: app.echo.android.model.library.EchoMusicRelationMetadata(),
                     durationMs = container?.durationMs?.takeIf { it > 0 } ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                         ?.toLongOrNull()
                         ?.coerceAtLeast(0L)
@@ -641,6 +645,7 @@ class DocumentTreeTrackScanner(
             year = this?.year,
             genre = this?.genre,
             composer = this?.composer,
+            musicRelations = this?.musicRelations ?: app.echo.android.model.library.EchoMusicRelationMetadata(),
         )
 
     private data class DocumentTreeDirectory(
@@ -692,6 +697,7 @@ class DocumentTreeTrackScanner(
         val artworkUri: String? = null,
         val genre: String? = null,
         val composer: String? = null,
+        val musicRelations: app.echo.android.model.library.EchoMusicRelationMetadata = app.echo.android.model.library.EchoMusicRelationMetadata(),
     )
 
     private companion object {

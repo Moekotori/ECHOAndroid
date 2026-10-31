@@ -1,0 +1,26 @@
+<resources>
+    <string name="music_relations_title">Music relationships</string>
+    <string name="music_relation_back">Back</string>
+    <string name="music_relation_read_tags">Read relationship tags</string>
+    <string name="music_relation_tag_hint">Local library · Browse explicit file tags. Tap refresh to read relationship tags in an existing library; audio files stay unchanged.</string>
+    <string name="music_relation_all">All music</string>
+    <string name="music_relation_tracks">Tracks</string>
+    <string name="music_relation_composers">Composers</string>
+    <string name="music_relation_works">Works</string>
+    <string name="music_relation_movements">Movements</string>
+    <string name="music_relation_conductors">Conductors</string>
+    <string name="music_relation_performers">Performers</string>
+    <string name="music_relation_recordings">Recordings</string>
+    <string name="music_relation_contributors">Contributors</string>
+    <string name="music_relation_labels">Labels</string>
+    <string name="music_relation_credit_roles">Credit roles</string>
+    <string name="music_relation_overview">Tagged: %1$d / %2$d · Entries: %3$d</string>
+    <string name="music_relation_play_loaded">Play loaded tracks (up to 40)</string>
+    <string name="music_relation_search">Search within these relationships</string>
+    <string name="music_relation_empty">No matching relationships. Read the file tags, try another category, or remove a filter. Untagged relationships are not inferred.</string>
+    <string name="music_relation_error">Could not read relationships. Completed results have been kept.</string>
+    <string name="music_relation_retry">Retry</string>
+    <string name="music_relation_cancel">Stop reading</string>
+    <string name="music_relation_progress">Inspected: %1$d · Unreadable: %2$d</string>
+    <plurals name="music_relation_track_count"><item quantity="one">%1$d track</item><item quantity="other">%1$d tracks</item></plurals>
+</resources>

@@ -19,6 +19,7 @@ data class AudioTagFields(
     val genre: String? = null,
     val genreModified: Boolean = false,
     val composerModified: Boolean = false,
+    val musicRelations: app.echo.android.model.library.EchoMusicRelationMetadata = app.echo.android.model.library.EchoMusicRelationMetadata(),
 )
 
 fun readLocalAudioTags(input: InputStream): AudioTagFields? =
@@ -52,6 +53,7 @@ internal fun LibraryTrackEntity.toAudioTagFields(): AudioTagFields =
         year = year,
         composer = composer,
         genre = genre,
+        musicRelations = decodeMusicRelationTags(musicRelationsJson),
     )
 
 internal fun AudioTagFields.isBlank(): Boolean =
@@ -62,7 +64,7 @@ internal fun AudioTagFields.isBlank(): Boolean =
         trackNumber == null &&
         discNumber == null &&
         year == null &&
-        composer.isNullOrBlank() && genre.isNullOrBlank() &&
+        composer.isNullOrBlank() && genre.isNullOrBlank() && musicRelations.encoded() == null &&
         lyrics.isNullOrBlank() && (artworkBytes == null || artworkBytes.isEmpty()) && replayGainTrackGainDb == null
 
 internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields?): AudioTagFields? {
@@ -82,6 +84,7 @@ internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields
         artworkMime = preferred.artworkMime ?: fallback.artworkMime,
         replayGainTrackGainDb = preferred.replayGainTrackGainDb ?: fallback.replayGainTrackGainDb,
         genre = preferred.genre?.takeIf { it.isNotBlank() } ?: fallback.genre,
+        musicRelations = preferred.musicRelations.withFallback(fallback.musicRelations),
     )
 }
 
@@ -97,7 +100,7 @@ internal fun LibraryTrackEntity.withAudioTags(tags: AudioTagFields?): LibraryTra
         next.trackNumber == trackNumber &&
         next.discNumber == discNumber &&
         next.year == year &&
-        next.composer == composer && next.genre == genre
+        next.composer == composer && next.genre == genre && next.musicRelations.encoded() == musicRelationsJson
     ) {
         return this
     }
@@ -111,6 +114,7 @@ internal fun LibraryTrackEntity.withAudioTags(tags: AudioTagFields?): LibraryTra
         year = next.year,
         composer = next.composer ?: composer,
         genre = next.genre ?: genre,
+        musicRelationsJson = next.musicRelations.encoded(),
     )
 }
 

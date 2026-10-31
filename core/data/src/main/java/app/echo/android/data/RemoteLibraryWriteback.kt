@@ -7,6 +7,7 @@ import app.echo.android.model.library.EchoPlaylist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 
 /** Explicit Subsonic writeback. Room changes happen only after the server accepts the mutation. */
 class RemoteLibraryWriteback(
@@ -68,12 +69,18 @@ class RemoteLibraryWriteback(
     }
 
     suspend fun toggleFavorite(endpoint: SubsonicEndpoint, trackId: String): Boolean = withContext(Dispatchers.IO) {
-        val starred = !database.playlistDao().isFavorite(trackId)
-        setFavorite(endpoint, trackId, starred)
-        starred
+        subsonicUserStateGate.withLock {
+            val starred = !database.playlistDao().isFavorite(trackId)
+            setFavoriteLocked(endpoint, trackId, starred)
+            starred
+        }
     }
 
     suspend fun setFavorite(endpoint: SubsonicEndpoint, trackId: String, starred: Boolean) = withContext(Dispatchers.IO) {
+        subsonicUserStateGate.withLock { setFavoriteLocked(endpoint, trackId, starred) }
+    }
+
+    private suspend fun setFavoriteLocked(endpoint: SubsonicEndpoint, trackId: String, starred: Boolean) {
         val remoteId = songId(endpoint, trackId)
         val dao = database.playlistDao()
         client(endpoint).setStarred(remoteId, starred)

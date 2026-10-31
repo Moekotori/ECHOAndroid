@@ -16,7 +16,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlin.math.pow
 import kotlin.math.round
@@ -24,17 +24,27 @@ import kotlin.math.round
 @Composable
 internal fun DspChoices(labels: List<String>, selected: Int, enabled: Boolean, onSelect: (Int) -> Unit) {
     val colors = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        labels.forEachIndexed { index, label ->
-            val picked = index == selected
-            Box(Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(6.dp))
-                .background(if (picked) colors.primary.copy(alpha = 0.09f) else colors.surfaceContainerLow)
-                .selectable(picked, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(index) })
-                .padding(horizontal = 6.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-                Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    fontWeight = if (picked) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (!enabled) colors.onSurface.copy(alpha = 0.38f) else if (picked) colors.primary else colors.onSurfaceVariant)
-            }
+    // Short modes share a row. Presets and longer translations wrap without losing labels.
+    val choice: @Composable (Int, String, Modifier) -> Unit = { index, label, modifier ->
+        val picked = index == selected
+        Box(modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp))
+            .background(if (picked) colors.primary.copy(alpha = 0.10f) else colors.surfaceContainerLow)
+            .selectable(picked, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(index) })
+            .padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+            Text(label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center,
+                fontWeight = if (picked) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (!enabled) colors.onSurface.copy(alpha = 0.38f) else if (picked) colors.primary else colors.onSurfaceVariant)
+        }
+    }
+    val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.2f
+    if (labels.size <= 3 && !largeText) {
+        Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            labels.forEachIndexed { index, label -> choice(index, label, Modifier.weight(1f)) }
+        }
+    } else {
+        FlowRow(Modifier.fillMaxWidth().selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            labels.forEachIndexed { index, label -> choice(index, label, Modifier.widthIn(min = 60.dp)) }
         }
     }
 }
@@ -45,7 +55,7 @@ internal fun DspValueSlider(
     format: (Float) -> String, onCommit: (Float) -> Unit,
     unit: String = "dB", scale: Float = 1f, decimals: Int = 1,
 ) {
-    var draft by remember(value) { mutableFloatStateOf(value.coerceIn(valueRange)) }
+    var draft by remember(value, enabled) { mutableFloatStateOf(value.coerceIn(valueRange)) }
     val commit = rememberUpdatedState(onCommit)
     val colors = MaterialTheme.colorScheme
     Column {

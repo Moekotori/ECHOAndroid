@@ -44,7 +44,7 @@ internal fun ArtistInformationPage(query: ArtistOnlineQuery, active: Boolean) {
                 item("biography") {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(info.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                        Text(info.description ?: stringResource(R.string.artist_no_biography),
+                        if (info.description != null || info.serverDescription == null) Text(info.description ?: stringResource(R.string.artist_no_biography),
                             style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = if (expanded) Int.MAX_VALUE else 9, overflow = TextOverflow.Ellipsis)
                         if (info.description != null) {
@@ -56,6 +56,13 @@ internal fun ArtistInformationPage(query: ArtistOnlineQuery, active: Boolean) {
                         }
                     }
                 }
+                info.serverDescription?.let { description -> item("server-biography") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Navidrome", style = MaterialTheme.typography.labelLarge)
+                        Text(description, style = MaterialTheme.typography.bodyLarge)
+                        info.serverUrl?.let { ArtistSourceLink("Last.fm", it) }
+                    }
+                } }
                 item("facts") {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .45f))
@@ -68,7 +75,7 @@ internal fun ArtistInformationPage(query: ArtistOnlineQuery, active: Boolean) {
                         info.end?.let { ArtistFact(stringResource(R.string.artist_fact_end), it) }
                         if (info.genres.isNotEmpty()) ArtistFact(stringResource(R.string.artist_fact_genres), info.genres.joinToString(" · "))
                         if (info.members.isNotEmpty()) ArtistFact(stringResource(R.string.artist_fact_members), info.members.joinToString(" / "))
-                        ArtistSourceLink("MusicBrainz", "https://musicbrainz.org/artist/${info.musicBrainzId}")
+                        if (info.musicBrainzId.isNotBlank()) ArtistSourceLink("MusicBrainz", "https://musicbrainz.org/artist/${info.musicBrainzId}")
                     }
                 }
             }

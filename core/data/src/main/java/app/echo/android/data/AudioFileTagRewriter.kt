@@ -621,6 +621,12 @@ internal object AudioFileTagRewriter {
         val yearText = text("TDRC") ?: text("TYER")
         val custom = frames.asSequence().filter { it.id == "TXXX" }
             .mapNotNull { readableId3Payload(it, majorVersion)?.let(::decodeReadTxxx) }.toList()
+        val roleCredits = frames.filter { it.id in setOf("TIPL", "IPLS", "TMCL") }.flatMap { frame ->
+            val values = readableId3Payload(frame, majorVersion)?.let(::decodeId3Values).orEmpty()
+            if (values.size % 2 != 0) emptyList() else values.chunked(2).take(64).map { (role, name) ->
+                (if (frame.id == "TMCL") "PERFORMER:$role" else "CREDIT:$role") to name
+            }
+        }
         val artwork = frames.asSequence().filter { it.id == "APIC" || it.id == "PIC" }
             .mapNotNull { frame -> readableId3Payload(frame, majorVersion)?.let { EmbeddedTagArtwork.id3(it, frame.id == "PIC") } }
             .let { pictures ->
@@ -638,7 +644,11 @@ internal object AudioFileTagRewriter {
             trackNumber = text("TRCK")?.substringBefore('/')?.toIntOrNull()?.takeIf { it > 0 },
             discNumber = text("TPOS")?.substringBefore('/')?.toIntOrNull()?.takeIf { it > 0 },
             year = yearText?.take(4)?.toIntOrNull()?.takeIf { it > 0 },
-            composer = text("TCOM")?.takeIf { it.isNotBlank() },
+            composer = names("TCOM"),
+            musicRelations = musicRelationTags(custom + roleCredits + listOfNotNull(
+                names("TCOM")?.let { "COMPOSER" to it }, names("TPE1")?.let { "ARTIST" to it },
+                names("TPE3")?.let { "CONDUCTOR" to it }, text("TPUB")?.let { "LABEL" to it },
+                text("MVNM")?.let { "MOVEMENT" to it })),
             genre = text("TCON")?.takeIf { it.isNotBlank() },
             lyrics = frames.asSequence().filter { it.id == "USLT" }
                 .mapNotNull { readableId3Payload(it, majorVersion)?.let(::decodeUslt) }.firstOrNull()

@@ -7,11 +7,13 @@ internal object Mp4TagReader {
     fun read(input: InputStream): AudioTagFields? {
         val state = State()
         state.walk(input, 0)
-        return state.fields?.takeUnless { it.isBlank() }
+        return state.fields?.let { it.copy(musicRelations = musicRelationTags(state.relationFields).withFallback(it.musicRelations)) }
+            ?.takeUnless { it.isBlank() }
     }
 
     private class State {
         var fields: AudioTagFields? = null
+        val relationFields = mutableListOf<Pair<String, String>>()
         private var atoms = 0
         private var retainedBytes = 0
 
@@ -81,11 +83,12 @@ internal object Mp4TagReader {
             }
             if (freeMean == "com.apple.iTunes" && freeName != null && freeValue != null) {
                 val name = freeName.uppercase(java.util.Locale.ROOT)
+                if (isMusicRelationTag(name) && relationFields.size < 128) relationFields += name to freeValue.take(2000)
                 val old = fields ?: Empty
                 fields = when (name) {
                     "LYRICS", "UNSYNCEDLYRICS" -> old.copy(lyrics = old.lyrics ?: freeValue)
                     "REPLAYGAIN_TRACK_GAIN" -> old.copy(replayGainTrackGainDb = freeValue.substringBefore(' ').toFloatOrNull()?.takeIf { it.isFinite() })
-                    else -> old
+                    else -> old.copy(musicRelations = musicRelationTags(listOf(name to freeValue)).withFallback(old.musicRelations))
                 }
             }
         }
@@ -93,12 +96,16 @@ internal object Mp4TagReader {
         private fun apply(key: String, value: ByteArray, type: Int) {
             val old = fields ?: Empty
             val text = decode(value, type)
+            val relationKey = when (key) { "©ART" -> "ARTIST"; "©wrt" -> "COMPOSER"; "©wrk" -> "WORK"; "©mvn" -> "MOVEMENT"; else -> null }
+            if (relationKey != null && text != null && relationFields.size < 128) relationFields += relationKey to text.take(2000)
             fields = when (key) {
                 "©nam" -> old.copy(title = old.title.ifBlank { text.orEmpty() })
                 "©ART" -> old.copy(artist = LibraryArtistPolicy.display(listOfNotNull(old.artist.takeIf { it.isNotBlank() }, text)).orEmpty())
                 "©alb" -> old.copy(album = old.album ?: text)
                 "aART" -> old.copy(albumArtist = LibraryArtistPolicy.display(listOfNotNull(old.albumArtist, text)))
                 "©wrt" -> old.copy(composer = old.composer ?: text)
+                "©wrk" -> old.copy(musicRelations = old.musicRelations.copy(work = old.musicRelations.work ?: text))
+                "©mvn" -> old.copy(musicRelations = old.musicRelations.copy(movement = old.musicRelations.movement ?: text))
                 "©gen" -> old.copy(genre = old.genre ?: text)
                 "©lyr" -> old.copy(lyrics = old.lyrics ?: text)
                 "©day" -> old.copy(year = old.year ?: text?.take(4)?.toIntOrNull()?.takeIf { it > 0 })
@@ -119,6 +126,6 @@ internal object Mp4TagReader {
         else -> null
     }?.takeIf { it.isNotBlank() }
     private val Empty = AudioTagFields("", "", null, null, null, null, null)
-    private val Keys = setOf("©nam", "©ART", "©alb", "aART", "©wrt", "©gen", "©lyr", "©day", "trkn", "disk", "covr")
+    private val Keys = setOf("©nam", "©ART", "©alb", "aART", "©wrt", "©wrk", "©mvn", "©gen", "©lyr", "©day", "trkn", "disk", "covr")
     private const val MaxRetainedBytes = MaxEmbeddedArtworkBytes + MaxEmbeddedTextBytes
 }

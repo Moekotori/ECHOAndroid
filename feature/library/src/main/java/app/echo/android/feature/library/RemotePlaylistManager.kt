@@ -33,6 +33,8 @@ fun RemotePlaylistManager(actions: RemoteLibraryWritebackActions, onDismiss: () 
     var nameVisible by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var deleteTarget by remember { mutableStateOf<EchoPlaylist?>(null) }
+    var serverSettings by remember { mutableStateOf(false) }
+    var writable by remember(selectedId) { mutableStateOf(actions.navidrome == null) }
     val scope = rememberCoroutineScope()
     fun perform(operation: suspend () -> Unit) {
         if (busy) return
@@ -45,6 +47,21 @@ fun RemotePlaylistManager(actions: RemoteLibraryWritebackActions, onDismiss: () 
         }
     }
     LaunchedEffect(query) { delay(220); settledQuery = query }
+    LaunchedEffect(actions) {
+        val server = actions.navidrome ?: return@LaunchedEffect
+        busy = true
+        try { server.refreshPlaylists() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { failed = true }
+        finally { busy = false }
+    }
+    LaunchedEffect(selectedId, actions) {
+        val id = selectedId?.removePrefix("${actions.sourceId}:playlist:") ?: return@LaunchedEffect
+        val server = actions.navidrome ?: return@LaunchedEffect
+        try { writable = server.playlist(id).writable }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { writable = false; failed = true }
+    }
     EchoModalSheet(onDismissRequest = { if (!busy) onDismiss() },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { !busy })) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.88f).padding(horizontal = 20.dp)) {
@@ -68,14 +85,17 @@ fun RemotePlaylistManager(actions: RemoteLibraryWritebackActions, onDismiss: () 
             } else {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(enabled = !busy, onClick = { selectedId = null }) { Text(stringResource(R.string.remote_playlist_back)) }
-                    TextButton(enabled = !busy, onClick = { nameTarget = selected; name = selected.name; nameVisible = true }) {
+                    TextButton(enabled = !busy && writable, onClick = { nameTarget = selected; name = selected.name; nameVisible = true }) {
                         Text(stringResource(R.string.remote_playlist_rename))
                     }
-                    TextButton(enabled = !busy, onClick = { deleteTarget = selected }) {
+                    TextButton(enabled = !busy && writable, onClick = { deleteTarget = selected }) {
                         Text(stringResource(R.string.remote_playlist_delete))
                     }
                 }
-                TextButton(enabled = !busy, onClick = { adding = !adding; query = "" }) {
+                if (actions.navidrome != null) TextButton(enabled = !busy, onClick = { serverSettings = true }) {
+                    Text(stringResource(R.string.nav_playlist_settings))
+                }
+                TextButton(enabled = !busy && writable, onClick = { adding = !adding; query = "" }) {
                     Text(stringResource(if (adding) R.string.remote_playlist_show_tracks else R.string.playlist_add_tracks))
                 }
                 if (adding) OutlinedTextField(query, { query = it }, enabled = !busy, singleLine = true,
@@ -99,7 +119,7 @@ fun RemotePlaylistManager(actions: RemoteLibraryWritebackActions, onDismiss: () 
                                     Text(track.artist, style = MaterialTheme.typography.bodySmall, maxLines = 1,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant, overflow = TextOverflow.Ellipsis)
                                 }
-                                TextButton(enabled = !busy, onClick = { perform {
+                                TextButton(enabled = !busy && writable, onClick = { perform {
                                     if (adding) { actions.add(selected.id, track.id); adding = false }
                                     else actions.remove(selected.id, track.id)
                                 } }) { Text(stringResource(if (adding) R.string.remote_playlist_add else R.string.remote_playlist_remove)) }
@@ -113,6 +133,8 @@ fun RemotePlaylistManager(actions: RemoteLibraryWritebackActions, onDismiss: () 
             }
         }
     }
+    if (serverSettings && selected != null && actions.navidrome != null) NavidromePlaylistDialog(
+        actions.navidrome, selected.id.removePrefix("${actions.sourceId}:playlist:"), onDismiss = { serverSettings = false })
     if (nameVisible) AlertDialog(onDismissRequest = { if (!busy) nameVisible = false },
         title = { Text(stringResource(if (nameTarget == null) R.string.feature_library_new_playlist_22cdbd else R.string.remote_playlist_rename)) },
         text = { Column {

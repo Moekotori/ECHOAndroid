@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoSettingsStore
-import app.echo.android.data.fetchSubsonicLyricsText
+import app.echo.android.data.fetchSubsonicLyrics
 import app.echo.android.data.subsonicSongIdFromTrack
 import app.echo.android.lyrics.EchoLyricsParser
 import app.echo.android.lyrics.ImportedLyricsStore
@@ -34,14 +34,16 @@ internal class EchoNowPlayingLyricsSession(application: Application) {
         subsonicLyricsLoader = { track ->
             val endpoint = EchoSubsonicEndpointRef.get() ?: return@LyricsController null
             val songId = subsonicSongIdFromTrack(track.id, track.source) ?: return@LyricsController null
-            val text = try {
-                fetchSubsonicLyricsText(endpoint, songId, track.artist, track.title)
+            if (track.source != endpoint.sourceId) return@LyricsController null
+            val content = try {
+                fetchSubsonicLyrics(endpoint, songId, track.artist, track.title)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Throwable) {
                 null
-            }?.takeIf { it.isNotBlank() } ?: return@LyricsController null
-            EchoLyricsParser.parse(text, sourceLabel = "Navidrome").takeIf { it.lines.isNotEmpty() }
+            } ?: return@LyricsController null
+            content.document ?: content.text?.let { EchoLyricsParser.parse(it, sourceLabel = "Navidrome") }
+                ?.takeIf { it.lines.isNotEmpty() }
         },
     )
 

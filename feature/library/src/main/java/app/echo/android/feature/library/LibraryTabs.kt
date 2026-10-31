@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import app.echo.android.design.echoClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -145,8 +146,13 @@ internal val LibraryWallHorizontalSpacing = 8.dp
 internal val LibraryWallVerticalSpacing = 16.dp
 
 @Composable
-internal fun LibraryPagerTabs(selectedMode: LibraryViewMode, onSelectMode: (LibraryViewMode) -> Unit, modes: List<LibraryViewMode>) {
-    LibraryTextTabs(modes.map { it.label() }, modes.indexOf(selectedMode), { onSelectMode(modes[it]) })
+internal fun LibraryPagerTabs(
+    selectedMode: LibraryViewMode,
+    onSelectMode: (LibraryViewMode) -> Unit,
+    modes: List<LibraryViewMode>,
+    pager: PagerState? = null,
+) {
+    LibraryTextTabs(modes.map { it.label() }, modes.indexOf(selectedMode), { onSelectMode(modes[it]) }, pager = pager)
 }
 
 @Composable

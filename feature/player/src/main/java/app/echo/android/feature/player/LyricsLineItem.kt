@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -52,6 +51,7 @@ internal fun LyricsLineItem(
     animateFocus: Boolean,
     paper: Boolean,
     passed: Boolean = false,
+    stationNumber: Int = 1,
     onClick: (() -> Unit)?,
     onLongClick: () -> Unit,
 ) {
@@ -112,7 +112,7 @@ internal fun LyricsLineItem(
         label = "lyrics-text-blur",
     )
     val textLift = animateFloatAsState(
-        targetValue = if (focused) 0f else motion.liftDp,
+        targetValue = if (focused || metro) 0f else motion.liftDp,
         animationSpec = contextMotion,
         label = "lyrics-text-lift",
     )
@@ -130,16 +130,7 @@ internal fun LyricsLineItem(
                     drawOutline(ChatStyle.Bubble.createOutline(size, layoutDirection, this), fill)
                 }
                 if (metro) {
-                    val x = 18.dp.toPx()
-                    val dotY = 21.dp.toPx()
-                    val half = (25f * spacing / 2f).dp.toPx()
-                    val reached = passed || focused
-                    drawLine(if (reached) MetroStyle.Line else MetroStyle.Rail, Offset(x, -half), Offset(x, dotY), 8.dp.toPx())
-                    drawLine(if (passed) MetroStyle.Line else MetroStyle.Rail, Offset(x, dotY), Offset(x, size.height + half), 8.dp.toPx())
-                    val radius = if (focused) 12.dp.toPx() else 9.dp.toPx()
-                    drawCircle(Color.White, radius, Offset(x, dotY))
-                    drawCircle(if (reached) MetroStyle.Line else Color(0xFFAAB0BB), radius, Offset(x, dotY),
-                        style = Stroke(if (focused) 5.dp.toPx() else 4.dp.toPx()))
+                    drawMetroLyricStation(passed, focused, markerAlpha.value, spacing)
                 }
                 if (terminal && markerAlpha.value > 0f) {
                     // Cursor line: a tinted row and a bar on the left edge.
@@ -175,7 +166,7 @@ internal fun LyricsLineItem(
                 },
             )
             .padding(
-                start = if (metro) 44.dp else if (chat) 14.dp else if (paper) 10.dp else 4.dp,
+                start = if (metro) 62.dp else if (chat) 14.dp else if (paper) 10.dp else 4.dp,
                 end = if (chat) 14.dp else if (paper) 10.dp else 4.dp,
                 top = if (chat) 9.dp else 2.dp,
                 bottom = if (chat) 9.dp else 2.dp,
@@ -183,6 +174,7 @@ internal fun LyricsLineItem(
         horizontalAlignment = horizontalAlignment,
         verticalArrangement = Arrangement.spacedBy((5f * spacing).dp),
     ) {
+        if (metro) MetroLyricStationLabel(stationNumber, line.startMs, focused, passed)
         if (line.speaker != null || line.isBackground) {
             Text(text = if (line.isBackground) stringResource(L10nR.string.lyrics_backing_vocals) else line.speaker.orEmpty(),
                 color = lyricAccent.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)

@@ -16,4 +16,5 @@ class RemoteLibraryWritebackActions(
     val delete: suspend (String) -> Unit,
     val add: suspend (String, String) -> Unit,
     val remove: suspend (String, String) -> Unit,
+    val navidrome: NavidromeActions? = null,
 )

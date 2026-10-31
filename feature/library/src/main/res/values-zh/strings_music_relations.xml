@@ -1,0 +1,26 @@
+<resources>
+    <string name="music_relations_title">音乐关系</string>
+    <string name="music_relation_back">返回</string>
+    <string name="music_relation_read_tags">读取关系标签</string>
+    <string name="music_relation_tag_hint">本地曲库 · 按文件中的明确标签浏览。已有曲库可点刷新读取关系标签，不改写音频文件。</string>
+    <string name="music_relation_all">全部音乐</string>
+    <string name="music_relation_tracks">曲目</string>
+    <string name="music_relation_composers">作曲家</string>
+    <string name="music_relation_works">作品</string>
+    <string name="music_relation_movements">乐章</string>
+    <string name="music_relation_conductors">指挥</string>
+    <string name="music_relation_performers">演奏者</string>
+    <string name="music_relation_recordings">录音版本</string>
+    <string name="music_relation_contributors">参与者</string>
+    <string name="music_relation_labels">厂牌</string>
+    <string name="music_relation_credit_roles">署名角色</string>
+    <string name="music_relation_overview">含关系标签：%1$d / %2$d 首 · 关系条目：%3$d</string>
+    <string name="music_relation_play_loaded">播放已载入曲目（最多 40 首）</string>
+    <string name="music_relation_search">在当前关系中查找</string>
+    <string name="music_relation_empty">暂无匹配关系。可读取文件标签、切换分类或移除筛选；缺失的关系不会自动猜测。</string>
+    <string name="music_relation_error">读取关系失败，已完成的结果已保留。</string>
+    <string name="music_relation_retry">重试</string>
+    <string name="music_relation_cancel">停止读取</string>
+    <string name="music_relation_progress">已检查 %1$d 首 · 无法读取 %2$d 首</string>
+    <plurals name="music_relation_track_count"><item quantity="other">%1$d 首曲目</item></plurals>
+</resources>

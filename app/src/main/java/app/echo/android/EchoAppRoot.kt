@@ -1864,6 +1864,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 val opraState by viewModel.opraState.collectAsStateWithLifecycle()
                                 val replayGainScan by viewModel.replayGainScanState.collectAsStateWithLifecycle()
                                 DiagnosticsScreen(
+                                    isActive = appVisible && !shellOverlayOpen &&
+                                        tabPagerState.currentPage == EchoPagerPage.Diagnostics.ordinal,
                                     soundRequestId = settingsSoundRequestId,
                                     onSwipeToConnect = { navigateToPage(EchoPagerPage.Connect) },
                                     status = playbackStatus,

@@ -37,5 +37,5 @@
     <string name="signal_scan_select_track">先選擇本機曲目，再分析並儲存響度標籤。</string>
     <string name="signal_constant_power_note">以曲線控制左右衰減，置中時兩側各為 0 dB。</string>
     <string name="signal_bypass_locked">bit-perfect · 參數鎖定</string>
-    <string name="signal_bypass_detail">USB bit-perfect 模式已啟用，請退出該模式後調整聲道和 DSP。</string>
+    <string name="signal_bypass_detail">USB bit-perfect 模式已啟用，退出此模式後可繼續調整聲音處理參數。</string>
 </resources>

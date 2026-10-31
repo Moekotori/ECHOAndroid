@@ -52,7 +52,8 @@ internal object VorbisTagReader {
         return AudioTagFields(
             title = values["TITLE"].orEmpty(), artist = names("ARTIST").orEmpty(), album = values["ALBUM"],
             albumArtist = names("ALBUMARTIST", "ALBUM ARTIST", "ALBUM_ARTIST"),
-            composer = values["COMPOSER"], genre = values["GENRE"],
+            composer = names("COMPOSER"), genre = values["GENRE"],
+            musicRelations = musicRelationTags(comments),
             trackNumber = (values["TRACKNUMBER"] ?: values["TRACK"])?.substringBefore('/')?.trim()?.toIntOrNull()?.takeIf { it > 0 },
             discNumber = (values["DISCNUMBER"] ?: values["DISC"])?.substringBefore('/')?.trim()?.toIntOrNull()?.takeIf { it > 0 },
             year = (values["DATE"] ?: values["YEAR"])?.take(4)?.toIntOrNull()?.takeIf { it > 0 },

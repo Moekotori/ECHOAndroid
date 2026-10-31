@@ -17,6 +17,8 @@ data class AlbumOnlineInfo(
     val partial: Boolean = false,
     val cached: Boolean = false,
     val stale: Boolean = false,
+    val serverDescription: String? = null,
+    val serverUrl: String? = null,
 )
 
 data class AlbumOnlineCredit(val role: String, val name: String, val track: String? = null)

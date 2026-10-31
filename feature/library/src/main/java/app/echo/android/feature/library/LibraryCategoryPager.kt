@@ -1,7 +1,9 @@
 package app.echo.android.feature.library
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,10 +13,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import app.echo.android.model.settings.EchoLibraryCategory
 import app.echo.android.model.settings.EchoLibraryLayout
+import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import app.echo.android.design.animateSilkToPage
 import app.echo.android.design.rememberContentPagerNestedScroll
-import app.echo.android.design.rememberSilkPagerFlingBehavior
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -39,16 +40,21 @@ internal fun EchoLibraryCategory.viewMode(): LibraryViewMode = when (this) {
 /** Category paging stays in the library; each lazy page retains its saved scroll state. */
 @Composable
 internal fun LibraryCategoryPager(
+    pager: PagerState,
     modes: List<LibraryViewMode>,
     selectedMode: LibraryViewMode,
     onSelectMode: (LibraryViewMode) -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable (LibraryViewMode) -> Unit,
 ) = key(modes) {
-    val pager = rememberPagerState(initialPage = modes.indexOf(selectedMode).coerceAtLeast(0)) { modes.size }
-    val fling = rememberSilkPagerFlingBehavior(pager)
-    val nestedScroll = rememberContentPagerNestedScroll(pager, fling)
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val settleSpec = tween<Float>(if (lightweight) 100 else 180, easing = EchoMotion.Silk)
+    val fling = PagerDefaults.flingBehavior(
+        state = pager,
+        snapAnimationSpec = settleSpec,
+        snapPositionalThreshold = 0.2f,
+    )
+    val nestedScroll = rememberContentPagerNestedScroll(pager, fling)
     val selection by rememberUpdatedState(selectedMode)
     val onSelect by rememberUpdatedState(onSelectMode)
 
@@ -56,9 +62,14 @@ internal fun LibraryCategoryPager(
     // request, so an old settled page cannot overwrite a newly clicked tab.
     LaunchedEffect(pager, selectedMode) {
         val requestedPage = modes.indexOf(selectedMode).coerceAtLeast(0)
-        if (pager.currentPage != requestedPage) {
+        if (pager.currentPage != requestedPage || pager.currentPageOffsetFraction != 0f) {
             try {
-                pager.animateSilkToPage(requestedPage, lightweight)
+                // Distant tab clicks should not sweep through unrelated categories.
+                if (lightweight || abs(requestedPage - pager.currentPage) > 1) {
+                    pager.scrollToPage(requestedPage)
+                } else {
+                    pager.animateScrollToPage(requestedPage, animationSpec = settleSpec)
+                }
             } catch (cancelled: CancellationException) {
                 // Touch can interrupt the animation; composition cancellation still propagates.
                 currentCoroutineContext().ensureActive()

@@ -18,6 +18,9 @@ data class ArtistOnlineInfo(
     val wikipediaLanguage: String? = null,
     val partial: Boolean = false,
     val stale: Boolean = false,
+    val artworkUri: String? = null,
+    val serverDescription: String? = null,
+    val serverUrl: String? = null,
 )
 
 data class ArtistConcert(
@@ -64,6 +67,8 @@ fun interface ArtistSetlistMatcher {
 }
 
 interface ArtistOnlineInfoLoader {
+    /** Optional server artwork, without running public biography lookups. */
+    suspend fun loadServerProfile(query: ArtistOnlineQuery, refresh: Boolean = false): ArtistOnlineInfo? = null
     /** Null means no unambiguous match. Network and parse failures throw. */
     suspend fun loadProfile(query: ArtistOnlineQuery, language: String, refresh: Boolean): ArtistOnlineInfo?
     suspend fun loadConcerts(query: ArtistOnlineQuery, refresh: Boolean): ArtistConcerts

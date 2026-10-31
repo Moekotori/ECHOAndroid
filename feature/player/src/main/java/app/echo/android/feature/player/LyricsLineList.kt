@@ -136,6 +136,7 @@ internal fun LyricsLineList(
                     focusGlowEnabled = focusGlowEnabled, showTranslation = showTranslation,
                     showRomanization = showRomanization, motion = motion,
                     animateFocus = animateFocus, paper = paper, passed = focusIndex >= 0 && index < focusIndex,
+                    stationNumber = index + 1,
                     onClick = if (seekable) ({
                         calibrationIndex = null
                         pendingFollowIndex = index

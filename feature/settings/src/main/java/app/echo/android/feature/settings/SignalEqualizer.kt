@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,14 +64,15 @@ internal fun SignalEqualizer(
     onBindToOutput: () -> Unit = {},
     onUnbindFromOutput: () -> Unit = {},
 ) {
-    var selectedBand by remember { mutableIntStateOf(0) }
+    var selectedBand by rememberSaveable { mutableIntStateOf(0) }
     val activeBand = selectedBand.coerceIn(0, (state.filters.size - 1).coerceAtLeast(0))
     val title = stringResource(L10nR.string.feature_settings_equalizer_7ccb03)
     val scheme = MaterialTheme.colorScheme
     val live = state.active && !bypassed
-    val fadersEnabled = state.enabled && state.supported && !bypassed
+    val canAdjust = state.supported && !bypassed
+    val fadersEnabled = state.enabled && canAdjust
     val status = stringResource(when {
-        bypassed -> L10nR.string.eq_bypassed
+        bypassed -> L10nR.string.signal_bypass_locked
         !state.enabled -> L10nR.string.eq_status_off
         !state.active -> L10nR.string.peq_neutral
         !playing -> L10nR.string.eq_waiting_audio
@@ -78,33 +80,15 @@ internal fun SignalEqualizer(
         else -> L10nR.string.eq_processing
     })
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(if (state.parametric) L10nR.string.eq_mode_parametric else L10nR.string.eq_mode_graphic),
-                    color = scheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SignalLiveDot(active = live && playing && state.processingSampleRateHz != null)
-                    Text(
-                        status,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = when {
-                            bypassed -> scheme.error
-                            live && playing -> scheme.primary
-                            else -> scheme.onSurfaceVariant
-                        },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            if (state.parametric) {
-                Text(stringResource(L10nR.string.eq_filter_count, state.filters.size), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-            }
-            EchoSwitch(checked = state.enabled, onCheckedChange = onEnabledChange, enabled = !bypassed && state.supported,
-                modifier = Modifier.semantics { contentDescription = title })
-        }
+        SignalProcessorHeader(
+            label = title, status = status,
+            live = live && playing && state.processingSampleRateHz != null,
+            checked = state.enabled, enabled = canAdjust,
+            onCheckedChange = onEnabledChange, warning = bypassed,
+            detail = if (state.parametric) stringResource(L10nR.string.eq_filter_count, state.filters.size) else null,
+        )
         DspChoices(listOf(stringResource(L10nR.string.eq_mode_graphic), stringResource(L10nR.string.eq_mode_parametric)),
-            if (state.parametric) 1 else 0, !bypassed && state.supported) { mode ->
+            if (state.parametric) 1 else 0, canAdjust) { mode ->
             if (mode == 1 && !state.parametric) {
                 onParametricChange(state.bands.map {
                     app.echo.android.model.playback.OpraEqBand("peak_dip", it.frequencyHz.toFloat(), it.gainDb, 1f, null)
@@ -113,7 +97,7 @@ internal fun SignalEqualizer(
         }
         if (state.parametric) SignalNote(stringResource(L10nR.string.peq_editor_detail))
         state.warning?.let { SignalNote(it, error = true) }
-        if (!state.parametric) SignalEqPresetPicker(state.presetId, onPresetSelected)
+        if (!state.parametric) SignalEqPresetPicker(state.presetId, onPresetSelected, enabled = canAdjust)
         if (state.parametric) state.sourceLabel?.takeIf { it.isNotBlank() }?.let { SignalNote(it) }
         if (!state.parametric && state.presetId == EchoEqualizerPreset.Harman) SignalNote(stringResource(L10nR.string.eq_preset_harman_detail))
 
@@ -129,7 +113,7 @@ internal fun SignalEqualizer(
                 maxGainDb = app.echo.android.model.playback.EchoParametricEq.MaxGainDb,
                 selectedMarkerIndex = activeBand,
                 onMarkerSelected = { selectedBand = it },
-                onMarkerDrag = if (!bypassed && state.enabled) {
+                onMarkerDrag = if (canAdjust && state.enabled) {
                     { index, frequencyHz, gainDb ->
                         onParametricChange(
                             state.filters.toMutableList().also { bands ->
@@ -143,7 +127,7 @@ internal fun SignalEqualizer(
                 },
                 modifier = Modifier.fillMaxWidth().height(192.dp),
             )
-            SignalPeqEditor(state.filters, !bypassed, onParametricChange, activeBand) { selectedBand = it }
+            SignalPeqEditor(state.filters, canAdjust, onParametricChange, activeBand) { selectedBand = it }
         } else {
             SignalEqPlot(
                 points = state.responseCurve,
@@ -186,23 +170,16 @@ internal fun SignalEqualizer(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(L10nR.string.eq_preamp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(formatEqGain(state.preampDb), style = MaterialTheme.typography.labelLarge, color = scheme.primary)
-                }
-                TextButton(onClick = onReset, enabled = !bypassed && state.supported) {
-                    Text(stringResource(L10nR.string.feature_settings_reset_1106f5))
-                }
+                Text(stringResource(L10nR.string.eq_preamp), Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                SignalNumericValue(stringResource(L10nR.string.eq_preamp), state.preampDb, -24f..12f,
+                    canAdjust, onPreampChange)
             }
             val preampLabel = stringResource(L10nR.string.eq_preamp)
             SignalGainStrip(
                 value = state.preampDb.coerceIn(-24f, 12f),
                 valueRange = -24f..12f,
-                enabled = !bypassed && state.supported,
+                enabled = canAdjust,
                 contentDescription = preampLabel,
                 onValueChange = onPreampChange,
             )
@@ -210,12 +187,17 @@ internal fun SignalEqualizer(
                 SignalNote(stringResource(L10nR.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
                 TextButton(
                     onClick = { onPreampChange(state.suggestedPreampDb) },
-                    enabled = !bypassed && state.supported,
+                    enabled = canAdjust,
                     contentPadding = PaddingValues(horizontal = 0.dp),
                 ) {
                     Text(stringResource(L10nR.string.eq_apply_headroom))
                 }
             }
+        }
+
+        TextButton(onClick = onReset, enabled = canAdjust,
+            contentPadding = PaddingValues(horizontal = 0.dp)) {
+            Text(stringResource(L10nR.string.signal_reset_equalizer))
         }
 
         val defaultSaveName = state.sourceLabel?.takeIf { it.isNotBlank() }
@@ -236,13 +218,14 @@ internal fun SignalEqualizer(
             currentShare = currentShare,
             currentCurve = state.responseCurve,
             enabled = true,
+            applyEnabled = canAdjust,
             onSave = onSaveUserPreset,
             onUpdate = onUpdateUserPreset,
             onApply = onApplyUserPreset,
             onRename = onRenameUserPreset,
             onDelete = onDeleteUserPreset,
             onImportShareCode = onImportShareCode,
-                                            onImportBundle = onImportBundle,
+            onImportBundle = onImportBundle,
             outputDeviceLabel = outputDeviceLabel,
             outputBound = outputBound,
             onBindToOutput = onBindToOutput,

@@ -37,5 +37,5 @@
     <string name="signal_scan_select_track">Select a local track to analyze and save its loudness tag.</string>
     <string name="signal_constant_power_note">Curved left/right attenuation; both channels are at 0 dB in the center.</string>
     <string name="signal_bypass_locked">bit-perfect · controls locked</string>
-    <string name="signal_bypass_detail">USB bit-perfect mode is enabled. Exit this mode to adjust channels and DSP.</string>
+    <string name="signal_bypass_detail">USB bit-perfect mode is on. Turn it off to adjust sound processing.</string>
 </resources>

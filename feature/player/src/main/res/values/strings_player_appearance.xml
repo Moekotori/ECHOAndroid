@@ -22,4 +22,16 @@
     <string name="player_appearance_contours">Contours</string>
     <string name="player_appearance_dither">Dither</string>
     <string name="player_appearance_glyph_field">Glyph field</string>
+    <string name="player_style_metro_line">ECHO LINE · 04</string>
+    <string name="player_style_metro_now">ON THIS LINE</string>
+    <string name="player_style_metro_route">PLAYBACK ROUTE</string>
+    <string name="player_style_metro_lyric_route">LYRIC STATIONS</string>
+    <string name="player_style_metro_seek_hint">Tap a stop to seek</string>
+    <string name="player_style_metro_station">Station %1$d</string>
+    <string name="player_style_metro_next">Next → %1$s</string>
+    <string name="player_style_metro_arrived">Terminus reached</string>
+    <string name="player_style_metro_current">Current station</string>
+    <string name="player_style_metro_seek_to">Seek to %1$s</string>
+    <string name="player_style_metro_progress">Current position</string>
+    <string name="player_style_metro_arrival_in">Arriving in %1$s</string>
 </resources>

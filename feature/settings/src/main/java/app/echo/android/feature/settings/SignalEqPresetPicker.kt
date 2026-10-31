@@ -13,6 +13,7 @@ import app.echo.android.design.EchoIcon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,25 +25,26 @@ import app.echo.android.model.playback.EchoEqualizerPresets
 
 /** Keeps presets within reach without pushing the actual adjustment controls offscreen. */
 @Composable
-internal fun SignalEqPresetPicker(selectedId: String, onSelect: (String) -> Unit) {
+internal fun SignalEqPresetPicker(selectedId: String, onSelect: (String) -> Unit, enabled: Boolean = true) {
     var expanded by remember { mutableStateOf(false) }
+    LaunchedEffect(enabled) { if (!enabled) expanded = false }
     Box {
         TextButton(
-            onClick = { expanded = true },
+            onClick = { expanded = true }, enabled = enabled,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 0.dp, vertical = 10.dp),
         ) {
             Text(eqPresetLabel(selectedId), Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             EchoIcon(Icons.Default.KeyboardArrowDown, contentDescription = null)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) {
             EchoEqualizerPresets.presets.forEach { preset ->
                 DropdownMenuItem(
-                    text = { Text(eqPresetLabel(preset.id)) },
+                    text = { Text(eqPresetLabel(preset.id)) }, enabled = enabled,
                     trailingIcon = {
                         if (selectedId == preset.id) EchoIcon(Icons.Default.Check, contentDescription = null)
                     },
-                    onClick = { expanded = false; onSelect(preset.id) },
+                    onClick = { expanded = false; if (enabled) onSelect(preset.id) },
                 )
             }
         }

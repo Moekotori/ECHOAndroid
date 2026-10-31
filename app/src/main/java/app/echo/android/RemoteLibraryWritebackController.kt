@@ -23,7 +23,7 @@ internal class RemoteLibraryWritebackController(
     val failure = mutableFailure.asStateFlow()
     fun dismissFailure() { mutableFailure.value = false }
 
-    fun actions(configured: SubsonicEndpoint? = endpoint()): RemoteLibraryWritebackActions? {
+    fun actions(configured: SubsonicEndpoint? = endpoint(), navidrome: app.echo.android.feature.library.NavidromeActions? = null): RemoteLibraryWritebackActions? {
         val captured = configured ?: return null
         suspend fun run(block: suspend (SubsonicEndpoint) -> Unit) = mutation.withLock {
             val current = requireNotNull(endpoint())
@@ -40,6 +40,7 @@ internal class RemoteLibraryWritebackController(
             delete = { id -> run { writeback.delete(it, id) } },
             add = { id, song -> run { writeback.add(it, id, song) } },
             remove = { id, song -> run { writeback.remove(it, id, song) } },
+            navidrome = navidrome,
         )
     }
 

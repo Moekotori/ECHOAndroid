@@ -23,8 +23,8 @@ internal fun SignalMsebPanel(equalizer: EchoEqualizerState, status: EchoPlayback
     val scheme = MaterialTheme.colorScheme
     val title = stringResource(R.string.mseb_title)
     val statusText = stringResource(when {
-        bypassed -> R.string.eq_bypassed
-        !state.enabled -> R.string.eq_status_off
+        bypassed -> R.string.signal_bypass_locked
+        !state.enabled -> R.string.signal_preset_while_off
         !state.active -> R.string.mseb_neutral
         !status.isPlaying -> R.string.eq_waiting_audio
         equalizer.processingSampleRateHz == null -> R.string.eq_waiting_pipeline
@@ -36,30 +36,31 @@ internal fun SignalMsebPanel(equalizer: EchoEqualizerState, status: EchoPlayback
         stringResource(R.string.mseb_vocal), stringResource(R.string.mseb_bass), stringResource(R.string.mseb_clear),
     )
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SignalLiveDot(live)
-                    Text(statusText, style = MaterialTheme.typography.labelMedium, color = if (bypassed) scheme.error else scheme.onSurfaceVariant)
-                }
-            }
-            EchoSwitch(state.enabled, { onChange(state.copy(enabled = it)) }, enabled = !bypassed,
-                modifier = Modifier.semantics { contentDescription = title })
-        }
+        SignalProcessorHeader(title, statusText, live, state.enabled, !bypassed,
+            { onChange(state.copy(enabled = it)) }, warning = bypassed)
         SignalNote(stringResource(if (bypassed) R.string.signal_bypass_detail else R.string.mseb_detail))
-        if (!state.enabled && !bypassed) SignalNote(stringResource(R.string.signal_preset_while_off))
         DspChoices(presetLabels, EchoMsebPreset.entries.indexOfFirst { it.values == state.normalized.values }, !bypassed) {
             onChange(EchoMsebPreset.entries[it].applyTo(state))
         }
         if (state.active && !bypassed) {
             SignalReadout(stringResource(R.string.mseb_headroom), formatEqGain(equalizer.msebHeadroomDb))
         }
-        EchoMsebParameter.entries.forEach { parameter ->
-            key(parameter) {
-                val labels = msebLabels(parameter)
-                MsebControl(stringResource(labels.first), stringResource(labels.second), stringResource(labels.third),
-                    state.value(parameter), !bypassed) { onChange(state.withValue(parameter, it)) }
+        val groups = listOf(
+            R.string.signal_mseb_tone to listOf(EchoMsebParameter.Temperature, EchoMsebParameter.BassExtension,
+                EchoMsebParameter.BassTexture, EchoMsebParameter.NoteThickness),
+            R.string.signal_mseb_voice to listOf(EchoMsebParameter.Voice, EchoMsebParameter.FemaleOvertones,
+                EchoMsebParameter.SibilanceLf, EchoMsebParameter.SibilanceHf),
+            R.string.signal_mseb_space to listOf(EchoMsebParameter.ImpulseResponse, EchoMsebParameter.Air),
+        )
+        groups.forEach { (heading, parameters) ->
+            SignalSection(stringResource(heading)) {
+                parameters.forEach { parameter ->
+                    key(parameter) {
+                        val labels = msebLabels(parameter)
+                        MsebControl(stringResource(labels.first), stringResource(labels.second), stringResource(labels.third),
+                            state.value(parameter), !bypassed) { onChange(state.withValue(parameter, it)) }
+                    }
+                }
             }
         }
         TextButton(enabled = !bypassed, onClick = { onChange(EchoMsebPreset.Neutral.applyTo(state)) },
@@ -76,8 +77,7 @@ private fun MsebControl(label: String, low: String, high: String, value: Float, 
     val scheme = MaterialTheme.colorScheme
     val display = if (draft > 0) "+${draft.roundToInt()}" else draft.roundToInt().toString()
     Column {
-        HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.45f))
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
             SignalNumericValue(label, draft, -100f..100f, enabled, {
                 draft = it.roundToInt().toFloat()
@@ -92,8 +92,9 @@ private fun MsebControl(label: String, low: String, high: String, value: Float, 
                 stateDescription = display
             })
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(low, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-            Text(high, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Text(low, Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Text("0", Modifier.padding(horizontal = 12.dp), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Text(high, Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
         }
     }
 }

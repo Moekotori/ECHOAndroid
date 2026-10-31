@@ -1,8 +1,11 @@
 package app.echo.android.ui.library
 
+import androidx.compose.foundation.layout.padding
+
 import app.echo.android.model.library.LibraryScanOptions
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.delay
@@ -64,6 +67,25 @@ internal fun EchoLibraryPage(
     onOpenPlayer: () -> Unit = {},
     bottomInset: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp(0f),
 ) {
+    var musicRelationsOpen by rememberSaveable { mutableStateOf(false) }
+    val musicRelationsState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+    val musicRelationsActions = remember(viewModel) {
+        val source = viewModel.musicRelations
+        app.echo.android.feature.library.MusicRelationsActions(source::initialize, source::entities, source::tracks,
+            source::readFileTags, source::overview)
+    }
+    val musicRelationPlayback = remember(viewModel) {
+        app.echo.android.feature.library.MusicRelationsPlaybackActions(viewModel::playMusicRelationTracks,
+            viewModel::playMusicRelationNext, viewModel::enqueueMusicRelation)
+    }
+    if (musicRelationsOpen) {
+        if (pageInteractive) musicRelationsState.SaveableStateProvider("music-relations") {
+            app.echo.android.feature.library.MusicRelationsScreen(musicRelationsActions,
+                onBack = { musicRelationsOpen = false }, onPlay = viewModel::playMusicRelationTrack,
+                modifier = androidx.compose.ui.Modifier.padding(bottom = bottomInset), playback = musicRelationPlayback)
+        }
+        return
+    }
     var broadcastPage by rememberSaveable { mutableStateOf<String?>(null) }
     broadcastPage?.let { page ->
         EchoBroadcastHost(viewModel, page, pageInteractive, onBack = { broadcastPage = null }, onOpenPlayer = onOpenPlayer, bottomInset = bottomInset)
@@ -101,7 +123,8 @@ internal fun EchoLibraryPage(
     }
     val remotePlaylistManagement = remember(viewModel, appSettings.subsonicServerUrl,
         appSettings.subsonicUsername, appSettings.subsonicPassword) {
-        viewModel.remoteLibraryTools.actions(app.echo.android.subsonicEndpointFrom(appSettings))
+        val endpoint = app.echo.android.subsonicEndpointFrom(appSettings)
+        viewModel.remoteLibraryTools.actions(endpoint, endpoint?.let { viewModel.navidromeTools.actions(it) })
     }
     val playlistImportState by viewModel.playlistTools.importState.collectAsStateWithLifecycle()
     app.echo.android.feature.library.PlaylistImportDialog(playlistImportState,
@@ -242,6 +265,7 @@ internal fun EchoLibraryPage(
     app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
     app.echo.android.feature.library.LibraryBatchProvider(batchActions, pageInteractive = pageInteractive) {
         LibraryScreen(
+            onOpenMusicRelations = { musicRelationsOpen = true },
             libraryLayout = appSettings.libraryLayout,
             onLibraryLayoutChange = viewModel::setLibraryLayout,
             radioStations = radioStations,

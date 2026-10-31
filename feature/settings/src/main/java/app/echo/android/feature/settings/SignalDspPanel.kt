@@ -17,7 +17,12 @@ internal fun SignalDspPanel(
     onMode: (EchoReplayGainMode) -> Unit, onScan: () -> Unit,
 ) {
     val bypassed = status.diagnostics.usbBitPerfectEnabled
-    var expanded by rememberSaveable { mutableStateOf("limiter") }
+    var expanded by rememberSaveable { mutableStateOf(when {
+        status.replayGainEnabled -> "loudness"
+        settings.crossfeedEnabled -> "crossfeed"
+        settings.limiterEnabled -> "limiter"
+        else -> ""
+    }) }
     val enabledCount = (if (settings.limiterEnabled) 1 else 0) +
         (if (settings.crossfeedEnabled) 1 else 0) + (if (status.replayGainEnabled) 1 else 0)
     val defaults = remember { EchoDspSettings() }

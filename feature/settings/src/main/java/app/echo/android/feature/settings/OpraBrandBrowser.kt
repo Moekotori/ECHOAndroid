@@ -79,6 +79,7 @@ internal fun OpraBrandBrowser(state: OpraHeadphoneCorrectionState, onBrandSelect
                 OpraSelectedBrand(
                     brand = brand,
                     enabled = !state.loading,
+                    backLabel = stringResource(if (state.catalog == app.echo.android.model.playback.HeadphoneCorrectionCatalog.AutoEq) R.string.autoeq_all_measurements else R.string.opra_all_brands),
                     onBack = { onBrandSelected(null) },
                 )
             }
@@ -105,12 +106,12 @@ internal fun OpraBrandBrowser(state: OpraHeadphoneCorrectionState, onBrandSelect
 }
 
 @Composable
-private fun OpraSelectedBrand(brand: OpraHeadphoneBrand, enabled: Boolean, onBack: () -> Unit) {
+private fun OpraSelectedBrand(brand: OpraHeadphoneBrand, enabled: Boolean, backLabel: String, onBack: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         TextButton(onClick = onBack, enabled = enabled, contentPadding = PaddingValues(horizontal = 0.dp)) {
             EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
-            Text(stringResource(R.string.opra_all_brands))
+            Text(backLabel)
         }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                 Text(brand.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)

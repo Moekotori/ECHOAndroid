@@ -65,4 +65,5 @@ data class LibraryTrackEntity(
     val clipStartMs: Long = 0L,
     val clipEndMs: Long = 0L,
     @ColumnInfo(defaultValue = "NULL") val fileName: String? = null,
+    @ColumnInfo(defaultValue = "NULL") val musicRelationsJson: String? = null,
 )

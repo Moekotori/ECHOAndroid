@@ -86,6 +86,7 @@ internal object ApeTagReader {
             albumArtist = text("album artist", "albumartist"), trackNumber = number("track", "tracknumber"),
             discNumber = number("disc", "discnumber"), year = text("year", "date")?.take(4)?.toIntOrNull()?.takeIf { it > 0 },
             genre = text("genre"), composer = text("composer"), lyrics = text("lyrics", "unsyncedlyrics"),
+            musicRelations = musicRelationTags(values.entries.map { it.key to it.value }),
             artworkBytes = artwork, artworkMime = artworkMime,
             replayGainTrackGainDb = text("replaygain_track_gain")?.substringBefore(' ')?.toFloatOrNull()?.takeIf { it.isFinite() },
         ).takeUnless { it.isBlank() }

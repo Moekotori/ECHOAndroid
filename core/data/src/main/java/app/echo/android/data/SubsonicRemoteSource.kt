@@ -26,6 +26,8 @@ import kotlin.math.absoluteValue
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.FormBody
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -73,6 +75,8 @@ internal data class SubsonicSong(
     val bitRateKbps: Int?,
     val path: String?,
     val sampleRateHz: Int? = null,
+    val genre: String? = null,
+    val composer: String? = null,
 )
 
 internal class SubsonicClient(
@@ -82,7 +86,7 @@ internal class SubsonicClient(
     private val appContext: Context? = null,
 ) {
     private val httpGet: (String) -> String? = httpGet ?: { defaultHttpGet(it, appContext) }
-    private val httpMutation: (String) -> String? = httpGet ?: { mutationHttpGet(it, appContext) }
+    private val httpMutation: (String) -> String? = httpGet ?: { mutationHttpPost(it, appContext) }
     fun ping() {
         request("ping.view")
     }
@@ -203,9 +207,12 @@ internal class SubsonicClient(
 
     internal fun fetchPlaylists(): List<SubsonicPlaylist> {
         val root = request("getPlaylists.view")
-        return root.optJSONObject("playlists")
-            ?.jsonObjects("playlist")
-            ?.map { playlist ->
+        val playlists = root.optJSONObject("playlists") ?: error("Incomplete Subsonic playlist list")
+        val rows = playlists.jsonObjects("playlist")
+        require(!playlists.has("playlist") || playlists.isNull("playlist") || playlists.optJSONArray("playlist") != null || playlists.optJSONObject("playlist") != null)
+        require(playlists.optJSONArray("playlist")?.length()?.let { it == rows.size } != false)
+        require(rows.size <= 10_000 && rows.all { !it.isNull("id") && it.optString("id").isNotBlank() && !it.isNull("name") && it.optString("name").isNotBlank() })
+        return rows.map { playlist ->
                 SubsonicPlaylist(
                     id = playlist.optJsonString("id"),
                     name = playlist.optJsonString("name").ifBlank { playlist.optJsonString("title") },
@@ -213,17 +220,16 @@ internal class SubsonicClient(
                     songCount = playlist.optInt("songCount").coerceAtLeast(0),
                 )
             }
-            ?.filter { it.id.isNotBlank() }
-            .orEmpty()
     }
 
     internal fun fetchPlaylistSongs(playlistId: String): List<SubsonicSong> {
         if (playlistId.isBlank()) return emptyList()
         val root = request("getPlaylist.view", listOf("id" to playlistId))
-        return root.optJSONObject("playlist")
-            ?.jsonObjects("entry")
-            .orEmpty()
-            .ifEmpty { root.optJSONObject("playlist")?.jsonObjects("song").orEmpty() }
+        val playlist = root.optJSONObject("playlist") ?: error("Incomplete Subsonic playlist")
+        val songs = playlist.jsonObjects("entry").ifEmpty { playlist.jsonObjects("song") }
+        require(songs.size <= 25_000 && (!playlist.has("songCount") || playlist.optInt("songCount") == songs.size))
+        require(songs.all { !it.isNull("id") && it.optString("id").isNotBlank() })
+        return songs
             .map { it.toSubsonicSong() }
             .filter { it.id.isNotBlank() }
     }
@@ -284,7 +290,7 @@ internal class SubsonicClient(
                 add("time" to timeEpochMs.toString())
             }
         }
-        request("scrobble.view", params)
+        request("scrobble.view", params, mutation = true)
     }
 
     private fun lyricsBySongId(songId: String): String? {
@@ -321,7 +327,7 @@ internal class SubsonicClient(
             ?.takeIf { it.isNotBlank() }
     }
 
-    private fun request(path: String, params: List<Pair<String, String>> = emptyList(), mutation: Boolean = false): JSONObject {
+    internal fun request(path: String, params: List<Pair<String, String>> = emptyList(), mutation: Boolean = false): JSONObject {
         val url = buildUrl(path, params)
         val body = try {
             (if (mutation) httpMutation else httpGet)(url)
@@ -397,6 +403,9 @@ internal fun SubsonicSong.toLibraryTrackEntity(
         mimeType = contentType ?: suffix?.let { "audio/$it" },
         sizeBytes = sizeBytes,
         sampleRateHz = sampleRateHz,
+        genre = genre,
+        composer = composer,
+        fileName = path?.substringAfterLast('/')?.takeIf(String::isNotBlank),
         dateModifiedSeconds = LibraryFingerprintPolicy.remoteDateModifiedSeconds(scanRunId),
         source = endpoint.sourceId,
         relativePath = path?.substringBeforeLast('/', missingDelimiterValue = ""),
@@ -454,10 +463,12 @@ private fun JSONObject.subsonicRoot(context: Context? = null): JSONObject {
         val message = root.optJSONObject("error")?.optString("message")
             ?.takeIf { it.isNotBlank() }
             ?: subsonicRequestFailedMessage(context)
-        error(message)
+        throw SubsonicApiException(root.optJSONObject("error")?.optInt("code") ?: 0, message)
     }
     return root
 }
+
+internal class SubsonicApiException(val code: Int, message: String) : IllegalStateException(message)
 
 private fun JSONObject.toSubsonicAlbum(): SubsonicAlbum =
     SubsonicAlbum(
@@ -469,13 +480,17 @@ private fun JSONObject.toSubsonicAlbum(): SubsonicAlbum =
         songCount = optInt("songCount").coerceAtLeast(0),
     )
 
-private fun JSONObject.toSubsonicSong(album: SubsonicAlbum? = null): SubsonicSong =
+internal fun JSONObject.toSubsonicSong(album: SubsonicAlbum? = null): SubsonicSong =
     SubsonicSong(
         id = optJsonString("id"),
         title = optJsonString("title"),
-        artist = optJsonString("artist").ifBlank { album?.artist.orEmpty() },
+        artist = optJsonString("displayArtist").ifBlank { optJsonString("artist") }
+            .ifBlank { jsonObjects("artists").map { it.optJsonString("name") }.filter(String::isNotBlank).joinToString(" & ") }
+            .ifBlank { album?.artist.orEmpty() },
         album = optJsonString("album").ifBlank { album?.name.orEmpty() }.takeIf { it.isNotBlank() },
-        albumArtist = optJsonString("albumArtist").ifBlank { album?.artist.orEmpty() }.takeIf { it.isNotBlank() },
+        albumArtist = optJsonString("displayAlbumArtist").ifBlank { optJsonString("albumArtist") }
+            .ifBlank { jsonObjects("albumArtists").map { it.optJsonString("name") }.filter(String::isNotBlank).joinToString(" & ") }
+            .ifBlank { album?.artist.orEmpty() }.takeIf { it.isNotBlank() },
         coverArt = optJsonString("coverArt").ifBlank { album?.coverArt.orEmpty() }.takeIf { it.isNotBlank() },
         durationSeconds = optLong("duration", 0L),
         trackNumber = optInt("track").takeIf { it > 0 },
@@ -488,6 +503,10 @@ private fun JSONObject.toSubsonicSong(album: SubsonicAlbum? = null): SubsonicSon
         path = optJsonString("path").takeIf { it.isNotBlank() },
         sampleRateHz = optInt("samplingRate").takeIf { it > 0 }
             ?: optInt("sampleRate").takeIf { it > 0 },
+        genre = optJsonString("genre").ifBlank { jsonObjects("genres").firstNotNullOfOrNull {
+            it.optJsonString("name").takeIf(String::isNotBlank)
+        }.orEmpty() }.takeIf(String::isNotBlank),
+        composer = optJsonString("displayComposer").ifBlank { optJsonString("composer") }.takeIf(String::isNotBlank),
     )
 
 private fun JSONObject.optJsonString(name: String): String {
@@ -512,12 +531,13 @@ private val SharedSubsonicHttpClient: OkHttpClient =
         )
         .build()
 
-// Mutating Subsonic GET requests must not be transparently replayed after a connection failure.
+// Subsonic writes use form POST and must not be transparently replayed after a connection failure.
 private val MutationSubsonicHttpClient: OkHttpClient =
-    SharedSubsonicHttpClient.newBuilder().retryOnConnectionFailure(false).build()
+    SharedSubsonicHttpClient.newBuilder().retryOnConnectionFailure(false)
+        .apply { interceptors().clear() }.build()
 
-private fun mutationHttpGet(url: String, context: Context?): String =
-    httpGetWithClient(MutationSubsonicHttpClient, url, context)
+private fun mutationHttpPost(url: String, context: Context?): String =
+    httpGetWithClient(MutationSubsonicHttpClient, url, context, mutation = true)
 
 private val ProbeSubsonicHttpClient: OkHttpClient =
     SharedSubsonicHttpClient.newBuilder()
@@ -533,12 +553,17 @@ private fun defaultHttpGet(url: String, context: Context? = null): String =
 private fun probeHttpGet(url: String, context: Context? = null): String =
     httpGetWithClient(ProbeSubsonicHttpClient, url, context)
 
-private fun httpGetWithClient(client: OkHttpClient, url: String, context: Context?): String {
-    val request = Request.Builder()
-        .url(url)
+private fun httpGetWithClient(client: OkHttpClient, url: String, context: Context?, mutation: Boolean = false): String {
+    val parsed = url.toHttpUrl()
+    val requestBuilder = Request.Builder()
+        .url(if (mutation) parsed.newBuilder().query(null).build() else parsed)
         .header("User-Agent", "ECHOAndroid/0.1")
-        .get()
-        .build()
+    if (mutation) {
+        val form = FormBody.Builder()
+        for (index in 0 until parsed.querySize) form.add(parsed.queryParameterName(index), parsed.queryParameterValue(index).orEmpty())
+        requestBuilder.post(form.build())
+    } else requestBuilder.get()
+    val request = requestBuilder.build()
     return try {
         client.newCall(request).execute().use { response ->
             val body = response.body ?: error(subsonicHttpStatusMessage(response.code, context))
@@ -546,7 +571,17 @@ private fun httpGetWithClient(client: OkHttpClient, url: String, context: Contex
             if (declaredLength > SubsonicClient.MaxResponseBytes) {
                 error(subsonicResponseTooLargeMessage(context))
             }
-            val bytes = body.bytes()
+            val bytes = body.byteStream().use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(16_384)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (output.size() + count > SubsonicClient.MaxResponseBytes) error(subsonicResponseTooLargeMessage(context))
+                    output.write(buffer, 0, count)
+                }
+                output.toByteArray()
+            }
             if (bytes.size > SubsonicClient.MaxResponseBytes) {
                 error(subsonicResponseTooLargeMessage(context))
             }

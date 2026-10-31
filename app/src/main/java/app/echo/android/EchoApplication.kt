@@ -40,8 +40,11 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
     private val musicBrainzGate by lazy { app.echo.android.data.MusicBrainzRequestGate() }
     @Volatile
     private var setlistFmApiKey: String? = null
+    private val subsonicReferenceInfo by lazy {
+        app.echo.android.data.SubsonicReferenceInformation(EchoLibraryDatabase.create(this), this) { EchoSubsonicEndpointRef.get() }
+    }
     val artistOnlineInfo by lazy {
-        app.echo.android.data.ArtistOnlineInfoRepository(
+        app.echo.android.data.SubsonicArtistOnlineInfoLoader(app.echo.android.data.ArtistOnlineInfoRepository(
             File(cacheDir, "artist-online-info"),
             BuildConfig.VERSION_NAME,
             musicBrainzGate,
@@ -49,10 +52,11 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
                 setlistFmApiKey?.takeIf { it.isNotBlank() }
                     ?: SetlistFmApiConfig.API_KEY.takeIf { it.isNotBlank() }
             },
-        )
+        ), subsonicReferenceInfo)
     }
     val albumOnlineInfo by lazy {
-        app.echo.android.data.AlbumOnlineInfoRepository(File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate)
+        app.echo.android.data.SubsonicAlbumOnlineInfoLoader(
+            app.echo.android.data.AlbumOnlineInfoRepository(File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate), subsonicReferenceInfo)
     }
     val echoLinkSession by lazy { EchoLinkSession(this) }
     val listening by lazy { app.echo.android.listening.EchoListeningRuntime(this) }
@@ -77,6 +81,7 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
         radioSession.start(EchoPlaybackProcessRuntime.scope, EchoPlaybackProcessRuntime.surface)
         configureEchoBridgeNotificationArtwork()
         initializeEchoAppLocale(readEchoStartupThemeSnapshot().appLanguage)
+        EchoSubsonicListen.configure(this)
         installUncaughtExceptionHandler()
         EchoErrorLog.setProcessInfo(
             EchoErrorProcessInfo("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"),
@@ -161,6 +166,7 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
                 .distinctUntilChanged { previous, next -> previous.first == next.first }
                 .collect { (_, settings) ->
                     applyRemotePlaybackCredentials(settings, allowClearIfEmpty = true)
+                    EchoSubsonicListen.onCredentialsReady()
                     EchoPlaybackProcessRuntime.notifyRemoteAuthReady()
                 }
         }

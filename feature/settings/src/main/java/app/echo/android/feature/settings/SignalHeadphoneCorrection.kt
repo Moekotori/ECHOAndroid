@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import app.echo.android.feature.settings.R as L10nR
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +63,7 @@ internal fun SignalHeadphoneCorrection(
     state: OpraHeadphoneCorrectionState,
     equalizer: EchoEqualizerState,
     bypassed: Boolean,
+    playing: Boolean,
     userPresets: List<app.echo.android.model.playback.EchoEqualizerUserPreset>,
     lastQuery: String,
     onBrandSelected: (String?) -> Unit,
@@ -115,15 +118,17 @@ internal fun SignalHeadphoneCorrection(
     }
     val autoEq = state.catalog == HeadphoneCorrectionCatalog.AutoEq
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = autoEq, onClick = { if (!autoEq) onBrandSelected("catalog:autoeq") },
-                label = { Text(stringResource(L10nR.string.autoeq_offline_source)) })
-            FilterChip(selected = !autoEq, onClick = { if (autoEq) onBrandSelected("catalog:opra") },
-                label = { Text("OPRA") })
-        }
-        if (autoEq) {
-            SignalNote(stringResource(L10nR.string.autoeq_catalog_note))
-            state.status.revision?.let { SignalNote(stringResource(L10nR.string.autoeq_revision, it.take(12))) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f)) {
+                DspChoices(listOf(stringResource(L10nR.string.autoeq_offline_source), "OPRA"),
+                    if (autoEq) 0 else 1, !state.loading) { index ->
+                    if ((index == 0) != autoEq) onBrandSelected(if (index == 0) "catalog:autoeq" else "catalog:opra")
+                }
+            }
+            if (autoEq) SignalHelpButton(stringResource(L10nR.string.autoeq_offline_source),
+                stringResource(L10nR.string.autoeq_catalog_note) +
+                    (state.status.revision?.let { "\n\n" + stringResource(L10nR.string.autoeq_revision, it.take(12)) } ?: ""))
         }
         TextField(
             value = state.query,
@@ -134,7 +139,7 @@ internal fun SignalHeadphoneCorrection(
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            placeholder = { Text(
+            label = { Text(
                 if (selectedBrandName != null) stringResource(L10nR.string.opra_search_in_brand, selectedBrandName)
                 else stringResource(L10nR.string.opra_search_hint),
                 style = MaterialTheme.typography.bodyMedium,
@@ -176,11 +181,18 @@ internal fun SignalHeadphoneCorrection(
             }
         }
         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        state.message?.let { SignalNote(it) }
-        if (bypassed) SignalNote(stringResource(L10nR.string.eq_bypassed), error = true)
+        state.message?.let { message ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SignalNote(message)
+                if (!state.loading && state.status.source == "empty") TextButton(
+                    onClick = onRefresh, contentPadding = PaddingValues(horizontal = 0.dp),
+                ) { Text(stringResource(L10nR.string.signal_retry_catalog)) }
+            }
+        }
+        if (bypassed) SignalNote(stringResource(L10nR.string.signal_bypass_detail), error = true)
         if (equalizer.parametric && equalizer.sourceLabel != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SignalLiveDot(active = equalizer.enabled && !bypassed)
+                SignalLiveDot(active = playing && equalizer.active && !bypassed && equalizer.processingSampleRateHz != null)
                 Text(equalizer.sourceLabel.orEmpty(), style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
@@ -195,15 +207,16 @@ internal fun SignalHeadphoneCorrection(
                 Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(L10nR.string.opra_favorites), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                     favorites.forEach { preset ->
-                        SignalEqUserPresetRow(
+                        key(preset.id) { SignalEqUserPresetRow(
                             preset = preset,
                             active = equalizer.sourceLabel == preset.sourceLabel && equalizer.parametric,
                             enabled = !state.loading,
+                            applyEnabled = !bypassed && equalizer.supported,
                             onApply = { onApplyUserPreset(preset.id) },
                             onShare = { shareFavorite = preset },
                             showActions = true,
                             showEditDelete = false,
-                        )
+                        ) }
                     }
                 }
             }

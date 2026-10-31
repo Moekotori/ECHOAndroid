@@ -157,6 +157,15 @@ interface LibraryPlaylistDao {
     @Query("SELECT trackId FROM library_favorites")
     suspend fun getFavoriteTrackIds(): List<String>
 
+    @Query("SELECT f.trackId FROM library_favorites f JOIN library_tracks t ON t.id = f.trackId WHERE t.source = :source")
+    suspend fun getFavoriteTrackIdsFromSource(source: String): List<String>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertFavorites(favorites: List<LibraryFavoriteEntity>)
+
+    @Query("DELETE FROM library_favorites WHERE trackId IN (:ids)")
+    suspend fun deleteFavorites(ids: List<String>)
+
     @Query("SELECT EXISTS(SELECT 1 FROM library_favorites WHERE trackId = :trackId)")
     suspend fun isFavorite(trackId: String): Boolean
 

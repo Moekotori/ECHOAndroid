@@ -116,8 +116,7 @@ object SubsonicSyncPolicy {
         matchedTrackCount: Int,
     ): Boolean {
         if (!fetchSucceeded) return false
-        if (remoteSongCount > 0 && matchedTrackCount <= 0) return false
-        return true
+        return remoteSongCount == matchedTrackCount
     }
 
     internal fun localTrackIdsForAlbum(

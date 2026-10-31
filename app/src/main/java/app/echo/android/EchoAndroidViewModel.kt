@@ -134,6 +134,25 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     )
     private val errorLog = EchoErrorLogRepository.create(application)
     internal val remoteLibraryTools = RemoteLibraryWritebackController(repository) { EchoSubsonicEndpointRef.get() }
+    internal val musicRelations by lazy { repository.musicRelations() }
+    internal fun playMusicRelationTrack(track: EchoTrack) {
+        preferredPlayback.invalidate()
+        playbackController.play(track)
+    }
+    internal fun playMusicRelationTracks(tracks: List<EchoTrack>) {
+        if (tracks.isEmpty()) return
+        preferredPlayback.invalidate()
+        playbackController.playQueue(tracks.take(40), 0)
+    }
+    internal fun playMusicRelationNext(track: EchoTrack) = playbackController.playNext(track)
+    internal fun enqueueMusicRelation(track: EchoTrack) = playbackController.enqueue(track)
+    internal val navidromeTools by lazy {
+        NavidromeController(getApplication(), repository, { EchoSubsonicEndpointRef.get() },
+            currentQueue = { playbackQueue.value to currentPlaybackPositionMs() },
+            play = { track, position -> preferredPlayback.invalidate(); playbackController.playAt(track, position) },
+            restore = { tracks, index, position -> preferredPlayback.invalidate()
+                playbackController.playQueue(tracks, index, startPositionMs = position) })
+    }
     internal val libraryExperience = LibraryExperienceController(repository, application, remoteLibraryTools::setFavorite)
     internal val playlistTools = PlaylistManagementController(application, repository, viewModelScope, remoteLibraryTools::setFavorite)
     internal val unifiedSearch = UnifiedSearchController(repository, viewModelScope)

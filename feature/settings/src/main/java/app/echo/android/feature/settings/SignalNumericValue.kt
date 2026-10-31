@@ -4,6 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -16,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -49,20 +54,22 @@ internal fun SignalNumericValue(
     scale: Float = 1f,
     decimals: Int = 1,
 ) {
-    var editing by remember { mutableStateOf(false) }
+    var editing by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(enabled) { if (!enabled) editing = false }
     val scheme = MaterialTheme.colorScheme
     TextButton(
         onClick = { editing = true }, enabled = enabled,
-        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp),
-        modifier = modifier.semantics { contentDescription = label; stateDescription = valueLabel },
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.textButtonColors(containerColor = scheme.surfaceContainerHigh),
+        modifier = modifier.heightIn(min = 44.dp).semantics { contentDescription = label; stateDescription = valueLabel },
     ) {
-        Text(valueLabel, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace,
+        Text(valueLabel, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Medium, color = if (enabled) scheme.onSurface else scheme.onSurfaceVariant)
     }
     if (editing) {
         val initial = remember { signalNumber(value * scale, decimals) }
-        var raw by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
+        var raw by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
         val focus = remember { FocusRequester() }
         val keyboard = LocalSoftwareKeyboardController.current
         LaunchedEffect(Unit) { focus.requestFocus(); keyboard?.show() }
@@ -70,14 +77,33 @@ internal fun SignalNumericValue(
         val valid = parsed != null && parsed in valueRange
         val rangeLabel = stringResource(R.string.signal_value_range,
             signalNumber(valueRange.start * scale, decimals), signalNumber(valueRange.endInclusive * scale, decimals), unit)
+        val contextSignLabel = stringResource(R.string.signal_value_change_sign)
+        val apply = {
+            if (valid && enabled) {
+                parsed?.let {
+                    val factor = 10f.pow(decimals) * scale
+                    onValueChange((round(it * factor) / factor).coerceIn(valueRange))
+                }
+                keyboard?.hide()
+                editing = false
+            }
+        }
         AlertDialog(
-            onDismissRequest = { editing = false }, title = { Text(label) },
+            onDismissRequest = { keyboard?.hide(); editing = false }, title = { Text(label) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = raw, onValueChange = { raw = it }, singleLine = true,
-                        label = { Text(unit) }, isError = !valid,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        label = { Text(label) }, isError = !valid,
+                        suffix = if (unit.isBlank()) null else ({ Text(unit) }),
+                        leadingIcon = if (valueRange.start >= 0f) null else ({
+                            TextButton(onClick = {
+                                val next = if (raw.text.startsWith("-")) raw.text.drop(1) else "-" + raw.text.removePrefix("+")
+                                raw = TextFieldValue(next, TextRange(next.length))
+                            }, modifier = Modifier.semantics { contentDescription = contextSignLabel }) { Text("±") }
+                        }),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { apply() }),
                         textStyle = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace),
                         shape = RoundedCornerShape(6.dp), modifier = Modifier.fillMaxWidth().focusRequester(focus),
                     )
@@ -86,15 +112,9 @@ internal fun SignalNumericValue(
                 }
             },
             confirmButton = {
-                TextButton(enabled = valid && enabled, onClick = {
-                    parsed?.let {
-                        val factor = 10f.pow(decimals) * scale
-                        onValueChange((round(it * factor) / factor).coerceIn(valueRange))
-                    }
-                    editing = false
-                }) { Text(stringResource(R.string.dsp_apply)) }
+                TextButton(enabled = valid && enabled, onClick = apply) { Text(stringResource(R.string.dsp_apply)) }
             },
-            dismissButton = { TextButton(onClick = { editing = false }) { Text(stringResource(R.string.error_log_clear_cancel)) } },
+            dismissButton = { TextButton(onClick = { keyboard?.hide(); editing = false }) { Text(stringResource(R.string.error_log_clear_cancel)) } },
         )
     }
 }

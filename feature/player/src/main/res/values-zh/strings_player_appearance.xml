@@ -22,4 +22,16 @@
     <string name="player_appearance_contours">等高线</string>
     <string name="player_appearance_dither">抖动点阵</string>
     <string name="player_appearance_glyph_field">字符画</string>
+    <string name="player_style_metro_line">ECHO 线路 · 04</string>
+    <string name="player_style_metro_now">本次列车</string>
+    <string name="player_style_metro_route">播放线路图</string>
+    <string name="player_style_metro_lyric_route">歌词沿线</string>
+    <string name="player_style_metro_seek_hint">点击站点跳转</string>
+    <string name="player_style_metro_station">站点 %1$d</string>
+    <string name="player_style_metro_next">下一站 → %1$s</string>
+    <string name="player_style_metro_arrived">已抵达终点站</string>
+    <string name="player_style_metro_current">当前站</string>
+    <string name="player_style_metro_seek_to">跳转到 %1$s</string>
+    <string name="player_style_metro_progress">当前进度</string>
+    <string name="player_style_metro_arrival_in">%1$s 后抵达</string>
 </resources>
