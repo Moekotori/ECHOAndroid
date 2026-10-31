@@ -3,6 +3,10 @@
 .gradle/
 build/
 
+# Python build and test caches
+__pycache__/
+*.pyc
+
 # Local machine / secrets
 local.properties
 local.properties.winbak
