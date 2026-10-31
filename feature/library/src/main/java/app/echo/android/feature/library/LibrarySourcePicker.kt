@@ -1,6 +1,9 @@
 package app.echo.android.feature.library
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -75,19 +78,26 @@ internal fun LibrarySourcePicker(
             modifier = Modifier.widthIn(max = 136.dp).heightIn(min = 48.dp).semantics {
                 contentDescription = "$libraryLabel: $sourceLabel"
             },
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(50),
             colors = ButtonDefaults.textButtonColors(
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                containerColor = if (expanded) MaterialTheme.colorScheme.surfaceContainerHigh
-                    else Color.Transparent,
             ),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(0.dp),
         ) {
-            Text(sourceLabel, Modifier.weight(1f, fill = false),
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.width(4.dp))
-            EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.size(18.dp))
+            Row(
+                Modifier.background(
+                    if (expanded) MaterialTheme.colorScheme.surfaceContainerHigh
+                    else MaterialTheme.colorScheme.surfaceContainer,
+                    RoundedCornerShape(50),
+                ).padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(sourceLabel, Modifier.weight(1f, fill = false),
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.width(4.dp))
+                EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.size(16.dp))
+            }
         }
         EchoDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             LibrarySourceMode.entries.forEach { source ->

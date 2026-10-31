@@ -458,16 +458,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     }
     val shellPositionFlow = if (lanCast != null) echoLinkSession.castPosition else viewModel.playbackPosition
     fun routedPlayPause() {
-        if (dlnaRenderer != null) echoLinkSession.dlnaPlayPause() else viewModel.playPause()
+        if (dlnaRenderer != null || echoLinkSession.systemCast.active) echoLinkSession.dlnaPlayPause() else viewModel.playPause()
     }
     fun routedSkipNext() {
-        if (dlnaRenderer != null) echoLinkSession.dlnaSkip(1) else viewModel.skipNext()
+        if (dlnaRenderer != null || echoLinkSession.systemCast.active) echoLinkSession.dlnaSkip(1) else viewModel.skipNext()
     }
     fun routedSkipPrevious() {
-        if (dlnaRenderer != null) echoLinkSession.dlnaSkip(-1) else viewModel.skipPrevious()
+        if (dlnaRenderer != null || echoLinkSession.systemCast.active) echoLinkSession.dlnaSkip(-1) else viewModel.skipPrevious()
     }
     fun routedSeek(positionMs: Long) {
-        if (dlnaRenderer != null) echoLinkSession.dlnaSeek(positionMs) else viewModel.seekTo(positionMs)
+        if (dlnaRenderer != null || echoLinkSession.systemCast.active) echoLinkSession.dlnaSeek(positionMs) else viewModel.seekTo(positionMs)
     }
     LaunchedEffect(remoteStatus.connectionState) {
         if (remoteStatus.connectionState == EchoRemoteConnectionState.Connected) {
@@ -1012,7 +1012,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         selectDockTab(EchoTab.Library)
     }
     fun onNowPlayingCast() {
-        castSheetVisible = true
+        castSheetVisible = !echoLinkSession.systemCast.tryShowOutputSwitcher()
     }
     LaunchedEffect(openCastRequest) {
         if (openCastRequest) {
@@ -1525,6 +1525,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 shuffleOptions = appSettings.shuffleOptions,
                                 trackTransitions = appSettings.trackTransitions,
                                 usbExclusiveAutoRequestOnStartup = appSettings.usbExclusiveAutoRequestOnStartup,
+                                audioFocusEnabled = appSettings.audioFocusEnabled,
+                                onAudioFocusEnabledChange = viewModel::setAudioFocusEnabled,
+                                onResetAudioOutput = viewModel::resetAudioOutputSettings,
                                 audioInterruptionPolicy = appSettings.audioInterruptionPolicy,
                                 sleepTimerFinishTrack = appSettings.sleepTimerFinishTrack,
                                 stopOnTaskRemoved = appSettings.stopOnTaskRemoved,

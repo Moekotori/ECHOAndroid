@@ -27,27 +27,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
-internal val ConnectControlShape = RoundedCornerShape(4.dp)
+internal val ConnectControlShape = RoundedCornerShape(12.dp)
 
 @Composable
 internal fun ConnectNote(text: String, error: Boolean = false) {
     Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
         color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Composable
-internal fun ConnectSection(title: String, subtitle: String? = null, action: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                if (!subtitle.isNullOrBlank()) ConnectNote(subtitle)
-            }
-            action?.invoke()
-        }
-        content()
-    }
 }
 
 @Composable
@@ -94,7 +79,7 @@ internal fun ConnectPreference(title: String, detail: String, checked: Boolean, 
 
 @Composable
 internal fun ForgetConnectionDialog(title: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, shape = RoundedCornerShape(8.dp),
+    AlertDialog(onDismissRequest = onDismiss, shape = ConnectCardShape,
         title = { Text(title) },
         text = { Text(stringResource(L10nR.string.feature_connect_saved_connection_details_will_be_removed_you_can_dc4b49)) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(L10nR.string.feature_connect_remove_acf88e)) } },

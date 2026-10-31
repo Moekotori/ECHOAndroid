@@ -2,7 +2,9 @@ package app.echo.android.feature.settings
 
 import app.echo.android.feature.settings.R as L10nR
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,7 +21,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -30,16 +31,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoMotion
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoEqualizerUserPresets
 import app.echo.android.model.playback.OpraHeadphoneCorrectionState
 import kotlin.math.abs
 
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import app.echo.android.model.playback.EchoEqualizerUserPreset
-import kotlinx.coroutines.delay
 
 @Composable
 internal fun OpraCorrectionPreview(
@@ -49,26 +46,22 @@ internal fun OpraCorrectionPreview(
     userPresets: List<EchoEqualizerUserPreset>,
     onApplySelected: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onClose: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val uriHandler = LocalUriHandler.current
     val favorites = remember(userPresets) { EchoEqualizerUserPresets.opraFavorites(userPresets) }
     val starredEqId = state.selectedEqId?.let { eqId -> favorites.firstOrNull { it.opraEqId == eqId }?.opraEqId }
     val logosByVendorName = remember(state.brands) { state.brands.associate { it.name to it.logoUrl } }
-    val previewFocus = remember { BringIntoViewRequester() }
-    LaunchedEffect(state.selectedEqId) {
-        if (state.selectedEqId != null) {
-            delay(180)
-            previewFocus.bringIntoView()
+    val preset = state.selectedPreset
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(L10nR.string.opra_preview_title), Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            IconButton(onClick = onClose) {
+                EchoIcon(Icons.Default.Close, contentDescription = stringResource(L10nR.string.opra_close_preview), tint = scheme.onSurfaceVariant)
+            }
         }
-    }
-    AnimatedContent(
-        targetState = state.selectedPreset,
-        modifier = Modifier.fillMaxWidth().bringIntoViewRequester(previewFocus),
-        transitionSpec = { EchoMotion.stateChange() },
-        contentKey = { it?.eqId },
-        label = "opra-preset",
-    ) { preset ->
         if (preset != null) {
             val current = !bypassed && equalizer.parametric && equalizer.enabled && equalizer.sourceLabel == preset.displayName &&
                 equalizer.filters == preset.bands && abs(equalizer.preampDb - preset.preampDb) < 0.05f
@@ -92,6 +85,8 @@ internal fun OpraCorrectionPreview(
                         }
                     }
                     SignalEqCurve(state.previewCurve, live = !bypassed, showFrequencyLabels = true)
+                    if (!current) SignalNote(stringResource(L10nR.string.opra_preview_note))
+                    if (!equalizer.supported) SignalNote(stringResource(L10nR.string.opra_unavailable_output), error = true)
                     if (bypassed) SignalNote(stringResource(L10nR.string.signal_bypass_detail), error = true)
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -121,6 +116,7 @@ internal fun OpraCorrectionPreview(
                             )
                         }
                     }
+                    state.message?.let { SignalNote(it) }
                     preset.sourceUrl?.takeIf { it.startsWith("https://") || it.startsWith("http://") }?.let { link ->
                         TextButton(
                             onClick = { runCatching { uriHandler.openUri(link) } },

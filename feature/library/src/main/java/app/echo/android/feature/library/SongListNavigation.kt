@@ -1,12 +1,13 @@
 package app.echo.android.feature.library
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
@@ -128,7 +129,7 @@ internal fun SongListNavigation(
             ) {
                 if (locating) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onSurface)
-                else EchoIcon(Icons.Rounded.MyLocation, null,
+                else EchoIcon(LibraryPlayingLocationIcon, null,
                     Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
             }
         }
@@ -154,9 +155,17 @@ private fun SongNavigationButton(
     enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shadowElevation = 2.dp) {
-        IconButton(onClick, enabled = enabled, modifier = Modifier.size(48.dp)
-            .semantics { contentDescription = label }, content = content)
+    // Keep a full touch target while the visible control stays clear of the song metadata.
+    IconButton(onClick, enabled = enabled, modifier = Modifier.size(48.dp)
+        .semantics { contentDescription = label }) {
+        Surface(
+            modifier = Modifier.size(36.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(0.75.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
+            shadowElevation = 1.dp,
+        ) {
+            Box(contentAlignment = Alignment.Center) { content() }
+        }
     }
 }

@@ -13,6 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -22,6 +26,16 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun UsbOutputModeControl(strict: Boolean, onChange: (Boolean) -> Unit) {
+    var confirming by remember(strict) { mutableStateOf(false) }
+    if (confirming && !strict) {
+        UsbPassthroughWarningDialog(
+            onDismiss = { confirming = false },
+            onConfirm = {
+                confirming = false
+                onChange(true)
+            },
+        )
+    }
     Column(Modifier.fillMaxWidth().settingsSearchAnchor(stringResource(R.string.settings_usb_bitperfect)),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f), shape = RoundedCornerShape(16.dp)) {
@@ -31,7 +45,10 @@ internal fun UsbOutputModeControl(strict: Boolean, onChange: (Boolean) -> Unit) 
                         color = if (strict == value) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent,
                         modifier = Modifier.weight(1f)) {
                         Column(Modifier.heightIn(min = 48.dp).selectable(selected = strict == value,
-                            role = Role.RadioButton, onClick = { onChange(value) }).padding(horizontal = 8.dp, vertical = 14.dp),
+                            role = Role.RadioButton, onClick = {
+                                if (value && !strict) confirming = true
+                                else if (!value && strict) onChange(false)
+                            }).padding(horizontal = 8.dp, vertical = 14.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(stringResource(if (value) R.string.usb_mode_strict else R.string.usb_mode_processing),
                                 style = MaterialTheme.typography.bodyMedium,

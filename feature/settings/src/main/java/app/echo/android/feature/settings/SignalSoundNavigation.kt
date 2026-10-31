@@ -27,6 +27,8 @@ internal fun SignalSoundNavigation(
     isActive: Boolean,
     onBack: () -> Unit,
     tool: @Composable (Int) -> Unit,
+    scrollingTool: Int? = null,
+    onNavigateUp: (() -> Unit)? = null,
     home: @Composable () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
@@ -34,13 +36,13 @@ internal fun SignalSoundNavigation(
     val close = {
         focusManager.clearFocus()
         keyboard?.hide()
-        onBack()
+        (onNavigateUp ?: onBack)()
     }
     val stateHolder = rememberSaveableStateHolder()
     val back = rememberEchoBackProgress(LocalEchoEffectivePerformanceMode.current.isLightweight)
     EchoOverlayBackHandler(
         enabled = isActive && selectedPanel >= 0,
-        onProgress = back::update,
+        onProgress = { if (onNavigateUp == null) back.update(it) },
         onCancel = { back.restore() },
     ) {
         back.reset()
@@ -69,7 +71,11 @@ internal fun SignalSoundNavigation(
                                 close()
                             })
                         }
-                        Column(
+                        if (panel == scrollingTool) {
+                            Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 24.dp)) {
+                                tool(panel)
+                            }
+                        } else Column(
                             Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
                                 .padding(horizontal = 24.dp).padding(top = 12.dp, bottom = 188.dp),
                             verticalArrangement = Arrangement.spacedBy(20.dp),

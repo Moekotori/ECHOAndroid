@@ -84,7 +84,7 @@ internal fun LyricsSettingsPreview(
                 fontFamily = fontFamily,
                 fontSize = (18f * fontScale.coerceIn(0.50f, 1.28f)).sp,
                 lineHeight = ((18f + 6f * lineSpacing.coerceIn(0.50f, 1.38f)) * fontScale.coerceIn(0.50f, 1.28f)).sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 textAlign = lyricsTextAlign(alignment),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

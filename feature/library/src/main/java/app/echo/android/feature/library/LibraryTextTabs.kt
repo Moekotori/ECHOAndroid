@@ -9,6 +9,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
@@ -44,8 +45,8 @@ internal fun LibraryTextTabs(
     val density = LocalDensity.current
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val widths = remember(labels, density) { mutableStateMapOf<Int, Int>() }
-    val spacing = if (compact) 24.dp else 20.dp
-    val indicatorWidth = if (compact) 16.dp else 24.dp
+    val spacing = if (compact) 24.dp else 18.dp
+    val indicatorWidth = if (compact) 16.dp else 18.dp
     val spacingPx = with(density) { spacing.toPx() }
     val scroll = rememberScrollState()
     LaunchedEffect(selectedIndex, labels, density, compact, lightweight) {
@@ -109,7 +110,7 @@ internal fun LibraryTextTabs(
                     }
                     IntOffset(x, 0)
                 }
-                .width(indicatorWidth).height(2.dp).background(scheme.primary))
+                .width(indicatorWidth).height(3.dp).background(scheme.primary, CircleShape))
         }
     }
 }

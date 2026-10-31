@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_open_source">開源授權</string>
+    <string name="settings_open_source_summary">AGPL-3.0 · 專案授權與第三方聲明</string>
+    <string name="settings_project_license_description">© Moekotori 與貢獻者。ECHO Android 採用 GNU Affero General Public License v3.0（AGPL-3.0），可依照授權使用、修改與再散布。本軟體不提供擔保。可在下方閱讀授權全文，或前往原始碼儲存庫。</string>
+    <string name="settings_bundled_notices">內建元件聲明</string>
+    <string name="settings_bundled_notices_description">第三方元件保留各自的授權。以下音訊、等化資料、字型和圖示聲明可離線檢視。</string>
+    <string name="settings_licenses_source">檢視原始碼</string>
+    <string name="settings_licenses_back">返回</string>
+    <string name="settings_licenses_close">關閉</string>
+    <string name="settings_licenses_read_error">無法讀取授權正文。</string>
+    <string name="settings_licenses_retry">重試</string>
+</resources>

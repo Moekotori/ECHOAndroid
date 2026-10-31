@@ -70,8 +70,10 @@ internal class EchoSystemCastTransfer(private val app: Application, private val 
     }
 
     fun showOutputSwitcher() {
-        if (!sdk.showOutputSwitcher()) fail(stopSession = false)
+        if (!tryShowOutputSwitcher()) fail(stopSession = false)
     }
+
+    fun tryShowOutputSwitcher(): Boolean = sdk.showOutputSwitcher()
 
     private fun prepare(target: EchoLanRenderer, resumed: Boolean) {
         if (resumed) {

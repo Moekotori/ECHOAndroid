@@ -16,6 +16,9 @@ data class LibraryLyricsInspectionTrack(
     val fileName: String?,
     val clipStartMs: Long = 0L,
     val clipEndMs: Long = 0L,
+    val sizeBytes: Long = 0L,
+    val dateModifiedSeconds: Long = 0L,
+    val fingerprint: String? = null,
 )
 
 suspend fun EchoLibraryRepository.libraryHealthStats(): LibraryHealthStats = withContext(Dispatchers.IO) {

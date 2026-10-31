@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,8 +40,20 @@ internal fun SongAlphabetIndex(
     findIndex: suspend (Char) -> Int,
     modifier: Modifier = Modifier,
 ) {
+    LibraryAlphabetIndex(modifier = modifier, onJump = { letter ->
+        val index = findIndex(letter)
+        if (itemCount > 0) listState.scrollToItem(index.coerceIn(0, itemCount - 1))
+    })
+}
+
+@Composable
+internal fun LibraryAlphabetIndex(
+    onJump: suspend (Char) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val scope = rememberCoroutineScope()
     var jumpJob by remember { mutableStateOf<Job?>(null) }
+    DisposableEffect(Unit) { onDispose { jumpJob?.cancel() } }
     val colors = MaterialTheme.colorScheme
     val layout = LocalEchoLayout.current
     val bottomPadding = if (layout.heightDp < 600f) {
@@ -67,10 +80,7 @@ internal fun SongAlphabetIndex(
                             .clickable(onClickLabel = label) {
                                 jumpJob?.cancel()
                                 jumpJob = scope.launch {
-                                    val index = findIndex(letter)
-                                    if (itemCount > 0) {
-                                        listState.scrollToItem(index.coerceIn(0, itemCount - 1))
-                                    }
+                                    onJump(letter)
                                 }
                             },
                         contentAlignment = Alignment.CenterEnd,

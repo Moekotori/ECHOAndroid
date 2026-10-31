@@ -47,7 +47,7 @@ internal fun RadioStationDetail(station: EchoRadioStation, saved: Boolean, playi
                         RadioArtwork(station, Modifier.size(80.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(stringResource(R.string.radio_network_stream), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(station.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(station.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                             Text(listOf(station.countryCode, station.language).filter { it.isNotBlank() }.joinToString(" · "),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

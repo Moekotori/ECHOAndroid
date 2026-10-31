@@ -7,7 +7,11 @@ import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -15,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
@@ -47,18 +52,18 @@ internal fun RemoteSourcesPanel(
 ) {
     var expandedSource by rememberSaveable { mutableStateOf<String?>(null) }
     // The backend exposes one shared scan state. Show it once, never attribute it to both providers.
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(L10nR.string.feature_connect_your_music_wherever_it_lives_e9713c),
-                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             ConnectNote(stringResource(L10nR.string.feature_connect_add_a_music_server_or_a_nas_folder_7b39d3))
         }
         if (scanState.phase != LibraryScanPhase.Idle) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ConnectCard(highlighted = scanState.isScanning, spacing = 8.dp) {
                 Text(remoteScanPhaseLabel(scanState.phase), style = MaterialTheme.typography.titleSmall)
                 if (scanState.isScanning) LinearProgressIndicator(Modifier.fillMaxWidth())
                 ConnectNote(remoteLibraryDetail(scanState, ready = true), error = scanState.phase == LibraryScanPhase.Error)
-                if (scanState.isScanning) TextButton(onClick = onCancel) {
+                if (scanState.isScanning) TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.End)) {
                     Text(stringResource(L10nR.string.feature_connect_cancel_sync_8888f1))
                 }
             }
@@ -66,7 +71,7 @@ internal fun RemoteSourcesPanel(
         ConnectSourceLayout {
             SourceEditor(
                 modifier = Modifier.weight(1f),
-                title = "Subsonic / Navidrome",
+                title = "Subsonic / Navidrome", icon = Icons.Rounded.Dns,
                 description = stringResource(L10nR.string.feature_connect_your_music_server_dd7eb8),
                 placeholder = "https://music.example.com",
                 savedUrl = subsonicServerUrl, savedUsername = subsonicUsername, savedPassword = subsonicPassword,
@@ -75,7 +80,7 @@ internal fun RemoteSourcesPanel(
             )
             SourceEditor(
                 modifier = Modifier.weight(1f),
-                title = "WebDAV",
+                title = "WebDAV", icon = Icons.Rounded.Cloud,
                 description = stringResource(L10nR.string.feature_connect_a_nas_or_cloud_music_folder_5525c7),
                 placeholder = "https://dav.example.com/music",
                 savedUrl = webDavServerUrl, savedUsername = webDavUsername, savedPassword = webDavPassword,
@@ -85,7 +90,7 @@ internal fun RemoteSourcesPanel(
             )
             SourceEditor(
                 modifier = Modifier.weight(1f),
-                title = "SMB",
+                title = "SMB", icon = Icons.Rounded.Folder,
                 description = stringResource(L10nR.string.connect_smb_description),
                 placeholder = "smb://192.168.1.10/Music",
                 savedUrl = smbServerUrl, savedUsername = smbUsername, savedPassword = smbPassword,
@@ -98,7 +103,7 @@ internal fun RemoteSourcesPanel(
             )
             SourceEditor(
                 modifier = Modifier.weight(1f),
-                title = "Jellyfin / Emby",
+                title = "Jellyfin / Emby", icon = Icons.Rounded.VideoLibrary,
                 description = stringResource(L10nR.string.feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1),
                 placeholder = "http://192.168.1.10:8096",
                 savedUrl = jellyfinServerUrl, savedUsername = jellyfinUsername, savedPassword = jellyfinPassword,
@@ -115,7 +120,7 @@ internal fun RemoteSourcesPanel(
 @Composable
 private fun SourceEditor(
     modifier: Modifier = Modifier,
-    title: String, description: String, placeholder: String,
+    title: String, icon: ImageVector, description: String, placeholder: String,
     savedUrl: String?, savedUsername: String?, savedPassword: String?,
     expanded: Boolean, onExpand: () -> Unit, busy: Boolean,
     onSave: (String, String, String) -> Unit,
@@ -146,21 +151,21 @@ private fun SourceEditor(
         else username.isNotBlank() && password.isNotBlank()
     )
     val submit = { if (ready && !busy) { keyboard?.hide(); onSync(url.trim(), effectiveUsername, effectivePassword) } }
-    Column(modifier) {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Row(Modifier.fillMaxWidth().echoClickable(role = Role.Button) { keyboard?.hide(); onExpand() }.padding(vertical = 20.dp),
+    ConnectCard(modifier, contentPadding = ListCardPadding, spacing = 0.dp) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).echoClickable(role = Role.Button) { keyboard?.hide(); onExpand() }.padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+            ConnectIconTile(icon)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
                 ConnectNote(description)
-                ConnectNote(if (dirty) stringResource(L10nR.string.feature_connect_unsaved_changes_1ab4c9)
-                    else if (saved) stringResource(L10nR.string.feature_connect_configuration_saved_a7628f)
-                    else stringResource(L10nR.string.feature_connect_not_configured_29b98a))
+                if (dirty) ConnectStatusChip(stringResource(L10nR.string.feature_connect_unsaved_changes_1ab4c9), ConnectTone.Warning)
+                else if (saved) ConnectStatusChip(stringResource(L10nR.string.feature_connect_configuration_saved_a7628f), ConnectTone.Positive)
+                else ConnectStatusChip(stringResource(L10nR.string.feature_connect_not_configured_29b98a), ConnectTone.Neutral)
             }
             EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.size(24.dp).echoExpandIndicator(expanded))
         }
         EchoExpand(expanded) {
-            Column(Modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ConnectInput(stringResource(L10nR.string.feature_connect_server_address_ec245e), url, { url = it }, placeholder,
                     enabled = !busy, url = true,
                     error = if (url.isNotBlank() && !validUrl) {

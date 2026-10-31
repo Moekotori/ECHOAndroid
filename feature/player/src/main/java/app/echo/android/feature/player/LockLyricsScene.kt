@@ -159,7 +159,7 @@ private fun LockLyricCurrentLine(
     val style = MaterialTheme.typography.headlineMedium.copy(
         fontSize = 34.sp,
         lineHeight = 42.sp,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.SemiBold,
     )
     if (line == null) {
         Text(
@@ -181,7 +181,7 @@ private fun LockLyricCurrentLine(
         color = Color.White,
         intensity = 1f,
         style = style,
-        weight = FontWeight.Bold,
+        weight = FontWeight.SemiBold,
         align = TextAlign.Center,
         modifier = Modifier.fillMaxWidth(),
     )

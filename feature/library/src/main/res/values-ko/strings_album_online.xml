@@ -26,6 +26,5 @@
     <string name="album_online_performer">연주</string>
     <string name="album_online_mb_source">MusicBrainz · 출처 및 전체 크레딧</string>
     <string name="album_online_link_error">이 링크를 열 수 없습니다.</string>
-    <string name="album_page_tracks">수록곡</string>
-    <string name="album_page_information">앨범 정보</string>
+    <string name="album_more_by_artist">%1$s의 다른 앨범</string>
 </resources>

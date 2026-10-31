@@ -37,7 +37,7 @@ fun PodcastScreen(
                 IconButton(onClick = { if (!wide && state.selected != null) actions.select(null) else onBack() }) {
                     EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.podcast_back))
                 }
-                Text(stringResource(R.string.podcast_title), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.podcast_title), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 IconButton(onClick = { editor = true }, enabled = !state.busy) {
                     EchoIcon(Icons.Rounded.Add, stringResource(R.string.podcast_subscribe))
                 }

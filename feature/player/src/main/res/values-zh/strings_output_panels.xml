@@ -1,0 +1,9 @@
+<resources>
+    <string name="player_contributing_artists">参与创作的艺术家</string>
+    <string name="player_artists_empty">这首歌曲没有艺术家信息</string>
+    <string name="player_artists_load_failed">无法加载艺术家</string>
+    <string name="player_artists_retry">重试</string>
+    <plurals name="player_artist_tracks">
+        <item quantity="other">%1$d 首</item>
+    </plurals>
+</resources>

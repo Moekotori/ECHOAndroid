@@ -1,5 +1,9 @@
 package app.echo.android.feature.settings
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
@@ -9,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 
 @Composable
 internal fun SettingsServicesContent(
+    subNav: SettingsSubNav,
     pcHandoffEnabled: Boolean,
     lastFmEnabled: Boolean,
     lastFmApiKey: String?,
@@ -40,9 +45,7 @@ internal fun SettingsServicesContent(
     var lastFmSecretInput by rememberSaveable(lastFmSharedSecret) { mutableStateOf(lastFmSharedSecret.orEmpty()) }
     var listenBrainzTokenInput by rememberSaveable(listenBrainzToken) { mutableStateOf(listenBrainzToken.orEmpty()) }
     var setlistFmApiKeyInput by rememberSaveable(setlistFmApiKey) { mutableStateOf(setlistFmApiKey.orEmpty()) }
-    SettingsSectionCard(
-        title = stringResource(R.string.settings_section_music_services),
-    ) {
+    val lastFmPanel: @Composable () -> Unit = {
         LastFmSettingsPanel(
             enabled = lastFmEnabled,
             connected = !lastFmSessionKey.isNullOrBlank(),
@@ -61,6 +64,8 @@ internal fun SettingsServicesContent(
             onDisconnect = onDisconnectLastFm,
             onOpenApiAccounts = onOpenLastFmApiAccounts,
         )
+    }
+    val listenBrainzPanel: @Composable () -> Unit = {
         ListenBrainzSettingsPanel(
             enabled = listenBrainzEnabled,
             connected = !listenBrainzToken.isNullOrBlank(),
@@ -72,6 +77,8 @@ internal fun SettingsServicesContent(
             onSaveToken = { onSaveListenBrainzToken(listenBrainzTokenInput) },
             onDisconnect = onDisconnectListenBrainz,
         )
+    }
+    val setlistFmPanel: @Composable () -> Unit = {
         SetlistFmSettingsPanel(
             apiKey = setlistFmApiKeyInput,
             locked = setlistFmApiKeyLocked,
@@ -79,12 +86,39 @@ internal fun SettingsServicesContent(
             onSave = { onSaveSetlistFmApiKey(setlistFmApiKeyInput) },
         )
     }
-    SettingsSectionCard(title = stringResource(R.string.settings_section_connect)) {
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_pc_handoff),
-            detail = stringResource(R.string.settings_pc_handoff_detail),
-            checked = pcHandoffEnabled,
-            onCheckedChange = onPcHandoffEnabledChange,
-        )
+    val connectCard: @Composable () -> Unit = {
+        SettingsSectionCard(title = stringResource(R.string.settings_section_connect)) {
+            SettingsSwitchRow(
+                title = stringResource(R.string.settings_pc_handoff),
+                detail = stringResource(R.string.settings_pc_handoff_detail),
+                checked = pcHandoffEnabled,
+                onCheckedChange = onPcHandoffEnabledChange,
+            )
+        }
+    }
+    when {
+        // Two panes have room for everything at once.
+        subNav.open == null -> {
+            SettingsSectionCard(title = stringResource(R.string.settings_section_music_services)) {
+                lastFmPanel()
+                listenBrainzPanel()
+                setlistFmPanel()
+            }
+            connectCard()
+        }
+        // The list shows each service's state; the switch for PC handoff needs no page of its own.
+        subNav.isHub -> {
+            SettingsSubPageRow(SettingsSubPage.ServicesLastFm, Icons.Rounded.Sync, subNav, summary = lastFmStatusLabel)
+            SettingsSubPageRow(SettingsSubPage.ServicesListenBrainz, Icons.Rounded.Insights, subNav,
+                summary = listenBrainzStatusLabel)
+            SettingsSubPageRow(SettingsSubPage.ServicesSetlistFm, Icons.Rounded.Key, subNav)
+            connectCard()
+        }
+        subNav.page == SettingsSubPage.ServicesLastFm ->
+            SettingsSectionCard(title = stringResource(R.string.settings_search_lastfm)) { lastFmPanel() }
+        subNav.page == SettingsSubPage.ServicesListenBrainz ->
+            SettingsSectionCard(title = stringResource(R.string.settings_listenbrainz)) { listenBrainzPanel() }
+        subNav.page == SettingsSubPage.ServicesSetlistFm ->
+            SettingsSectionCard(title = stringResource(R.string.settings_setlistfm)) { setlistFmPanel() }
     }
 }

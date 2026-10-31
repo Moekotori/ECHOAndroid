@@ -143,4 +143,4 @@ macOS 开发时，双击项目根目录的 `打开Echo.command`，或执行：
 
 Copyright (c) 2026 Moekotori.
 
-本仓库采用 [GNU Lesser General Public License v3.0（LGPL-3.0）](./LICENSE)，并附带其引用的 [GNU GPL v3.0 全文](./LICENSE-GPL)。第三方组件遵循各自的许可，随附说明见 [音频组件许可证目录](./core/playback/third_party/licenses)。
+本仓库采用 [GNU Affero General Public License v3.0（AGPL-3.0）](./LICENSE)。应用内可在「设置 → 关于 → 开源协议」查看协议全文与第三方声明。第三方组件遵循各自的许可，随附说明见 [音频组件许可证目录](./core/playback/third_party/licenses)。

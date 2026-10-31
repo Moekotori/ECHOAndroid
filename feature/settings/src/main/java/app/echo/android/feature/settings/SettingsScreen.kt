@@ -53,6 +53,9 @@ fun SettingsScreen(
     shuffleOptions: app.echo.android.model.playback.EchoShuffleOptions = app.echo.android.model.playback.EchoShuffleOptions(),
     trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions,
     usbExclusiveAutoRequestOnStartup: Boolean,
+    audioFocusEnabled: Boolean = true,
+    onAudioFocusEnabledChange: (Boolean) -> Unit = {},
+    onResetAudioOutput: () -> Unit = {},
     audioInterruptionPolicy: String = "duck",
     sleepTimerFinishTrack: Boolean = true,
     onOpenSystemAudioEffects: () -> Unit = {},
@@ -220,12 +223,13 @@ fun SettingsScreen(
             SettingsCategory.Library to stringResource(R.string.settings_library_summary, trackCount, albumCount, artistCount),
             SettingsCategory.About to appVersionLabel,
         ),
-    ) { category ->
+    ) { category, subNav ->
         when (category) {
                 SettingsCategory.Permissions -> SettingsPermissionsContent(
                     permissionState, floatingLyrics.enabled, onOpenPermissionSettings,
                 )
                 SettingsCategory.Appearance -> SettingsAppearanceContent(
+                    subNav = subNav,
                     importedFontFamily = importedFontFamily,
                     customBackgroundMode = customBackgroundMode,
                     customBackgroundUri = customBackgroundUri,
@@ -267,6 +271,7 @@ fun SettingsScreen(
                     onScheduledDarkEndMinuteChange = onScheduledDarkEndMinuteChange,
                 )
                 SettingsCategory.Accessibility -> SettingsAccessibilityContent(
+                    subNav = subNav,
                     isActive = isActive && isPageVisible,
                     importedFontFamily = importedFontFamily,
                     uiFontFamily = uiFontFamily,
@@ -299,6 +304,7 @@ fun SettingsScreen(
                     onAppLanguageChange = onAppLanguageChange,
                 )
                 SettingsCategory.Playback -> SettingsPlaybackContent(
+                    subNav = subNav,
                     playbackHapticsEnabled = playbackHapticsEnabled,
                     effectivePerformanceMode = effectivePerformanceMode,
                     onlineLyricsEnabled = onlineLyricsEnabled,
@@ -313,6 +319,9 @@ fun SettingsScreen(
                     shuffleOptions = shuffleOptions,
                     onShuffleOptionsChange = onShuffleOptionsChange,
                     trackTransitions = trackTransitions,
+                    audioFocusEnabled = audioFocusEnabled,
+                    onAudioFocusEnabledChange = onAudioFocusEnabledChange,
+                    onResetAudioOutput = onResetAudioOutput,
                     audioInterruptionPolicy = audioInterruptionPolicy,
                     sleepTimerFinishTrack = sleepTimerFinishTrack,
                     audioDiagnostics = status.diagnostics,
@@ -359,6 +368,7 @@ fun SettingsScreen(
                     onResumeOnReconnect = onResumeOnAudioReconnectChange,
                 )
                 SettingsCategory.Services -> SettingsServicesContent(
+                    subNav = subNav,
                     pcHandoffEnabled = pcHandoffEnabled,
                     lastFmEnabled = lastFmEnabled,
                     lastFmApiKey = lastFmApiKey,
@@ -387,6 +397,7 @@ fun SettingsScreen(
                     onSaveSetlistFmApiKey = onSaveSetlistFmApiKey,
                 )
                 SettingsCategory.Library -> SettingsLibraryContent(
+                    subNav = subNav,
                     isActive = isActive,
                     isScanning = libraryScanning,
                     onLoadHealth = onLoadLibraryHealth,

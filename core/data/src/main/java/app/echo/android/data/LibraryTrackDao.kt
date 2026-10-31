@@ -74,7 +74,8 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, title, artist, album, durationMs, relativePath, fileName, clipStartMs, clipEndMs FROM library_tracks
+        SELECT id, contentUri, title, artist, album, durationMs, relativePath, fileName, clipStartMs, clipEndMs,
+            sizeBytes, dateModifiedSeconds, fingerprint FROM library_tracks
         WHERE (source = 'mediastore' OR source = 'saf') AND id > :afterId AND id <= :lastId
         ORDER BY id LIMIT 64
         """,
@@ -196,9 +197,16 @@ interface LibraryTrackDao {
             LibraryTrackEntity::class,
             LibraryTrackFtsEntity::class,
             LibraryPlaybackStatsEntity::class,
+            LibraryFavoriteEntity::class,
+            LibraryHiddenTrackEntity::class,
         ],
     )
     fun pageTracksSorted(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
+
+    @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryTrackFtsEntity::class,
+        LibraryPlaybackStatsEntity::class, LibraryFavoriteEntity::class, LibraryHiddenTrackEntity::class,
+        LibraryLyricsIndexEntity::class])
+    fun pageTracksSortedWithLyrics(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
 
     @Query(
         """
@@ -208,6 +216,9 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun countLocalTracksBeforeTitle(letter: String): Int
+
+    @Query("SELECT COUNT(*) FROM library_album_summaries WHERE isRemote = :remote AND title COLLATE NOCASE < :letter")
+    suspend fun countAlbumsBeforeTitle(letter: String, remote: Boolean): Int
 
     @RawQuery
     suspend fun queryTracks(query: SupportSQLiteQuery): List<LibraryTrackEntity>
@@ -418,6 +429,9 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getArtistSummary(artistKey: String): ArtistSummary?
+
+    @Query("SELECT artistKey, name, artworkUri, albumCount, trackCount, durationMs FROM library_artist_summaries WHERE artistKey IN (:artistKeys)")
+    suspend fun getArtistSummaries(artistKeys: List<String>): List<ArtistSummary>
 
     @Query(
         """

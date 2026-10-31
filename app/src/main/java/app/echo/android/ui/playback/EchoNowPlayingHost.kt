@@ -15,7 +15,6 @@ import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.radio.EchoRadioStation
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
 @Composable
 internal fun EchoNowPlayingHost(
@@ -46,7 +45,15 @@ internal fun EchoNowPlayingHost(
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
     val playbackPosition = positionFlow.collectAsStateWithLifecycle()
     val smartTransition = app.echo.android.playback.EchoPlaybackProcessRuntime.smartTransitionVisual.collectAsStateWithLifecycle()
-    val artistNavigationScope = rememberCoroutineScope()
+    var artistPickerTrack by remember { mutableStateOf<app.echo.android.model.playback.EchoTrackRef?>(null) }
+    artistPickerTrack?.let { track ->
+        app.echo.android.feature.player.ContributingArtistsSheet(
+            trackId = track.id,
+            loadArtists = { viewModel.contributingArtists(track.id, track.artist, track.artworkUri) },
+            onOpenArtist = { artist -> artistPickerTrack = null; onOpenArtist(artist) },
+            onDismiss = { artistPickerTrack = null },
+        )
+    }
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
     val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
@@ -175,13 +182,8 @@ internal fun EchoNowPlayingHost(
         isCurrentTrackFavorite = isCurrentTrackFavorite,
         onToggleFavorite = { viewModel.toggleFavorite() },
         onOpenArtist = { trackId, artistName ->
-            artistNavigationScope.launch {
-                if (EchoRadioStation.isRadio(trackId)) return@launch
-                val artwork = playbackStatus.track?.takeIf { it.id == trackId }?.artworkUri
-                val artist = viewModel.artistForTrack(trackId)
-                    ?: viewModel.artistNavigationTarget(artistName, artwork)
-                    ?: return@launch
-                onOpenArtist(artist)
+            if (!EchoRadioStation.isRadio(trackId)) {
+                artistPickerTrack = playbackStatus.track?.takeIf { it.id == trackId }?.copy(artist = artistName)
             }
         },
         openLyricsRequestId = openLyricsRequestId,

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_open_source">Open source licenses</string>
+    <string name="settings_open_source_summary">AGPL-3.0 · Project license and third-party notices</string>
+    <string name="settings_project_license_description">© Moekotori and contributors. ECHO Android is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). You may use, modify and redistribute it under this license. This software comes without warranty. Read the full license below or visit the source repository.</string>
+    <string name="settings_bundled_notices">Bundled component notices</string>
+    <string name="settings_bundled_notices_description">Third-party components retain their own licenses. The following audio, equalization, font and icon notices are available offline.</string>
+    <string name="settings_licenses_source">Source code</string>
+    <string name="settings_licenses_back">Back</string>
+    <string name="settings_licenses_close">Close</string>
+    <string name="settings_licenses_read_error">Could not read the license text.</string>
+    <string name="settings_licenses_retry">Retry</string>
+</resources>

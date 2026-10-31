@@ -1,5 +1,5 @@
 <resources>
     <string name="system_cast_output">System output selector</string>
-    <string name="system_cast_output_hint">Select a compatible Cast device, or move playback back to your phone from the system media panel.</string>
-    <string name="system_cast_unavailable">System Cast selection requires Android 13 or later and available Google Play services. The LAN device options below remain available.</string>
+    <string name="system_cast_output_hint">Use your phone’s system panel to select an audio device. Available devices depend on your phone.</string>
+    <string name="system_cast_unavailable">The system output panel is unavailable on this device. Use the LAN device options below.</string>
 </resources>

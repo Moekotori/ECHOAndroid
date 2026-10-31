@@ -13,22 +13,18 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Headphones
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkDiscoveryPolicy
 import app.echo.android.connect.EchoPairingParser
-import app.echo.android.design.EchoExpand
-import app.echo.android.design.echoClickable
-import app.echo.android.design.echoExpandIndicator
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteLibraryState
@@ -185,50 +181,68 @@ internal fun PcLinkPanel(
             onDismiss = { musicPicker = null },
         )
     }
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        PcLinkHeader(
+    val listenTitle = stringResource(L10nR.string.feature_connect_listen_together_title)
+    val listenDetail = stringResource(L10nR.string.feature_connect_listen_together_detail)
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        PcLinkHero(
             title = if (connected || hasSaved) pcTitle else stringResource(L10nR.string.remote_connect_title),
             state = remoteState,
             showRequirement = !connected && !busy,
-        )
-        remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
-        if (!libraryOnly && (connected || hasSaved)) EchoLinkModeSwitch(remoteMode, onRemoteModeChange)
-        if (!libraryOnly && connected && librarySyncActions != null) OutlinedButton(onClick = { showLibrarySync = true }, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(L10nR.string.sync_title))
+            error = remoteError,
+        ) {
+            when {
+                busy -> {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    ConnectNote(stringResource(L10nR.string.feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec))
+                    TextButton(onClick = onDisconnect, modifier = Modifier.align(Alignment.End)) {
+                        Text(stringResource(L10nR.string.feature_connect_cancel_connection_fd085f))
+                    }
+                }
+                connected -> TextButton(onClick = onDisconnect, modifier = Modifier.align(Alignment.End)) {
+                    Text(stringResource(L10nR.string.feature_connect_disconnect_pc_fd446c))
+                }
+                hasSaved && !manual && savedPcs.isEmpty() -> Button(
+                    onClick = { selectPc(savedPcAddress.orEmpty(), savedPcToken.orEmpty(), false) },
+                    shape = ConnectControlShape, modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(L10nR.string.feature_connect_reconnect_pc_ea8c5f)) }
+            }
+        }
+        if (!libraryOnly && (connected || hasSaved)) {
+            ConnectCard(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
+                EchoLinkModeSwitch(remoteMode, onRemoteModeChange)
+            }
         }
         when {
-            busy -> {
-                if (remoteState == EchoRemoteConnectionState.Reconnecting && remoteMode && currentTrackId != null) PlaybackControls(true)
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                ConnectNote(stringResource(L10nR.string.feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec))
-                TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_cancel_connection_fd085f)) }
+            busy -> if (remoteState == EchoRemoteConnectionState.Reconnecting && remoteMode && currentTrackId != null) {
+                ConnectCard { PlaybackControls(true) }
             }
             connected -> {
                 if (remoteMode && !libraryOnly) {
-                PlaybackControls(false)
-                if (onHandoffPhoneToPc != null) {
-                    TextButton(onClick = onHandoffPhoneToPc) {
-                        Text(stringResource(L10nR.string.echo_link_handoff_phone))
-                    }
-                }
+                    ConnectCard { PlaybackControls(false) }
                 } else {
                     Button(onClick = onOpenPcLibrary, modifier = Modifier.fillMaxWidth(), shape = ConnectControlShape) {
                         Text(stringResource(if (libraryOnly) L10nR.string.echo_bridge_open_library else L10nR.string.echo_link_open_pc_library))
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    if (onOpenListening != null && !libraryOnly) {
-                        TextButton(onClick = onOpenListening) {
-                            Text(stringResource(L10nR.string.feature_connect_listen_together_title))
-                        }
+                val syncTitle = stringResource(L10nR.string.sync_title)
+                val handoffTitle = stringResource(L10nR.string.echo_link_handoff_phone)
+                ConnectActionList(buildList {
+                    if (!libraryOnly && librarySyncActions != null) {
+                        add(ConnectAction(Icons.Rounded.Sync, syncTitle, null) { showLibrarySync = true })
                     }
-                    TextButton(onClick = onDisconnect) { Text(stringResource(L10nR.string.feature_connect_disconnect_pc_fd446c)) }
-                }
+                    if (!libraryOnly && onOpenListening != null) {
+                        add(ConnectAction(Icons.Rounded.Headphones, listenTitle, listenDetail, onOpenListening))
+                    }
+                    if (remoteMode && !libraryOnly && onHandoffPhoneToPc != null) {
+                        add(ConnectAction(Icons.Rounded.SwapHoriz, handoffTitle, null, onHandoffPhoneToPc))
+                    }
+                })
             }
             else -> {
                 if (savedPcs.isNotEmpty() && !manual) {
-                    ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91)) {
-                        savedPcs.asReversed().forEach { pc ->
+                    ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91), list = true) {
+                        savedPcs.asReversed().forEachIndexed { index, pc ->
+                            if (index > 0) ConnectRowDivider()
                             PcDeviceRow(
                                 name = pc.name,
                                 address = pc.address,
@@ -238,17 +252,18 @@ internal fun PcLinkPanel(
                             )
                         }
                     }
-                } else if (hasSaved && !manual) {
-                    Button(onClick = { selectPc(savedPcAddress.orEmpty(), savedPcToken.orEmpty(), false) }, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(L10nR.string.feature_connect_reconnect_pc_ea8c5f))
-                    }
                 }
-                ConnectSection(stringResource(L10nR.string.feature_connect_nearby_pcs_b9b12a),
-                    action = { TextButton(onClick = onRefreshLanDevices) { Text(stringResource(L10nR.string.feature_connect_refresh_828c69)) } }) {
+                ConnectSection(stringResource(L10nR.string.feature_connect_nearby_pcs_b9b12a), list = true,
+                    action = {
+                        IconButton(onClick = onRefreshLanDevices) {
+                            EchoIcon(Icons.Rounded.Refresh, stringResource(L10nR.string.feature_connect_refresh_828c69))
+                        }
+                    }) {
                     if (discoveredLanDevices.isEmpty()) {
                         PcDiscoveryEmptyState(discoveryState)
                     }
-                    discoveredLanDevices.forEach { device ->
+                    discoveredLanDevices.forEachIndexed { index, device ->
+                        if (index > 0) ConnectRowDivider()
                         PcDeviceRow(
                             name = device.name,
                             address = if (device.libraryOnly) stringResource(L10nR.string.echo_bridge_library_note)
@@ -264,68 +279,36 @@ internal fun PcLinkPanel(
                         )
                     }
                 }
-                Column(Modifier.bringIntoViewRequester(connectionEntry)) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).echoClickable(role = Role.Button) { keyboard?.hide(); manual = !manual }, verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(L10nR.string.echo_link_pairing_entry), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                        EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.echoExpandIndicator(manual))
-                    }
-                    EchoExpand(manual) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ConnectNote(stringResource(L10nR.string.echo_link_direct_address_hint))
-                            ConnectInput(stringResource(L10nR.string.feature_connect_pc_address_or_pairing_link_a3e680), address, { address = it; token = "" }, "192.168.1.20:26789", url = true, onDone = connect,
-                                error = if (address.isNotBlank() && !validAddress) stringResource(L10nR.string.feature_connect_check_the_pc_address_or_paste_a_complete_0f216a) else null)
-                            Button(onClick = connect, enabled = endpoint != null, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
-                                Text(stringResource(L10nR.string.feature_connect_connect_pc_724ba0))
-                            }
-                        }
-                    }
-                }
+                PcManualEntry(
+                    expanded = manual,
+                    onToggle = { keyboard?.hide(); manual = !manual },
+                    address = address,
+                    onAddressChange = { address = it; token = "" },
+                    validAddress = validAddress,
+                    canConnect = endpoint != null,
+                    onConnect = connect,
+                    modifier = Modifier.bringIntoViewRequester(connectionEntry),
+                )
             }
         }
         if (onOpenListening != null && !connected) {
-            ListenTogetherEntry(onOpen = onOpenListening)
+            ConnectActionList(listOf(ConnectAction(Icons.Rounded.Headphones, listenTitle, listenDetail, onOpenListening)))
         }
-        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-            phoneLibraryShareContent()
-        }
-        ConnectSection(stringResource(L10nR.string.feature_connect_link_preferences_f81ffb)) {
-            ConnectPreference(stringResource(L10nR.string.feature_connect_auto_reconnect_5259cc),
-                if (hasSaved) stringResource(L10nR.string.feature_connect_try_the_saved_pc_when_opening_connect_38be4d)
-                else stringResource(L10nR.string.feature_connect_available_after_your_first_saved_connection_7136ab),
-                autoReconnectEnabled, enabled = hasSaved && !busy, onChange = onAutoReconnectChange)
-            ConnectPreference(stringResource(L10nR.string.feature_connect_use_linked_library_by_default_a9eb0f),
-                stringResource(L10nR.string.feature_connect_read_the_pc_library_after_connecting_local_music_d1da04),
-                linkedLibraryDefault, onChange = onLinkedLibraryDefaultChange)
-            if (hasSaved && !busy) TextButton(onClick = { confirmForget = true }) {
-                Text(stringResource(L10nR.string.feature_connect_forget_saved_pc_8860a3), color = MaterialTheme.colorScheme.error)
-            }
-        }
-        ConnectNote(stringResource(L10nR.string.echo_link_battery_hint))
+        phoneLibraryShareContent()
+        PcLinkPreferences(
+            hasSaved = hasSaved,
+            busy = busy,
+            autoReconnectEnabled = autoReconnectEnabled,
+            linkedLibraryDefault = linkedLibraryDefault,
+            onAutoReconnectChange = onAutoReconnectChange,
+            onLinkedLibraryDefaultChange = onLinkedLibraryDefaultChange,
+            onForgetRequest = { confirmForget = true },
+        )
+        Box(Modifier.padding(horizontal = 4.dp)) { ConnectNote(stringResource(L10nR.string.echo_link_battery_hint)) }
     }
     if (confirmForget) ForgetConnectionDialog(
         stringResource(L10nR.string.feature_connect_forget_saved_pc_80b440),
         onDismiss = { confirmForget = false },
         onConfirm = { confirmForget = false; address = ""; token = ""; onForgetPc() },
     )
-}
-
-@Composable
-private fun ListenTogetherEntry(onOpen: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 64.dp).echoClickable(role = Role.Button, onClick = onOpen),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        EchoIcon(Icons.Rounded.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                stringResource(L10nR.string.feature_connect_listen_together_title),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-            )
-            ConnectNote(stringResource(L10nR.string.feature_connect_listen_together_detail))
-        }
-    }
 }

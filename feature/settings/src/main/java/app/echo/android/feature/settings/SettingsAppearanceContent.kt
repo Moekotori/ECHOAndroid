@@ -1,24 +1,23 @@
 package app.echo.android.feature.settings
 
-import app.echo.android.model.settings.EchoBackgroundMode
-import app.echo.android.design.backgroundMaxBlur
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.model.settings.EchoBackgroundMode
 import app.echo.android.model.settings.EchoBackgroundStyle
-import kotlin.math.roundToInt
 
+/**
+ * Single pane: a short list of sub-pages (theme, text, background). Two panes have no room to
+ * navigate, so they show every section inline in the same order.
+ */
 @Composable
 internal fun SettingsAppearanceContent(
+    subNav: SettingsSubNav,
     importedFontFamily: FontFamily?,
     customBackgroundMode: String,
     customBackgroundUri: String?,
@@ -59,122 +58,77 @@ internal fun SettingsAppearanceContent(
     onScheduledDarkStartMinuteChange: (Int) -> Unit,
     onScheduledDarkEndMinuteChange: (Int) -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-            .settingsSearchAnchor(stringResource(R.string.settings_section_theme))
-            .padding(horizontal = SettingsContentInset),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        SettingsAppearancePreview(uiFontFamily, importedFontFamily, uiFontScale, uiDensityScale)
-        ThemeModeSelector(
-            selectedMode = themeMode,
-            onSelect = onThemeModeChange,
+    val onOpen = subNav.open
+    val page = subNav.page
+    if (onOpen != null && page == null) {
+        SettingsAppearanceHub(
+            themeMode = themeMode,
+            uiFontScale = uiFontScale,
+            lyricsFontScale = lyricsFontScale,
+            backgroundMode = customBackgroundMode,
+            hasBackground = customBackgroundMode != EchoBackgroundMode.Default && !customBackgroundUri.isNullOrBlank(),
+            onOpen = onOpen,
         )
+        return
     }
-
-    val backgroundDisabled = customBackgroundMode == EchoBackgroundMode.Video &&
-        LocalEchoEffectivePerformanceMode.current.isLightweight
-    val maxBlur = LocalEchoEffectivePerformanceMode.current.backgroundMaxBlur
-    SettingsSectionCard(
-        title = stringResource(R.string.settings_section_background),
-        persistentContent = {
-            SettingsBackgroundSourceRow(
-                mode = customBackgroundMode,
-                uri = customBackgroundUri,
-                onPickImageBackground = onPickImageBackground,
-                onPickVideoBackground = onPickVideoBackground,
-                onClearCustomBackground = onClearCustomBackground,
-            )
-        },
-    ) {
-        if (customBackgroundMode != EchoBackgroundMode.Default && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
-            val selectedStyle = EchoBackgroundStyle.entries.firstOrNull {
-                it.matches(customBackgroundBlur, customBackgroundBrightness, customBackgroundGlass,
-                    customBackgroundScale, maxBlur, isVideo = customBackgroundMode == EchoBackgroundMode.Video)
+    // Inline layouts keep the section headings; a sub-page already has its title in the header.
+    val showHeader = onOpen == null
+    if (page == null || page == SettingsSubPage.AppearanceTheme) {
+        SettingsSectionCard(title = stringResource(R.string.settings_section_theme), showHeader = showHeader) {
+            Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                ThemeModeSelector(selectedMode = themeMode, onSelect = onThemeModeChange)
+                SettingsScheduleDarkContent(
+                    enabled = scheduledDarkModeEnabled,
+                    startMinute = scheduledDarkStartMinute,
+                    endMinute = scheduledDarkEndMinute,
+                    onEnabledChange = onScheduledDarkModeEnabledChange,
+                    onStartMinuteChange = onScheduledDarkStartMinuteChange,
+                    onEndMinuteChange = onScheduledDarkEndMinuteChange,
+                )
             }
-            SettingsChoiceGroupRow(
-                title = stringResource(R.string.settings_bg_style),
-                detail = if (selectedStyle == null) stringResource(R.string.settings_bg_style_custom)
-                    else backgroundStyleLabel(selectedStyle),
-                options = EchoBackgroundStyle.entries.map { SettingsChoiceOption(it.id, backgroundStyleLabel(it)) },
-                selectedValue = selectedStyle?.id.orEmpty(),
-                onOptionSelected = { id ->
-                    EchoBackgroundStyle.entries.firstOrNull { it.id == id }?.let(onCustomBackgroundStyleChange)
-                },
-            )
-            Text(
-                stringResource(if (customBackgroundMode == EchoBackgroundMode.Video) R.string.settings_bg_style_video_detail
-                    else R.string.settings_bg_style_detail),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (backgroundDisabled) {
-            Text(stringResource(R.string.settings_bg_video_disabled), style = MaterialTheme.typography.bodySmall)
-        }
-
-    }
-
-    if (customBackgroundMode != EchoBackgroundMode.Default && !customBackgroundUri.isNullOrBlank() && !backgroundDisabled) {
-        SettingsSectionCard(title = stringResource(R.string.settings_section_background_adjustments), secondary = true) {
-            SettingsBackgroundAdjustments(
-                uri = customBackgroundUri,
-                isVideo = customBackgroundMode == EchoBackgroundMode.Video,
-                blur = customBackgroundBlur.coerceIn(0f, maxBlur),
-                brightness = customBackgroundBrightness,
-                glass = customBackgroundGlass,
-                scale = customBackgroundScale,
-                maxBlur = maxBlur,
-                onBlurChange = onCustomBackgroundBlurChange,
-                onBrightnessChange = onCustomBackgroundBrightnessChange,
-                onGlassChange = onCustomBackgroundGlassChange,
-                onScaleChange = onCustomBackgroundScaleChange,
-            )
         }
     }
 
-    SettingsTypographyContent(
-        importedFontFamily, uiFontFamily, uiFontScale, lyricsFontFamily, lyricsFontScale,
-        importedFontUri, onUiFontFamilyChange, onUiFontScaleChange,
-        onLyricsFontFamilyChange, onLyricsFontScaleChange,
-        onImportUiFont, onImportLyricsFont, onClearImportedFont,
-    )
-
-    SettingsSectionCard(title = stringResource(R.string.settings_section_schedule), secondary = true) {
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_scheduled_dark),
-            detail = stringResource(
-                R.string.settings_scheduled_dark_detail,
-                formatMinuteOfDay(scheduledDarkStartMinute),
-                formatMinuteOfDay(scheduledDarkEndMinute),
-            ),
-            checked = scheduledDarkModeEnabled,
-            onCheckedChange = onScheduledDarkModeEnabledChange,
+    if (page == null || page == SettingsSubPage.AppearanceText) {
+        SettingsTypographyContent(
+            importedFontFamily = importedFontFamily,
+            uiFontFamily = uiFontFamily,
+            uiFontScale = uiFontScale,
+            uiDensityScale = uiDensityScale,
+            lyricsFontFamily = lyricsFontFamily,
+            lyricsFontScale = lyricsFontScale,
+            importedFontUri = importedFontUri,
+            onUiFontFamilyChange = onUiFontFamilyChange,
+            onUiFontScaleChange = onUiFontScaleChange,
+            onLyricsFontFamilyChange = onLyricsFontFamilyChange,
+            onLyricsFontScaleChange = onLyricsFontScaleChange,
+            onImportUiFont = onImportUiFont,
+            onImportLyricsFont = onImportLyricsFont,
+            onClearImportedFont = onClearImportedFont,
+            showHeader = showHeader,
         )
-        if (scheduledDarkModeEnabled) {
-            SettingsSliderRow(
-                title = stringResource(R.string.settings_dark_start),
-                valueLabel = { formatMinuteOfDay(it.roundToInt()) },
-                value = scheduledDarkStartMinute.toFloat(),
-                valueRange = 0f..1439f,
-                steps = 95,
-                onValueChange = { onScheduledDarkStartMinuteChange(it.roundToQuarterHour()) },
-            )
-            SettingsSliderRow(
-                title = stringResource(R.string.settings_dark_end),
-                valueLabel = { formatMinuteOfDay(it.roundToInt()) },
-                value = scheduledDarkEndMinute.toFloat(),
-                valueRange = 0f..1439f,
-                steps = 95,
-                onValueChange = { onScheduledDarkEndMinuteChange(it.roundToQuarterHour()) },
-            )
-        }
     }
 
-    SettingsStartupBackgroundCard(
-        uri = startupBackgroundUri,
-        onPick = onPickStartupBackground,
-        onClear = onClearStartupBackground,
-    )
-
+    if (page == null || page == SettingsSubPage.AppearanceBackground) {
+        SettingsBackgroundContent(
+            mode = customBackgroundMode,
+            uri = customBackgroundUri,
+            startupUri = startupBackgroundUri,
+            blur = customBackgroundBlur,
+            brightness = customBackgroundBrightness,
+            glass = customBackgroundGlass,
+            scale = customBackgroundScale,
+            onPickImage = onPickImageBackground,
+            onPickVideo = onPickVideoBackground,
+            onClear = onClearCustomBackground,
+            onPickStartup = onPickStartupBackground,
+            onClearStartup = onClearStartupBackground,
+            onBlurChange = onCustomBackgroundBlurChange,
+            onBrightnessChange = onCustomBackgroundBrightnessChange,
+            onGlassChange = onCustomBackgroundGlassChange,
+            onScaleChange = onCustomBackgroundScaleChange,
+            onStyleChange = onCustomBackgroundStyleChange,
+            showHeader = showHeader,
+        )
+    }
 }

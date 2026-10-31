@@ -207,6 +207,9 @@ private fun List<EchoRemoteTrack>.sortedForLinkedLibrary(
             compareBy<EchoRemoteTrack> { it.album.orEmpty().lowercase() }
                 .thenBy { it.artist.lowercase() }
                 .thenBy { it.title.lowercase() }
+        // Local-only modes are never offered for a linked catalog.
+        else -> compareBy<EchoRemoteTrack> { it.title.lowercase() }
+            .thenBy { it.artist.lowercase() }.thenBy { it.album.orEmpty().lowercase() }
     }
     return sortedWith { left, right ->
         checkActive()

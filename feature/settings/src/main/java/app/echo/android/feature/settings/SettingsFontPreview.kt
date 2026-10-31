@@ -46,7 +46,7 @@ internal fun SettingsFontPreview(
                 stringResource(if (lyrics) R.string.settings_font_preview_lyrics else R.string.settings_font_preview_ui),
                 style = if (lyrics) TextStyle(
                     fontFamily = family,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     fontSize = (22f * scale).sp,
                     lineHeight = (30f * scale).sp,
                 ) else typography.titleMedium,

@@ -24,3 +24,10 @@ data class LibraryLyricsInspection(
     val checkedCount: Int get() = foundCount + missingCount + unverifiedCount
     val pendingCount: Int get() = (totalCount - checkedCount).coerceAtLeast(0)
 }
+
+/** Progress is collected only by the visible lyrics-filter controls or an empty-result view. */
+data class LibraryLyricsIndexState(
+    val progress: LibraryLyricsInspection = LibraryLyricsInspection(),
+    val isRunning: Boolean = false,
+    val failed: Boolean = false,
+)

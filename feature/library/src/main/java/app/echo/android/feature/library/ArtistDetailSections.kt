@@ -59,7 +59,7 @@ internal fun ArtistProfileHeader(artist: ArtistSummary) {
         Text(
             displayMetadataOrUnknown(artist.name, unknownArtistLabel()),
             style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
             maxLines = 2,

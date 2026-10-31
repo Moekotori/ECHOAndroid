@@ -25,12 +25,15 @@ import kotlin.coroutines.cancellation.CancellationException
 @UnstableApi
 internal class EchoNowPlayingLyricsSession(application: Application) {
     private val database = EchoLibraryDatabase.create(application)
+    private val lyricsIndex = app.echo.android.data.LibraryLyricsIndex(database)
     val controller = LyricsController(
         trackForLyrics = { id -> withContext(Dispatchers.IO) { database.trackDao().getTrackById(id) } },
         lyricsResolver = LocalLyricsResolver(application),
         onlineLyricsResolver = OnlineLyricsResolver(),
         importedLyricsStore = ImportedLyricsStore(application),
         scope = EchoPlaybackProcessRuntime.scope,
+        onSelectionChanged = lyricsIndex::selectionChanged,
+        onLoaded = lyricsIndex::loaded,
         subsonicLyricsLoader = { track ->
             val endpoint = EchoSubsonicEndpointRef.get() ?: return@LyricsController null
             val songId = subsonicSongIdFromTrack(track.id, track.source) ?: return@LyricsController null

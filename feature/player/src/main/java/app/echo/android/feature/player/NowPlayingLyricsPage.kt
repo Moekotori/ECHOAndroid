@@ -67,6 +67,8 @@ internal fun NowPlayingLyricsPage(
     modifier: Modifier = Modifier,
     animationsVisible: Boolean = true,
     pageReveal: () -> Float = { 1f },
+    /** Only the lyric list: the host page supplies heading, transport and backdrop. */
+    embedded: Boolean = false,
 ) {
     LyricsPageTheme(lyricsPageStyle) {
         val paper = lyricsPageStyle == EchoLyricsPageStyle.Paper
@@ -93,20 +95,13 @@ internal fun NowPlayingLyricsPage(
             lightweight = lightweight,
             highPerformance = performance.isHighPerformance,
         )) {
-            if (showBackdrop) LyricsPageBackdrop(palette, { 1f }, animationsVisible && status.track != null, Modifier.fillMaxSize(), backdropStyle, colorGrid, backdropLink)
-            Box(
+            if (showBackdrop && !embedded) LyricsPageBackdrop(palette, { 1f }, animationsVisible && status.track != null, Modifier.fillMaxSize(), backdropStyle, colorGrid, backdropLink)
+            if (!embedded) Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .drawBehind { drawRect(dimColor.copy(alpha = lyricsDimAlpha.value)) },
             )
-            LyricsPageLayout(
-                supportingPane = !showTransportDock,
-                heading = { landscape ->
-                    Box(Modifier.fillMaxWidth().lyricsPageEntrance(pageReveal, lightweight, travelDp = 10f)) {
-                        LyricsTrackHeading(status.track, paper, onOpenArtist, landscape, animationsVisible)
-                    }
-                },
-                lyrics = {
+            val lyricsBody: @Composable () -> Unit = {
                     Box(
                         modifier = Modifier
                         .fillMaxWidth()
@@ -199,7 +194,15 @@ internal fun NowPlayingLyricsPage(
                             }
                         }
                     }
+            }
+            if (embedded) lyricsBody() else LyricsPageLayout(
+                supportingPane = !showTransportDock,
+                heading = { landscape ->
+                    Box(Modifier.fillMaxWidth().lyricsPageEntrance(pageReveal, lightweight, travelDp = 10f)) {
+                        LyricsTrackHeading(status.track, paper, onOpenArtist, landscape, animationsVisible)
+                    }
                 },
+                lyrics = lyricsBody,
                 controls = { landscape ->
                     Column(Modifier.fillMaxWidth().lyricsPageEntrance(
                         pageReveal, lightweight, travelDp = 8f, start = 0.12f,

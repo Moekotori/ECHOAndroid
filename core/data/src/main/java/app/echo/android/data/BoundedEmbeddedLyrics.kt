@@ -9,6 +9,8 @@ import java.io.InputStream
 fun readBoundedEmbeddedLyrics(input: InputStream, maxBytes: Int = 2 * 1024 * 1024, checkActive: () -> Unit = {}): String? {
     require(maxBytes > 0)
     var failure: IOException? = null
+    val header = ByteArray(10)
+    var headerCount = 0
     val bounded = object : FilterInputStream(input), TagTailReader {
         private var remaining = maxBytes
         private fun <T> checked(read: () -> T): T {
@@ -20,11 +22,25 @@ fun readBoundedEmbeddedLyrics(input: InputStream, maxBytes: Int = 2 * 1024 * 102
             throw IOException("Embedded lyrics read limit")
         }
         override fun read(): Int = checked {
-            if (remaining == 0) atLimit() else `in`.read().also { if (it >= 0) remaining-- }
+            if (remaining == 0) atLimit() else `in`.read().also {
+                if (it >= 0) {
+                    if (headerCount < header.size) header[headerCount++] = it.toByte()
+                    remaining--
+                }
+            }
         }
         override fun read(bytes: ByteArray, offset: Int, length: Int): Int = checked {
             if (length == 0) 0 else if (remaining == 0) atLimit() else
-                `in`.read(bytes, offset, minOf(length, remaining)).also { if (it > 0) remaining -= it }
+                `in`.read(bytes, offset, minOf(length, remaining)).also {
+                    if (it > 0) {
+                        val observed = minOf(it, header.size - headerCount)
+                        if (observed > 0) {
+                            System.arraycopy(bytes, offset, header, headerCount, observed)
+                            headerCount += observed
+                        }
+                        remaining -= it
+                    }
+                }
         }
         override fun skip(count: Long): Long = checked {
             if (count <= 0L) 0L else {
@@ -41,6 +57,20 @@ fun readBoundedEmbeddedLyrics(input: InputStream, maxBytes: Int = 2 * 1024 * 102
     }
     val lyrics = readLocalAudioTags(bounded)?.lyrics?.takeIf(String::isNotBlank)
     // A failed optional tag must not mask readable lyrics, or turn an unknown result into "missing".
-    if (lyrics == null) failure?.let { throw it }
+    if (lyrics == null) {
+        failure?.let { throw it }
+        if (!supportsInspectionHeader(header, headerCount)) throw IOException("Unknown embedded lyrics container")
+    }
     return lyrics
+}
+
+private val InspectableLyricsContainers = setOf("MAC ", "wvpk", "TTA1", "tBaK", "fLaC", "RIFF", "RF64", "OggS", "DSD ", "FRM8")
+
+private fun supportsInspectionHeader(header: ByteArray, count: Int): Boolean {
+    if (count < 10) return false
+    val prefix = String(header, 0, 4, Charsets.US_ASCII)
+    return prefix in InspectableLyricsContainers || String(header, 0, 3, Charsets.US_ASCII) == "ID3" ||
+        String(header, 4, 4, Charsets.US_ASCII) == "ftyp" ||
+        ((header[0].toInt() and 255) == 255 && (header[1].toInt() and 224) == 224) ||
+        (header[0] == 0x30.toByte() && header[1] == 0x26.toByte() && header[2] == 0xB2.toByte() && header[3] == 0x75.toByte())
 }

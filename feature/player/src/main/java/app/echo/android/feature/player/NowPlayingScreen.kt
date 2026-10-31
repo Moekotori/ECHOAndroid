@@ -307,10 +307,12 @@ fun NowPlayingScreen(
     val detailedGrid = fullBleedPage && appearance.style != EchoPlayerPageStyle.Halftone.id
     val colorGrid = rememberArtworkColorGrid(track?.artworkUri, enabled = shownBackdrop.needsColorGrid, detailed = detailedGrid)
     var splitNowPlaying by remember { mutableStateOf(false) }
+    // The chat thread reads the lyrics in place; it has no lyrics page to swipe to.
+    val inlineLyrics = !isRadio && appearance.style == EchoPlayerPageStyle.ChatThread.id
     val pagerState = rememberPagerState(
         // A direct lyrics opening has its own outer entrance; do not add a simultaneous page slide.
-        initialPage = if (openLyricsRequestId > 0 && !isRadio) NowPlayingPage.Lyrics.ordinal else NowPlayingPage.Cover.ordinal,
-        pageCount = { if (isRadio) 1 else NowPlayingPage.entries.size },
+        initialPage = if (openLyricsRequestId > 0 && !isRadio && !inlineLyrics) NowPlayingPage.Lyrics.ordinal else NowPlayingPage.Cover.ordinal,
+        pageCount = { if (isRadio || inlineLyrics) 1 else NowPlayingPage.entries.size },
     )
     val pageScope = rememberCoroutineScope()
     val pageStates = rememberSaveableStateHolder()
@@ -363,10 +365,12 @@ fun NowPlayingScreen(
             else pagerState.scrollToPage(NowPlayingPage.Cover.ordinal)
         }
     }
-    LaunchedEffect(openLyricsRequestId, isRadio, splitNowPlaying) {
+    LaunchedEffect(openLyricsRequestId, isRadio, splitNowPlaying, inlineLyrics) {
         if (isRadio) {
             pagerState.requestScrollToPage(NowPlayingPage.Cover.ordinal)
             lyricsSettingsVisible = false
+        } else if (inlineLyrics) {
+            handledLyricsRequestId = openLyricsRequestId
         } else if (openLyricsRequestId > handledLyricsRequestId) {
             if (splitNowPlaying || EchoPlayerPageStyle.fromId(appearance.style).lyricsPreset.isAfterglow) pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
             else pagerState.animateSilkToPage(NowPlayingPage.Lyrics.ordinal, effectivePerformanceMode.isLightweight)
@@ -609,45 +613,12 @@ fun NowPlayingScreen(
 
                 } }
 
-                val coverRenderer: @Composable () -> Unit = {
-                    pageStates.SaveableStateProvider("cover") {
-                        PlayerCoverPage(
-                            appearance = appearance,
-                            palette = palette,
-                            presentationExpanded = presentationExpanded &&
-                                (splitNowPlaying || pagerState.currentPage == NowPlayingPage.Cover.ordinal),
-                            status = status,
-                            positionMsState = positionMsState,
-                            durationMsState = durationMsState,
-                            onPlayPause = onPlayPause,
-                            onNext = onNext,
-                            onPrevious = onPrevious,
-                            onSeek = onSeek,
-                            onOpenQueue = onOpenQueue,
-                            onCast = onCast,
-                            castActive = castActive,
-                            onToggleShuffle = onToggleShuffle,
-                            onCycleRepeatMode = onCycleRepeatMode,
-                            isCurrentTrackFavorite = isCurrentTrackFavorite,
-                            onToggleFavorite = onToggleFavorite,
-                            onOpenLyrics = {
-                                if (splitNowPlaying) pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
-                                else pageScope.launch {
-                                    if (lyricStyle.isAfterglow) pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
-                                    else pagerState.animateSilkToPage(NowPlayingPage.Lyrics.ordinal, effectivePerformanceMode.isLightweight)
-                                }
-                            },
-                            onOpenArtist = onOpenArtist,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
-                val lyricsRenderer: @Composable (Boolean) -> Unit = { split ->
-                    pageStates.SaveableStateProvider("lyrics") {
+                val lyricsPageBody: @Composable (Boolean, Boolean, Modifier) -> Unit = { split, embedded, pageModifier ->
                         NowPlayingLyricsPage(
                             animationsVisible = presentationExpanded && !overlayBlocking &&
-                                (split || pagerState.currentPage == NowPlayingPage.Lyrics.ordinal),
-                            pageReveal = if (split) ({ 1f }) else lyricsReveal,
+                                (split || embedded || pagerState.currentPage == NowPlayingPage.Lyrics.ordinal),
+                            embedded = embedded,
+                            pageReveal = if (split || embedded) ({ 1f }) else lyricsReveal,
                             status = status,
                             lyricsState = lyricsState,
                             lyricsPageStyle = lyricStyle,
@@ -684,6 +655,43 @@ fun NowPlayingScreen(
                             onOpenLyricsSettings = { lyricsSettingsVisible = true },
                             onOpenArtist = onOpenArtist,
                             showTransportDock = !split,
+                            modifier = pageModifier,
+                        )
+                }
+                val lyricsRenderer: @Composable (Boolean) -> Unit = { split ->
+                    pageStates.SaveableStateProvider("lyrics") { lyricsPageBody(split, false, Modifier.fillMaxSize()) }
+                }
+                val coverRenderer: @Composable () -> Unit = {
+                    pageStates.SaveableStateProvider("cover") {
+                        PlayerCoverPage(
+                            appearance = appearance,
+                            palette = palette,
+                            presentationExpanded = presentationExpanded &&
+                                (splitNowPlaying || pagerState.currentPage == NowPlayingPage.Cover.ordinal),
+                            status = status,
+                            positionMsState = positionMsState,
+                            durationMsState = durationMsState,
+                            onPlayPause = onPlayPause,
+                            onNext = onNext,
+                            onPrevious = onPrevious,
+                            onSeek = onSeek,
+                            onOpenQueue = onOpenQueue,
+                            onCast = onCast,
+                            castActive = castActive,
+                            onToggleShuffle = onToggleShuffle,
+                            onCycleRepeatMode = onCycleRepeatMode,
+                            isCurrentTrackFavorite = isCurrentTrackFavorite,
+                            onToggleFavorite = onToggleFavorite,
+                            onOpenLyrics = {
+                                if (inlineLyrics) lyricsSettingsVisible = true
+                                else if (splitNowPlaying) pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
+                                else pageScope.launch {
+                                    if (lyricStyle.isAfterglow) pagerState.requestScrollToPage(NowPlayingPage.Lyrics.ordinal)
+                                    else pagerState.animateSilkToPage(NowPlayingPage.Lyrics.ordinal, effectivePerformanceMode.isLightweight)
+                                }
+                            },
+                            onOpenArtist = onOpenArtist,
+                            lyricsContent = if (inlineLyrics) ({ lyricsModifier -> lyricsPageBody(false, true, lyricsModifier) }) else null,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -693,7 +701,7 @@ fun NowPlayingScreen(
                 val coverPage = remember { movableContentOf { latestCoverRenderer.value() } }
                 val lyricsPage = remember { movableContentOf { split: Boolean -> latestLyricsRenderer.value(split) } }
                 AdaptivePlayerPanes(
-                    fold = fold, preferSplit = preferSplit, allowSplit = !isRadio,
+                    fold = fold, preferSplit = preferSplit, allowSplit = !isRadio && !inlineLyrics,
                     onSplitChanged = { if (splitNowPlaying != it) splitNowPlaying = it },
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     cover = coverPage,
@@ -713,6 +721,8 @@ fun NowPlayingScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
 
+                        } else if (inlineLyrics) {
+                            coverPage()
                         } else {
                             val pageFling = rememberSilkPagerFlingBehavior(pagerState)
                             val pageNestedScroll = rememberContentPagerNestedScroll(pagerState, pageFling)

@@ -15,9 +15,10 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun SettingsDetailPane(
     category: SettingsCategory,
+    subNav: SettingsSubNav,
     compactMode: Boolean,
     searchFocus: SettingsSearchFocus?,
-    content: @Composable (SettingsCategory) -> Unit,
+    content: @Composable (SettingsCategory, SettingsSubNav) -> Unit,
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp, bottom = 172.dp),
         verticalArrangement = Arrangement.spacedBy(
@@ -28,6 +29,10 @@ internal fun SettingsDetailPane(
             Text(stringResource(category.description), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = SettingsContentInset))
         }
-        CompositionLocalProvider(LocalSettingsSearchFocus provides searchFocus) { content(category) }
+        val subPageTitle = subNav.page?.let { stringResource(it.title) }
+        CompositionLocalProvider(
+            LocalSettingsSearchFocus provides searchFocus,
+            LocalSettingsSubPageTitle provides subPageTitle,
+        ) { content(category, subNav) }
     }
 }

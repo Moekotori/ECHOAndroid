@@ -78,7 +78,7 @@ internal fun ScrapbookLyricsHeading(track: EchoTrackRef) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Box(Modifier.highlighter()) {
                 Text(displayTrack(track.title), color = ScrapbookStyle.Ink, fontFamily = ScrapbookStyle.Hand,
-                    fontWeight = FontWeight.Bold, fontSize = 24.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    fontSize = 24.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(displayArtist(track.artist), color = ScrapbookStyle.Muted, fontFamily = ScrapbookStyle.Hand,
                 fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -57,6 +57,8 @@ data class EchoBackupSettings(
     val pauseOnAudioDisconnect: Boolean? = null,
     val resumeOnAudioReconnect: Boolean? = null,
     val trackAudioInfoTagsVisible: Boolean? = null,
+    val audioFocusEnabled: Boolean? = null,
+    val audioInterruptionPolicy: String? = null,
     val replayGainEnabled: Boolean? = null,
     val replayGainMode: String? = null,
     val replayGainPreampDb: Float? = null,

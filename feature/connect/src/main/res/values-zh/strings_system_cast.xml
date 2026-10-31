@@ -1,5 +1,5 @@
 <resources>
     <string name="system_cast_output">系统输出选择器</string>
-    <string name="system_cast_output_hint">选择兼容的 Cast 设备，也可从系统媒体面板切回手机。</string>
-    <string name="system_cast_unavailable">系统 Cast 选择需要 Android 13 或更新版本及可用的 Google Play 服务。仍可使用下方局域网设备入口。</string>
+    <string name="system_cast_output_hint">由手机系统显示音频设备并切换输出，可用设备取决于手机系统。</string>
+    <string name="system_cast_unavailable">当前设备不支持系统输出面板，仍可使用下方局域网设备入口。</string>
 </resources>

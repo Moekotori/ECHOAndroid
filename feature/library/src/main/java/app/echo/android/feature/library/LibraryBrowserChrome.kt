@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -62,19 +63,35 @@ internal fun LibraryBrowserFrame(
                     } else {
                         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                             Text(stringResource(R.string.feature_library_library_848e9b), Modifier.weight(1f, fill = false),
-                                style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Spacer(Modifier.width(8.dp))
                             sourcePicker()
                         }
                         IconButton(onClick = { searchExpanded = true }) {
-                            EchoIcon(Icons.Rounded.Search, stringResource(R.string.feature_library_search_library_80ef90))
+                            EchoIcon(Icons.Rounded.Search, stringResource(R.string.feature_library_search_library_80ef90),
+                                Modifier.size(22.dp))
                         }
                         actions()
                     }
                 }
                 content()
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun LibraryMusicRelationsButton(onClick: () -> Unit) {
+    val label = stringResource(R.string.music_relations_title)
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(label) } },
+        state = rememberTooltipState(),
+    ) {
+        IconButton(onClick = onClick) {
+            EchoIcon(Icons.Rounded.Hub, label, Modifier.size(20.dp))
         }
     }
 }

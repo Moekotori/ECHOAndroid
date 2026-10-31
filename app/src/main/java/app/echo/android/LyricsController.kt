@@ -43,6 +43,8 @@ internal class LyricsController(
     private val importedLyricsStore: ImportedLyricsStore,
     private val scope: CoroutineScope,
     private val subsonicLyricsLoader: (LibraryTrackEntity) -> EchoLyrics? = { null },
+    private val onSelectionChanged: suspend (String, Boolean) -> Unit = { _, _ -> },
+    private val onLoaded: suspend (LibraryTrackEntity, Long) -> Unit = { _, _ -> },
 ) {
     private val _lyricsState = MutableStateFlow<EchoLyricsLoadState>(EchoLyricsLoadState.Idle)
     val lyricsState: StateFlow<EchoLyricsLoadState> = _lyricsState.asStateFlow()
@@ -73,6 +75,7 @@ internal class LyricsController(
         withContext(Dispatchers.IO) {
             withCurrentSelection(trackId, version) {
                 importedLyricsStore.save(trackId, lyrics, selected = true)
+                recordSelectionAvailability(trackId, LyricsContentPolicy.readable(lyrics) != null)
                 importedLyricsStore.setLyricsOffset(trackId, 0)
             }
         }
@@ -94,7 +97,11 @@ internal class LyricsController(
         val version = beginSelectionChange(trackId)
         withContext(Dispatchers.IO) {
             withCurrentSelection(trackId, version) {
-                if (json != null) importedLyricsStore.save(trackId, app.echo.android.lyrics.EchoLyricsJson.decode(json), selected = true)
+                if (json != null) {
+                    val restored = app.echo.android.lyrics.EchoLyricsJson.decode(json)
+                    importedLyricsStore.save(trackId, restored, selected = true)
+                    recordSelectionAvailability(trackId, LyricsContentPolicy.readable(restored) != null)
+                }
                 importedLyricsStore.setLyricsOffset(trackId, offset)
             }
         }
@@ -140,6 +147,7 @@ internal class LyricsController(
                     // The atomic selected file is self-contained; URI bindings are legacy fallback only.
                     if (!withCurrentSelection(target, version) {
                         importedLyricsStore.save(target, imported, selected = true)
+                        recordSelectionAvailability(target, true)
                     }) return@withContext null
                     imported
                 } ?: return@launch
@@ -218,6 +226,7 @@ internal class LyricsController(
             try {
                 withContext(Dispatchers.IO) { withCurrentSelection(trackId, version) {
                     importedLyricsStore.save(trackId, candidate.lyrics.copy(metadata = candidate.lyrics.metadata + ("selection_id" to id)), selected = true)
+                    recordSelectionAvailability(trackId, LyricsContentPolicy.readable(candidate.lyrics) != null)
                 } }
                 if (isCurrentSelection(trackId, version) && trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
             } catch (error: Exception) {
@@ -233,7 +242,10 @@ internal class LyricsController(
         val version = beginSelectionChange(trackId)
         scope.launch {
             try {
-                withContext(Dispatchers.IO) { withCurrentSelection(trackId, version) { importedLyricsStore.unbindLyrics(trackId) } }
+                withContext(Dispatchers.IO) { withCurrentSelection(trackId, version) {
+                    importedLyricsStore.unbindLyrics(trackId)
+                    recordSelectionAvailability(trackId, false)
+                } }
                 if (isCurrentSelection(trackId, version) && trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
@@ -273,8 +285,10 @@ internal class LyricsController(
         }
 
         _lyricsState.value = EchoLyricsLoadState.Loading
+        val indexVersion = selectionVersion(trackId)
         lyricsJob = scope.launch {
             val result = withContext(Dispatchers.IO) {
+                var inspectedTrack: LibraryTrackEntity? = null
                 runCatching {
                     val selected = LyricsContentPolicy.readable(importedLyricsStore.readSaved(trackId, selected = true))
                     val echoLinkLyrics = selected ?: LyricsContentPolicy.readable(cachedEchoLinkLyrics(trackId))
@@ -289,6 +303,7 @@ internal class LyricsController(
                         )
                     } else {
                         val track = trackForLyrics(trackId)
+                        inspectedTrack = track
                         if (selected != null) {
                             LyricsLoadResult(EchoLyricsLoadState.Ready(selected), importedLyricsStore.lyricsOffsetForTrack(trackId))
                         } else if (track == null) {
@@ -329,6 +344,15 @@ internal class LyricsController(
                 }.getOrElse { error ->
                     if (error is CancellationException) throw error
                     LyricsLoadResult(EchoLyricsLoadState.Error(error.lyricsErrorMessage("Lyrics load failed")))
+                }.also { loaded ->
+                    if (loaded.state is EchoLyricsLoadState.Ready) updateLyricsIndex {
+                        val evidence = inspectedTrack ?: trackForLyrics(trackId)
+                        if (evidence != null) withCurrentSelection(trackId, indexVersion) {
+                            // This source may have just been downloaded; its evidence is newer
+                            // than an inspection that started before that download completed.
+                            onLoaded(evidence, System.currentTimeMillis())
+                        }
+                    }
                 }
             }
             if (!isActive) return@launch
@@ -426,6 +450,18 @@ internal class LyricsController(
             album = album,
             durationMs = durationMs,
         )
+
+    private suspend fun recordSelectionAvailability(trackId: String, present: Boolean) =
+        updateLyricsIndex { onSelectionChanged(trackId, present) }
+
+    private suspend fun updateLyricsIndex(write: suspend () -> Unit) {
+        try { write() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            // Secondary index failure cannot turn a successful lyric import/load into a failure.
+            EchoErrorLog.record(EchoErrorSource.Lyrics, error.lyricsErrorMessage("Could not update lyrics index"))
+        }
+    }
 
     private fun reportManagementError(message: String) {
         _managementError.value = message

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="library_sort_title">並べ替え</string>
     <string name="library_sort_loaded_items">読み込み済みの項目を並べ替え</string>
 </resources>

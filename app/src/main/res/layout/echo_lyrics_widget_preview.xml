@@ -63,7 +63,7 @@
             android:background="@drawable/echo_widget_play_surface"
             android:contentDescription="@string/playback_widget_play"
             android:padding="10dp"
-            android:tint="@color/playback_widget_background"
+            android:tint="@color/playback_widget_on_accent"
             android:src="@drawable/echo_ic_play" />
     </LinearLayout>
 </LinearLayout>

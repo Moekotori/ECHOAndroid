@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_output_title">音频输出</string>
+    <string name="audio_focus_title">不与其他应用一起播放（音频焦点）</string>
+    <string name="audio_focus_detail">其他应用取得音频焦点时暂停播放。关闭后允许与其他应用混音；设备设置和 Android 系统仍可能中断或静音播放。</string>
+    <string name="audio_focus_disabled_detail">音频焦点已关闭。已保留短暂中断的处理偏好，重新开启后生效。</string>
+    <string name="audio_replay_gain_detail">读取 REPLAYGAIN_TRACK_GAIN 或 REPLAYGAIN_ALBUM_GAIN 标签平衡响度，可选择按单曲或专辑调整。没有可用标签时仅应用前置增益。</string>
+    <string name="audio_output_reset">恢复音频输出默认值</string>
+    <string name="audio_output_reset_detail">开启音频焦点和播放／暂停渐变，短提示时降低音量；关闭音量平衡、曲目淡化和 AutoMix，重置增益与淡化时长。</string>
+    <string name="audio_output_reset_action">恢复</string>
+</resources>

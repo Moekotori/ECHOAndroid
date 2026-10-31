@@ -21,6 +21,31 @@ android {
     }
 }
 
+// Package the canonical texts rather than maintaining a second copy in settings.
+abstract class OpenSourceLicenseAssets : Sync() {
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+}
+
+val prepareOpenSourceLicenses by tasks.registering(OpenSourceLicenseAssets::class) {
+    outputDirectory.set(layout.buildDirectory.dir("generated/openSourceAssets"))
+    into(outputDirectory.dir("echo-licenses"))
+    from(rootProject.file("LICENSE")) { rename { "ECHO-AGPL-3.0.txt" } }
+    from(rootProject.file("core/playback/third_party/licenses")) { into("audio") }
+    from(rootProject.file("core/data/src/main/assets/autoeq")) {
+        include("LICENSE.txt", "NOTICE.txt")
+        into("autoeq")
+    }
+    from(rootProject.file("feature/player/src/main/assets/fonts")) {
+        include("*.txt")
+        into("fonts")
+    }
+}
+
+androidComponents.onVariants { variant ->
+    variant.sources.assets?.addGeneratedSourceDirectory(prepareOpenSourceLicenses, OpenSourceLicenseAssets::outputDirectory)
+}
+
 dependencies {
     implementation(project(":core:design"))
     implementation(project(":core:model"))

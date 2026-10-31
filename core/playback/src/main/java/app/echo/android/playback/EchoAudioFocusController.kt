@@ -33,6 +33,7 @@ internal class EchoAudioFocusController(
     private var registered = false
     private var ducked = false
     private var closed = false
+    private var focusEnabled = EchoPlaybackRuntimeOptionsStore.options.value.audioFocusEnabled
     private var optionsJob: Job? = null
     private var routeJob: Job? = null
     private var observedRoute = routeKey()
@@ -49,8 +50,13 @@ internal class EchoAudioFocusController(
         player.addListener(this)
         optionsJob = scope.launch {
             combine(EchoPlaybackRuntimeOptionsStore.options, EchoPlaybackProcessRuntime.bitPerfectStates) { options, _ ->
-                options.audioInterruptionPolicy to EchoPlaybackProcessRuntime.usbBitPerfectEnabled
-            }.distinctUntilChanged().collect { (policy, strict) ->
+                Triple(options.audioFocusEnabled, options.audioInterruptionPolicy, EchoPlaybackProcessRuntime.usbBitPerfectEnabled)
+            }.distinctUntilChanged().collect { (enabled, policy, strict) ->
+                if (focusEnabled != enabled) {
+                    focusEnabled = enabled
+                    if (!enabled) releaseFocus()
+                    else if (player.playWhenReady) requestFocus()
+                }
                 if (ducked && (strict || policy == EchoAudioInterruptionPolicy.Pause)) pauseForFocus()
             }
         }
@@ -84,7 +90,7 @@ internal class EchoAudioFocusController(
     private fun gain(value: Float) { EchoPlaybackProcessRuntime.setAudioFocusGain(value) }
 
     private fun requestFocus() {
-        if (closed || held) return
+        if (closed || !focusEnabled || held) return
         registered = true
         val result = try { manager.requestAudioFocus(request) } catch (error: RuntimeException) {
             app.echo.android.model.error.EchoErrorLog.record(
@@ -95,8 +101,20 @@ internal class EchoAudioFocusController(
         when (result) {
             AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> { held = true; ducked = false; gain(1f) }
             AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> { remember(); own { player.pause() } }
-            else -> { registered = false; resume.cancel(); own { player.pause() }; gain(1f) }
+            else -> { own { player.pause() }; releaseFocus(clearFeedback = false) }
         }
+    }
+
+    private fun releaseFocus(clearFeedback: Boolean = true) {
+        // Invalidate resume before abandoning: a queued callback must not restart playback.
+        resume.cancel()
+        held = false
+        ducked = false
+        val abandon = registered
+        registered = false
+        if (abandon) manager.abandonAudioFocusRequest(request)
+        if (clearFeedback) feedback.clear()
+        gain(1f)
     }
 
     private fun pauseForFocus() {
@@ -110,7 +128,7 @@ internal class EchoAudioFocusController(
     }
 
     private fun onFocus(change: Int) {
-        if (closed || !registered) return
+        if (closed || !focusEnabled || !registered) return
         app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.AudioFocus, change.toLong())
         when (change) {
             AudioManager.AUDIOFOCUS_GAIN -> {
@@ -140,10 +158,7 @@ internal class EchoAudioFocusController(
 
     override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
         if (acting || closed) return
-        if (playWhenReady) requestFocus() else {
-            resume.cancel(); held = false; registered = false; ducked = false; gain(1f)
-            manager.abandonAudioFocusRequest(request)
-        }
+        if (playWhenReady) requestFocus() else releaseFocus()
     }
     override fun onPlayerError(error: PlaybackException) {
         resume.cancel()
@@ -160,9 +175,8 @@ internal class EchoAudioFocusController(
         if (reason == Player.DISCONTINUITY_REASON_SEEK) resume.cancel()
     }
     override fun close() {
-        feedback.clear()
         closed = true; resume.cancel(); optionsJob?.cancel(); routeJob?.cancel()
-        player.removeListener(this); manager.abandonAudioFocusRequest(request); gain(1f)
+        player.removeListener(this); releaseFocus()
     }
 
     companion object {

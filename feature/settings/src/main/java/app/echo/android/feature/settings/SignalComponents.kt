@@ -75,7 +75,7 @@ internal fun SignalReadout(label: String, value: String) {
 @Composable
 internal fun SignalMetric(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         SignalNote(label)
     }
 }

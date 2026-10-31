@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_choose_model">Choose a model</string>
+    <string name="opra_search_recovery">Try a shorter model name or clear the search.</string>
+    <string name="opra_preview_title">Correction preview</string>
+    <string name="opra_close_preview">Close preview</string>
+    <string name="opra_preview_note">Preview only. Your sound changes when you apply the correction.</string>
+    <string name="opra_unavailable_output">Correction is unavailable for the current output.</string>
+    <plurals name="opra_top_models">
+        <item quantity="one">First %1$d matching model</item>
+        <item quantity="other">First %1$d matching models</item>
+    </plurals>
+</resources>

@@ -28,6 +28,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 data class EchoPlaybackRuntimeOptions(
+    val audioFocusEnabled: Boolean = true,
     val audioInterruptionPolicy: app.echo.android.model.playback.EchoAudioInterruptionPolicy = app.echo.android.model.playback.EchoAudioInterruptionPolicy.Duck,
     val sleepTimerFinishTrack: Boolean = true,
     val stopOnTaskRemoved: Boolean = false,
@@ -39,8 +40,8 @@ object EchoPlaybackRuntimeOptionsStore {
     private val _options = MutableStateFlow(EchoPlaybackRuntimeOptions())
     val options: StateFlow<EchoPlaybackRuntimeOptions> = _options.asStateFlow()
 
-    fun setListeningOptions(policy: app.echo.android.model.playback.EchoAudioInterruptionPolicy, finishTrack: Boolean, stopOnTaskRemoved: Boolean = false) {
-        _options.update { it.copy(audioInterruptionPolicy = policy, sleepTimerFinishTrack = finishTrack, stopOnTaskRemoved = stopOnTaskRemoved) }
+    fun setListeningOptions(policy: app.echo.android.model.playback.EchoAudioInterruptionPolicy, finishTrack: Boolean, stopOnTaskRemoved: Boolean = false, audioFocusEnabled: Boolean = true) {
+        _options.update { it.copy(audioInterruptionPolicy = policy, sleepTimerFinishTrack = finishTrack, stopOnTaskRemoved = stopOnTaskRemoved, audioFocusEnabled = audioFocusEnabled) }
     }
 
     fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {

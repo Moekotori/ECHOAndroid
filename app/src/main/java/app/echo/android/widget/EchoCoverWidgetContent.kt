@@ -3,13 +3,11 @@ package app.echo.android.widget
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.*
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.layout.*
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -27,9 +25,9 @@ internal fun EchoCoverWidgetContent(context: Context, snapshot: EchoPlaybackSurf
     val artist = snapshot.artist.ifBlank {
         if (snapshot.hasTrack) "" else context.getString(R.string.playback_widget_idle)
     }
-    val foreground = if (artwork != null) widgetSolidColor(Color.White) else widgetForeground
-    val secondary = if (artwork != null) widgetSolidColor(Color(0xFFDEDEE4)) else widgetSecondary
-    val root = GlanceModifier.fillMaxSize().background(widgetBackground(context)).cornerRadius(24.dp)
+    val foreground = if (artwork != null) widgetSolidColor(ArtworkOverlayForeground) else widgetForeground
+    val secondary = if (artwork != null) widgetSolidColor(ArtworkOverlaySecondary) else widgetSecondary
+    val root = GlanceModifier.fillMaxSize().background(widgetBackground(context)).widgetSurface()
         .clickable(actionStartActivity(intent))
     Box(root, contentAlignment = Alignment.BottomStart) {
         if (artwork != null) {
@@ -45,9 +43,9 @@ internal fun EchoCoverWidgetContent(context: Context, snapshot: EchoPlaybackSurf
             Text(title, maxLines = if (wide || largeText) 1 else 2,
                 style = TextStyle(color = foreground, fontSize = (if (wide) 19 else 16).sp,
                     fontWeight = FontWeight.Bold))
-            Spacer(GlanceModifier.height(6.dp))
+            Spacer(GlanceModifier.height(4.dp))
             if (wide && LocalWidgetOptions.current.fullControls) {
-                Text(artist, maxLines = 1, style = TextStyle(color = secondary, fontSize = 12.sp))
+                Text(artist, maxLines = 1, style = TextStyle(color = secondary, fontSize = 13.sp, fontWeight = FontWeight.Medium))
                 Spacer(GlanceModifier.height(8.dp))
                 Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                     verticalAlignment = Alignment.CenterVertically) {
@@ -57,7 +55,7 @@ internal fun EchoCoverWidgetContent(context: Context, snapshot: EchoPlaybackSurf
             } else {
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(artist, modifier = GlanceModifier.defaultWeight(), maxLines = 1,
-                    style = TextStyle(color = secondary, fontSize = 12.sp))
+                    style = TextStyle(color = secondary, fontSize = 13.sp, fontWeight = FontWeight.Medium))
                 Spacer(GlanceModifier.width(8.dp))
                 WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent,
                     if (wide) 48.dp else 44.dp, full = false, onArtwork = artwork != null)

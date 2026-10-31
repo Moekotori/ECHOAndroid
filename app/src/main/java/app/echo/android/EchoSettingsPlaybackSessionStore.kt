@@ -20,6 +20,7 @@ class EchoSettingsPlaybackSessionStore(
             app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(settings.audioInterruptionPolicy),
             settings.sleepTimerFinishTrack,
             settings.stopOnTaskRemoved,
+            settings.audioFocusEnabled,
         )
         val snapshot = settingsStore.getSavedPlaybackSession()?.toSnapshot() ?: return null
         return snapshot.withoutHiddenTracks(hiddenIds(snapshot.queue.map { it.id }))

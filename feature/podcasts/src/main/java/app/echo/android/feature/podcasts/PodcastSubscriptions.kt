@@ -80,7 +80,7 @@ internal fun PodcastWelcome(onAdd: () -> Unit) {
             } }
             Column(Modifier.padding(28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 EchoIcon(Icons.Rounded.Podcasts, null, Modifier.size(44.dp))
-                Text(stringResource(R.string.podcast_welcome), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.podcast_welcome), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.podcast_welcome_detail), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FilledTonalButton(onClick = onAdd) { EchoIcon(Icons.Rounded.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.podcast_subscribe)) }
             }

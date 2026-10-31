@@ -224,89 +224,6 @@ internal fun SettingsDisclosureRow(
 }
 
 @Composable
-internal fun SettingsBackgroundSourceRow(
-    mode: String,
-    uri: String?,
-    onPickImageBackground: () -> Unit,
-    onPickVideoBackground: () -> Unit,
-    onClearCustomBackground: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier
-            .settingsSearchAnchor(stringResource(R.string.settings_bg_source))
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (mode != EchoBackgroundMode.Default || !uri.isNullOrBlank()) Text(
-                backgroundDetail(mode, uri),
-                color = scheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                BackgroundSourceAction(
-                    label = stringResource(R.string.settings_bg_image_label),
-                    selected = mode == EchoBackgroundMode.Image && !uri.isNullOrBlank(),
-                    enabled = true,
-                    modifier = Modifier.weight(1f),
-                    onClick = onPickImageBackground,
-                )
-                BackgroundSourceAction(
-                    label = stringResource(R.string.settings_bg_video_label),
-                    selected = mode == EchoBackgroundMode.Video && !uri.isNullOrBlank(),
-                    enabled = true,
-                    modifier = Modifier.weight(1f),
-                    onClick = onPickVideoBackground,
-                )
-                BackgroundSourceAction(
-                    label = stringResource(R.string.settings_bg_default_label),
-                    selected = uri.isNullOrBlank(),
-                    enabled = !uri.isNullOrBlank(),
-                    modifier = Modifier.weight(1f),
-                    onClick = onClearCustomBackground,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-internal fun BackgroundSourceAction(
-    label: String,
-    selected: Boolean,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val dark = LocalEchoDarkTheme.current
-    val accent = if (selected) settingsControlColor() else if (dark) Color.White.copy(alpha = 0.74f) else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .clip(SettingsShape)
-            .then(if (enabled) Modifier.echoClickable(onClick = onClick) else Modifier)
-            .alpha(if (enabled || selected) 1f else 0.48f)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (selected) EchoIcon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface)
-        Text(
-            label,
-            color = accent,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-        )
-    }
-}
-
-@Composable
 internal fun SettingsSwitchRow(
     title: String,
     detail: String,
@@ -442,6 +359,8 @@ internal fun SettingsSliderRow(
     preview: (@Composable (Float) -> Unit)? = null,
     onPreviewValueChange: (Float) -> Unit = {},
     enabled: Boolean = true,
+    dense: Boolean = false,
+    neutralValue: Float? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     var localValue by rememberSaveable(title) { mutableFloatStateOf(value.coerceIn(valueRange)) }
@@ -454,8 +373,8 @@ internal fun SettingsSliderRow(
         modifier = Modifier
             .settingsSearchAnchor(title)
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .padding(vertical = if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
+            .heightIn(min = if (dense) 0.dp else 56.dp)
+            .padding(vertical = if (dense) 2.dp else if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -491,6 +410,7 @@ internal fun SettingsSliderRow(
                     .semantics { contentDescription = title },
                 valueRange = valueRange,
                 steps = steps,
+                neutralValue = neutralValue,
             )
         }
     }

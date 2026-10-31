@@ -7,7 +7,6 @@ import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,9 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoShortLandscape
 import androidx.compose.ui.text.style.TextOverflow
@@ -177,34 +174,23 @@ fun ConnectScreen(
         Column(Modifier.statusBarsPadding().imePadding(), horizontalAlignment = Alignment.CenterHorizontally) {
             val heading: @Composable () -> Unit = {
                 Text(stringResource(L10nR.string.feature_connect_connect_c7c091),
-                    Modifier.padding(horizontal = 24.dp, vertical = if (shortLandscape) 8.dp else 20.dp),
-                    style = if (shortLandscape) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
+                    Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.titleLarge,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
             }
-            val tabRow: @Composable () -> Unit = {
-                SecondaryTabRow(
-                    selectedTabIndex = pagerState.currentPage,
-                    containerColor = echoPageBackgroundColor(),
-                    indicator = { ConnectPagerIndicator(pagerState) },
-                ) {
-                    tabs.forEachIndexed { index, label ->
-                        Tab(selected = pagerState.currentPage == index, onClick = { selectTab(index) },
-                            unselectedContentColor = scheme.onSurfaceVariant,
-                            text = { Text(label, style = MaterialTheme.typography.labelLarge,
-                                fontWeight = if (pagerState.currentPage == index) FontWeight.Medium else FontWeight.Normal) })
-                    }
-                }
+            val tabBar: @Composable () -> Unit = {
+                ConnectTabBar(tabs, pagerState, onSelect = ::selectTab)
             }
             if (shortLandscape) {
                 Row(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.widthIn(max = 160.dp)) { heading() }
-                    Box(Modifier.weight(1f)) { tabRow() }
+                    Box(Modifier.weight(1f).padding(end = 24.dp)) { tabBar() }
                 }
             } else {
                 Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
                     heading()
-                    tabRow()
+                    Box(Modifier.padding(horizontal = 24.dp, vertical = 4.dp)) { tabBar() }
                 }
             }
             networkPermissionContent()
@@ -223,12 +209,9 @@ fun ConnectScreen(
                     Column(
                         Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()
                             .verticalScroll(scrollStates[tab]).padding(horizontal = 24.dp)
-                            .padding(top = if (shortLandscape) 12.dp else 24.dp, bottom = if (shortLandscape) 100.dp else 188.dp),
-                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                            .padding(top = 12.dp, bottom = if (shortLandscape) 100.dp else 188.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        if (tab == 2) {
-                            ConnectNote(stringResource(L10nR.string.echo_link_battery_hint))
-                        }
                         when (tab) {
                             1 -> RemoteSourcesPanel(
                                 subsonicServerUrl = subsonicServerUrl,
@@ -262,13 +245,15 @@ fun ConnectScreen(
                                 PcLinkPanel(
                                     librarySyncActions = librarySyncActions,
                                     phoneLibraryShareContent = {
-                                        if (!libraryOnly) PhoneLibraryShareControl(
-                                            status = phoneLibraryShareStatus,
-                                            connectionState = remoteState,
-                                            active = remoteControlsActive && pagerState.settledPage == 0,
-                                            onConnectRequested = { openShareConnectionNonce++ },
-                                            onChange = onPhoneLibraryShareChange,
-                                        )
+                                        if (!libraryOnly) ConnectCard {
+                                            PhoneLibraryShareControl(
+                                                status = phoneLibraryShareStatus,
+                                                connectionState = remoteState,
+                                                active = remoteControlsActive && pagerState.settledPage == 0,
+                                                onConnectRequested = { openShareConnectionNonce++ },
+                                                onChange = onPhoneLibraryShareChange,
+                                            )
+                                        }
                                     },
                                     remoteState = remoteState,
                                     controlPending = controlPending,
@@ -371,29 +356,4 @@ fun ConnectScreen(
             }
         }
     }
-}
-
-@Composable
-private fun TabIndicatorScope.ConnectPagerIndicator(pagerState: PagerState) {
-    TabRowDefaults.SecondaryIndicator(
-        modifier = Modifier.tabIndicatorLayout { measurable, constraints, positions ->
-            if (positions.isEmpty()) {
-                return@tabIndicatorLayout layout(0, 0) {}
-            }
-            val last = positions.lastIndex.toFloat()
-            val progress = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
-                .coerceIn(0f, last)
-            val from = progress.toInt().coerceIn(0, positions.lastIndex)
-            val to = (from + 1).coerceAtMost(positions.lastIndex)
-            val fraction = progress - from
-            val left = lerp(positions[from].left, positions[to].left, fraction)
-            val width = lerp(positions[from].width, positions[to].width, fraction)
-            val placeable = measurable.measure(
-                Constraints.fixed(width.roundToPx().coerceAtLeast(0), 3.dp.roundToPx()),
-            )
-            layout(constraints.maxWidth, constraints.maxHeight) {
-                placeable.placeRelative(left.roundToPx(), constraints.maxHeight - placeable.height)
-            }
-        },
-    )
 }

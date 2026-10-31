@@ -50,6 +50,11 @@ internal enum class SettingsCategory(val title: Int, val description: Int, val i
     About(R.string.settings_section_about, R.string.settings_category_about_detail, SettingsCategoryIcons.About),
 }
 
+private data class SettingsPage(val category: SettingsCategory?, val sub: SettingsSubPage?) {
+    val depth get() = if (category == null) 0 else if (sub == null) 1 else 2
+    val key get() = listOfNotNull(category?.name ?: "home", sub?.name).joinToString("/")
+}
+
 @Composable
 internal fun SettingsNavigation(
     isActive: Boolean,
@@ -61,9 +66,10 @@ internal fun SettingsNavigation(
     onScanMusic: () -> Unit,
     onOpenSound: () -> Unit,
     soundSummary: String,
-    content: @Composable (SettingsCategory) -> Unit,
+    content: @Composable (SettingsCategory, SettingsSubNav) -> Unit,
 ) {
     var selected by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
+    var subPage by rememberSaveable { mutableStateOf<SettingsSubPage?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var searchFocus by remember { mutableStateOf<SettingsSearchFocus?>(null) }
     var searchRequestId by remember { mutableIntStateOf(0) }
@@ -71,6 +77,9 @@ internal fun SettingsNavigation(
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val wide = app.echo.android.design.LocalEchoLayout.current.supportsTwoPanes(minimumWidthDp = 760f)
+    // Two panes show a category inline, so a remembered sub-page only applies to the single-pane layout.
+    val activeSub = subPage.takeIf { !wide && it?.category == selected }
     // Pager neighbours remain composed: they must not intercept another page's back action.
     val detailBack = rememberEchoBackProgress(lightweight)
     EchoOverlayBackHandler(
@@ -81,27 +90,34 @@ internal fun SettingsNavigation(
         focusManager.clearFocus()
         keyboardController?.hide()
         detailBack.reset()
-        selected = null
-        searchFocus = null
+        if (activeSub != null) {
+            subPage = null
+        } else {
+            selected = null
+            searchFocus = null
+        }
     }
     BackHandler(enabled = isActive && selected == null && searchQuery.isNotEmpty()) {
         focusManager.clearFocus()
         keyboardController?.hide()
         searchQuery = ""
     }
-    val wide = app.echo.android.design.LocalEchoLayout.current.supportsTwoPanes(minimumWidthDp = 760f)
     val home: @Composable () -> Unit = {
         SettingsHome(
             query = searchQuery, selectedCategory = selected.takeIf { wide }, compactMode = compactMode, summaries = summaries, availability = searchAvailability,
             onQueryChange = { searchQuery = it }, onOpenPlugins = onOpenPlugins,
             onScanMusic = onScanMusic,
             onOpenSound = onOpenSound, soundSummary = soundSummary,
-            onOpenCategory = { searchFocus = null; selected = it },
+            onOpenCategory = { searchFocus = null; subPage = null; selected = it },
             onSearchSelect = { result ->
                 focusManager.clearFocus(); keyboardController?.hide()
                 if (result.item.opensPlugins) onOpenPlugins() else {
                     searchRequestId++
                     searchFocus = SettingsSearchFocus(result.anchorTitle, searchRequestId)
+                    subPage = settingsSubPageForAnchor(
+                        result.item.category,
+                        settingsSearchAnchorResource(result.item, searchAvailability),
+                    )
                     selected = result.item.category
                 }
             },
@@ -114,7 +130,7 @@ internal fun SettingsNavigation(
                     stateHolder.SaveableStateProvider("home") { home() }
                 }, detail = {
                     selected?.let { category -> stateHolder.SaveableStateProvider(category.name) {
-                        SettingsDetailPane(category, compactMode, searchFocus, content)
+                        SettingsDetailPane(category, SettingsSubNav.Inline, compactMode, searchFocus, content)
                     } }
                 })
             }
@@ -125,14 +141,14 @@ internal fun SettingsNavigation(
     SettingsStyle(compactMode) {
         EchoPageEntrance(active = isPageVisible) {
             EchoPageContent(
-                targetState = selected,
-                contentKey = { it?.name ?: "home" },
-                isBackward = { _, target -> target == null },
+                targetState = SettingsPage(selected, activeSub),
+                contentKey = { it.key },
+                isBackward = { initial, target -> target.depth < initial.depth },
                 modifier = Modifier.fillMaxSize().imePadding(),
                 label = "settings-navigation",
-                back = if (selected != null) EchoPageBack(null) { detailBack.value } else null,
+                back = if (selected != null) EchoPageBack(SettingsPage(selected.takeIf { activeSub != null }, null)) { detailBack.value } else null,
                 transitionSpec = {
-                    val backward = targetState == null
+                    val backward = targetState.depth < initialState.depth
                     val exitSpec = EchoMotion.pageFadeOut(lightweight)
                     // PageChrome is translucent: finish fading the old text before revealing
                     // the new page, including in lightweight mode and when returning home.
@@ -163,10 +179,12 @@ internal fun SettingsNavigation(
                         sizeTransform = null,
                     )
                 },
-            ) { category ->
-                stateHolder.SaveableStateProvider(category?.name ?: "home") {
+            ) { page ->
+                val category = page.category
+                val sub = page.sub
+                stateHolder.SaveableStateProvider(page.key) {
                     PageChrome(
-                        title = stringResource(category?.title ?: R.string.settings_title),
+                        title = stringResource(sub?.title ?: category?.title ?: R.string.settings_title),
                         subtitle = null,
                         compactHeader = true,
                         badgeContent = {},
@@ -175,13 +193,17 @@ internal fun SettingsNavigation(
                                 if (category != null) IconButton(onClick = {
                                     focusManager.clearFocus()
                                     keyboardController?.hide()
-                                    selected = null
-                                    searchFocus = null
+                                    if (sub != null) {
+                                        subPage = null
+                                    } else {
+                                        selected = null
+                                        searchFocus = null
+                                    }
                                 }) {
                                     EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.settings_back), tint = MaterialTheme.colorScheme.onSurface)
                                 }
                                 Text(
-                                    stringResource(category?.title ?: R.string.settings_title),
+                                    stringResource(sub?.title ?: category?.title ?: R.string.settings_title),
                                     modifier = Modifier.weight(1f).semantics { heading() },
                                     color = MaterialTheme.colorScheme.onSurface,
                                     style = MaterialTheme.typography.headlineMedium,
@@ -193,7 +215,10 @@ internal fun SettingsNavigation(
                         if (category == null) {
                             home()
                         } else {
-                            SettingsDetailPane(category, compactMode, searchFocus, content)
+                            SettingsDetailPane(
+                                category, SettingsSubNav(sub) { target -> searchFocus = null; subPage = target },
+                                compactMode, searchFocus, content,
+                            )
                         }
                     }
                 }

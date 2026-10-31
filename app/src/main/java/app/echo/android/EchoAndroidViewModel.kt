@@ -251,6 +251,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private var selectedLibrarySource: String = initialAppSettings.librarySelectedSource
 
     val libraryQuery: StateFlow<String> = libraryController.libraryQuery
+    val libraryTrackFilter = libraryController.trackFilter
+    fun updateLibraryTrackFilter(filter: app.echo.android.model.library.LibraryTrackFilter) = libraryController.updateTrackFilter(filter)
     val libraryTrackSortMode: StateFlow<LibraryTrackSortMode> = libraryController.trackSortMode
     val libraryAlbumSortMode: StateFlow<AlbumSortMode> = libraryController.albumSortMode
     val libraryArtistSortMode: StateFlow<ArtistSortMode> = libraryController.artistSortMode
@@ -277,9 +279,13 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         )
     }
 
-    internal suspend fun inspectLibraryLyrics(report: (app.echo.android.model.library.LibraryLyricsInspection) -> Unit) {
-        libraryLyricsInspector.inspect(report)
-    }
+    private val lyricsIndexController = LibraryLyricsIndexController(viewModelScope,
+        readSummary = { app.echo.android.data.LibraryLyricsIndex(database).summary() }) { report -> libraryLyricsInspector.inspect(report) }
+    val libraryLyricsIndexState = lyricsIndexController.state
+    fun startLibraryLyricsInspection() = lyricsIndexController.start()
+    fun cancelLibraryLyricsInspection() = lyricsIndexController.cancel()
+    internal suspend fun inspectLibraryLyrics(report: (app.echo.android.model.library.LibraryLyricsInspection) -> Unit) =
+        lyricsIndexController.inspect(report)
     val recommendedTracks: StateFlow<List<EchoTrack>> = libraryController.recommendedTracks
     val recentlyAddedAlbums: StateFlow<List<AlbumSummary>> = libraryController.recentlyAddedAlbums
     val recentlyPlayedTracks: StateFlow<List<EchoTrack>> = libraryController.recentlyPlayedTracks
@@ -484,6 +490,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     suspend fun artistForTrack(trackId: String): ArtistSummary? =
         libraryController.artistSummaryForTrack(trackId)
 
+    suspend fun contributingArtists(trackId: String, name: String, artworkUri: String?): List<ArtistSummary> =
+        libraryController.contributingArtists(trackId, name, artworkUri)
+
     suspend fun clearLocalLibraryIndex(): Boolean = libraryController.clearLocalLibraryIndex()
 
     suspend fun cleanupLocalLibrary(): app.echo.android.data.LibraryHygieneResult =
@@ -523,8 +532,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     suspend fun localTitleIndex(letter: Char): Int = libraryController.localTitleIndex(letter)
 
-    suspend fun localTrackIndex(trackId: String, query: String, sort: LibraryTrackSortMode): Int? =
-        repository.localTrackIndex(trackId, query, sort)
+    suspend fun albumTitleIndex(letter: Char, remote: Boolean): Int = repository.albumTitleIndex(letter, remote)
+
+    suspend fun localTrackIndex(trackId: String, query: String, sort: LibraryTrackSortMode,
+        filter: app.echo.android.model.library.LibraryTrackFilter): Int? =
+        repository.localTrackIndex(trackId, query, sort, filter)
 
     fun updateLibraryAlbumSortMode(sortMode: AlbumSortMode) {
         libraryController.updateAlbumSortMode(sortMode)
@@ -571,8 +583,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun playFromLibrary(track: EchoTrack, origin: LibraryPlaybackOrigin) {
+        val source = selectedLibrarySource.ifBlank { EchoLibrarySelectedSource.Local }
+        val query = libraryController.songQuerySnapshot()
         preferredPlayback.launch {
-            val source = selectedLibrarySource.ifBlank { EchoLibrarySelectedSource.Local }
             if (LibraryPlaybackQueuePolicy.usesCollectionQueue(origin)) {
                 val queue = libraryController.collectionTracksForPlayback(origin, track.id)
                 if (queue.isEmpty()) return@launch
@@ -591,7 +604,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 })
                 return@launch
             }
-            val queue = libraryController.queueAroundTrack(track.id, source)
+            val queue = libraryController.queueAroundTrack(track.id, source, query)
             if (queue.isEmpty()) return@launch
             val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, track.id)
             if (startIndex >= 0) playPreferredQueue(queue, startIndex)
@@ -600,8 +613,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun playTrackFromLibrary(trackId: String) {
         preferredPlayback.launch {
-            val source = selectedLibrarySource.ifBlank { EchoLibrarySelectedSource.Local }
-            val queue = libraryController.queueAroundTrack(trackId, source)
+            // A listening-history entry is an explicit track request, independent of song-page filters.
+            val track = repository.trackById(trackId) ?: return@launch
+            val source = if (LibraryPlaybackQueuePolicy.isLocalTrackSource(track.source))
+                EchoLibrarySelectedSource.Local else EchoLibrarySelectedSource.Cloud
+            val queue = libraryController.queueAroundTrack(trackId, source, LibrarySongQuery())
             val startIndex = LibraryPlaybackQueuePolicy.startIndex(queue.map { it.id }, trackId)
             if (queue.isNotEmpty() && startIndex >= 0) playPreferredQueue(queue, startIndex)
         }
@@ -1474,6 +1490,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setTrackTransitions(options: app.echo.android.model.playback.EchoTrackTransitionOptions) {
         updateSettings { setTrackTransitions(options) }
+    }
+
+    fun setAudioFocusEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsStore.setAudioFocusEnabled(enabled) }
+    }
+
+    fun resetAudioOutputSettings() {
+        viewModelScope.launch { settingsStore.resetAudioOutputSettings() }
     }
 
     fun setAudioInterruptionPolicy(value: String) {

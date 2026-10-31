@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /** Owns request replacement and selection; the ViewModel only wires application settings. */
 internal class OpraSearchController(
@@ -26,8 +27,10 @@ internal class OpraSearchController(
     private val autoEqRepository = AutoEqHeadphoneCorrectionRepository(context)
     private var searchJob: Job? = null
     private var generation = 0L
+    private var parentQuery = ""
 
     fun setQuery(query: String) {
+        if (query == state.value.query) return
         val keepBrandResults = state.value.selectedBrandId != null
         if (!keepBrandResults) {
             searchJob?.cancel()
@@ -36,12 +39,17 @@ internal class OpraSearchController(
         mutableState.update { current ->
             current.copy(
                 query = query,
-                loading = keepBrandResults && current.loading,
+                loading = !keepBrandResults || current.loading,
                 results = if (keepBrandResults) current.results else emptyList(),
                 selectedEqId = if (keepBrandResults) current.selectedEqId else null,
                 previewCurve = if (keepBrandResults) current.previewCurve else emptyList(),
                 message = if (keepBrandResults) current.message else null,
             )
+        }
+        if (!keepBrandResults) searchJob = scope.launch {
+            delay(300)
+            searchJob = null
+            search(false)
         }
     }
 
@@ -54,6 +62,10 @@ internal class OpraSearchController(
     }
 
     fun browse(brandId: String?) {
+        val returningToCatalog = brandId == null && state.value.selectedBrandId != null
+        if (brandId != null && !brandId.startsWith("catalog:") && state.value.selectedBrandId == null) {
+            parentQuery = state.value.query
+        }
         searchJob?.cancel()
         generation++
         val catalog = when (brandId) {
@@ -62,13 +74,14 @@ internal class OpraSearchController(
             else -> state.value.catalog
         }
         val sourceChanged = catalog != state.value.catalog
+        if (sourceChanged) parentQuery = ""
         mutableState.update {
             it.copy(
                 catalog = catalog,
                 brands = if (sourceChanged) emptyList() else it.brands,
                 status = if (sourceChanged) app.echo.android.model.playback.OpraDatabaseStatus() else it.status,
                 selectedBrandId = brandId?.takeUnless { id -> id.startsWith("catalog:") },
-                query = "",
+                query = if (returningToCatalog) parentQuery else "",
                 loading = false,
                 results = emptyList(),
                 selectedEqId = null,

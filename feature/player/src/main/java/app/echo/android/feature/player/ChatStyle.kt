@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,7 +37,12 @@ internal object ChatStyle {
 
 /** The conversation header: the artwork as an avatar, the artist as the contact, and a status line. */
 @Composable
-internal fun ChatHeader(track: EchoTrackRef?, status: String, modifier: Modifier = Modifier) {
+internal fun ChatHeader(
+    track: EchoTrackRef?,
+    status: String,
+    modifier: Modifier = Modifier,
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
     Row(
         modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -44,10 +50,11 @@ internal fun ChatHeader(track: EchoTrackRef?, status: String, modifier: Modifier
     ) {
         EchoArtworkImage(track?.artworkUri, null, Modifier.size(38.dp).clip(CircleShape), CircleShape, EchoArtworkSize.Tiny)
         Column(Modifier.weight(1f)) {
-            Text(track?.let { displayArtist(it.artist) }.orEmpty(), color = ChatStyle.Ink, fontWeight = FontWeight.Bold,
+            Text(track?.let { displayArtist(it.artist) }.orEmpty(), color = ChatStyle.Ink, fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(status, color = ChatStyle.Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        trailing()
     }
 }
 

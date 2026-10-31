@@ -9,6 +9,11 @@ data class LibraryPlaybackQueueCandidate(
 )
 
 object LibraryPlaybackQueuePolicy {
+    fun windowOffset(anchorIndex: Int, limit: Int): Int {
+        require(anchorIndex >= 0)
+        return (anchorIndex - limit.coerceAtLeast(1) / 2).coerceAtLeast(0)
+    }
+
     fun usesCollectionQueue(origin: LibraryPlaybackOrigin): Boolean =
         origin !is LibraryPlaybackOrigin.Songs
 

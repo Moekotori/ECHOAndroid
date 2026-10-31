@@ -423,51 +423,6 @@ internal fun LibraryViewModeMenu(
 }
 
 @Composable
-internal fun AlbumWall(
-    albums: LazyPagingItems<AlbumSummary>,
-    onOpenAlbum: (AlbumSummary) -> Unit,
-    emptyTitle: String = stringResource(L10nR.string.feature_library_this_library_has_no_albums_to_show_yet_925b12),
-    emptyDetail: String? = null,
-    emptyActionLabel: String? = null,
-    onEmptyAction: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-) {
-    if (albums.isInitialPagingLoad()) {
-        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_albums_75c4f3))
-        return
-    }
-    if (albums.isInitialPagingError()) {
-        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_albums_8a8685))
-        return
-    }
-    if (albums.itemCount == 0) {
-        LibraryCollectionEmpty(
-            title = emptyTitle,
-            detail = emptyDetail,
-            actionLabel = emptyActionLabel,
-            onAction = onEmptyAction,
-        )
-        return
-    }
-    LazyVerticalGrid(
-        columns = LibraryWallGridCells,
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(LibraryWallHorizontalSpacing),
-        verticalArrangement = Arrangement.spacedBy(LibraryWallVerticalSpacing),
-        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
-    ) {
-        items(
-            count = albums.itemCount,
-            key = { index: Int -> albums.peek(index)?.albumKey ?: "album-$index" },
-        ) { index: Int ->
-            albums[index]?.let { album ->
-                AlbumWallCard(album = album, onClick = { onOpenAlbum(album) })
-            }
-        }
-    }
-}
-
-@Composable
 internal fun AlbumSummaryWall(
     albums: List<AlbumSummary>,
     onOpenAlbum: (AlbumSummary) -> Unit,

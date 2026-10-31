@@ -11,6 +11,16 @@ import org.junit.Test
 class BoundedEmbeddedLyricsTest {
     private val lyrics = "[00:01.00]Tail lyrics"
 
+    @Test fun unsupportedOrEmptyContainersAreUnknownRatherThanMissing() {
+        val file = File.createTempFile("echo-lyrics-unknown-", ".bin")
+        try {
+            for (bytes in listOf(byteArrayOf(), "FORM".toByteArray() + ByteArray(256), ByteArray(256))) {
+                file.writeBytes(bytes)
+                file.inputStream().use { input -> assertThrows(IOException::class.java) { readBoundedEmbeddedLyrics(input) } }
+            }
+        } finally { file.delete() }
+    }
+
     @Test fun readsApeAndWavPackTailWithoutWalkingLargeAudio() {
         for (header in listOf("MAC ", "wvpk")) {
             val file = File.createTempFile("echo-lyrics-tail-", ".bin")

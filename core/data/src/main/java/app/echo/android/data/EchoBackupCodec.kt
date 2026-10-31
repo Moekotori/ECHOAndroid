@@ -140,6 +140,8 @@ object EchoBackupCodec {
         putOptNullableBoolean("pauseOnAudioDisconnect", settings.pauseOnAudioDisconnect)
         putOptNullableBoolean("resumeOnAudioReconnect", settings.resumeOnAudioReconnect)
         putOptNullableBoolean("trackAudioInfoTagsVisible", settings.trackAudioInfoTagsVisible)
+        putOptNullableBoolean("audioFocusEnabled", settings.audioFocusEnabled)
+        putOpt("audioInterruptionPolicy", settings.audioInterruptionPolicy)
         putOptNullableBoolean("replayGainEnabled", settings.replayGainEnabled)
         putOpt("replayGainMode", settings.replayGainMode)
         settings.replayGainPreampDb?.let { put("replayGainPreampDb", it.toDouble()) }
@@ -253,6 +255,8 @@ object EchoBackupCodec {
             pauseOnAudioDisconnect = json.optionalBoolean("pauseOnAudioDisconnect"),
             resumeOnAudioReconnect = json.optionalBoolean("resumeOnAudioReconnect"),
             trackAudioInfoTagsVisible = json.optionalBoolean("trackAudioInfoTagsVisible"),
+            audioFocusEnabled = json.optionalBoolean("audioFocusEnabled"),
+            audioInterruptionPolicy = json.optionalString("audioInterruptionPolicy"),
             replayGainEnabled = json.optionalBoolean("replayGainEnabled"),
             replayGainMode = json.optionalString("replayGainMode"),
             replayGainPreampDb = json.optionalFloat("replayGainPreampDb"),

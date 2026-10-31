@@ -185,6 +185,7 @@ dependencies {
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.mediarouter)
     implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
     implementation(libs.androidx.paging.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.coil.compose)

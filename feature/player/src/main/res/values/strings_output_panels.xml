@@ -1,0 +1,10 @@
+<resources>
+    <string name="player_contributing_artists">Contributing artists</string>
+    <string name="player_artists_empty">No artist information for this track</string>
+    <string name="player_artists_load_failed">Could not load artists</string>
+    <string name="player_artists_retry">Retry</string>
+    <plurals name="player_artist_tracks">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
+</resources>

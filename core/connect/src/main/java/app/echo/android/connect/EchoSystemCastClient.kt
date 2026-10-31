@@ -28,7 +28,8 @@ class EchoSystemCastClient(context: Context) {
     private var initialized = false
     private var localTransferPending = false
     private var last: EchoSystemCastMediaState? = null
-    private val _available = MutableStateFlow(false)
+    // SystemUI owns the picker; Google Cast initialization is a separate capability.
+    private val _available = MutableStateFlow(Build.VERSION.SDK_INT >= 30)
     val available = _available.asStateFlow()
     var onReady: ((EchoLanRenderer, Boolean) -> Unit)? = null
     var onState: ((EchoSystemCastMediaState) -> Unit)? = null
@@ -90,10 +91,9 @@ class EchoSystemCastClient(context: Context) {
                 castContext = sdk
                 sdk.sessionManager.addSessionManagerListener(sessions, CastSession::class.java)
                 sdk.addSessionTransferCallback(transfers)
-                _available.value = Build.VERSION.SDK_INT >= 33
                 sdk.sessionManager.currentCastSession?.takeIf { it.isConnected }?.let { attach(it, true) }
             }
-        } catch (_: Exception) { executor.shutdown(); _available.value = false }
+        } catch (_: Exception) { executor.shutdown() }
     }
 
     fun showOutputSwitcher(): Boolean = _available.value && runCatching {

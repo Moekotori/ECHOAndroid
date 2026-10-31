@@ -26,6 +26,5 @@
     <string name="album_online_performer">演奏</string>
     <string name="album_online_mb_source">MusicBrainz · 來源與完整製作名單</string>
     <string name="album_online_link_error">無法開啟這個連結。</string>
-    <string name="album_page_tracks">曲目</string>
-    <string name="album_page_information">專輯資訊</string>
+    <string name="album_more_by_artist">%1$s 的其他專輯</string>
 </resources>

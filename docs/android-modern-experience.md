@@ -29,3 +29,23 @@
 - 仍需在支持锁屏组件的设备、Android 16 包络触感硬件、真实折叠屏和 Android 17 上分别验收。编译/几何单测不能证明真机触感、铰链姿态或后台音频可靠性。
 
 平台参考：[Media3 后台播放与恢复](https://developer.android.com/media/media3/session/background-playback#resumption)。
+
+## 小组件视觉与系统岛（2026-10-31）
+
+- 小组件改用 `glance-material3` 主题：Android 12+ 随壁纸取 Material You 动态色，低版本回退 Material 3 基线色。圆角在 Android 12+ 读取系统小组件圆角/内圆角，封面和歌单入口使用内圆角。选择器预览的颜色同样在 v31 取系统色，与实际渲染一致。
+- 播放键为强调色实心圆，上一首/下一首为色调圆底；封面样式上用固定的半透明白色玻璃按钮和更深的底部遮罩，保证任意封面可读。绑定歌单的入口改为圆角色调条。触摸目标仍不小于 44 dp。
+- 刷新策略不变：没有新增定时器或进度轮询。
+
+### 各厂商“灵动岛”能力边界
+
+| 系统 | 做法 | 状态 |
+| --- | --- | --- |
+| Android 16 Live Updates | 只接受标准/BigText/Call/Progress 样式，不接受 MediaStyle | 音乐通知不适用，不做 |
+| 三星 One UI Now Bar、vivo 原子岛音乐卡、ColorOS/HyperOS 锁屏媒体卡 | 系统读取 `MediaSession` 与媒体通知渲染 | 沿用 Media3 会话，无需厂商接口 |
+| 小米 HyperOS 超级岛/焦点通知 | 通知 extras 写 `miui.focus.param`，需向小米申请焦点通知权限，文档为公测 | 未实现：无权限、无真机，字段表未核对 |
+| OPPO 流体云、vivo 原子通知 | 走厂商 Push 通道并申请凭据 | 未实现 |
+| 魅族 Flyme | 通知 ticker 状态栏歌词 | 已有 |
+
+### 验证范围
+
+在 HEAD 的干净 worktree 叠加本次改动：`:app:compileDebugKotlin`、`checkModules`、`:app:processDebugResources`（含 v31 系统色引用）和组件单测通过。**没有在真机或模拟器上看过实际渲染**，也没有完成 APK 打包（该 worktree 路径过长导致原生库 CMake 失败，与本次改动无关）。

@@ -83,6 +83,7 @@ data class EchoAppSettings(
     val usbBitPerfectEnabled: Boolean = false,
     val usbOutputOptions: app.echo.android.model.playback.EchoUsbOutputOptions = app.echo.android.model.playback.EchoUsbOutputOptions(),
     val usbExclusiveAutoRequestOnStartup: Boolean = true,
+    val audioFocusEnabled: Boolean = true,
     val audioInterruptionPolicy: String = "duck",
     val sleepTimerFinishTrack: Boolean = true,
     val stopOnTaskRemoved: Boolean = false,
@@ -293,6 +294,7 @@ class EchoSettingsStore(
                     playPauseFadeEnabled = preferences[Keys.ManualPlaybackFade] ?: true,
                 ).normalized(),
                 usbExclusiveAutoRequestOnStartup = preferences[Keys.UsbExclusiveAutoRequestOnStartup] ?: true,
+                audioFocusEnabled = preferences[Keys.AudioFocusEnabled] ?: true,
                 audioInterruptionPolicy = app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(preferences[Keys.AudioInterruptionPolicy]).id,
                 sleepTimerFinishTrack = preferences[Keys.SleepTimerFinishTrack] ?: true,
                 stopOnTaskRemoved = preferences[Keys.StopOnTaskRemoved] ?: false,
@@ -1243,6 +1245,25 @@ class EchoSettingsStore(
         }
     }
 
+    suspend fun setAudioFocusEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.AudioFocusEnabled] = enabled }
+    }
+
+    /** Reset this audio-output group in one edit; leave other playback preferences alone. */
+    suspend fun resetAudioOutputSettings() {
+        context.echoSettings.edit {
+            it.remove(Keys.AudioFocusEnabled)
+            it.remove(Keys.AudioInterruptionPolicy)
+            it.remove(Keys.ReplayGainEnabled)
+            it.remove(Keys.ReplayGainMode)
+            it.remove(Keys.ReplayGainPreampDb)
+            it.remove(Keys.ManualPlaybackFade)
+            it.remove(Keys.TrackFadeEnabled)
+            it.remove(Keys.TrackFadeDurationMs)
+            it.remove(Keys.TrackSmartTransitionEnabled)
+        }
+    }
+
     suspend fun setAudioInterruptionPolicy(value: String) {
         context.echoSettings.edit { it[Keys.AudioInterruptionPolicy] = app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(value).id }
     }
@@ -1631,6 +1652,8 @@ class EchoSettingsStore(
             backup.pauseOnAudioDisconnect?.let { prefs[Keys.PauseOnAudioDisconnect] = it }
             backup.resumeOnAudioReconnect?.let { prefs[Keys.ResumeOnAudioReconnect] = it }
             backup.trackAudioInfoTagsVisible?.let { prefs[Keys.TrackAudioInfoTagsVisible] = it }
+            backup.audioFocusEnabled?.let { prefs[Keys.AudioFocusEnabled] = it }
+            backup.audioInterruptionPolicy?.let { prefs[Keys.AudioInterruptionPolicy] = app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(it).id }
             backup.replayGainEnabled?.let { prefs[Keys.ReplayGainEnabled] = it }
             backup.replayGainMode?.let { prefs[Keys.ReplayGainMode] = it }
             backup.replayGainPreampDb?.let { prefs[Keys.ReplayGainPreampDb] = it }
@@ -1740,6 +1763,7 @@ class EchoSettingsStore(
         val ManualPlaybackFade = booleanPreferencesKey("manual_playback_fade")
         val TrackSmartTransitionEnabled = booleanPreferencesKey("track_smart_transition")
         val UsbExclusiveAutoRequestOnStartup = booleanPreferencesKey("usb_exclusive_auto_request_on_startup")
+        val AudioFocusEnabled = booleanPreferencesKey("audio_focus_enabled")
         val AudioInterruptionPolicy = stringPreferencesKey("audio_interruption_policy")
         val SleepTimerFinishTrack = booleanPreferencesKey("sleep_timer_finish_track")
         val StopOnTaskRemoved = booleanPreferencesKey("stop_on_task_removed")
@@ -1993,6 +2017,8 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         pauseOnAudioDisconnect = pauseOnAudioDisconnect,
         resumeOnAudioReconnect = resumeOnAudioReconnect,
         trackAudioInfoTagsVisible = trackAudioInfoTagsVisible,
+        audioFocusEnabled = audioFocusEnabled,
+        audioInterruptionPolicy = audioInterruptionPolicy,
         replayGainEnabled = replayGainEnabled,
         replayGainMode = replayGainMode,
         replayGainPreampDb = replayGainPreampDb,

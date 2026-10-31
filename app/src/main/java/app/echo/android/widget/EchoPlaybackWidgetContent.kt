@@ -7,7 +7,6 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.*
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.layout.*
 import app.echo.android.R
 import app.echo.android.playback.EchoPlaybackSurfaceSnapshot
@@ -30,7 +29,7 @@ internal fun EchoPlaybackWidgetContent(
     val lyric = lyricLine.takeIf { snapshot.hasTrack && !largeText && !it.isNullOrBlank() }
     val intent = widgetLaunchIntent(context)
     val root = GlanceModifier.fillMaxSize().background(widgetBackground(context))
-        .cornerRadius(24.dp).clickable(actionStartActivity(intent))
+        .widgetSurface().clickable(actionStartActivity(intent))
     when (mode) {
         EchoPlaybackWidgetMode.Compact, EchoPlaybackWidgetMode.Wide -> Row(
             root.padding(horizontal = 12.dp, vertical = 6.dp),

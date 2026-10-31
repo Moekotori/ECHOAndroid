@@ -39,6 +39,7 @@ import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.LibraryStats
 import app.echo.android.model.library.LibraryTrackSortMode
+import app.echo.android.model.library.LibraryTrackFilter
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -84,6 +85,8 @@ internal class LibraryController(
     val libraryQuery: StateFlow<String> = _libraryQuery.asStateFlow()
     private val _trackSortMode = MutableStateFlow(LibraryTrackSortMode.Title)
     val trackSortMode: StateFlow<LibraryTrackSortMode> = _trackSortMode.asStateFlow()
+    private val _trackFilter = MutableStateFlow(LibraryTrackFilter())
+    val trackFilter: StateFlow<LibraryTrackFilter> = _trackFilter.asStateFlow()
     private val _albumSortMode = MutableStateFlow(AlbumSortMode.Title)
     val albumSortMode: StateFlow<AlbumSortMode> = _albumSortMode.asStateFlow()
     private val _artistSortMode = MutableStateFlow(ArtistSortMode.Name)
@@ -110,8 +113,8 @@ internal class LibraryController(
             .distinctUntilChanged()
 
     val tracks: Flow<PagingData<EchoTrack>> =
-        combine(debouncedLibraryQuery, _trackSortMode) { query, sort -> query to sort }
-            .flatMapLatest { (query, sort) -> repository.pagedTracks(query, sort) }
+        combine(debouncedLibraryQuery, _trackSortMode, _trackFilter) { query, sort, filter -> Triple(query, sort, filter) }
+            .flatMapLatest { (query, sort, filter) -> repository.pagedTracks(query, sort, filter) }
             .map { pagingData -> pagingData.map { it.toEchoTrack() } }
             .cachedIn(scope)
 
@@ -300,6 +303,8 @@ internal class LibraryController(
     fun updateTrackSortMode(sortMode: LibraryTrackSortMode) {
         _trackSortMode.value = sortMode
     }
+
+    fun updateTrackFilter(filter: LibraryTrackFilter) { _trackFilter.value = filter.normalized() }
 
     suspend fun localTitleIndex(letter: Char): Int = repository.localTitleIndex(letter)
 
@@ -733,21 +738,27 @@ internal class LibraryController(
         }
     }
 
+    fun songQuerySnapshot(): LibrarySongQuery = LibrarySongQuery(currentQuery, _trackSortMode.value, _trackFilter.value)
+
     suspend fun queueAroundTrack(
         trackId: String,
         selectedLibrarySource: String,
-    ): List<EchoTrack> =
-        withContext(Dispatchers.IO) {
-            repository.queueAroundTrack(
-                query = currentQuery,
-                anchorTrackId = trackId,
-                selectedLibrarySource = selectedLibrarySource,
-                sort = _trackSortMode.value,
-            ).map { it.toEchoTrack() }
-        }
+        query: LibrarySongQuery = songQuerySnapshot(),
+    ): List<EchoTrack> = withContext(Dispatchers.IO) {
+        repository.queueAroundTrack(
+            query = query.text,
+            anchorTrackId = trackId,
+            selectedLibrarySource = selectedLibrarySource,
+            sort = query.sort,
+            filter = query.filter,
+        ).map { it.toEchoTrack() }
+    }
 
     fun artistNavigationTarget(name: String, artworkUri: String? = null): ArtistSummary? =
         app.echo.android.data.artistNavigationTarget(name, artworkUri)
+
+    suspend fun contributingArtists(trackId: String, name: String, artworkUri: String?): List<ArtistSummary> =
+        repository.contributingArtists(trackId, name, artworkUri)
 
     suspend fun albumSummaryForTrack(trackId: String): AlbumSummary? =
         withContext(Dispatchers.IO) {

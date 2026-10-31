@@ -125,7 +125,7 @@ internal fun ScrapbookCoverPage(
                 Box(Modifier.highlighter()) {
                     Text(
                         track?.let { displayTrack(it.title) } ?: stringResource(R.string.feature_player_not_playing_d72324),
-                        color = ink, fontFamily = ScrapbookStyle.Hand, fontWeight = FontWeight.Bold,
+                        color = ink, fontFamily = ScrapbookStyle.Hand,
                         fontSize = 34.sp, lineHeight = 40.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
                 }

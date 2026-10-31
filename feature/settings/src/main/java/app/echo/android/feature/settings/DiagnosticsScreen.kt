@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
@@ -132,6 +133,10 @@ fun DiagnosticsScreen(
             labels = soundLabels,
             isActive = isActive,
             onBack = { soundPanel = -1 },
+            scrollingTool = 1,
+            onNavigateUp = if (soundPanel == 1 && opraState.selectedBrandId != null) {
+                { onOpraBrandSelected(null) }
+            } else null,
             tool = { panel ->
                 errorContent()
                 if (panel == 0) SignalEqualizer(
@@ -190,17 +195,19 @@ fun DiagnosticsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(L10nR.string.diag_title), Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 24.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(stringResource(L10nR.string.diag_title), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Surface(
                             shape = RoundedCornerShape(50),
                             color = if (status.state == EchoPlaybackState.Error) scheme.errorContainer.copy(alpha = 0.24f) else scheme.surfaceContainerHigh,
                             contentColor = if (status.state == EchoPlaybackState.Error) scheme.error else scheme.primary,
                         ) {
-                            Text(playbackStateLabel(status.state), Modifier.padding(horizontal = 12.dp, vertical = 7.dp), style = MaterialTheme.typography.labelMedium)
+                            Text(playbackStateLabel(status.state), Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium)
                         }
                     }
-                    Box(Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+                    Box(Modifier.padding(horizontal = 20.dp)) {
                         SignalSoundModeRow(
                             selectedIndex = pagerState.currentPage,
                             labels = labels,
@@ -220,7 +227,7 @@ fun DiagnosticsScreen(
                         Column(
                             Modifier.fillMaxWidth().weight(1f)
                                 .verticalScroll(scrollStates[tab]).padding(horizontal = 24.dp)
-                                .padding(top = 20.dp, bottom = 188.dp),
+                                .padding(top = 12.dp, bottom = 188.dp),
                             verticalArrangement = Arrangement.spacedBy(20.dp),
                         ) {
                             if (tab != 2) errorContent()

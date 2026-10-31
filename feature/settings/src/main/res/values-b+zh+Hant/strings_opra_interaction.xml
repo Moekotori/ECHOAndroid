@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_choose_model">選擇型號</string>
+    <string name="opra_search_recovery">試試更短的型號名稱，或清除搜尋。</string>
+    <string name="opra_preview_title">預覽校正</string>
+    <string name="opra_close_preview">關閉預覽</string>
+    <string name="opra_preview_note">這裡只預覽曲線，點擊「套用校正」後才會改變聲音。</string>
+    <string name="opra_unavailable_output">目前輸出不支援耳機校正。</string>
+    <plurals name="opra_top_models">
+        <item quantity="other">前 %1$d 個符合的型號</item>
+    </plurals>
+</resources>

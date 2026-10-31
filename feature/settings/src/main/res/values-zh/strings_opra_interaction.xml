@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opra_choose_model">选择型号</string>
+    <string name="opra_search_recovery">试试更短的型号名称，或清除搜索。</string>
+    <string name="opra_preview_title">预览校正</string>
+    <string name="opra_close_preview">关闭预览</string>
+    <string name="opra_preview_note">这里只预览曲线，点击“应用校正”后才会改变声音。</string>
+    <string name="opra_unavailable_output">当前输出不支持耳机校正。</string>
+    <plurals name="opra_top_models">
+        <item quantity="other">前 %1$d 个匹配型号</item>
+    </plurals>
+</resources>

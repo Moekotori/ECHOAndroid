@@ -77,7 +77,7 @@ private fun MonthlyRecapContent(report: EchoMonthlyRecap) {
         item {
             Surface(shape = MaterialTheme.shapes.large, color = scheme.surfaceVariant.copy(alpha = .45f)) {
                 Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.recap_minutes_value, report.listenedMs / 60000), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.recap_minutes_value, report.listenedMs / 60000), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.recap_totals_value, report.totalPlays, report.activeDays), color = scheme.onSurfaceVariant)
                 }
             }

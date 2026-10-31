@@ -51,7 +51,7 @@ fun FirstLaunchScreen(
     Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
         Column(Modifier.widthIn(max = 520.dp).fillMaxSize().padding(horizontal = 24.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("ECHO", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                Text("ECHO", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f))
                 TextButton(onClick = { onFinish(false) }, enabled = !saving) {
                     Text(stringResource(R.string.onboarding_skip))

@@ -29,7 +29,7 @@ internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = 
     val title: @Composable () -> Unit = {
         Text(stringResource(R.string.home_page_title),
             style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.semantics { heading() })
     }
     val actions: @Composable () -> Unit = {

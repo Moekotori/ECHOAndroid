@@ -7,6 +7,9 @@ import android.os.Build
 import android.provider.MediaStore
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.LibraryLyricsInspectionTrack
+import app.echo.android.data.EchoLibraryDatabase
+import app.echo.android.data.LibraryLyricsIndex
+import app.echo.android.data.LibraryLyricsInspectionResult
 import app.echo.android.data.DocumentSiblingFiles
 import app.echo.android.data.libraryHealthStats
 import app.echo.android.data.lyricsInspectionBatch
@@ -16,6 +19,7 @@ import app.echo.android.model.library.LibraryLyricsInspection
 import app.echo.android.model.lyrics.EchoLyrics
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -40,6 +44,14 @@ internal class LibraryLyricsInspector(
       withContext(Dispatchers.IO) {
         val jobContext = coroutineContext
         val store = ImportedLyricsStore(context)
+        val index = LibraryLyricsIndex(EchoLibraryDatabase.create(context.applicationContext))
+        val pending = ArrayList<LibraryLyricsInspectionResult>(64)
+        suspend fun flush() {
+            if (pending.isEmpty()) return
+            val completed = pending.toList()
+            pending.clear()
+            index.recordInspection(completed)
+        }
         val session = Session(jobContext)
         var result = LibraryLyricsInspection(totalCount = repository.libraryHealthStats().trackCount)
         suspend fun waitForPlayback() {
@@ -53,7 +65,7 @@ internal class LibraryLyricsInspector(
         val lastId = repository.lyricsInspectionLastId().orEmpty()
         var after = ""
         var publishedAt = 0L
-        while (true) {
+        try { while (true) {
             ensureActive()
             waitForPlayback()
             val rows = repository.lyricsInspectionBatch(after, lastId)
@@ -61,7 +73,13 @@ internal class LibraryLyricsInspector(
             for (row in rows) {
                 ensureActive()
                 waitForPlayback()
+                val inspectedAt = System.currentTimeMillis()
                 val outcome = session.inspect(row, store, bindings[row.id])
+                pending += LibraryLyricsInspectionResult(row, when (outcome) {
+                    Outcome.Found -> true
+                    Outcome.Missing -> false
+                    Outcome.Unverified -> null
+                }, inspectedAt)
                 result = when (outcome) {
                     Outcome.Found -> result.copy(foundCount = result.foundCount + 1)
                     Outcome.Missing -> result.copy(missingCount = result.missingCount + 1)
@@ -75,6 +93,13 @@ internal class LibraryLyricsInspector(
                 }
                 // Yield storage/CPU to playback; no parallel decoders or per-track UI ticks.
                 delay(25L)
+            }
+            flush()
+        } } finally {
+            // At most 64 completed rows; cancellation does not discard already verified work.
+            withContext(NonCancellable) {
+                flush()
+                withContext(Dispatchers.Main.immediate) { report(result.copy(waitingForPlayback = false)) }
             }
         }
         result = result.copy(checkedAtEpochMs = System.currentTimeMillis())
@@ -95,17 +120,17 @@ internal class LibraryLyricsInspector(
             var failed = false
             fun attempt(read: () -> EchoLyrics?): EchoLyrics? = try {
                 jobContext.ensureActive()
-                read()?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
+                LyricsContentPolicy.readable(read())
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
                 failed = true
                 null
             }
-            if (attempt { store.readSaved(row.id, selected = true, touchLastAccess = false) } != null) return Outcome.Found
+            if (attempt { store.readSaved(row.id, selected = true, touchLastAccess = false, reportReadFailure = true) } != null) return Outcome.Found
             if (binding != null && attempt { parseUri(binding) } != null) return Outcome.Found
             if (attempt {
-                    store.readSaved(row.id, selected = false, touchLastAccess = false)?.takeIf {
+                    store.readSaved(row.id, selected = false, touchLastAccess = false, reportReadFailure = true)?.takeIf {
                         OnlineLyricsCachePolicy.matches(it, EchoLyricsSearchRequest(row.title, row.artist, row.album, row.durationMs))
                     }
                 } != null) return Outcome.Found

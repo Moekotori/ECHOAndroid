@@ -46,6 +46,8 @@ internal fun PlayerCoverPage(
     onToggleFavorite: () -> Unit,
     onOpenLyrics: () -> Unit,
     onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
+    /** Styles without a lyrics page draw the lyric list inside the cover page. */
+    lyricsContent: (@Composable (Modifier) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -64,7 +66,7 @@ internal fun PlayerCoverPage(
                 castActive, appearance.artworkScale, presentationExpanded, modifier)
         } else if (appearance.style == EchoPlayerPageStyle.ChatThread.id) {
             ChatCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
-                castActive, appearance.artworkScale, presentationExpanded, modifier)
+                castActive, appearance.artworkScale, lyricsContent ?: {}, modifier)
         } else if (appearance.style == EchoPlayerPageStyle.Scrapbook.id) {
             ScrapbookCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
                 castActive, appearance.artworkScale, modifier)

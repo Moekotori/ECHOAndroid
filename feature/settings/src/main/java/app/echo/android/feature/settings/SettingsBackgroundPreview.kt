@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.*
@@ -99,11 +100,8 @@ internal fun SettingsBackgroundPreview(
     }
     var imageFailed by remember(uri, isVideo) { mutableStateOf(false) }
     val unavailable = imageFailed || (isVideo && !poster.loading && poster.bitmap == null)
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.settings_appearance_preview),
-            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Box(Modifier.fillMaxWidth().height(180.dp).clip(SettingsShape)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.fillMaxWidth().height(168.dp).clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)) {
             if (!unavailable && (!isVideo || poster.bitmap != null)) {
                 AsyncImage(model = request,

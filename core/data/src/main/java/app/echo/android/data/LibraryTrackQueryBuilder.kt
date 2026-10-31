@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import androidx.sqlite.db.SimpleSQLiteQuery
 import app.echo.android.model.library.LibraryTrackSortMode
+import app.echo.android.model.library.LibraryTrackFilter
 
 internal object LibraryTrackQueryBuilder {
     // A single query shape owns filtering and ordering for pages, locating and playback queues.
@@ -10,7 +11,8 @@ internal object LibraryTrackQueryBuilder {
         useFts: Boolean,
         sort: LibraryTrackSortMode,
         idsOnly: Boolean = false,
-    ): String = buildSql(query, useFts, sort, idsOnly, localSources = true)
+        filter: LibraryTrackFilter = LibraryTrackFilter(),
+    ): String = buildSql(query, useFts, sort, idsOnly, localSources = true, filter = filter)
 
     fun buildTrackQueueSql(
         query: String,
@@ -18,7 +20,9 @@ internal object LibraryTrackQueryBuilder {
         localSources: Boolean,
         limit: Int,
         sort: LibraryTrackSortMode = LibraryTrackSortMode.Title,
-    ): String = buildSql(query, useFts, sort, idsOnly = false, localSources) + " LIMIT ${limit.coerceAtLeast(1)}"
+        filter: LibraryTrackFilter = LibraryTrackFilter(),
+        offset: Int = 0,
+    ): String = buildSql(query, useFts, sort, idsOnly = false, localSources, filter) + windowSql(limit, offset)
 
     fun boundQuery(
         query: String,
@@ -27,17 +31,27 @@ internal object LibraryTrackQueryBuilder {
         localSources: Boolean = true,
         idsOnly: Boolean = false,
         limit: Int? = null,
+        filter: LibraryTrackFilter = LibraryTrackFilter(),
+        offset: Int = 0,
     ): SimpleSQLiteQuery {
+        val normalizedFilter = filter.normalized()
+        val filterSql = normalizedFilter.toSql()
         val useFts = matchQuery != null
         val args = mutableListOf<Any>()
         if (query.isNotBlank() && useFts) args += requireNotNull(matchQuery)
         librarySearchTerms(query).forEach { term -> repeat(SearchFields.size) { args += term } }
+        args.addAll(filterSql.args)
         if (query.isNotBlank() && sort == LibraryTrackSortMode.Title) {
             repeat(3) { args += query.trim().lowercase() }
         }
-        val sql = buildSql(query, useFts, sort, idsOnly, localSources) +
-            (limit?.let { " LIMIT ${it.coerceAtLeast(1)}" } ?: "")
+        val sql = buildSql(query, useFts, sort, idsOnly, localSources, normalizedFilter, filterSql) +
+            windowSql(limit, offset)
         return SimpleSQLiteQuery(sql, args.toTypedArray())
+    }
+
+    private fun windowSql(limit: Int?, offset: Int): String {
+        require(offset >= 0 && (limit != null || offset == 0))
+        return limit?.let { " LIMIT ${it.coerceAtLeast(1)}" + if (offset > 0) " OFFSET $offset" else "" }.orEmpty()
     }
 
     private val SearchFields = listOf(
@@ -56,6 +70,8 @@ internal object LibraryTrackQueryBuilder {
         sort: LibraryTrackSortMode,
         idsOnly: Boolean,
         localSources: Boolean,
+        filter: LibraryTrackFilter,
+        filterSql: LibraryTrackFilterSql = filter.toSql(),
     ): String = buildString {
         append(if (idsOnly) "SELECT library_tracks.id" else "SELECT library_tracks.*")
         // CROSS JOIN keeps the inverted index as the outer loop. Otherwise SQLite may
@@ -67,16 +83,16 @@ internal object LibraryTrackQueryBuilder {
             append(" FROM library_tracks")
         }
         // Walk matching order indexes for unfiltered pages, instead of sorting the entire library.
-        if (query.isBlank()) {
+        if (query.isBlank() && !filter.isActive) {
             val index = when (sort) {
-                LibraryTrackSortMode.Title -> "index_library_tracks_title_id"
-                LibraryTrackSortMode.Duration -> "index_library_tracks_durationMs_title_id"
-                LibraryTrackSortMode.RecentlyUpdated -> "index_library_tracks_dateModifiedSeconds_title_id"
+                LibraryTrackSortMode.Title, LibraryTrackSortMode.TitleDescending -> "index_library_tracks_title_id"
+                LibraryTrackSortMode.Duration, LibraryTrackSortMode.DurationAscending -> "index_library_tracks_durationMs_title_id"
+                LibraryTrackSortMode.RecentlyUpdated, LibraryTrackSortMode.ModifiedOldest -> "index_library_tracks_dateModifiedSeconds_title_id"
                 else -> null
             }
             index?.let { append(" INDEXED BY $it") }
         }
-        if (sort == LibraryTrackSortMode.FrequentlyPlayed || sort == LibraryTrackSortMode.RecentlyPlayed) {
+        if (sort == LibraryTrackSortMode.FrequentlyPlayed || sort == LibraryTrackSortMode.RecentlyPlayed || sort == LibraryTrackSortMode.LeastPlayed) {
             append(" LEFT JOIN library_playback_stats ON library_tracks.id = library_playback_stats.trackId")
         }
         append(" WHERE ")
@@ -87,6 +103,7 @@ internal object LibraryTrackQueryBuilder {
             append(" AND ")
             append(SearchFields.joinToString(" OR ", "(", ")") { field -> "instr($field, ?) > 0" })
         }
+        append(filterSql.clause)
         append(" ORDER BY ")
         if (query.isNotBlank() && sort == LibraryTrackSortMode.Title) {
             append("CASE WHEN instr(${SearchFields[0]}, ?) > 0 THEN 0 ")
@@ -102,6 +119,22 @@ internal object LibraryTrackQueryBuilder {
 
     private fun trackSortOrder(sort: LibraryTrackSortMode): String =
         when (sort) {
+            LibraryTrackSortMode.TitleDescending -> "library_tracks.title COLLATE NOCASE DESC"
+            LibraryTrackSortMode.ArtistDescending -> "library_tracks.artist COLLATE NOCASE DESC, library_tracks.album COLLATE NOCASE ASC, library_tracks.discNumber, library_tracks.trackNumber, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.AlbumDescending -> "library_tracks.album COLLATE NOCASE DESC, library_tracks.discNumber, library_tracks.trackNumber, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.DurationAscending -> "library_tracks.durationMs ASC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.LeastPlayed -> "COALESCE(library_playback_stats.playCount, 0) ASC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.YearAscending -> "CASE WHEN COALESCE(library_tracks.year, 0) <= 0 THEN 1 ELSE 0 END, library_tracks.year ASC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.YearDescending -> "CASE WHEN COALESCE(library_tracks.year, 0) <= 0 THEN 1 ELSE 0 END, library_tracks.year DESC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.FileName -> "COALESCE(NULLIF(library_tracks.fileName, ''), library_tracks.title) COLLATE NOCASE ASC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.Folder -> "COALESCE(library_tracks.relativePath, '') COLLATE NOCASE ASC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.SizeAscending -> "library_tracks.sizeBytes ASC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.SizeDescending -> "library_tracks.sizeBytes DESC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.SampleRateAscending -> "CASE WHEN COALESCE(library_tracks.sampleRateHz, 0) <= 0 THEN 1 ELSE 0 END, library_tracks.sampleRateHz ASC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.SampleRateDescending -> "CASE WHEN COALESCE(library_tracks.sampleRateHz, 0) <= 0 THEN 1 ELSE 0 END, library_tracks.sampleRateHz DESC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.Format -> "$LibraryFileFormatSql ASC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.ModifiedOldest -> "library_tracks.dateModifiedSeconds ASC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.TrackNumber -> "COALESCE(library_tracks.discNumber, 0), COALESCE(library_tracks.trackNumber, 0), library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.Title -> "library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.Duration -> "library_tracks.durationMs DESC, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.FrequentlyPlayed -> """

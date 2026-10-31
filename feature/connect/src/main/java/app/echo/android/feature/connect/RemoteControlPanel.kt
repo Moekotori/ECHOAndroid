@@ -49,17 +49,17 @@ internal fun RemoteNowPlaying(
 ) {
     val scheme = MaterialTheme.colorScheme
     val hasTrack = currentTrackId != null || title.isNotBlank()
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val coverSize = if (maxWidth < 340.dp) 112.dp else 136.dp
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            val coverSize = if (maxWidth < 340.dp) 96.dp else 120.dp
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 EchoArtworkImage(artworkUrl, null, Modifier.size(coverSize),
                     shape = RoundedCornerShape(12.dp), sizeClass = EchoArtworkSize.Card)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.feature_connect_playing_on_pc_580a8a),
                         style = MaterialTheme.typography.labelMedium, color = scheme.primary)
                     Text(title.ifBlank { stringResource(R.string.feature_connect_no_track_selected_258d56) },
-                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
                         maxLines = 3, overflow = TextOverflow.Ellipsis)
                     if (artist.isNotBlank() || !hasTrack) {
                         Text(if (hasTrack) artist else stringResource(R.string.remote_choose_hint),

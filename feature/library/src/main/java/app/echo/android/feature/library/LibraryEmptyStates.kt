@@ -51,6 +51,7 @@ internal fun GuidedAlbumWall(
     onAddMusic: () -> Unit,
     onOpenConnect: () -> Unit,
     modifier: Modifier = Modifier,
+    findLetterIndex: (suspend (Char) -> Int)? = null,
 ) {
     val empty = libraryAlbumEmptyCopy(
         isCloud = isCloud,
@@ -69,5 +70,6 @@ internal fun GuidedAlbumWall(
             else -> onAddMusic
         },
         modifier = modifier,
+        findLetterIndex = findLetterIndex,
     )
 }

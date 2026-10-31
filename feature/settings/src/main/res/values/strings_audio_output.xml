@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_output_title">Audio output</string>
+    <string name="audio_focus_title">Manage audio focus</string>
+    <string name="audio_focus_detail">Pause for other apps when they take audio focus. Turn off to allow mixing with other apps. Device settings and Android may still interrupt or mute playback.</string>
+    <string name="audio_focus_disabled_detail">Audio focus is off. Interruption preferences are saved and take effect when it is enabled again.</string>
+    <string name="audio_replay_gain_detail">Balance loudness using REPLAYGAIN_TRACK_GAIN or REPLAYGAIN_ALBUM_GAIN tags. Choose track or album mode below. Without a usable tag, only the preamp is applied.</string>
+    <string name="audio_output_reset">Restore audio output defaults</string>
+    <string name="audio_output_reset_detail">Enable audio focus and play/pause fades; lower volume for short prompts; turn off ReplayGain, track fades and AutoMix; reset gain and fade duration.</string>
+    <string name="audio_output_reset_action">Reset</string>
+</resources>

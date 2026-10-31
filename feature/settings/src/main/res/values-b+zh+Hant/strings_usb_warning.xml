@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_passthrough_warning_title">小心音量突然變大</string>
+    <string name="usb_passthrough_warning_body">整數直通會將數位音量固定為 100%，繞過應用程式音量和 DSP 處理，聲音可能突然變得很大。請先調低 DAC 或耳擴的硬體音量。若裝置沒有硬體音量控制，請取消並保持處理模式。</string>
+    <string name="usb_passthrough_warning_wait">請先檢查音量（%1$d 秒）</string>
+    <string name="usb_passthrough_warning_confirm">已調低硬體音量，開啟</string>
+</resources>

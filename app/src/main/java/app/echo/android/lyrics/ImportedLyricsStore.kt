@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import app.echo.android.model.lyrics.EchoLyrics
 import java.io.File
+import java.io.IOException
 import java.security.MessageDigest
 import android.util.AtomicFile
 import androidx.datastore.preferences.core.edit
@@ -89,10 +90,18 @@ class ImportedLyricsStore(
     }
 
     @Synchronized
-    fun readSaved(trackId: String, selected: Boolean, touchLastAccess: Boolean = true): EchoLyrics? {
+    fun readSaved(trackId: String, selected: Boolean, touchLastAccess: Boolean = true, reportReadFailure: Boolean = false): EchoLyrics? {
         val file = storedFile(trackId, selected)
-        if (!file.isFile || file.length() > MAX_BYTES) return null
-        return runCatching { EchoLyricsJson.decode(file.readText()) }.getOrNull()?.also {
+        if (!file.isFile) {
+            if (reportReadFailure && file.exists()) throw IOException("Stored lyrics are not readable")
+            return null
+        }
+        if (file.length() > MAX_BYTES) {
+            if (reportReadFailure) throw IOException("Stored lyrics exceed the read limit")
+            return null
+        }
+        val result = runCatching { EchoLyricsJson.decode(file.readText()) }
+        return (if (reportReadFailure) result.getOrThrow() else result.getOrNull())?.also {
             if (touchLastAccess) file.setLastModified(System.currentTimeMillis())
         }
     }

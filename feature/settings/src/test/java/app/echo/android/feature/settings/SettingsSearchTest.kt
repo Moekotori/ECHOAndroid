@@ -54,7 +54,11 @@ class SettingsSearchTest {
     @Test
     fun removedAndRelocatedOperationsAreNotIndexedAsSettings() {
         val titles = availableSettingsSearchItems(availability()).map { it.titleRes }
-        assertFalse(R.string.settings_gapless in titles)
+        assertTrue(R.string.settings_gapless in titles)
+        assertTrue(R.string.audio_focus_title in titles)
+        assertTrue(R.string.audio_output_reset in titles)
+        val audioOutput = availableSettingsSearchItems(availability()).single { it.titleRes == R.string.settings_section_volume }
+        assertEquals(R.string.audio_output_title, settingsSearchAnchorResource(audioOutput, availability()))
         assertFalse(R.string.settings_lyrics_sync_tools in titles)
         assertFalse(R.string.settings_connect_pc in titles)
         assertFalse(R.string.settings_color_theme in titles)
@@ -105,6 +109,34 @@ class SettingsSearchTest {
         assertEquals(R.string.settings_section_readability, settingsSearchAnchorResource(category, state))
         val reader = items.single { it.titleRes == R.string.accessibility_screen_reader }
         assertTrue(R.string.accessibility_screen_reader_unknown in reader.keywords)
+    }
+
+    @Test
+    fun everySearchTargetInASplitCategoryOpensItsSubPageOrTheEntryList() {
+        val enabled = SettingsSearchAvailability(
+            scheduledDarkEnabled = true, customBackgroundMode = "image", backgroundAdvancedAvailable = true,
+            trackFadeEnabled = true, replayGainEnabled = true, lastFmEnabled = true, lastFmConnected = true,
+            listenBrainzEnabled = true, listenBrainzConnected = true, setlistFmLocked = false,
+            importedFont = true, notificationPermissionNeeded = true,
+        )
+        val split = SettingsSubPage.entries.map { it.category }.toSet()
+        // These live on a category's entry list, where no sub-page is opened.
+        val onEntryList = setOf(
+            R.string.settings_category_appearance, R.string.settings_category_playback,
+            R.string.settings_category_services, R.string.settings_section_connect,
+            R.string.settings_section_music_services, R.string.settings_pc_handoff,
+            R.string.settings_section_library, R.string.settings_audio_tags,
+            R.string.settings_watched_folder_rescan, R.string.settings_local_music,
+        )
+        val unmapped = listOf(availability(), enabled).flatMap { state ->
+            availableSettingsSearchItems(state)
+                .filter { it.category in split }
+                .map { it.category to settingsSearchAnchorResource(it, state) }
+                .filter { (category, anchor) ->
+                    settingsSubPageForAnchor(category, anchor) == null && anchor !in onEntryList
+                }
+        }.distinct()
+        assertEquals(emptyList<Pair<SettingsCategory?, Int>>(), unmapped)
     }
 
     @Test

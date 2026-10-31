@@ -63,7 +63,7 @@ internal fun HomeListeningSummary(
             text = if (summary.first > 0L) stringResource(R.string.home_listening_play_count, playCount)
                 else stringResource(R.string.home_listening_empty_title),
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             color = scheme.onSurface,
         )
         Text(

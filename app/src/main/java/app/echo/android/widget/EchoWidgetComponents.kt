@@ -21,21 +21,9 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
-import androidx.glance.color.ColorProvider
 import app.echo.android.MainActivity
 import app.echo.android.R
 import app.echo.android.playback.EchoPlaybackSurfaceSnapshot
-
-// Glance's single-color and @ColorRes ColorProvider factories are @RestrictTo the library group;
-// the public day/night factory with both sides equal is the supported way to pin one color.
-internal fun widgetSolidColor(color: Color) = ColorProvider(color, color)
-
-// Day and night match colors_playback_widget.xml.
-private fun widgetColor(day: Long, night: Long) = ColorProvider(Color(day), Color(night))
-
-// Glance uses RemoteViews; shared drawables follow EchoIcon's neutral palette.
-internal val widgetForeground = widgetColor(day = 0xFF303036, night = 0xFFF1F1F3)
-internal val widgetSecondary = widgetColor(day = 0xFF6C6C74, night = 0xFFADADB5)
 
 @Composable
 internal fun widgetLaunchIntent(context: Context): Intent {
@@ -51,8 +39,7 @@ internal fun widgetLaunchIntent(context: Context): Intent {
 internal fun WidgetArtwork(artwork: Bitmap?, size: Dp) {
     if (!LocalWidgetOptions.current.showArtwork) return
     Box(
-        GlanceModifier.size(size).background(widgetColor(day = 0xFFE5E5EA, night = 0xFF39393F))
-            .cornerRadius(if (size >= 72.dp) 14.dp else 8.dp),
+        GlanceModifier.size(size).background(widgetArtworkPlaceholder).widgetInnerCorners(size),
         contentAlignment = Alignment.Center,
     ) {
         Image(
@@ -82,7 +69,8 @@ internal fun WidgetTrackText(
         if (artist.isNotBlank()) {
             Spacer(GlanceModifier.height(2.dp))
             Text(artist, modifier = GlanceModifier.fillMaxWidth(), maxLines = 1,
-                style = TextStyle(color = widgetSecondary, fontSize = secondarySize.sp, textAlign = alignment))
+                style = TextStyle(color = widgetSecondary, fontSize = secondarySize.sp,
+                fontWeight = FontWeight.Medium, textAlign = alignment))
         }
     }
 }
@@ -105,38 +93,52 @@ internal fun WidgetTransport(
     gap: Dp = 8.dp,
     onArtwork: Boolean = false,
 ) {
+    val secondaryStyle = if (onArtwork) WidgetButtonStyle.Glass else WidgetButtonStyle.Tonal
     if (full && LocalWidgetOptions.current.fullControls) {
         WidgetIconButton(R.drawable.echo_ic_skip_previous, context.getString(R.string.playback_widget_previous),
-            if (hasTrack) actionRunCallback<EchoPlaybackWidgetPreviousAction>() else null, size)
+            if (hasTrack) actionRunCallback<EchoPlaybackWidgetPreviousAction>() else null, size, secondaryStyle)
         Spacer(GlanceModifier.width(gap))
     }
     WidgetIconButton(if (isPlaying) R.drawable.echo_ic_pause else R.drawable.echo_ic_play,
         context.getString(if (!hasTrack) R.string.app_name else if (isPlaying) R.string.playback_widget_pause else R.string.playback_widget_play),
         if (hasTrack) actionRunCallback<EchoPlaybackWidgetPlayPauseAction>() else actionStartActivity(intent),
-        size, prominent = true, onArtwork = onArtwork)
+        size, if (onArtwork) WidgetButtonStyle.ProminentOnArtwork else WidgetButtonStyle.Prominent)
     if (full && LocalWidgetOptions.current.fullControls) {
         Spacer(GlanceModifier.width(gap))
         WidgetIconButton(R.drawable.echo_ic_skip_next, context.getString(R.string.playback_widget_next),
-            if (hasTrack) actionRunCallback<EchoPlaybackWidgetNextAction>() else null, size)
+            if (hasTrack) actionRunCallback<EchoPlaybackWidgetNextAction>() else null, size, secondaryStyle)
     }
 }
 
+internal enum class WidgetButtonStyle { Tonal, Prominent, Glass, ProminentOnArtwork }
+
+/**
+ * The touch target is always [size]; secondary buttons draw a smaller tonal disc inside it so the
+ * play button stays the clear primary action without shrinking anyone's hit area.
+ */
 @Composable
-internal fun WidgetIconButton(resId: Int, description: String, action: Action?, size: Dp,
-                              prominent: Boolean = false, onArtwork: Boolean = false) {
-    val surface = GlanceModifier.size(size).let {
-        if (prominent) it.background(if (onArtwork) widgetSolidColor(Color.White) else widgetForeground)
-            .cornerRadius(size / 2) else it
+internal fun WidgetIconButton(resId: Int, description: String, action: Action?, size: Dp, style: WidgetButtonStyle) {
+    val prominent = style == WidgetButtonStyle.Prominent || style == WidgetButtonStyle.ProminentOnArtwork
+    val disc = if (prominent) size else size - 8.dp
+    val surface = when (style) {
+        WidgetButtonStyle.Prominent -> widgetAccent
+        WidgetButtonStyle.ProminentOnArtwork -> widgetSolidColor(ArtworkOverlayForeground)
+        WidgetButtonStyle.Glass -> widgetSolidColor(ArtworkOverlayGlass)
+        WidgetButtonStyle.Tonal -> widgetTonal
     }
-    val target = if (action != null) surface.clickable(action) else surface
-    Box(target, contentAlignment = Alignment.Center) {
-        Image(ImageProvider(resId), description,
-            colorFilter = ColorFilter.tint(when {
-                onArtwork -> widgetSolidColor(Color(0xFF303036))
-                prominent -> widgetColor(day = 0xFFF5F5F7, night = 0xFF242428)
-                action != null -> widgetForeground
-                else -> widgetSecondary
-            }),
-            modifier = GlanceModifier.size(if (prominent) 24.dp else 22.dp))
+    val tint = when (style) {
+        WidgetButtonStyle.Prominent -> widgetOnAccent
+        WidgetButtonStyle.ProminentOnArtwork -> widgetSolidColor(ArtworkOverlayOnPrimary)
+        WidgetButtonStyle.Glass -> widgetSolidColor(ArtworkOverlayForeground)
+        WidgetButtonStyle.Tonal -> widgetOnTonal
+    }
+    val hit = GlanceModifier.size(size).let { if (action != null) it.clickable(action) else it }
+    Box(hit, contentAlignment = Alignment.Center) {
+        Box(GlanceModifier.size(disc).background(surface).cornerRadius(disc / 2),
+            contentAlignment = Alignment.Center) {
+            Image(ImageProvider(resId), description,
+                colorFilter = ColorFilter.tint(if (action != null) tint else widgetSecondary),
+                modifier = GlanceModifier.size(if (prominent) 24.dp else 20.dp))
+        }
     }
 }

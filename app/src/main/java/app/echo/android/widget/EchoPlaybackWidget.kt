@@ -48,10 +48,11 @@ abstract class EchoPlaybackSurfaceWidget internal constructor(internal val style
         val artwork = if (options.showArtwork) EchoWidgetArtwork.load(localized, snapshot, allowRemote = live.hasTrack) else null
         provideContent {
             androidx.compose.runtime.CompositionLocalProvider(LocalWidgetOptions provides options) {
+              androidx.glance.GlanceTheme {
                 Column(androidx.glance.GlanceModifier.fillMaxSize()) {
                     Box(androidx.glance.GlanceModifier.fillMaxWidth().defaultWeight()) {
                         val size = LocalSize.current
-                        val contentHeight = size.height.value - if (options.playlistMediaId != null && size.height.value >= 120) 40 else 0
+                        val contentHeight = size.height.value - if (options.playlistMediaId != null && size.height.value >= 120) 48 else 0
                         when (style) {
                             EchoWidgetStyle.Player, EchoWidgetStyle.Mini -> EchoPlaybackWidgetContent(
                                 context = localized,
@@ -69,6 +70,7 @@ abstract class EchoPlaybackSurfaceWidget internal constructor(internal val style
                     }
                     WidgetBoundPlaylist(localized, options)
                 }
+              }
             }
         }
     }

@@ -26,6 +26,5 @@
     <string name="album_online_performer">Исполнение</string>
     <string name="album_online_mb_source">MusicBrainz · источник и полные кредиты</string>
     <string name="album_online_link_error">Не удалось открыть эту ссылку.</string>
-    <string name="album_page_tracks">Треки</string>
-    <string name="album_page_information">Об альбоме</string>
+    <string name="album_more_by_artist">Ещё от %1$s</string>
 </resources>

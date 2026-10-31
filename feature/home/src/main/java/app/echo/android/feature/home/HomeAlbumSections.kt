@@ -133,7 +133,7 @@ private fun ArtistRankRow(
             rank.toString().padStart(2, '0'),
             color = if (rank == 1) scheme.primary else scheme.onSurfaceVariant,
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.width(34.dp),
         )
         Column(

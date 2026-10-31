@@ -96,6 +96,7 @@ internal fun EchoLibraryPage(
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val playbackMetadata by viewModel.playbackMetadata.collectAsStateWithLifecycle()
     val remotePlayback by playbackRouter.remoteMode.collectAsStateWithLifecycle()
+    val libraryTrackFilter by viewModel.libraryTrackFilter.collectAsStateWithLifecycle()
     val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
     val libraryAlbumSortMode by viewModel.libraryAlbumSortMode.collectAsStateWithLifecycle()
     val libraryArtistSortMode by viewModel.libraryArtistSortMode.collectAsStateWithLifecycle()
@@ -282,6 +283,11 @@ internal fun EchoLibraryPage(
             scanState = scanState,
             libraryQuery = libraryQuery,
             trackSortMode = libraryTrackSortMode,
+            trackFilter = libraryTrackFilter,
+            lyricsIndexState = viewModel.libraryLyricsIndexState,
+            onInspectLyrics = viewModel::startLibraryLyricsInspection,
+            onCancelLyricsInspection = viewModel::cancelLibraryLyricsInspection,
+            onTrackFilterChange = viewModel::updateLibraryTrackFilter,
             albumSortMode = libraryAlbumSortMode,
             artistSortMode = libraryArtistSortMode,
             folderSortMode = libraryFolderSortMode,
@@ -322,8 +328,9 @@ internal fun EchoLibraryPage(
             onLibrarySourceChange = viewModel::setLibrarySelectedSource,
             onTrackSortModeChange = viewModel::updateLibraryTrackSortMode,
             onFindSongLetterIndex = viewModel::localTitleIndex,
+            onFindAlbumLetterIndex = viewModel::albumTitleIndex,
             playingTrackId = if (remotePlayback) null else playbackMetadata.track?.id,
-            onFindPlayingSongIndex = { id -> viewModel.localTrackIndex(id, libraryQuery, libraryTrackSortMode) },
+            onFindPlayingSongIndex = { id -> viewModel.localTrackIndex(id, libraryQuery, libraryTrackSortMode, libraryTrackFilter) },
             onAlbumSortModeChange = viewModel::updateLibraryAlbumSortMode,
             onArtistSortModeChange = viewModel::updateLibraryArtistSortMode,
             onFolderSortModeChange = viewModel::updateLibraryFolderSortMode,
@@ -364,8 +371,10 @@ internal fun EchoLibraryPage(
             onUpdateTrackMetadata = viewModel::updateTrackMetadata,
             onImportLyricsForTrack = onImportLyricsForTrack,
             onPickTrackArtwork = onPickTrackArtwork,
-            onPinAlbumShortcut = { album, play -> app.echo.android.library.EchoLibraryShortcuts.pin(shortcutContext,
-                app.echo.android.playback.EchoPlaybackLibraryIds.album(album.albumKey), album.title, play) },
+            albumArtistAlbums = { album ->
+                viewModel.artistNavigationTarget(album.albumArtist ?: album.artist.orEmpty(), album.artworkUri)
+                    ?.let { viewModel.artistAlbumPaging(it.artistKey) }
+            },
             onPinPlaylistShortcut = { playlist, play -> app.echo.android.library.EchoLibraryShortcuts.pin(shortcutContext,
                 app.echo.android.playback.EchoPlaybackLibraryIds.playlist(playlist.id), playlist.name, play) },
             onPlayAlbum = { album -> viewModel.playAlbum(album.albumKey) },

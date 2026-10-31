@@ -18,6 +18,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoBackupCodecTest {
+    @Test fun audioFocusSettingsRoundTripAndOldBackupsLeaveThemUnspecified() {
+        val settings = EchoAppSettings(audioFocusEnabled = false, audioInterruptionPolicy = "pause").toBackupSettings()
+        val decoded = EchoBackupCodec.decode(EchoBackupCodec.encode(EchoBackupDocument(settings = settings))).settings
+        assertEquals(false, decoded.audioFocusEnabled)
+        assertEquals("pause", decoded.audioInterruptionPolicy)
+        val old = EchoBackupCodec.decode("{\"version\":1,\"settings\":{}}").settings
+        assertEquals(null, old.audioFocusEnabled)
+        assertEquals(null, old.audioInterruptionPolicy)
+        assertTrue(EchoAppSettings().audioFocusEnabled)
+    }
+
     @Test fun libraryLayoutRoundTripsAndOldBackupsLeaveItUnspecified() {
         val layout = app.echo.android.model.settings.EchoLibraryLayout(
             order = app.echo.android.model.settings.EchoLibraryCategory.entries.reversed(),

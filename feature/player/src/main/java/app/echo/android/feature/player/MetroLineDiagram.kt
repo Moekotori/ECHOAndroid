@@ -2,6 +2,7 @@ package app.echo.android.feature.player
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -51,9 +56,14 @@ internal fun MetroLineDiagram(
             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.player_style_metro_route), color = MetroStyle.Muted,
                 fontSize = 10.sp, lineHeight = 14.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
-            Text(stringResource(if (playing) R.string.radio_state_playing else R.string.radio_state_paused),
-                color = MetroStyle.Ink, fontSize = 10.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Box(Modifier.size(6.dp).background(if (playing) MetroStyle.Line else MetroStyle.Rail, CircleShape))
+                Text(stringResource(if (playing) R.string.radio_state_playing else R.string.radio_state_paused),
+                    color = MetroStyle.Ink, fontSize = 10.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium)
+            }
         }
+        val density = LocalDensity.current
+        val dash = remember(density) { with(density) { PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())) } }
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             // Short landscape panes use a horizontal route instead of overflowing five vertical rows.
             val horizontal = maxHeight < 230.dp
@@ -67,16 +77,33 @@ internal fun MetroLineDiagram(
                     val start = top.toPx()
                     val length = span.toPx()
                     val fraction = progressFraction(position.value, duration.value)
-                    drawLine(MetroStyle.Line.copy(alpha = 0.06f), Offset(x, start), Offset(x, start + length * fraction), 13.dp.toPx(), StrokeCap.Round)
-                    drawLine(MetroStyle.Rail, Offset(x, start), Offset(x, start + length), 6.dp.toPx(), StrokeCap.Round)
-                    drawLine(MetroStyle.Line, Offset(x, start), Offset(x, start + length * fraction), 6.dp.toPx(), StrokeCap.Round)
-                    for (k in 0 until StationCount) {
-                        val y = start + length * k / (StationCount - 1)
-                        drawMetroStation(Offset(x, y), k <= reached, k == 0 || k == StationCount - 1)
-                        drawLine(MetroStyle.Rule, Offset(58.dp.toPx(), y + 23.dp.toPx()),
-                            Offset(size.width, y + 23.dp.toPx()), 0.7.dp.toPx())
+                    val progressY = start + length * fraction
+                    val lit = Offset(x - 1.5.dp.toPx(), start)
+                    drawLine(MetroStyle.Line.copy(alpha = 0.08f), Offset(x, start), Offset(x, progressY), 17.dp.toPx(), StrokeCap.Round)
+                    drawLine(MetroStyle.Rail, Offset(x, start), Offset(x, start + length), 8.dp.toPx(), StrokeCap.Round)
+                    drawLine(Color.White.copy(alpha = 0.5f), Offset(lit.x, start), Offset(lit.x, start + length), 1.5.dp.toPx(), StrokeCap.Round)
+                    drawLine(MetroStyle.Line, Offset(x, start), Offset(x, progressY), 8.dp.toPx(), StrokeCap.Round)
+                    drawLine(Color.White.copy(alpha = 0.28f), Offset(lit.x, start), Offset(lit.x, progressY), 1.5.dp.toPx(), StrokeCap.Round)
+                    // Direction chevrons on the part of the line the train has not covered yet.
+                    for (k in 0 until StationCount - 1) {
+                        for (n in 1..2) {
+                            val cy = start + length * (k + n / 3f) / (StationCount - 1)
+                            if (cy > progressY + 22.dp.toPx()) drawRouteChevron(x, cy)
+                        }
                     }
-                    drawMetroTrain(Offset(x, start + length * fraction))
+                    val gap = length / (StationCount - 1)
+                    for (k in 0 until StationCount) {
+                        val y = start + gap * k
+                        val current = k == reached
+                        drawLine(if (current) MetroStyle.Line else MetroStyle.Rule, Offset(x + 13.dp.toPx(), y),
+                            Offset(52.dp.toPx(), y), 1.5.dp.toPx(), StrokeCap.Round)
+                        drawMetroStation(Offset(x, y), k <= reached, current, k == 0 || k == StationCount - 1)
+                        if (k < StationCount - 1) {
+                            val dividerY = y + gap / 2
+                            drawLine(MetroStyle.Rule, Offset(60.dp.toPx(), dividerY), Offset(size.width, dividerY), 1.dp.toPx(), pathEffect = dash)
+                        }
+                    }
+                    drawMetroTrain(Offset(x, progressY))
                 }
                 for (k in 0 until StationCount) {
                     val time = stationTime(total, k)
@@ -84,28 +111,33 @@ internal fun MetroLineDiagram(
                     Row(
                         Modifier.offset(y = top + span * k / (StationCount - 1) - 22.dp)
                             .fillMaxWidth().height(44.dp).padding(start = 52.dp)
-                            .background(if (current) MetroStyle.Board else Color.Transparent, RoundedCornerShape(4.dp))
+                            .then(if (current) Modifier.shadow(3.dp, RoundedCornerShape(8.dp),
+                                ambientColor = MetroStyle.Line.copy(alpha = 0.3f), spotColor = MetroStyle.Line.copy(alpha = 0.3f)) else Modifier)
+                            .background(if (current) MetroStyle.Board else Color.Transparent, RoundedCornerShape(8.dp))
+                            .then(if (current) Modifier.border(1.dp, MetroStyle.Line.copy(alpha = 0.16f), RoundedCornerShape(8.dp)) else Modifier)
                             .drawBehind {
                                 if (current) {
-                                    drawLine(MetroStyle.Line.copy(alpha = 0.2f), Offset(8.dp.toPx(), 0f),
-                                        Offset(size.width - 8.dp.toPx(), 0f), 0.7.dp.toPx())
+                                    drawRoundRect(MetroStyle.Line, Offset(0f, 10.dp.toPx()), Size(3.dp.toPx(), size.height - 20.dp.toPx()),
+                                        CornerRadius(1.5.dp.toPx()))
                                 }
                             }
                             .clickable(enabled = total > 0, role = Role.Button,
                                 onClickLabel = stringResource(R.string.player_style_metro_seek_to, formatDuration(time))) { onSeek(time) }
-                            .semantics { selected = current }.padding(horizontal = 8.dp),
+                            .semantics { selected = current }.padding(horizontal = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Text(stationCode(k), Modifier.background(if (current) MetroStyle.SoftRed else Color.Transparent,
-                            RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 3.dp),
-                            color = if (k <= reached) MetroStyle.Line else MetroStyle.Muted,
+                        Text(stationCode(k), Modifier.background(if (current) MetroStyle.Line else Color.Transparent,
+                            RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 3.dp),
+                            color = if (current) Color.White else if (k <= reached) MetroStyle.Line else MetroStyle.Muted,
                             fontFamily = FontFamily.Monospace, fontSize = 10.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold)
                         Text(stationLabel(k), Modifier.weight(1f),
                             color = if (k <= reached) MetroStyle.Ink else MetroStyle.Muted,
                             fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
                             fontSize = if (current) 17.sp else 14.sp, lineHeight = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(formatDuration(time), color = MetroStyle.Muted, fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 16.sp)
+                        Text(formatDuration(time), color = if (current) MetroStyle.Line else MetroStyle.Muted,
+                            fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 16.sp,
+                            fontWeight = if (current) FontWeight.Bold else FontWeight.Normal)
                     }
                 }
             }
@@ -134,7 +166,9 @@ private fun MetroArrivalTime(position: State<Long>, duration: State<Long>, reach
     }
     Text(if (duration.value <= 0 || reached == StationCount - 1) "—"
         else stringResource(R.string.player_style_metro_arrival_in, formatDuration(seconds * 1000L)),
-        color = MetroStyle.Muted, fontSize = 10.sp, lineHeight = 14.sp, fontFamily = FontFamily.Monospace)
+        Modifier.background(MetroStyle.Board, RoundedCornerShape(10.dp))
+            .border(0.7.dp, MetroStyle.Rule, RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 2.dp),
+        color = MetroStyle.Ink, fontSize = 10.sp, lineHeight = 14.sp, fontFamily = FontFamily.Monospace)
 }
 
 @Composable
@@ -152,10 +186,10 @@ private fun CompactMetroRoute(position: State<Long>, duration: State<Long>, reac
                     val x = start.toPx()
                     val length = span.toPx()
                     val fraction = progressFraction(position.value, duration.value)
-                    drawLine(MetroStyle.Rail, Offset(x, y), Offset(x + length, y), 5.dp.toPx(), StrokeCap.Round)
-                    drawLine(MetroStyle.Line, Offset(x, y), Offset(x + length * fraction, y), 5.dp.toPx(), StrokeCap.Round)
+                    drawLine(MetroStyle.Rail, Offset(x, y), Offset(x + length, y), 7.dp.toPx(), StrokeCap.Round)
+                    drawLine(MetroStyle.Line, Offset(x, y), Offset(x + length * fraction, y), 7.dp.toPx(), StrokeCap.Round)
                     for (k in 0 until StationCount) drawMetroStation(Offset(x + length * k / (StationCount - 1), y),
-                        k <= reached, k == 0 || k == StationCount - 1)
+                        k <= reached, k == reached, k == 0 || k == StationCount - 1)
                     drawMetroTrain(Offset(x + length * fraction, y))
                 }
                 Row(Modifier.fillMaxWidth()) {
@@ -187,11 +221,32 @@ private fun stationLabel(index: Int): String = when (index) {
     else -> stringResource(R.string.player_style_metro_station, index + 1)
 }
 
-private fun DrawScope.drawMetroStation(center: Offset, passed: Boolean, terminal: Boolean) {
-    val radius = (if (terminal) 9.dp else 7.dp).toPx()
+/** Station marker: white disc with a thick ring; the current stop gets a halo, the terminals an inner dot. */
+private fun DrawScope.drawMetroStation(center: Offset, passed: Boolean, current: Boolean, terminal: Boolean) {
+    val radius = (if (terminal) 10.dp else 8.dp).toPx()
+    val tone = if (passed) MetroStyle.Line else MetroStyle.Rail
+    if (current) drawCircle(MetroStyle.Line.copy(alpha = 0.16f), radius + 6.dp.toPx(), center)
+    drawCircle(Color.Black.copy(alpha = 0.08f), radius + 1.dp.toPx(), center + Offset(0f, 1.dp.toPx()))
+    if (passed && !current) {
+        // Already served stop: solid disc with a check mark.
+        drawCircle(MetroStyle.Line, radius, center)
+        val u = radius / 8f
+        val white = Color.White
+        drawLine(white, center + Offset(-3.2f * u, 0.2f * u), center + Offset(-1f * u, 2.6f * u), 1.8.dp.toPx(), StrokeCap.Round)
+        drawLine(white, center + Offset(-1f * u, 2.6f * u), center + Offset(3.4f * u, -2.4f * u), 1.8.dp.toPx(), StrokeCap.Round)
+        return
+    }
     drawCircle(Color.White, radius, center)
-    drawCircle(if (passed) MetroStyle.Line else MetroStyle.Rail, radius, center, style = Stroke(2.5.dp.toPx()))
-    if (terminal) drawCircle(if (passed) MetroStyle.Line else MetroStyle.Rail, 3.dp.toPx(), center)
+    drawCircle(tone, radius - 1.5.dp.toPx(), center, style = Stroke(3.dp.toPx()))
+    if (terminal || current) drawCircle(tone, (if (terminal) 4 else 3).dp.toPx(), center)
+}
+
+private fun DrawScope.drawRouteChevron(x: Float, y: Float) {
+    val half = 3.dp.toPx()
+    val rise = 2.dp.toPx()
+    val white = Color.White.copy(alpha = 0.9f)
+    drawLine(white, Offset(x - half, y - rise), Offset(x, y + rise), 1.6.dp.toPx(), StrokeCap.Round)
+    drawLine(white, Offset(x, y + rise), Offset(x + half, y - rise), 1.6.dp.toPx(), StrokeCap.Round)
 }
 
 /** A small front-facing carriage, with a windscreen and headlights. No independent animation clock. */
@@ -206,6 +261,10 @@ private fun DrawScope.drawMetroTrain(center: Offset) {
     drawRoundRect(MetroStyle.Sign, center - Offset(7.dp.toPx(), 8.dp.toPx()), Size(14.dp.toPx(), 10.dp.toPx()), CornerRadius(2.dp.toPx()))
     drawLine(Color.White.copy(alpha = 0.45f), center - Offset(4.dp.toPx(), 6.dp.toPx()),
         center - Offset(1.dp.toPx(), 6.dp.toPx()), 1.dp.toPx(), StrokeCap.Round)
+    drawLine(Color.White.copy(alpha = 0.22f), center + Offset(-w + 3.dp.toPx(), 3.dp.toPx()),
+        center + Offset(w - 3.dp.toPx(), 3.dp.toPx()), 1.dp.toPx(), StrokeCap.Round)
+    drawCircle(MetroStyle.Amber.copy(alpha = 0.35f), 3.5.dp.toPx(), center + Offset(-6.dp.toPx(), 7.dp.toPx()))
+    drawCircle(MetroStyle.Amber.copy(alpha = 0.35f), 3.5.dp.toPx(), center + Offset(6.dp.toPx(), 7.dp.toPx()))
     drawCircle(MetroStyle.Amber, 1.5.dp.toPx(), center + Offset(-6.dp.toPx(), 7.dp.toPx()))
     drawCircle(MetroStyle.Amber, 1.5.dp.toPx(), center + Offset(6.dp.toPx(), 7.dp.toPx()))
     drawLine(MetroStyle.Sign, center + Offset(-5.dp.toPx(), 13.dp.toPx()),

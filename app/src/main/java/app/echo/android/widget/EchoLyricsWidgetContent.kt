@@ -8,7 +8,6 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.*
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.layout.*
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -32,11 +31,11 @@ internal fun EchoLyricsWidgetContent(context: Context, snapshot: EchoPlaybackSur
     val text = if (!LocalWidgetOptions.current.showLyrics) title else lyric ?: context.getString(if (snapshot.hasTrack) R.string.widget_lyrics_unavailable else R.string.widget_lyrics_hint)
     Column(
         GlanceModifier.fillMaxSize().background(widgetBackground(context))
-            .cornerRadius(24.dp).clickable(actionStartActivity(intent)).padding(if (header) 16.dp else 12.dp),
+            .widgetSurface().clickable(actionStartActivity(intent)).padding(if (header) 16.dp else 12.dp),
     ) {
         if (header && !largeText) {
             Text(context.getString(R.string.widget_lyrics_label), maxLines = 1,
-                style = TextStyle(color = widgetSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium))
+                style = TextStyle(color = widgetAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold))
             Spacer(GlanceModifier.height(8.dp))
         }
         Box(GlanceModifier.fillMaxWidth().defaultWeight(), contentAlignment = Alignment.CenterStart) {

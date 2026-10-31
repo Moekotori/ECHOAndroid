@@ -1,0 +1,9 @@
+<resources>
+    <string name="player_contributing_artists">參與創作的藝人</string>
+    <string name="player_artists_empty">這首歌曲沒有藝人資訊</string>
+    <string name="player_artists_load_failed">無法載入藝人</string>
+    <string name="player_artists_retry">重試</string>
+    <plurals name="player_artist_tracks">
+        <item quantity="other">%1$d 首</item>
+    </plurals>
+</resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usb_passthrough_warning_title">Volume warning</string>
+    <string name="usb_passthrough_warning_body">Integer passthrough fixes digital volume at 100%. It bypasses app volume and DSP processing. Sound may suddenly become very loud. Lower the hardware volume on your DAC or headphone amplifier first. If it has no hardware volume control, cancel and keep processing mode.</string>
+    <string name="usb_passthrough_warning_wait">Confirm in %1$d s</string>
+    <string name="usb_passthrough_warning_confirm">Hardware volume lowered · Enable</string>
+</resources>

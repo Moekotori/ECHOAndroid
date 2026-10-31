@@ -3,7 +3,6 @@ package app.echo.android.feature.settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -26,7 +24,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,83 +37,37 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoMotion
 import app.echo.android.design.echoClickable
-import app.echo.android.design.echoItemMotion
-import app.echo.android.design.rememberEchoContentMotion
 import app.echo.android.model.playback.OpraHeadphoneBrand
-import app.echo.android.model.playback.OpraHeadphoneCorrectionState
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import app.echo.android.design.EchoIcon
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
-@Composable
-internal fun OpraBrandBrowser(state: OpraHeadphoneCorrectionState, onBrandSelected: (String?) -> Unit) {
-    val filteredBrands by produceState(emptyList<OpraHeadphoneBrand>(), state.brands, state.query) {
-        value = withContext(Dispatchers.Default) { filterOpraBrands(state.brands, state.query) }
-    }
-    val motion = rememberEchoContentMotion()
-    AnimatedContent(
-        targetState = state.selectedBrandId,
-        modifier = Modifier.fillMaxWidth(),
-        transitionSpec = {
-            when {
-                initialState == null && targetState != null -> motion.pagePush()
-                initialState != null && targetState == null -> motion.pagePop()
-                else -> EchoMotion.stateChange()
-            }
-        },
-        label = "opra-brand",
-    ) { brandId ->
-        if (brandId != null) {
-            val brand = state.brands.firstOrNull { it.id == brandId }
-            if (brand != null) {
-                OpraSelectedBrand(
-                    brand = brand,
-                    enabled = !state.loading,
-                    backLabel = stringResource(if (state.catalog == app.echo.android.model.playback.HeadphoneCorrectionCatalog.AutoEq) R.string.autoeq_all_measurements else R.string.opra_all_brands),
-                    onBack = { onBrandSelected(null) },
-                )
-            }
-        } else if (filteredBrands.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(if (state.catalog == app.echo.android.model.playback.HeadphoneCorrectionCatalog.AutoEq) R.string.autoeq_choose_measurement else R.string.opra_choose_brand), style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
-                    contentPadding = PaddingValues(bottom = 4.dp),
-                ) {
-                    items(filteredBrands, key = { it.id }) { brand ->
-                        OpraBrandRow(
-                            brand = brand,
-                            enabled = !state.loading,
-                            modifier = echoItemMotion(),
-                            onClick = { onBrandSelected(brand.id) },
-                        )
-                    }
-                }
-            }
-        }
+internal fun androidx.compose.foundation.lazy.LazyListScope.opraBrandItems(
+    brands: List<OpraHeadphoneBrand>,
+    onBrandSelected: (String) -> Unit,
+) {
+    items(brands, key = { "brand:${it.id}" }, contentType = { "brand" }) { brand ->
+        OpraBrandRow(brand = brand, enabled = true, onClick = { onBrandSelected(brand.id) })
     }
 }
 
 @Composable
-private fun OpraSelectedBrand(brand: OpraHeadphoneBrand, enabled: Boolean, backLabel: String, onBack: () -> Unit) {
+internal fun OpraSelectedBrand(brand: OpraHeadphoneBrand, enabled: Boolean, backLabel: String, onBack: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         TextButton(onClick = onBack, enabled = enabled, contentPadding = PaddingValues(horizontal = 0.dp)) {
             EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
             Text(backLabel)
         }
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                Text(brand.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                SignalNote(pluralStringResource(R.plurals.opra_brand_models, brand.productCount, brand.productCount))
-            }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+            Text(brand.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            SignalNote(pluralStringResource(R.plurals.opra_brand_models, brand.productCount, brand.productCount))
+        }
     }
 }
 
@@ -189,7 +140,7 @@ internal fun OpraBrandLogo(name: String, logoUrl: String?, size: Dp) {
             }
             AsyncImage(
                 model = request,
-                contentDescription = name,
+                contentDescription = null,
                 modifier = Modifier.fillMaxSize().padding(if (size < 48.dp) 4.dp else 6.dp),
                 contentScale = ContentScale.Fit,
                 onError = { failed = true },
@@ -202,13 +153,5 @@ internal fun OpraBrandLogo(name: String, logoUrl: String?, size: Dp) {
                 color = scheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-internal fun filterOpraBrands(brands: List<OpraHeadphoneBrand>, query: String): List<OpraHeadphoneBrand> {
-    val needle = query.trim()
-    if (needle.isEmpty()) return brands
-    return brands.filter { brand ->
-        brand.name.contains(needle, ignoreCase = true) || brand.id.contains(needle, ignoreCase = true)
     }
 }

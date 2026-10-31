@@ -80,7 +80,7 @@ fun RadioScreen(
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { goBack() }) { EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.radio_back)) }
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.radio_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.radio_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     if (global && group in setOf("music", "spoken")) Text(stringResource(if (global) when (group) { "music" -> R.string.radio_category_music; "spoken" -> R.string.radio_category_spoken; else -> R.string.radio_global } else R.string.radio_saved),
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

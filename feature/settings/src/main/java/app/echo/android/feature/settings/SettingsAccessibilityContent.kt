@@ -1,7 +1,13 @@
 package app.echo.android.feature.settings
 
 import app.echo.android.model.settings.EchoLyricsMotionMode
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Accessibility
+import androidx.compose.material.icons.rounded.Animation
+import androidx.compose.material.icons.rounded.Hearing
+import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.runtime.Composable
+import kotlin.math.roundToInt
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
@@ -12,6 +18,7 @@ import androidx.compose.ui.text.font.FontFamily
 
 @Composable
 internal fun SettingsAccessibilityContent(
+    subNav: SettingsSubNav,
     isActive: Boolean,
     importedFontFamily: FontFamily?,
     uiFontFamily: String,
@@ -36,43 +43,61 @@ internal fun SettingsAccessibilityContent(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = SettingsContentInset, vertical = 4.dp),
     )
-    SettingsSectionCard(title = stringResource(R.string.settings_section_readability)) {
-        SettingsReadabilityControls(
-            importedFontFamily, uiFontFamily, uiFontScale, lyricsFontFamily, lyricsFontScale,
-            onUiFontScaleChange, onLyricsFontScaleChange,
+    val motionOptions = listOf(
+        SettingsChoiceOption(EchoLyricsMotionMode.Calm, stringResource(R.string.accessibility_motion_calm)),
+        SettingsChoiceOption(EchoLyricsMotionMode.Smooth, stringResource(R.string.accessibility_motion_smooth)),
+        SettingsChoiceOption(EchoLyricsMotionMode.Stage, stringResource(R.string.accessibility_motion_stage)),
+    )
+    if (subNav.isHub) {
+        SettingsSubPageRow(
+            SettingsSubPage.AccessibilityReading, Icons.Rounded.TextFields, subNav,
+            summary = "${(uiFontScale * 100f).roundToInt()}% · ${(lyricsFontScale * 100f).roundToInt()}%",
         )
-        SettingsSwitchRow(
-            title = stringResource(R.string.accessibility_spacious_layout),
-            detail = stringResource(R.string.accessibility_spacious_layout_detail),
-            checked = !compactModeEnabled,
-            onCheckedChange = { onCompactModeEnabledChange(!it) },
+        SettingsSubPageRow(
+            SettingsSubPage.AccessibilityMotion, Icons.Rounded.Animation, subNav,
+            summary = motionOptions.firstOrNull { it.value == lyricsMotionMode }?.label.orEmpty(),
         )
+        SettingsSubPageRow(SettingsSubPage.AccessibilityCare, Icons.Rounded.Hearing, subNav)
+        SettingsSubPageRow(SettingsSubPage.AccessibilitySystem, Icons.Rounded.Accessibility, subNav)
+        return
     }
-    SettingsSectionCard(title = stringResource(R.string.accessibility_motion_feedback)) {
-        SettingsSwitchRow(
-            title = stringResource(R.string.accessibility_word_highlight),
-            detail = stringResource(R.string.accessibility_word_highlight_detail),
-            checked = lyricsWordHighlightEnabled,
-            onCheckedChange = onLyricsWordHighlightEnabledChange,
-        )
-        SettingsChoiceGroupRow(
-            title = stringResource(R.string.accessibility_lyrics_motion),
-            detail = stringResource(R.string.accessibility_lyrics_motion_detail),
-            options = listOf(
-                SettingsChoiceOption(EchoLyricsMotionMode.Calm, stringResource(R.string.accessibility_motion_calm)),
-                SettingsChoiceOption(EchoLyricsMotionMode.Smooth, stringResource(R.string.accessibility_motion_smooth)),
-                SettingsChoiceOption(EchoLyricsMotionMode.Stage, stringResource(R.string.accessibility_motion_stage)),
-            ),
-            selectedValue = lyricsMotionMode,
-            onOptionSelected = onLyricsMotionModeChange,
-        )
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_playback_haptics),
-            detail = stringResource(R.string.settings_playback_haptics_detail),
-            checked = playbackHapticsEnabled,
-            onCheckedChange = onPlaybackHapticsEnabledChange,
-        )
+    if (subNav.shows(SettingsSubPage.AccessibilityReading)) {
+        SettingsSectionCard(title = stringResource(R.string.settings_section_readability)) {
+            SettingsReadabilityControls(
+                importedFontFamily, uiFontFamily, uiFontScale, lyricsFontFamily, lyricsFontScale,
+                onUiFontScaleChange, onLyricsFontScaleChange,
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.accessibility_spacious_layout),
+                detail = stringResource(R.string.accessibility_spacious_layout_detail),
+                checked = !compactModeEnabled,
+                onCheckedChange = { onCompactModeEnabledChange(!it) },
+            )
+        }
     }
-    careContent()
-    SettingsAccessibilitySystemContent(isActive)
+    if (subNav.shows(SettingsSubPage.AccessibilityMotion)) {
+        SettingsSectionCard(title = stringResource(R.string.accessibility_motion_feedback)) {
+            SettingsSwitchRow(
+                title = stringResource(R.string.accessibility_word_highlight),
+                detail = stringResource(R.string.accessibility_word_highlight_detail),
+                checked = lyricsWordHighlightEnabled,
+                onCheckedChange = onLyricsWordHighlightEnabledChange,
+            )
+            SettingsChoiceGroupRow(
+                title = stringResource(R.string.accessibility_lyrics_motion),
+                detail = stringResource(R.string.accessibility_lyrics_motion_detail),
+                options = motionOptions,
+                selectedValue = lyricsMotionMode,
+                onOptionSelected = onLyricsMotionModeChange,
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.settings_playback_haptics),
+                detail = stringResource(R.string.settings_playback_haptics_detail),
+                checked = playbackHapticsEnabled,
+                onCheckedChange = onPlaybackHapticsEnabledChange,
+            )
+        }
+    }
+    if (subNav.shows(SettingsSubPage.AccessibilityCare)) careContent()
+    if (subNav.shows(SettingsSubPage.AccessibilitySystem)) SettingsAccessibilitySystemContent(isActive)
 }

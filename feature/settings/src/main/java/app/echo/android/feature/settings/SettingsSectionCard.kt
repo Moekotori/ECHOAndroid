@@ -19,10 +19,15 @@ import app.echo.android.design.echoPageSection
 
 internal val LocalSettingsCompactMode = staticCompositionLocalOf { false }
 
+/** Title of the sub-page on screen; its own heading would only repeat the page header. */
+internal val LocalSettingsSubPageTitle = staticCompositionLocalOf<String?> { null }
+
 @Composable
 internal fun SettingsSectionCard(
     title: String,
     secondary: Boolean = false,
+    // A sub-page already carries the title in its header; the anchor still needs the title text.
+    showHeader: Boolean = true,
     persistentContent: @Composable ColumnScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -31,17 +36,19 @@ internal fun SettingsSectionCard(
         Modifier.fillMaxWidth().echoPageSection().settingsSearchAnchor(title),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            title,
-            modifier = Modifier.padding(horizontal = SettingsContentInset).semantics { heading() },
-            style = if (secondary) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = if (secondary) scheme.onSurfaceVariant else scheme.onSurface,
-        )
-        HorizontalDivider(
-            Modifier.padding(horizontal = SettingsContentInset),
-            color = scheme.outlineVariant.copy(alpha = 0.5f),
-        )
+        if (showHeader && title != LocalSettingsSubPageTitle.current) {
+            Text(
+                title,
+                modifier = Modifier.padding(horizontal = SettingsContentInset).semantics { heading() },
+                style = if (secondary) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (secondary) scheme.onSurfaceVariant else scheme.onSurface,
+            )
+            HorizontalDivider(
+                Modifier.padding(horizontal = SettingsContentInset),
+                color = scheme.outlineVariant.copy(alpha = 0.5f),
+            )
+        }
         Column(
             Modifier.fillMaxWidth().padding(horizontal = SettingsContentInset, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp),

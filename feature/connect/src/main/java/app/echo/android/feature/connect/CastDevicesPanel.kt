@@ -3,25 +3,26 @@ package app.echo.android.feature.connect
 import app.echo.android.feature.connect.R as L10nR
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import app.echo.android.design.EchoIcon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkCastBlockReason
 import app.echo.android.connect.EchoLinkDiscoveryPolicy
@@ -67,15 +68,9 @@ internal fun CastDevicesPanel(
     onCastToRenderer: (EchoLanRenderer) -> Unit = {},
 ) {
     val connected = connectedAddress?.trim()?.takeIf { it.isNotEmpty() }
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                stringResource(L10nR.string.echo_link_cast_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            ConnectNote(stringResource(L10nR.string.echo_link_cast_subtitle))
-        }
+    val canCast = blockedReason == null && !phoneTrackTitle.isNullOrBlank()
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(horizontal = 4.dp)) { ConnectNote(stringResource(L10nR.string.echo_link_cast_subtitle)) }
         remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
         ConnectSection(stringResource(L10nR.string.echo_link_cast_now_playing)) {
             val title = phoneTrackTitle?.trim().orEmpty()
@@ -85,22 +80,30 @@ internal fun CastDevicesPanel(
                 Row(
                     Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     EchoArtworkImage(
                         artworkUri = phoneTrackArtworkUrl,
                         contentDescription = null,
-                        modifier = Modifier.size(72.dp),
+                        modifier = Modifier.size(64.dp),
                         shape = ConnectControlShape,
                         sizeClass = EchoArtworkSize.Thumbnail,
                     )
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                        phoneTrackArtist?.trim()?.takeIf { it.isNotEmpty() }?.let { ConnectNote(it) }
-                        phoneTrackFormat?.takeIf { it.isNotBlank() }?.let { ConnectNote(it) }
-                        if (phoneTrackLossless) {
-                            ConnectNote(stringResource(L10nR.string.echo_link_cast_original))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        phoneTrackArtist?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
+                    }
+                }
+                val format = phoneTrackFormat?.takeIf { it.isNotBlank() }
+                if (format != null || phoneTrackLossless || castQueueCount > 1) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        format?.let { ConnectStatusChip(it, ConnectTone.Neutral) }
+                        if (phoneTrackLossless) ConnectStatusChip(stringResource(L10nR.string.echo_link_cast_original), ConnectTone.Positive)
+                        if (castQueueCount > 1) ConnectStatusChip(stringResource(L10nR.string.echo_link_cast_queue_count, castQueueCount), ConnectTone.Neutral)
                     }
                 }
                 if (blockedReason == EchoLinkCastBlockReason.UnsupportedSource) {
@@ -112,12 +115,9 @@ internal fun CastDevicesPanel(
                 if (showDsdWarning) {
                     ConnectNote(stringResource(L10nR.string.echo_link_cast_dsd_warning))
                 }
-                if (castQueueCount > 1) {
-                    ConnectNote(stringResource(L10nR.string.echo_link_cast_queue_count, castQueueCount))
-                }
             }
             val connectedCast = onCastToConnected
-            if (connectedCast != null && blockedReason == null && !phoneTrackTitle.isNullOrBlank()) {
+            if (connectedCast != null && canCast) {
                 Button(
                     onClick = connectedCast,
                     enabled = !casting,
@@ -155,28 +155,16 @@ internal fun CastDevicesPanel(
         }
         ConnectSection(
             stringResource(L10nR.string.echo_link_cast_devices),
+            list = true,
             action = {
-                TextButton(onClick = onRefreshLanDevices, enabled = !casting) {
-                    Text(stringResource(L10nR.string.feature_connect_refresh_828c69))
+                IconButton(onClick = onRefreshLanDevices, enabled = !casting) {
+                    EchoIcon(Icons.Rounded.Refresh, stringResource(L10nR.string.feature_connect_refresh_828c69))
                 }
             },
         ) {
-            if (discoveredLanDevices.isEmpty()) {
-                if (discoveryState == EchoLinkDiscoveryState.Searching) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                }
-                ConnectNote(
-                    stringResource(
-                        when (discoveryState) {
-                            EchoLinkDiscoveryState.Searching -> L10nR.string.echo_link_lan_searching
-                            EchoLinkDiscoveryState.Failed -> L10nR.string.echo_link_lan_failed
-                            else -> L10nR.string.feature_connect_no_pc_found_use_the_same_wi_fi_ce621e
-                        },
-                    ),
-                    error = discoveryState == EchoLinkDiscoveryState.Failed,
-                )
-            }
-            discoveredLanDevices.forEach { device ->
+            if (discoveredLanDevices.isEmpty()) PcDiscoveryEmptyState(discoveryState)
+            discoveredLanDevices.forEachIndexed { index, device ->
+                if (index > 0) ConnectRowDivider()
                 val address = EchoLinkDiscoveryPolicy.addressLabel(device)
                 val token = tokenForDevice(device, savedPcs, savedPcAddress, savedPcToken)
                 CastDeviceRow(
@@ -186,7 +174,7 @@ internal fun CastDevicesPanel(
                         connected != null &&
                         EchoLinkDiscoveryPolicy.addressMatchesDevice(connected, device),
                     sending = casting && EchoLinkDiscoveryPolicy.sameLanEndpoint(sendingAddress, address),
-                    canCast = blockedReason == null && !phoneTrackTitle.isNullOrBlank(),
+                    canCast = canCast,
                     casting = casting,
                     onCast = { onCastToAddress(address, token) },
                 )
@@ -199,24 +187,20 @@ internal fun CastDevicesPanel(
             val key = EchoLinkDiscoveryPolicy.lanEndpointKey(pc.address)
             key != null && key !in nearbyKeys
         }
-        ConnectSection(stringResource(L10nR.string.echo_link_cast_tvs)) {
-            ConnectNote(stringResource(L10nR.string.echo_link_cast_tvs_note))
+        ConnectSection(
+            stringResource(L10nR.string.echo_link_cast_tvs),
+            subtitle = stringResource(L10nR.string.echo_link_cast_tvs_note),
+            list = true,
+        ) {
             if (lanRenderers.isEmpty()) {
-                if (lanRendererState == EchoLinkDiscoveryState.Searching) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                }
-                ConnectNote(
-                    stringResource(
-                        when (lanRendererState) {
-                            EchoLinkDiscoveryState.Searching -> L10nR.string.echo_link_cast_tvs_searching
-                            EchoLinkDiscoveryState.Failed -> L10nR.string.echo_link_lan_failed
-                            else -> L10nR.string.echo_link_cast_tvs_empty
-                        },
-                    ),
-                    error = lanRendererState == EchoLinkDiscoveryState.Failed,
+                PcDiscoveryEmptyState(
+                    lanRendererState,
+                    searching = L10nR.string.echo_link_cast_tvs_searching,
+                    empty = L10nR.string.echo_link_cast_tvs_empty,
                 )
             }
-            lanRenderers.forEach { renderer ->
+            lanRenderers.forEachIndexed { index, renderer ->
+                if (index > 0) ConnectRowDivider()
                 val kindLabel = stringResource(
                     if (renderer.kind == EchoLanRendererKind.Chromecast) {
                         L10nR.string.echo_link_cast_tv_kind_cast
@@ -232,7 +216,7 @@ internal fun CastDevicesPanel(
                     address = "$kindLabel · ${renderer.host}",
                     sessionHere = activeRendererId == renderer.id,
                     sending = casting && EchoLinkDiscoveryPolicy.sameLanEndpoint(sendingAddress, renderer.host),
-                    canCast = rendererReady && blockedReason == null && !phoneTrackTitle.isNullOrBlank(),
+                    canCast = rendererReady && canCast,
                     casting = casting,
                     onCast = { onCastToRenderer(renderer) },
                     unavailableLabel = if (rendererReady) {
@@ -244,20 +228,22 @@ internal fun CastDevicesPanel(
             }
         }
         if (extraSaved.isNotEmpty()) {
-            ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91)) {
-                extraSaved.asReversed().forEach { pc ->
+            ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91), list = true) {
+                extraSaved.asReversed().forEachIndexed { index, pc ->
+                    if (index > 0) ConnectRowDivider()
                     CastDeviceRow(
                         name = pc.name,
                         address = pc.address,
                         sessionHere = castSessionActive && EchoLinkDiscoveryPolicy.sameLanEndpoint(connected, pc.address),
                         sending = casting && EchoLinkDiscoveryPolicy.sameLanEndpoint(sendingAddress, pc.address),
-                        canCast = blockedReason == null && !phoneTrackTitle.isNullOrBlank(),
+                        canCast = canCast,
                         casting = casting,
                         onCast = { onCastToAddress(pc.address, pc.token.orEmpty()) },
                     )
                 }
             }
         }
+        Column(Modifier.padding(horizontal = 4.dp)) { ConnectNote(stringResource(L10nR.string.echo_link_battery_hint)) }
     }
 }
 
@@ -272,39 +258,18 @@ private fun CastDeviceRow(
     onCast: () -> Unit = {},
     unavailableLabel: String? = null,
 ) {
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        EchoIcon(Icons.Rounded.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.bodyMedium)
-            ConnectNote(
-                when {
-                    sending -> stringResource(L10nR.string.echo_link_cast_sending)
-                    sessionHere -> stringResource(L10nR.string.echo_link_cast_playing_here, address)
-                    else -> address
-                },
-            )
-        }
-        when {
-            unavailableLabel != null -> {
-                OutlinedButton(onClick = {}, enabled = false, shape = ConnectControlShape) {
-                    Text(unavailableLabel)
-                }
-            }
-            else -> {
-                Button(
-                    onClick = onCast,
-                    enabled = canCast && !casting,
-                    shape = ConnectControlShape,
-                ) {
-                    Text(stringResource(L10nR.string.echo_link_cast_send))
-                }
-            }
-        }
-    }
+    PcDeviceRow(
+        name = name,
+        address = when {
+            sending -> stringResource(L10nR.string.echo_link_cast_sending)
+            sessionHere -> stringResource(L10nR.string.echo_link_cast_playing_here, address)
+            else -> address
+        },
+        actionLabel = unavailableLabel ?: stringResource(L10nR.string.echo_link_cast_send),
+        onConnect = onCast,
+        enabled = unavailableLabel == null && canCast && !casting,
+        active = sessionHere,
+    )
 }
 
 private fun tokenForDevice(

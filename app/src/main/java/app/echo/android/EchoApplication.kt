@@ -171,10 +171,13 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
                 }
         }
         EchoPlaybackProcessRuntime.scope.launch {
-            settingsStore.appSettings.map { Triple(it.audioInterruptionPolicy, it.sleepTimerFinishTrack, it.stopOnTaskRemoved) }
-                .distinctUntilChanged().collect { (policy, finishTrack, stopOnTaskRemoved) ->
+            settingsStore.appSettings.map { app.echo.android.playback.EchoPlaybackRuntimeOptions(
+                audioFocusEnabled = it.audioFocusEnabled,
+                audioInterruptionPolicy = app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(it.audioInterruptionPolicy),
+                sleepTimerFinishTrack = it.sleepTimerFinishTrack, stopOnTaskRemoved = it.stopOnTaskRemoved) }
+                .distinctUntilChanged().collect { options ->
                     app.echo.android.playback.EchoPlaybackRuntimeOptionsStore.setListeningOptions(
-                        app.echo.android.model.playback.EchoAudioInterruptionPolicy.fromId(policy), finishTrack, stopOnTaskRemoved)
+                        options.audioInterruptionPolicy, options.sleepTimerFinishTrack, options.stopOnTaskRemoved, options.audioFocusEnabled)
                 }
         }
         EchoSubsonicListen.startFromSurface()

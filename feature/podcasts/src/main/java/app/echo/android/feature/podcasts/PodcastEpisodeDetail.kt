@@ -29,7 +29,7 @@ internal fun PodcastEpisodeDetail(episode: EchoPodcastEpisode, date: String, cur
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     IconButton(onClick = onDismiss) { EchoIcon(Icons.Rounded.Close, stringResource(R.string.podcast_close_details)) }
                 }
-                Text(episode.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(episode.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                 Text(listOfNotNull(date.takeIf { it.isNotBlank() }, episode.durationMs.takeIf { it > 0 }?.let(::podcastTime)).joinToString(" · "),
                     Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

@@ -54,7 +54,7 @@ internal fun RemotePlaybackOrderControls(
             TextButton(onClick = { onChange(option) }, enabled = enabled && option != order,
                 modifier = Modifier.weight(1f).semantics { selected = option == order }) {
                 Text(stringResource(option.labelResource()), maxLines = 1,
-                    fontWeight = if (option == order) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (option == order) FontWeight.SemiBold else FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurface)
             }
         }

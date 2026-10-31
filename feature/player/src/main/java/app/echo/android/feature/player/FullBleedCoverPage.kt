@@ -84,7 +84,7 @@ internal fun FullBleedCoverPage(
         details = {
             Text(
                 track?.let { displayTrack(it.title) } ?: stringResource(R.string.feature_player_not_playing_d72324),
-                Modifier.fillMaxWidth(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 44.sp, lineHeight = 48.sp,
+                Modifier.fillMaxWidth(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 48.sp,
                 maxLines = 3, overflow = TextOverflow.Ellipsis, style = shadow,
             )
             Text(

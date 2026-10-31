@@ -26,6 +26,5 @@
     <string name="album_online_performer">Interpretación</string>
     <string name="album_online_mb_source">MusicBrainz · fuente y créditos completos</string>
     <string name="album_online_link_error">No se pudo abrir este enlace.</string>
-    <string name="album_page_tracks">Canciones</string>
-    <string name="album_page_information">Info del álbum</string>
+    <string name="album_more_by_artist">Más de %1$s</string>
 </resources>
