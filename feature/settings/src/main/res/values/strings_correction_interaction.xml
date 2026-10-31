@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="correction_apply">Apply correction</string>
+    <string name="correction_applied_short">Applied</string>
+    <string name="correction_save_short">Save</string>
+    <string name="correction_saved_short">Saved</string>
+    <string name="correction_refresh_results">Refresh results</string>
+    <string name="correction_loading_offline">Loading the bundled AutoEQ catalog…</string>
+    <string name="correction_favorites_full">All %1$d saved preset slots are in use. Remove a preset in the equalizer to save this correction.</string>
+</resources>

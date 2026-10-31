@@ -39,6 +39,7 @@ class EchoSmartTransitionPlannerTest {
             leadingSilenceMs = 400,
             bpm = 120f,
             bpmConfidence = 0.8f,
+            beatOffsetMs = 0,
             beatsMs = intArrayOf(0, 500, 1000),
         )
         val plan = EchoSmartTransitionPlanner.plan(analysis(0.4f, 0.4f), next, 20_000, 180_000, 4_000, null, null)

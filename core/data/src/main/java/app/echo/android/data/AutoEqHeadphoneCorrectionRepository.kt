@@ -17,7 +17,9 @@ class AutoEqHeadphoneCorrectionRepository(context: Context) {
         try {
             val loaded = mutex.withLock {
                 catalog ?: withContext(Dispatchers.IO) {
-                    AutoEqCatalog.read(assets.open("autoeq/catalog-v1.tsv.gz"))
+                    // The asset merger expands *.gz and strips that suffix. Keep this GZIP
+                    // payload under *.gzip so the packaged path and encoding stay intact.
+                    AutoEqCatalog.read(assets.open("autoeq/catalog-v1.tsv.gzip"))
                 }.also { catalog = it }
             }
             Result.success(OpraSearchResult(loaded.search(query, source), loaded.status, loaded.brands))

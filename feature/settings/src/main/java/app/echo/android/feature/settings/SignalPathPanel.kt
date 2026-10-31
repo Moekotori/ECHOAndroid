@@ -25,6 +25,7 @@ internal fun SignalPathPanel(
     equalizer: EchoEqualizerState,
     balance: EchoChannelBalanceState,
     dsp: EchoDspSettings,
+    volume: EchoVolumeSettings = EchoVolumeSettings(),
 ) {
     val d = status.diagnostics
     val scheme = MaterialTheme.colorScheme
@@ -48,7 +49,7 @@ internal fun SignalPathPanel(
         d.usbBitPerfectEnabled -> d.bitPerfectReadout(equalizer)
         else -> stringResource(R.string.path_unverified_detail)
     }
-    val stages = signalPathStages(status, equalizer, balance, dsp)
+    val stages = signalPathStages(status, equalizer, balance, dsp, volume)
     SignalSection(
         title = stringResource(R.string.feature_settings_signal_path_2fed34),
         subtitle = stringResource(R.string.path_journey),

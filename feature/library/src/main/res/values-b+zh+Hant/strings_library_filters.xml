@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="library_browse_options_title">排序與篩選</string>
     <string name="library_filter_tags">標籤與資料夾</string>
     <string name="library_sort_title_asc">歌曲名（正序）</string>
     <string name="library_sort_title_desc">歌曲名（倒序）</string>

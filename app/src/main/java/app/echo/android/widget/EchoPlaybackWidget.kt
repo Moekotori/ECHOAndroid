@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.LocalSize
+import androidx.glance.background
 import androidx.glance.layout.*
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
@@ -34,6 +35,9 @@ abstract class EchoPlaybackSurfaceWidget internal constructor(internal val style
             EchoWidgetStyle.Mini -> setOf(DpSize(180.dp, 56.dp), DpSize(300.dp, 56.dp))
             EchoWidgetStyle.Cover -> setOf(DpSize(140.dp, 140.dp), DpSize(220.dp, 220.dp), DpSize(280.dp, 280.dp))
             EchoWidgetStyle.Lyrics -> setOf(DpSize(250.dp, 140.dp), DpSize(300.dp, 180.dp), DpSize(300.dp, 260.dp))
+            EchoWidgetStyle.Record -> setOf(DpSize(140.dp, 160.dp), DpSize(220.dp, 220.dp), DpSize(280.dp, 280.dp))
+            EchoWidgetStyle.Banner -> setOf(DpSize(300.dp, 120.dp), DpSize(360.dp, 160.dp))
+            EchoWidgetStyle.Typography -> setOf(DpSize(250.dp, 140.dp), DpSize(300.dp, 180.dp), DpSize(300.dp, 260.dp))
         },
     )
 
@@ -45,11 +49,13 @@ abstract class EchoPlaybackSurfaceWidget internal constructor(internal val style
             .takeIf { live.hasTrack && live.mediaId == snapshot.mediaId }
         val options = app.echo.android.data.EchoWidgetOptionsStore(localized).read(
             androidx.glance.appwidget.GlanceAppWidgetManager(context).getAppWidgetId(id))
-        val artwork = if (options.showArtwork) EchoWidgetArtwork.load(localized, snapshot, allowRemote = live.hasTrack) else null
+        val cover = if (style.usesArtwork && options.showArtwork) EchoWidgetArtwork.load(localized, snapshot, allowRemote = live.hasTrack) else null
+        val artwork = if (style == EchoWidgetStyle.Record && cover != null) EchoRecordArtwork.render(cover) else cover
         provideContent {
             androidx.compose.runtime.CompositionLocalProvider(LocalWidgetOptions provides options) {
               androidx.glance.GlanceTheme {
-                Column(androidx.glance.GlanceModifier.fillMaxSize()) {
+                Column(androidx.glance.GlanceModifier.fillMaxSize()
+                    .background(widgetBackground(localized)).widgetSurface()) {
                     Box(androidx.glance.GlanceModifier.fillMaxWidth().defaultWeight()) {
                         val size = LocalSize.current
                         val contentHeight = size.height.value - if (options.playlistMediaId != null && size.height.value >= 120) 48 else 0
@@ -66,6 +72,9 @@ abstract class EchoPlaybackSurfaceWidget internal constructor(internal val style
                             )
                             EchoWidgetStyle.Cover -> EchoCoverWidgetContent(localized, snapshot, artwork)
                             EchoWidgetStyle.Lyrics -> EchoLyricsWidgetContent(localized, snapshot, artwork, lyricLine.takeIf { options.showLyrics }, contentHeight)
+                            EchoWidgetStyle.Record -> EchoRecordWidgetContent(localized, snapshot, artwork, contentHeight)
+                            EchoWidgetStyle.Banner -> EchoBannerWidgetContent(localized, snapshot, artwork, contentHeight)
+                            EchoWidgetStyle.Typography -> EchoTypographyWidgetContent(localized, snapshot, lyricLine.takeIf { options.showLyrics }, contentHeight)
                         }
                     }
                     WidgetBoundPlaylist(localized, options)

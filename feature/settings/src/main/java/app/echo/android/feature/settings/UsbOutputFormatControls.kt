@@ -1,26 +1,16 @@
 package app.echo.android.feature.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoSlider
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoUsbOutputOptions
-import kotlin.math.roundToInt
 
 @Composable
 internal fun UsbOutputFormatControls(options: EchoUsbOutputOptions, d: EchoPlaybackDiagnostics,
@@ -68,19 +58,7 @@ internal fun UsbOutputFormatControls(options: EchoUsbOutputOptions, d: EchoPlayb
     UsbSettingsSection(stringResource(R.string.usb_param_volume)) {
         UsbVolumeStatus(options, d, strict, onChange)
 
-        var preview by remember(options.volumePercent, strict) { mutableFloatStateOf(
-            if (strict) 100f else options.volumePercent.toFloat()) }
-        Column(Modifier.settingsSearchAnchor(stringResource(R.string.usb_param_volume)).padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(if (strict) R.string.usb_param_volume_fixed else R.string.usb_param_volume_note),
-                    Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${preview.roundToInt()}%", fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.titleMedium)
-            }
-            EchoSlider(value = preview, onValueChange = { preview = it }, valueRange = 0f..100f,
-                enabled = !strict, onValueChangeFinished = { onChange(options.copy(volumePercent = preview.roundToInt())) })
-        }
+        UsbFineVolumeControl(options, strict, onChange)
+
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -22,6 +23,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,12 +38,19 @@ fun EchoSheetOverlay(
     visible: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onHidden: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val scrimOpacity = if (LocalEchoDarkTheme.current) 0.28f else 0.14f
+    val visibility = remember { MutableTransitionState(false) }
+    visibility.targetState = visible
+    val hidden = rememberUpdatedState(onHidden)
+    LaunchedEffect(visibility.isIdle, visibility.currentState, visible) {
+        if (visibility.isIdle && !visibility.currentState && !visible) hidden.value()
+    }
     AnimatedVisibility(
-        visible = visible,
+        visibleState = visibility,
         enter = EnterTransition.None,
         exit = ExitTransition.None,
         modifier = modifier.fillMaxSize(),

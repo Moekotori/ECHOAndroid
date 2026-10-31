@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wifi_transfer_title">Wi-Fi 传歌</string>
+    <string name="wifi_transfer_detail">选择接收目录，开启后在电脑浏览器打开地址，输入六位配对码。两台设备须在同一局域网，并保持此窗口在前台。</string>
+    <string name="wifi_transfer_no_directory">尚未选择接收目录</string>
+    <string name="wifi_transfer_choose">选择目录</string>
+    <string name="wifi_transfer_code">配对码：%1$s</string>
+    <string name="wifi_transfer_expired">本次会话已到期，请重新开启。</string>
+    <string name="wifi_transfer_receiving">正在接收：%1$s</string>
+    <string name="wifi_transfer_counts">已保存 %1$d · 失败 %2$d</string>
+    <string name="wifi_transfer_no_lan">无法获取局域网地址，请连接 Wi-Fi 后重试。</string>
+    <string name="wifi_transfer_directory_error">目录授权失败，请选择可写的本地目录。</string>
+    <string name="wifi_transfer_start_error">无法开启，请检查目录权限、局域网权限和 Wi-Fi 连接。</string>
+    <string name="wifi_transfer_result_saved">已保存 · %1$s</string>
+    <string name="wifi_transfer_result_failed">失败 · %1$s — 请查看浏览器详情，检查存储空间与目录权限</string>
+    <string name="wifi_transfer_limits">同时接收一个文件；每次会话最多 500 个文件，单文件 1 GiB，总计 8 GiB，20 分钟到期。同名文件提示失败，不覆盖。传输失败后会尝试删除未完成文件。关闭窗口或应用退到后台会停止接收。使用局域网 HTTP，目录扫描遵循已有曲库扫描规则。</string>
+    <string name="wifi_transfer_scan">扫描接收目录</string>
+    <string name="wifi_transfer_scanning">正在扫描曲库…</string>
+    <string name="wifi_transfer_stop">停止接收</string>
+    <string name="wifi_transfer_start">开启接收</string>
+    <string name="wifi_transfer_close">关闭</string>
+</resources>

@@ -220,20 +220,34 @@ internal class LyricsController(
     fun selectCandidate(id: String, trackId: String?) {
         if (trackId == null || trackId != lastLyricsTrackId || trackId != searchTrackId) return
         val candidate = _candidates.value.firstOrNull { it.id == id } ?: return
+        _managementError.value = null
         val version = beginSelectionChange(trackId)
         lyricsJob?.cancel()
-        scope.launch {
-            try {
-                withContext(Dispatchers.IO) { withCurrentSelection(trackId, version) {
-                    importedLyricsStore.save(trackId, candidate.lyrics.copy(metadata = candidate.lyrics.metadata + ("selection_id" to id)), selected = true)
-                    recordSelectionAvailability(trackId, LyricsContentPolicy.readable(candidate.lyrics) != null)
-                } }
-                if (isCurrentSelection(trackId, version) && trackId == lastLyricsTrackId) updateLyricsForTrack(trackId, force = true)
-            } catch (error: Exception) {
-                if (error is CancellationException) throw error
-                if (!isCurrentSelection(trackId, version)) return@launch
-                reportManagementError(error.lyricsErrorMessage("Could not save lyrics"))
-            }
+        scope.launch { saveCandidate(candidate, trackId, version) }
+    }
+
+    suspend fun selectCandidateAndAwait(id: String, trackId: String?): Boolean {
+        if (trackId == null || trackId != lastLyricsTrackId || trackId != searchTrackId) return false
+        val candidate = _candidates.value.firstOrNull { it.id == id } ?: return false
+        _managementError.value = null
+        val version = beginSelectionChange(trackId)
+        lyricsJob?.cancel()
+        return saveCandidate(candidate, trackId, version)
+    }
+
+    private suspend fun saveCandidate(candidate: app.echo.android.model.lyrics.EchoLyricsCandidate, trackId: String, version: Long): Boolean {
+        return try {
+            withContext(Dispatchers.IO) { withCurrentSelection(trackId, version) {
+                importedLyricsStore.save(trackId, candidate.lyrics.copy(metadata = candidate.lyrics.metadata + ("selection_id" to candidate.id)), selected = true)
+                recordSelectionAvailability(trackId, LyricsContentPolicy.readable(candidate.lyrics) != null)
+            } }
+            if (!isCurrentSelection(trackId, version) || trackId != lastLyricsTrackId) return false
+            updateLyricsForTrack(trackId, force = true)
+            true
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            if (isCurrentSelection(trackId, version)) reportManagementError(error.lyricsErrorMessage("Could not save lyrics"))
+            false
         }
     }
 

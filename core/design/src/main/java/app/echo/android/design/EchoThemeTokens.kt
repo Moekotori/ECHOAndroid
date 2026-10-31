@@ -54,6 +54,9 @@ fun echoThemeTokens(
         EchoColorTheme.Plum -> if (dark) PlumDark else PlumLight
         EchoColorTheme.Copper -> if (dark) CopperDark else CopperLight
         EchoColorTheme.Frost -> if (dark) FrostDark else FrostLight
+        EchoColorTheme.Forest -> if (dark) ForestDark else ForestLight
+        EchoColorTheme.Aurora -> if (dark) AuroraDark else AuroraLight
+        EchoColorTheme.Obsidian -> if (dark) ObsidianDark else ObsidianLight
         EchoColorTheme.Custom -> echoCustomThemeTokens(custom, dark)
     }
 

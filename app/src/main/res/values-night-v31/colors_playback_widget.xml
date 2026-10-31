@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="playback_widget_background">@android:color/system_neutral1_900</color>
-    <color name="playback_widget_foreground">@android:color/system_neutral1_100</color>
-    <color name="playback_widget_secondary">@android:color/system_neutral2_200</color>
-    <color name="playback_widget_artwork_background">@android:color/system_neutral2_700</color>
-    <color name="playback_widget_accent">@android:color/system_accent1_200</color>
-    <color name="playback_widget_on_accent">@android:color/system_accent1_800</color>
-    <color name="playback_widget_tonal">@android:color/system_accent2_700</color>
-    <color name="playback_widget_on_tonal">@android:color/system_accent2_100</color>
+    <color name="playback_widget_background">#202429</color>
+    <color name="playback_widget_foreground">#F2F4F6</color>
+    <color name="playback_widget_secondary">#A9B1B9</color>
+    <color name="playback_widget_artwork_background">#30373E</color>
+    <color name="playback_widget_accent">#E5E9ED</color>
+    <color name="playback_widget_on_accent">#202429</color>
+    <color name="playback_widget_tonal">#353C43</color>
+    <color name="playback_widget_on_tonal">#D9DFE5</color>
 </resources>

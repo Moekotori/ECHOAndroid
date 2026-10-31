@@ -12,6 +12,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.lyrics.EchoLyricsCandidate
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @Composable
 fun LyricsManagerDialog(
@@ -27,9 +29,30 @@ fun LyricsManagerDialog(
     onAdjustOffset: (Long) -> Unit,
     onDismiss: () -> Unit,
     onEdit: (() -> Unit)? = null,
+    onChooseAwait: (suspend (String) -> Boolean)? = null,
+    searchRequested: Boolean = false,
 ) {
     var previewId by rememberSaveable(trackTitle) { mutableStateOf<String?>(null) }
     var searched by rememberSaveable(trackTitle) { mutableStateOf(false) }
+    LaunchedEffect(searching, searchRequested) { if (searching || searchRequested) searched = true }
+    val scope = rememberCoroutineScope()
+    var saving by remember { mutableStateOf(false) }
+    var savedId by remember { mutableStateOf<String?>(null) }
+    var saveFailed by remember { mutableStateOf(false) }
+    val effectiveSelectedId = savedId ?: selectedId
+    fun choose(id: String) {
+        if (saving || id == effectiveSelectedId) return
+        val chooseAwait = onChooseAwait
+        if (chooseAwait == null) { onChoose(id); return }
+        saving = true; saveFailed = false
+        scope.launch {
+            try {
+                if (chooseAwait(id)) savedId = id else saveFailed = true
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { saveFailed = true }
+            finally { saving = false }
+        }
+    }
     val sizing = playerDialogWindowSizing()
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -39,19 +62,21 @@ fun LyricsManagerDialog(
             LazyColumn(Modifier.fillMaxWidth().heightIn(max = minOf(480f, sizing.bodyHeightDp).dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     Text(stringResource(R.string.lyrics_manager_hint))
-                    TextButton(onClick = { searched = true; onSearch() }, enabled = !searching) {
+                    TextButton(onClick = { searched = true; saveFailed = false; onSearch() }, enabled = !searching && !saving) {
                         Text(stringResource(R.string.lyrics_manager_search))
                     }
-                    TextButton(onClick = onImport) { Text(stringResource(R.string.lyrics_manager_import)) }
-                    if (onEdit != null) TextButton(onClick = onEdit) { Text(stringResource(R.string.lyrics_edit_title)) }
-                    TextButton(onClick = onRemove) { Text(stringResource(R.string.lyrics_manager_clear)) }
+                    TextButton(onClick = onImport, enabled = !saving) { Text(stringResource(R.string.lyrics_manager_import)) }
+                    if (onEdit != null) TextButton(onClick = onEdit, enabled = !saving) { Text(stringResource(R.string.lyrics_edit_title)) }
+                    TextButton(onClick = { savedId = null; onRemove() }, enabled = !saving) { Text(stringResource(R.string.lyrics_manager_clear)) }
                     Row {
                         TextButton(onClick = { onAdjustOffset(-50L) }) { Text("−50 ms") }
                         TextButton(onClick = { onAdjustOffset(50L) }) { Text("+50 ms") }
                     }
                     Text(stringResource(R.string.lyrics_manager_align_hint),
                         style = MaterialTheme.typography.bodySmall)
-                    if (searching) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (searching || saving) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (saving) Text(stringResource(R.string.song_lyrics_saving))
+                    if (saveFailed) Text(stringResource(R.string.song_lyrics_save_failed), color = MaterialTheme.colorScheme.error)
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     if (searched && !searching && candidates.isEmpty() && error == null) {
                         Text(stringResource(R.string.lyrics_manager_empty))
@@ -59,8 +84,7 @@ fun LyricsManagerDialog(
                 }
                 items(candidates, key = { it.id }) { candidate ->
                     Column(Modifier.fillMaxWidth().clickable {
-                        previewId = candidate.id
-                        if (candidate.id != selectedId) onChoose(candidate.id)
+                        previewId = if (previewId == candidate.id) null else candidate.id
                     }.padding(vertical = 8.dp)) {
                         Text("${candidate.title} · ${candidate.artist}", style = MaterialTheme.typography.titleSmall)
                         Text(listOfNotNull(candidate.lyrics.sourceLabel, candidate.album,
@@ -69,14 +93,14 @@ fun LyricsManagerDialog(
                                 stringResource(R.string.lyrics_manager_word_timed)
                             } else null
                         ).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
-                        if (candidate.id == selectedId) {
+                        if (candidate.id == effectiveSelectedId) {
                             Text(stringResource(R.string.lyrics_manager_saved),
                                 Modifier.padding(top = 6.dp), style = MaterialTheme.typography.labelLarge)
                         }
                         if (previewId == candidate.id) {
                             // Keep retry/save reachable before a potentially tall multilingual preview.
-                            if (candidate.id != selectedId) {
-                                TextButton(onClick = { onChoose(candidate.id) }) {
+                            if (candidate.id != effectiveSelectedId) {
+                                TextButton(onClick = { choose(candidate.id) }, enabled = !saving) {
                                     Text(stringResource(R.string.lyrics_manager_use))
                                 }
                             }

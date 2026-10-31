@@ -12,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoCustomBackgroundActive
+import app.echo.android.design.LocalEchoPageInteractive
 
 internal val SettingsShape = RoundedCornerShape(8.dp)
 internal val SettingsContentInset = 16.dp
@@ -25,12 +26,14 @@ internal val SettingsShapes = Shapes(
 )
 
 @Composable
-internal fun SettingsStyle(compactMode: Boolean, content: @Composable () -> Unit) {
+internal fun SettingsStyle(compactMode: Boolean, interactive: Boolean, content: @Composable () -> Unit) {
+    val pageInteractive = interactive && LocalEchoPageInteractive.current
     MaterialTheme(shapes = SettingsShapes) {
         CompositionLocalProvider(
             LocalContentColor provides MaterialTheme.colorScheme.onSurface,
             LocalSettingsCompactMode provides compactMode,
             LocalEchoCustomBackgroundActive provides false,
+            LocalEchoPageInteractive provides pageInteractive,
         ) {
             // Keep the wallpaper covered while settings content enters or changes pages.
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {

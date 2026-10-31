@@ -1,6 +1,7 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.*
@@ -86,12 +87,22 @@ internal fun SignalHeadphoneCorrection(
         else -> OpraBrowseContent()
     }
     val favorites = remember(userPresets) { EchoEqualizerUserPresets.opraFavorites(userPresets) }
+    val visibleFavorites = remember(favorites, state.query) { filterCorrectionFavorites(favorites, state.query) }
+    val appliedEqId = remember(state.results, equalizer, bypassed) {
+        if (bypassed || !equalizer.supported) null else state.results.asSequence().flatMap { it.presets.asSequence() }
+            .firstOrNull { equalizer.matchesCorrection(it) }?.eqId
+    }
     val logos = remember(state.brands) { state.brands.associate { it.name to it.logoUrl } }
     var expandedProduct by remember(state.catalog, state.selectedBrandId, state.query) { mutableStateOf<String?>(null) }
     var previewId by rememberSaveable { mutableStateOf<String?>(null) }
     var shareFavorite by remember { mutableStateOf<EchoEqualizerUserPreset?>(null) }
     val closeKeyboard = { focus.clearFocus(); keyboard?.hide(); Unit }
     val chooseBrand: (String?) -> Unit = { closeKeyboard(); onBrandSelected(it) }
+    LaunchedEffect(listState, keyboard, focus) {
+        listState.interactionSource.interactions.collect { interaction ->
+            if (interaction is DragInteraction.Start) { focus.clearFocus(); keyboard?.hide() }
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OpraCatalogControls(state, onQueryChange, onSearch = { closeKeyboard(); if (state.selectedBrandId == null) onSearch() },
@@ -101,7 +112,11 @@ internal fun SignalHeadphoneCorrection(
                     backLabel = stringResource(if (autoEq) R.string.autoeq_all_measurements else R.string.opra_all_brands),
                     onBack = { chooseBrand(null) })
             }
-            if (state.loading || filtering) LinearProgressIndicator(Modifier.fillMaxWidth())
+            Box(Modifier.fillMaxWidth().height(4.dp)) {
+                if (state.loading || filtering) LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+            if (state.loading && state.status.source == "empty") SignalNote(stringResource(
+                if (autoEq) R.string.correction_loading_offline else R.string.opra_first_download))
         }
         if (filtering && content.catalog == null) {
             Spacer(Modifier.fillMaxWidth().weight(1f))
@@ -129,19 +144,19 @@ internal fun SignalHeadphoneCorrection(
                         color = scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
-            if (state.query.isBlank() && state.selectedBrandId == null) {
-                if (lastQuery.isNotBlank()) item("recent") {
+            if (state.selectedBrandId == null) {
+                if (state.query.isBlank() && lastQuery.isNotBlank()) item("recent") {
                     TextButton(onClick = { onQueryChange(lastQuery) }, contentPadding = PaddingValues(0.dp)) {
                         Text(stringResource(R.string.opra_last_used, lastQuery))
                     }
                 }
-                if (favorites.isNotEmpty()) {
+                if (visibleFavorites.isNotEmpty()) {
                     item("favorites-title") { OpraSectionTitle(stringResource(R.string.opra_favorites)) }
-                    items(favorites.size, key = { "favorite:${favorites[it].id}" }, contentType = { "favorite" }) { index ->
-                        val preset = favorites[index]
+                    items(visibleFavorites.size, key = { "favorite:${visibleFavorites[it].id}" }, contentType = { "favorite" }) { index ->
+                        val preset = visibleFavorites[index]
                         SignalEqUserPresetRow(preset = preset,
-                            active = equalizer.sourceLabel == preset.sourceLabel && equalizer.parametric,
-                            enabled = true, applyEnabled = !bypassed && equalizer.supported,
+                            active = !bypassed && equalizer.supported && equalizer.matchesCorrection(preset),
+                            enabled = true, applyEnabled = !bypassed && equalizer.supported && !equalizer.matchesCorrection(preset),
                             onApply = { onApplyUserPreset(preset.id) }, onShare = { shareFavorite = preset },
                             showActions = true, showEditDelete = false)
                     }
@@ -150,7 +165,7 @@ internal fun SignalHeadphoneCorrection(
             if (content.brands.isNotEmpty()) {
                 item("brands-title") { OpraSectionTitle(stringResource(
                     if (autoEq) R.string.autoeq_choose_measurement else R.string.opra_choose_brand)) }
-                opraBrandItems(content.brands) { chooseBrand(it) }
+                opraBrandItems(content.brands, enabled = !state.loading) { chooseBrand(it) }
             }
             if (content.products.isNotEmpty()) {
                 item("models-title") {
@@ -158,13 +173,13 @@ internal fun SignalHeadphoneCorrection(
                         pluralStringResource(R.plurals.opra_top_models, content.products.size, content.products.size)
                     else stringResource(R.string.opra_choose_model))
                 }
-                opraModelItems(state, content.products, expandedProduct, { expandedProduct = it }, logos) {
+                opraModelItems(state, content.products, appliedEqId, expandedProduct, { expandedProduct = it }, logos) {
                     closeKeyboard()
                     onPresetSelected(it)
                     previewId = it
                 }
-            } else if (!state.loading && !filtering && state.status.source != "empty" &&
-                (state.selectedBrandId != null || (state.query.isNotBlank() && content.brands.isEmpty()))) {
+            } else if (!state.loading && !filtering && state.message == null && state.status.source != "empty" &&
+                (state.selectedBrandId != null || (state.query.isNotBlank() && content.brands.isEmpty() && visibleFavorites.isEmpty()))) {
                 item("empty") {
                     Column(Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(stringResource(R.string.opra_no_matching_models), style = MaterialTheme.typography.titleSmall)

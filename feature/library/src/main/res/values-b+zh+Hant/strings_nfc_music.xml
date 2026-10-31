@@ -1,0 +1,35 @@
+<resources>
+    <string name="nfc_music_write">寫入 NFC 標籤</string>
+    <string name="nfc_music_actions">專輯操作</string>
+    <string name="nfc_music_rebind">重新綁定標籤</string>
+    <string name="nfc_music_done">標籤已就緒</string>
+    <string name="nfc_music_waiting">將可寫的 NFC 標籤靠近手機背面，保持不動，直到寫入完成。</string>
+    <string name="nfc_music_working">正在檢查和儲存，請保持標籤靠近手機。</string>
+    <string name="nfc_music_overwrite_detail">這個標籤已有內容或需要格式化，繼續會取代原內容。確認後，請移開標籤再碰一下。</string>
+    <string name="nfc_music_verify">標籤已格式化。請移開後再碰一下，完成驗證和儲存。</string>
+    <string name="nfc_music_success">已寫入並驗證。手機解鎖並開啟 NFC 後，碰一下即可播放。綁定僅儲存在這台手機上。</string>
+    <string name="nfc_music_bound">標籤已改為播放這些音樂，無需重新寫卡。綁定僅對這台手機生效。</string>
+    <string name="nfc_music_missing">這台手機上沒有可播放的標籤綁定，可能是內容已刪除或應用程式資料已清除。請選擇新的專輯或歌單重新綁定。</string>
+    <string name="nfc_music_choose">選擇專輯或歌單。每類最多顯示 40 項，可搜尋其他內容。</string>
+    <string name="nfc_music_disabled">NFC 尚未開啟。請前往系統設定開啟，然後返回這裡。</string>
+    <string name="nfc_music_launch_blocked">系統已禁止 NFC 標籤開啟 ECHO。請在系統設定中允許 ECHO 透過標籤啟動，然後返回這裡。</string>
+    <string name="nfc_music_no_hardware">這台手機不支援 NFC。</string>
+    <string name="nfc_music_read_only">這個標籤是唯讀的，請換一個可寫標籤。</string>
+    <string name="nfc_music_too_small">標籤容量不足，請換一個容量更大的標籤。</string>
+    <string name="nfc_music_unsupported_tag">這個標籤不支援 NDEF 寫入，請換一個可寫的 NFC 標籤。</string>
+    <string name="nfc_music_changed">標籤或標籤內容已變更，請重試並使用原定的標籤。</string>
+    <string name="nfc_music_storage">無法儲存本機綁定。已寫入的標籤可再次碰一下重新綁定，已有綁定會保留。</string>
+    <string name="nfc_music_load_error">無法讀取曲庫或標籤綁定，請重試。</string>
+    <string name="nfc_music_empty_collection">這些音樂暫時沒有可播放的歌曲，請選擇其他專輯或歌單。</string>
+    <string name="nfc_music_disconnected">NFC 連線中斷。請移開標籤，重試後將標籤貼近手機並保持不動。</string>
+    <string name="nfc_music_search">搜尋專輯和歌單</string>
+    <string name="nfc_music_no_results">找不到結果，請換個關鍵字。</string>
+    <string name="nfc_music_album">專輯</string>
+    <string name="nfc_music_playlist">歌單</string>
+    <string name="nfc_music_overwrite">取代原內容</string>
+    <string name="nfc_music_retry">重試</string>
+    <string name="nfc_music_settings">NFC 設定</string>
+    <string name="nfc_music_play">立即播放</string>
+    <string name="nfc_music_close">完成</string>
+    <string name="nfc_music_cancel">取消</string>
+</resources>

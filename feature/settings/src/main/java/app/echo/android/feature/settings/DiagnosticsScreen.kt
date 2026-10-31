@@ -78,18 +78,36 @@ fun DiagnosticsScreen(
     onRequestBluetoothCodecPermission: () -> Unit = {},
     onSwipeToConnect: () -> Unit = {},
     soundRequestId: Int = 0,
+    equalizerRequestId: Int = 0,
+    onCloseRequestedEqualizer: (() -> Unit)? = null,
     isActive: Boolean = true,
     onMsebChange: (EchoMsebState) -> Unit = {},
+    msebPersonal: MsebPresetActions = MsebPresetActions(),
+    onParametricPreview: ((List<OpraEqBand>) -> Unit)? = null,
+    onMsebPreview: ((EchoMsebState) -> Unit)? = null,
+    volumeSettings: EchoVolumeSettings = EchoVolumeSettings(),
+    onVolumeSettings: (EchoVolumeSettings) -> Unit = {},
 ) {
     val pagerState = rememberPagerState { 3 }
     // -1 is the sound-tool list; controls are mounted only after choosing a tool.
     var soundPanel by rememberSaveable { mutableIntStateOf(-1) }
+    var requestedEqualizer by rememberSaveable { mutableStateOf(false) }
     var handledSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(soundRequestId) {
         if (soundRequestId != 0 && soundRequestId != handledSoundRequestId) {
             soundPanel = -1
+            requestedEqualizer = false
             pagerState.scrollToPage(1)
             handledSoundRequestId = soundRequestId
+        }
+    }
+    var handledEqualizerRequestId by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(equalizerRequestId) {
+        if (equalizerRequestId != 0 && equalizerRequestId != handledEqualizerRequestId) {
+            soundPanel = 0
+            requestedEqualizer = true
+            pagerState.scrollToPage(1)
+            handledEqualizerRequestId = equalizerRequestId
         }
     }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
@@ -98,6 +116,7 @@ fun DiagnosticsScreen(
     val innerFling = rememberSilkPagerFlingBehavior(pagerState)
     val innerNestedScroll = rememberContentPagerNestedScroll(pagerState, innerFling)
     fun selectTab(index: Int) {
+        requestedEqualizer = false
         soundPanel = -1
         scope.launch { pagerState.animateSilkToPage(index, lightweight) }
     }
@@ -113,6 +132,7 @@ fun DiagnosticsScreen(
         stringResource(L10nR.string.channel_balance),
         stringResource(L10nR.string.dsp_title),
         stringResource(L10nR.string.mseb_title),
+        stringResource(L10nR.string.volume_title),
     )
     val errorContent: @Composable () -> Unit = {
         val error = status.diagnostics.lastError?.message ?: status.diagnostics.usbLastRequestError?.message
@@ -132,7 +152,12 @@ fun DiagnosticsScreen(
             selectedPanel = soundPanel,
             labels = soundLabels,
             isActive = isActive,
-            onBack = { soundPanel = -1 },
+            onBack = {
+                val returnToPlayer = requestedEqualizer && soundPanel == 0
+                requestedEqualizer = false
+                soundPanel = -1
+                if (returnToPlayer) onCloseRequestedEqualizer?.invoke()
+            },
             scrollingTool = 1,
             onNavigateUp = if (soundPanel == 1 && opraState.selectedBrandId != null) {
                 { onOpraBrandSelected(null) }
@@ -151,6 +176,7 @@ fun DiagnosticsScreen(
                     onBandGainChange = onEqualizerBandGainChange,
                     onReset = onEqualizerReset,
                     onParametricChange = onParametricChange,
+                    onParametricPreview = onParametricPreview,
                     onSaveUserPreset = onSaveUserPreset,
                     onUpdateUserPreset = onUpdateUserPreset,
                     onApplyUserPreset = onApplyUserPreset,
@@ -187,7 +213,9 @@ fun DiagnosticsScreen(
                     onReset = onChannelBalanceReset,
                 )
                 else if (panel == 3) SignalDspPanel(dspSettings, status, replayGainScan, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
-                else SignalMsebPanel(equalizerState, status, onMsebChange)
+                else if (panel == 4) SignalMsebPanel(equalizerState, status, onMsebChange, onMsebPreview, msebPersonal)
+                else SignalVolumePanel(volumeSettings, status, dspSettings, replayGainScan,
+                    onVolumeSettings, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
             },
         ) {
             Column(
@@ -232,7 +260,7 @@ fun DiagnosticsScreen(
                         ) {
                             if (tab != 2) errorContent()
                             when (tab) {
-                                0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { selectTab(2) })
+                                0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { selectTab(2) }, volume = volumeSettings)
                                 1 -> {
                                     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                                         SignalSoundMenu(soundLabels, onSelect = { soundPanel = it })

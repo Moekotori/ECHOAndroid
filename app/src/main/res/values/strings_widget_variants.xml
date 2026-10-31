@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_record_name">ECHO · Record</string>
+    <string name="widget_record_description">A record label with track information and a play control</string>
+    <string name="widget_banner_name">ECHO · Banner player</string>
+    <string name="widget_banner_description">Wide artwork beside track information and playback controls</string>
+    <string name="widget_typography_name">ECHO · Text player</string>
+    <string name="widget_typography_description">Large track title, lyrics and playback controls without artwork</string>
+</resources>

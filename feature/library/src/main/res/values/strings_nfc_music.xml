@@ -1,0 +1,35 @@
+<resources>
+    <string name="nfc_music_write">Write NFC tag</string>
+    <string name="nfc_music_actions">Album actions</string>
+    <string name="nfc_music_rebind">Rebind tag</string>
+    <string name="nfc_music_done">Tag ready</string>
+    <string name="nfc_music_waiting">Hold a writable NFC tag against the back of your phone. Keep it still until writing finishes.</string>
+    <string name="nfc_music_working">Checking and saving. Keep the tag close to your phone.</string>
+    <string name="nfc_music_overwrite_detail">This tag contains data or needs formatting. Continuing will replace its contents. After confirming, remove the tag and tap it again.</string>
+    <string name="nfc_music_verify">The tag was formatted. Remove it and tap it again to verify and finish saving.</string>
+    <string name="nfc_music_success">Written and verified. With your phone unlocked and NFC enabled, tap this tag to play. This binding is saved on this phone.</string>
+    <string name="nfc_music_bound">The tag now plays this collection on this phone. You do not need to write it again.</string>
+    <string name="nfc_music_missing">This tag has no playable binding on this phone. The collection may have been removed or the app data reset. Choose another album or playlist to rebind it.</string>
+    <string name="nfc_music_choose">Choose an album or playlist. Up to 40 results of each type are shown; search to find more.</string>
+    <string name="nfc_music_disabled">NFC is off. Enable it in system settings, then return here.</string>
+    <string name="nfc_music_launch_blocked">Opening ECHO from NFC tags is disabled in system settings. Allow ECHO to open from tags, then return here.</string>
+    <string name="nfc_music_no_hardware">This phone does not support NFC.</string>
+    <string name="nfc_music_read_only">This tag is read-only. Try another writable tag.</string>
+    <string name="nfc_music_too_small">This tag does not have enough space. Try a tag with more capacity.</string>
+    <string name="nfc_music_unsupported_tag">This tag does not support NDEF writing. Try another writable NFC tag.</string>
+    <string name="nfc_music_changed">The tag or its contents changed. Retry with the intended tag.</string>
+    <string name="nfc_music_storage">The binding could not be saved on this phone. A written tag can be tapped again to rebind. Existing bindings are kept.</string>
+    <string name="nfc_music_load_error">The music library or tag binding could not be loaded. Please retry.</string>
+    <string name="nfc_music_empty_collection">This collection has no playable tracks. Choose another album or playlist.</string>
+    <string name="nfc_music_disconnected">The NFC connection was interrupted. Remove the tag, retry, and hold it still against your phone.</string>
+    <string name="nfc_music_search">Search albums and playlists</string>
+    <string name="nfc_music_no_results">No results. Try another search.</string>
+    <string name="nfc_music_album">Album</string>
+    <string name="nfc_music_playlist">Playlist</string>
+    <string name="nfc_music_overwrite">Replace contents</string>
+    <string name="nfc_music_retry">Retry</string>
+    <string name="nfc_music_settings">NFC settings</string>
+    <string name="nfc_music_play">Play now</string>
+    <string name="nfc_music_close">Done</string>
+    <string name="nfc_music_cancel">Cancel</string>
+</resources>

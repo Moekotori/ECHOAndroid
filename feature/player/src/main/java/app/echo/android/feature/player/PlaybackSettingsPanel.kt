@@ -3,7 +3,7 @@ package app.echo.android.feature.player
 import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.feature.player.R as L10nR
-import androidx.activity.compose.BackHandler
+import app.echo.android.design.EchoPageBackHandler as BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.ui.draw.drawBehind
@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
 
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -147,6 +148,8 @@ internal fun playModeDetail(repeatLabel: String, shuffleEnabled: Boolean, shuffl
 @Composable
 internal fun PlaybackSettingsDrawer(
     onOpenTrackTools: () -> Unit = {},
+    songActions: NowPlayingSongActions,
+    actionsEnabled: Boolean = true,
     appearance: PlayerAppearance,
     onAppearancePreview: (PlayerAppearance) -> Unit,
     onAppearanceCommit: () -> Unit,
@@ -172,9 +175,23 @@ internal fun PlaybackSettingsDrawer(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var pendingAction by remember(status.track?.id, actionsEnabled) { mutableStateOf<(() -> Unit)?>(null) }
+    val currentTrackId = androidx.compose.runtime.rememberUpdatedState(status.track?.id)
     BackHandler(enabled = visible, onBack = onDismiss)
-    EchoSheetOverlay(visible = visible, onDismiss = onDismiss, modifier = modifier) {
+    EchoSheetOverlay(visible = visible, onDismiss = onDismiss, modifier = modifier, onHidden = {
+        val action = pendingAction
+        pendingAction = null
+        if (actionsEnabled) action?.invoke()
+    }) {
         PlaybackSettingsSheet(
+            songActions = songActions,
+            onSongAction = { action ->
+                if (visible && actionsEnabled && pendingAction == null) {
+                    val selectedId = status.track?.id
+                    pendingAction = { if (currentTrackId.value == selectedId) action() }
+                    onDismiss()
+                }
+            },
             onOpenTrackTools = onOpenTrackTools,
             appearance = appearance,
             onAppearancePreview = onAppearancePreview,
@@ -206,7 +223,9 @@ internal fun PlaybackSettingsDrawer(
 
 @Composable
 private fun PlaybackSettingsSheet(
+    onSongAction: (() -> Unit) -> Unit,
     onOpenTrackTools: () -> Unit = {},
+    songActions: NowPlayingSongActions,
     appearance: PlayerAppearance,
     onAppearancePreview: (PlayerAppearance) -> Unit,
     onAppearanceCommit: () -> Unit,
@@ -304,6 +323,8 @@ private fun PlaybackSettingsSheet(
                                 onDismiss = onDismiss,
                             )
                         } else {
+                            NowPlayingSongActionRows(songActions, onSongAction)
+                            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
                             PlaybackSettingsSection(
                                 icon = Icons.Rounded.Repeat,
                                 framed = false,

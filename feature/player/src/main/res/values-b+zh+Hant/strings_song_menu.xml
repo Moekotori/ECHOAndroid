@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="song_menu_add_playlist">加入播放清單</string>
+    <string name="song_menu_share">分享至</string>
+    <string name="song_menu_equalizer">等化器</string>
+    <string name="song_menu_album">檢視專輯</string>
+    <string name="song_menu_info">歌曲資訊</string>
+    <string name="song_menu_online_assets">線上取得封面與歌詞</string>
+    <string name="song_menu_folder">開啟所在資料夾</string>
+    <string name="song_menu_share_failed">分享失敗，請重試。</string>
+    <string name="song_assets_cover_source">按專輯與藝人從 MusicBrainz / Cover Art Archive 尋找封面，預覽確認後套用。歌詞另行搜尋與選擇。</string>
+    <string name="song_assets_search_cover">搜尋封面</string>
+    <string name="song_assets_apply_cover">使用這張封面</string>
+    <string name="song_assets_cover_missing">找不到相符封面，請核對專輯與藝人標籤後重試。</string>
+    <string name="song_assets_failed">搜尋或儲存封面失敗，請重試。</string>
+    <string name="song_assets_search_lyrics">搜尋並選擇歌詞</string>
+    <string name="song_menu_load_failed">部分歌曲操作載入失敗，請重試。</string>
+    <string name="song_menu_retry">重試</string>
+    <string name="song_playlist_added">已加入播放清單</string>
+    <string name="song_playlist_failed">加入失敗，已保留填寫內容，請重試。</string>
+    <string name="song_assets_applied">封面已套用</string>
+    <string name="song_assets_searching">正在尋找相符封面…</string>
+    <string name="song_assets_saving">正在儲存封面…</string>
+    <string name="song_assets_library_only">曲庫封面已更新，原始檔案標籤未寫入。</string>
+    <string name="song_assets_saved">封面已儲存至曲庫與原始檔案。</string>
+    <string name="song_assets_search_again">重新搜尋</string>
+    <string name="song_assets_cancel">取消操作</string>
+    <string name="song_assets_done">完成</string>
+    <string name="song_lyrics_saving">正在套用歌詞…</string>
+    <string name="song_lyrics_save_failed">歌詞套用失敗，請重試。</string>
+</resources>

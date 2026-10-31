@@ -57,7 +57,8 @@ def build(checkout: Path, destination: Path):
     if len(raw) > 4 * 1024 * 1024 or len(rows) > 20000:
         raise ValueError("Catalog exceeds Android reader limits; review limits before updating")
     destination.mkdir(parents=True, exist_ok=True)
-    (destination / "catalog-v1.tsv.gz").write_bytes(gzip.compress(raw, compresslevel=9, mtime=0))
+    # Android's asset merger expands *.gz and strips the suffix; *.gzip stays intact.
+    (destination / "catalog-v1.tsv.gzip").write_bytes(gzip.compress(raw, compresslevel=9, mtime=0))
     (destination / "LICENSE.txt").write_bytes((checkout / "LICENSE").read_bytes())
     (destination / "NOTICE.txt").write_text(
         f"AutoEq headphone equalization data\nSource: https://github.com/jaakkopasanen/AutoEq\n"

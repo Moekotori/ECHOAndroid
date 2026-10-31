@@ -76,7 +76,7 @@ internal object OpraDatabaseParser {
                         val productId = data.optTrimmedString("product_id") ?: return@runCatching
                         val parameters = data.optJSONObject("parameters") ?: return@runCatching
                         val bands = parseBands(parameters) ?: return@runCatching
-                        val preamp = parameters.optFloat("gain_db") ?: return@runCatching
+                        val preamp = parameters.optFiniteFloat("gain_db") ?: return@runCatching
                         if (preamp !in -24f..12f) return@runCatching
                         val eq = OpraEq(
                             id = id,
@@ -170,10 +170,10 @@ internal object OpraDatabaseParser {
         for (index in 0 until array.length()) {
             val band = array.optJSONObject(index) ?: return null
             val type = EchoEqFilterType.normalize(band.optTrimmedString("type") ?: return null)
-            val frequency = band.optFloat("frequency") ?: return null
-            val gain = band.optFloat("gain_db") ?: 0f
-            val q = band.optFloat("q")
-            val slope = band.optFloat("slope")
+            val frequency = band.optFiniteFloat("frequency") ?: return null
+            val gain = band.optFiniteFloat("gain_db") ?: 0f
+            val q = band.optFiniteFloat("q")
+            val slope = band.optFiniteFloat("slope")
             if (!frequency.isFinite() || frequency <= 0f || !gain.isFinite() || gain !in -60f..36f) return null
             when (type) {
                 EchoEqFilterType.LowPass, EchoEqFilterType.HighPass ->
@@ -260,7 +260,8 @@ internal object OpraAssetUrls {
 internal fun JSONObject.optTrimmedString(name: String): String? =
     optString(name).trim().takeIf { it.isNotBlank() }
 
-internal fun JSONObject.optFloat(name: String): Float? {
+// A distinct name avoids JSONObject.optFloat shadowing this nullable, finite-only reader.
+private fun JSONObject.optFiniteFloat(name: String): Float? {
     if (!has(name) || isNull(name)) return null
     val value = optDouble(name, Double.NaN)
     return value.takeIf { it.isFinite() }?.toFloat()?.takeIf { it.isFinite() }

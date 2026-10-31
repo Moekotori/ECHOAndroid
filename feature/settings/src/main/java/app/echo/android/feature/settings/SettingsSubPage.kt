@@ -71,7 +71,8 @@ private fun anchors(page: SettingsSubPage, vararg titles: Int): List<Pair<Pair<S
 // Keyed by category too: the haptics row, for one, is a search target of Accessibility only.
 private val anchorPages: Map<Pair<SettingsCategory, Int>, SettingsSubPage> = listOf(
     anchors(SettingsSubPage.AppearanceTheme,
-        R.string.settings_section_theme, R.string.settings_display_mode, R.string.settings_scheduled_dark,
+        R.string.settings_section_theme, R.string.settings_display_mode, R.string.settings_color_theme,
+        R.string.settings_dynamic_color, R.string.settings_scheduled_dark,
         R.string.settings_dark_start, R.string.settings_dark_end, R.string.settings_section_schedule),
     anchors(SettingsSubPage.AppearanceText,
         R.string.settings_section_readability, R.string.settings_font_advanced, R.string.settings_ui_font,
@@ -102,7 +103,7 @@ private val anchorPages: Map<Pair<SettingsCategory, Int>, SettingsSubPage> = lis
         R.string.settings_lyrics_font_size, R.string.accessibility_spacious_layout),
     anchors(SettingsSubPage.AccessibilityMotion,
         R.string.accessibility_motion_feedback, R.string.accessibility_word_highlight,
-        R.string.accessibility_lyrics_motion, R.string.settings_playback_haptics),
+        R.string.settings_playback_haptics),
     anchors(SettingsSubPage.AccessibilityCare,
         R.string.accessibility_lyrics_reading, R.string.accessibility_lyrics_spacing,
         R.string.accessibility_translation, R.string.accessibility_romanization,

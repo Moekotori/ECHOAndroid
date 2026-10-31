@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Queue
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.UploadFile
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -81,6 +82,7 @@ internal fun TrackActionSheet(
     onDelete: (() -> Unit)? = null,
     onVersions: (() -> Unit)? = null,
     onHide: (() -> Unit)? = null,
+    onShare: (() -> Unit)? = null,
 ) {
     // Constrain content, not the ModalBottomSheet: its anchors need the full window height.
     // Short windows need more room for actions while retaining the handle and safe insets.
@@ -184,6 +186,8 @@ internal fun TrackActionSheet(
                 TrackActionRow(stringResource(L10nR.string.track_versions_title), Icons.Rounded.Album, enabled = true, onClick = onVersions)
             }
             TrackActionRow(stringResource(L10nR.string.feature_library_track_info_36a07b), Icons.Rounded.Info, enabled = true, onClick = onInfo)
+            if (onShare != null) TrackActionRow(stringResource(L10nR.string.audio_share_action), Icons.Rounded.Share,
+                enabled = true, onClick = onShare)
             if (onHide != null && shown(app.echo.android.model.settings.EchoTrackMenuAction.Hide)) {
                 TrackActionRow(stringResource(L10nR.string.hidden_track_hide), Icons.Rounded.VisibilityOff,
                     enabled = true, onClick = onHide)

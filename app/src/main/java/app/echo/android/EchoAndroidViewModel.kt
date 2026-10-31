@@ -14,6 +14,8 @@ import androidx.paging.PagingData
 import app.echo.android.connect.EchoLanRendererBrowser
 import app.echo.android.connect.EchoLinkLanBrowser
 import app.echo.android.data.EchoErrorLogRepository
+import app.echo.android.data.createOrderedLocalPlaylist
+import app.echo.android.data.toEchoTrack
 import app.echo.android.data.EchoLibraryDatabase
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.batchTags
@@ -125,6 +127,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     )
     internal val podcasts = app.echo.android.podcasts.PodcastController((application as EchoApplication).podcasts, viewModelScope)
     private val database = EchoLibraryDatabase.create(application)
+    internal val nfcMusic = app.echo.android.nfc.NfcMusicController(application, viewModelScope)
     private val repository = EchoLibraryRepository(
         database = database,
         scanner = MediaStoreTrackScanner(application),
@@ -343,7 +346,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun searchLyrics() = lyricsController.refreshLyrics(playbackController.currentTrackId)
     fun cancelLyricsSearch() = lyricsController.cancelSearch()
     fun selectLyricsCandidate(id: String) = lyricsController.selectCandidate(id, playbackController.currentTrackId)
+    internal suspend fun selectPlayerLyrics(id: String, trackId: String): Boolean =
+        lyricsController.selectCandidateAndAwait(id, trackId)
     fun removeLyricsSelection() = lyricsController.removeSelection(playbackController.currentTrackId)
+
+    internal fun msebPresets(presets: List<app.echo.android.model.playback.EchoMsebUserPreset>) = msebPresetActions(settingsStore, presets)
 
     val appSettings: Flow<EchoAppSettings> = settingsStore.appSettings
     private val _backupNotice = MutableStateFlow<app.echo.android.model.backup.EchoBackupNotice?>(null)
@@ -382,7 +389,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun loadMonthlyRecap(year: Int, month: Int) {
         monthlyRecapJob?.cancel()
         _monthlyRecapError.value = false
-        _monthlyRecap.value = null
+        // Reopening the same month refreshes in place, without flashing an empty loading page.
+        _monthlyRecap.value = _monthlyRecap.value?.takeIf { it.year == year && it.month == month }
         monthlyRecapJob = viewModelScope.launch {
             try { _monthlyRecap.value = listeningHistory.monthlyRecap(year, month) }
             catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
@@ -487,6 +495,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     suspend fun albumForTrack(trackId: String): AlbumSummary? =
         libraryController.albumSummaryForTrack(trackId)
 
+    internal suspend fun playerLibraryTrack(trackId: String): EchoTrack? = withContext(Dispatchers.IO) {
+        repository.trackById(trackId)?.toEchoTrack()
+    }
+
+    internal suspend fun playerTrackFolder(trackId: String): app.echo.android.model.library.FolderSummary? = withContext(Dispatchers.IO) {
+        val track = repository.trackById(trackId) ?: return@withContext null
+        if (track.source != "mediastore" && track.source != "saf") return@withContext null
+        database.trackDao().getFolderSummary(track.relativePath.orEmpty())
+    }
+
     suspend fun artistForTrack(trackId: String): ArtistSummary? =
         libraryController.artistSummaryForTrack(trackId)
 
@@ -505,6 +523,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun refreshLibraryIfEmpty() {
         libraryController.refreshLibraryIfEmpty()
     }
+
+    internal fun refreshReceivedMusicFolder(treeUri: Uri, options: LibraryScanOptions) = libraryController.refreshReceivedMusicFolder(treeUri, options)
 
     fun refreshLibraryFolder(treeUri: Uri, options: LibraryScanOptions = LibraryScanOptions()) {
         libraryController.refreshLibraryFolder(treeUri, options)
@@ -886,6 +906,34 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             EchoErrorLog.record(EchoErrorSource.Library, "Too many pending audio tag write authorizations.")
         }
         return queued
+    }
+
+    internal suspend fun savePlayerArtwork(trackId: String, artworkUri: Uri): app.echo.android.data.TrackMetadataUpdateResult {
+        val result = writeTagsWithAuthorization(
+            write = {
+                var written: app.echo.android.data.TrackMetadataUpdateResult? = null
+                withReleasedPlaybackFile(trackId) { written = libraryController.updateTrackArtwork(trackId, artworkUri) }
+                checkNotNull(written)
+            },
+            authorize = { authorizeTagWrite(trackId, it) },
+        )
+        handleEmbeddedTagWriteResult(trackId, result.fileWrite, artworkUri = artworkUri.toString(), allowAuthorization = false)
+        if (result.indexUpdated) EchoPlaybackProcessRuntime.updateTrackArtwork(trackId, artworkUri.toString())
+        return result
+    }
+
+    internal suspend fun createPlayerPlaylist(name: String, trackId: String): Boolean =
+        repository.createOrderedLocalPlaylist(name, listOf(trackId)) != null
+
+    internal suspend fun addPlayerSongToPlaylist(playlistId: String, trackId: String): Boolean {
+        if (playlistId == EchoPlaylist.LikedSongsId && trackId.startsWith("subsonic:"))
+            return remoteLibraryTools.setFavorite(trackId, true)
+        if (libraryController.addTrackToLocalPlaylist(playlistId, trackId)) return true
+        // Repeating an add is successful when the song is already present.
+        return withContext(Dispatchers.IO) {
+            if (playlistId == EchoPlaylist.LikedSongsId) database.playlistDao().isFavorite(trackId)
+            else database.playlistDao().membership(playlistId, trackId) != null
+        }
     }
 
     fun updateTrackArtwork(trackId: String, artworkUri: Uri) {
@@ -1542,6 +1590,11 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setVolumeSettings(value: app.echo.android.model.playback.EchoVolumeSettings) {
+        EchoPlaybackProcessRuntime.setVolumeSettings(value)
+        updateSettings { setVolumeSettings(value) }
+    }
+
     fun setDspSettings(value: app.echo.android.model.playback.EchoDspSettings) {
         EchoPlaybackProcessRuntime.setDspSettings(value)
         updateSettings { setDspSettings(value) }
@@ -1553,6 +1606,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings {
             setEqualizerParametricConfig(selected.gainsDb, selected.preampDb, selected.filters, selected.sourceLabel, enabled = selected.enabled)
         }
+    }
+
+    fun previewParametricFilters(filters: List<app.echo.android.model.playback.OpraEqBand>) {
+        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) return
+        EchoPlaybackProcessRuntime.equalizerController().setParametricFilters(filters)
+    }
+
+    fun previewMseb(state: app.echo.android.model.playback.EchoMsebState) {
+        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) return
+        EchoPlaybackProcessRuntime.equalizerController().setMseb(state)
     }
 
     fun setEqualizerPreamp(gainDb: Float) {

@@ -15,6 +15,7 @@ import kotlin.math.roundToInt
 @Composable
 internal fun SettingsAppearanceHub(
     themeMode: String,
+    paletteLabel: String,
     uiFontScale: Float,
     lyricsFontScale: Float,
     backgroundMode: String,
@@ -40,7 +41,7 @@ internal fun SettingsAppearanceHub(
         SettingsMenuRow(
             icon = Icons.Rounded.Contrast,
             title = stringResource(SettingsSubPage.AppearanceTheme.title),
-            summary = themeSummary,
+            summary = "$themeSummary · $paletteLabel",
             compactMode = compact,
             onClick = { onOpen(SettingsSubPage.AppearanceTheme) },
         )

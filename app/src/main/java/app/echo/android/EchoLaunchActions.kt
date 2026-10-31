@@ -5,6 +5,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 object EchoLaunchActions {
+    private val _nfcMusic = MutableStateFlow<String?>(null)
+    val nfcMusic = _nfcMusic.asStateFlow()
+    fun requestNfcMusic(token: String) { _nfcMusic.value = token }
+    fun consumeNfcMusic() { _nfcMusic.value = null }
+
     private val _voiceSearch = MutableStateFlow<app.echo.android.model.playback.EchoMediaSearchRequest?>(null)
     val voiceSearch = _voiceSearch.asStateFlow()
     fun requestVoiceSearch(request: app.echo.android.model.playback.EchoMediaSearchRequest) { _voiceSearch.value = request }

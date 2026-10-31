@@ -90,8 +90,10 @@ data class EchoAppSettings(
     val pauseOnAudioDisconnect: Boolean = true,
     val resumeOnAudioReconnect: Boolean = false,
     val dsp: app.echo.android.model.playback.EchoDspSettings = app.echo.android.model.playback.EchoDspSettings(),
+    val volume: app.echo.android.model.playback.EchoVolumeSettings = app.echo.android.model.playback.EchoVolumeSettings(),
     val equalizerEnabled: Boolean = false,
     val mseb: app.echo.android.model.playback.EchoMsebState = app.echo.android.model.playback.EchoMsebState(),
+    val msebUserPresets: List<app.echo.android.model.playback.EchoMsebUserPreset> = emptyList(),
     val equalizerPreset: String = EchoEqualizerPreset.Flat,
     val equalizerBandGains: List<Float> = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
     val equalizerPreampDb: Float = 0f,
@@ -241,6 +243,7 @@ class EchoSettingsStore(
                 secrets.revision to context.echoAppLanguage(EchoAppLanguage.fromId(preferences[Keys.AppLanguage]))
             },
         ) { preferences ->
+            val savedColorThemes = EchoSavedColorThemeCodec.decode(preferences[Keys.SavedColorThemes])
             val themeMode = normalizeThemeMode(preferences[Keys.ThemeMode])
             val lyricsStyle = PlayerAppearancePreferences.lyricsStyle(preferences)
             EchoAppSettings(
@@ -250,8 +253,7 @@ class EchoSettingsStore(
                 lastOutputRoute = preferences[Keys.LastOutputRoute] ?: "system",
                 dynamicArtworkEnabled = preferences[Keys.DynamicArtworkEnabled] ?: true,
                 compactModeEnabled = preferences[Keys.CompactModeEnabled] ?: false,
-                // Legacy palette preferences remain stored, but no longer affect appearance.
-                dynamicColorEnabled = false,
+                dynamicColorEnabled = preferences[Keys.DynamicColorEnabled] ?: false,
                 playbackHapticsEnabled = preferences[Keys.PlaybackHapticsEnabled] ?: true,
                 performanceMode = EchoPerformanceMode.fromId(preferences[Keys.PerformanceMode]).id,
                 trackAudioInfoTagsVisible = preferences[Keys.TrackAudioInfoTagsVisible] ?: true,
@@ -300,6 +302,7 @@ class EchoSettingsStore(
                 stopOnTaskRemoved = preferences[Keys.StopOnTaskRemoved] ?: false,
                 pauseOnAudioDisconnect = preferences[Keys.PauseOnAudioDisconnect] ?: true,
                 resumeOnAudioReconnect = preferences[Keys.ResumeOnAudioReconnect] ?: false,
+                volume = EchoVolumePreferences.read(preferences),
                 dsp = app.echo.android.model.playback.EchoDspSettings(
                     preferences[Keys.DspLimiterEnabled] ?: false,
                     preferences[Keys.DspLimiterCeiling] ?: -1f,
@@ -308,6 +311,7 @@ class EchoSettingsStore(
                 ).normalized,
                 equalizerEnabled = preferences[Keys.EqualizerEnabled] ?: false,
                 mseb = EchoMsebCodec.decode(preferences[Keys.Mseb]),
+                msebUserPresets = EchoMsebPresetCodec.decode(preferences[Keys.MsebUserPresets]),
                 equalizerPreset = EchoEqualizerPresets.normalizePresetId(preferences[Keys.EqualizerPreset]),
                 equalizerBandGains = parseEqualizerBandGains(
                     preferences[Keys.EqualizerBandGains],
@@ -368,10 +372,11 @@ class EchoSettingsStore(
                 lyricsFocusGlowEnabled = preferences[Keys.LyricsFocusGlowEnabled] ?: false,
                 importedFontUri = preferences[Keys.ImportedFontUri],
                 themeMode = themeMode,
-                colorTheme = EchoColorTheme.Default.id,
-                customColors = EchoCustomColors.Default,
-                savedColorThemes = emptyList(),
-                appliedSavedColorThemeId = null,
+                colorTheme = EchoColorTheme.fromId(preferences[Keys.ColorTheme]).id,
+                customColors = readCustomColors(preferences),
+                savedColorThemes = savedColorThemes,
+                appliedSavedColorThemeId = preferences[Keys.AppliedSavedColorThemeId]
+                    ?.takeIf { id -> savedColorThemes.any { it.id == id } },
                 appLanguage = context.echoAppLanguage(EchoAppLanguage.fromId(preferences[Keys.AppLanguage])),
                 scheduledDarkModeEnabled = preferences[Keys.ScheduledDarkModeEnabled] ?: false,
                 scheduledDarkStartMinute = (preferences[Keys.ScheduledDarkStartMinute] ?: 22 * 60).coerceIn(0, 23 * 60 + 59),
@@ -579,12 +584,42 @@ class EchoSettingsStore(
     suspend fun setUsbVolumePercent(percent: Int) {
         context.echoSettings.edit { prefs ->
             val current = EchoUsbOutputOptionsCodec.decode(prefs[Keys.UsbOutputOptions])
-            prefs[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(current.copy(volumePercent = percent.coerceIn(0, 100)))
+            prefs[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(current.copy(volumePercent = percent.coerceIn(0, 100), volumeStep = null))
         }
     }
 
     suspend fun setUsbOutputOptions(options: app.echo.android.model.playback.EchoUsbOutputOptions) {
-        context.echoSettings.edit { it[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(options) }
+        context.echoSettings.edit { prefs ->
+            val current = EchoUsbOutputOptionsCodec.decode(prefs[Keys.UsbOutputOptions])
+            // A settings control may carry a snapshot from before the last device change.
+            val next = options.copy(volumeDeviceKey = current.volumeDeviceKey, deviceVolumeSteps = current.deviceVolumeSteps)
+            prefs[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(rememberUsbVolume(next))
+        }
+    }
+
+    suspend fun setUsbVolumeStep(step: Int) {
+        context.echoSettings.edit { prefs ->
+            val current = EchoUsbOutputOptionsCodec.decode(prefs[Keys.UsbOutputOptions])
+            prefs[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(rememberUsbVolume(current.withVolumeStep(step)))
+        }
+    }
+
+    suspend fun activateUsbVolumeDevice(key: String?) {
+        context.echoSettings.edit { prefs ->
+            val current = EchoUsbOutputOptionsCodec.decode(prefs[Keys.UsbOutputOptions])
+            if (key == current.volumeDeviceKey) return@edit
+            val saved = current.deviceVolumeSteps[key]
+            // Reconnection restores attenuation conservatively; never raise the current digital level.
+            val restored = saved?.let { current.withVolumeStep(minOf(it, current.effectiveVolumeStep)) } ?: current
+            prefs[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(restored.copy(volumeDeviceKey = key))
+        }
+    }
+
+    private fun rememberUsbVolume(options: app.echo.android.model.playback.EchoUsbOutputOptions): app.echo.android.model.playback.EchoUsbOutputOptions {
+        val key = options.volumeDeviceKey ?: return options
+        if (options.volumeStep == null) return options
+        val records = options.deviceVolumeSteps.toMutableMap().apply { remove(key); put(key, options.effectiveVolumeStep) }
+        return options.copy(deviceVolumeSteps = records.entries.toList().takeLast(16).associate { it.toPair() })
     }
 
     suspend fun setUsbBitPerfectEnabled(enabled: Boolean) {
@@ -596,6 +631,10 @@ class EchoSettingsStore(
 
     suspend fun setUsbExclusiveAutoRequestOnStartup(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.UsbExclusiveAutoRequestOnStartup] = enabled }
+    }
+
+    suspend fun setVolumeSettings(value: app.echo.android.model.playback.EchoVolumeSettings) {
+        context.echoSettings.edit { it[EchoVolumePreferences.Key] = EchoVolumePreferences.encode(value) }
     }
 
     suspend fun setDspSettings(value: app.echo.android.model.playback.EchoDspSettings) {
@@ -610,6 +649,14 @@ class EchoSettingsStore(
 
     suspend fun setEqualizerEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.EqualizerEnabled] = enabled }
+    }
+
+    suspend fun editMsebPresets(transform: (List<app.echo.android.model.playback.EchoMsebUserPreset>) -> List<app.echo.android.model.playback.EchoMsebUserPreset>) {
+        context.echoSettings.edit { prefs ->
+            val next = transform(EchoMsebPresetCodec.decode(prefs[Keys.MsebUserPresets]))
+            require(next.size <= app.echo.android.model.playback.EchoMsebUserPresets.MaxCount)
+            prefs[Keys.MsebUserPresets] = EchoMsebPresetCodec.encode(next)
+        }
     }
 
     suspend fun setMseb(state: app.echo.android.model.playback.EchoMsebState) {
@@ -1657,6 +1704,7 @@ class EchoSettingsStore(
             backup.replayGainEnabled?.let { prefs[Keys.ReplayGainEnabled] = it }
             backup.replayGainMode?.let { prefs[Keys.ReplayGainMode] = it }
             backup.replayGainPreampDb?.let { prefs[Keys.ReplayGainPreampDb] = it }
+            backup.volume?.let { prefs[EchoVolumePreferences.Key] = EchoVolumePreferences.encode(it) }
             backup.shuffleMode?.let { prefs[Keys.ShuffleMode] = EchoShuffleMode.fromId(it).id }
             backup.shuffleSpreadArtists?.let { prefs[Keys.ShuffleSpreadArtists] = it }
             backup.shuffleRecentTrackCount?.let { prefs[Keys.ShuffleRecentTrackCount] = it.coerceIn(0, EchoShuffleOptions.MaxRecentTracks) }
@@ -1668,6 +1716,7 @@ class EchoSettingsStore(
             }
             backup.equalizerEnabled?.let { prefs[Keys.EqualizerEnabled] = it }
             backup.mseb?.let { prefs[Keys.Mseb] = EchoMsebCodec.encode(it) }
+            backup.msebUserPresets?.let { prefs[Keys.MsebUserPresets] = EchoMsebPresetCodec.encode(it) }
             backup.equalizerPreset?.let { prefs[Keys.EqualizerPreset] = it }
             backup.equalizerBandGains?.let { prefs[Keys.EqualizerBandGains] = formatEqualizerBandGains(it) }
             backup.equalizerPreampDb?.let { prefs[Keys.EqualizerPreampDb] = it }
@@ -1774,6 +1823,7 @@ class EchoSettingsStore(
         val DspCrossfeedEnabled = booleanPreferencesKey("dsp_crossfeed_enabled")
         val DspCrossfeedAmount = floatPreferencesKey("dsp_crossfeed_amount")
         val EqualizerEnabled = booleanPreferencesKey("equalizer_enabled")
+        val MsebUserPresets = stringPreferencesKey("mseb_user_presets")
         val Mseb = stringPreferencesKey("mseb")
         val EqualizerPreset = stringPreferencesKey("equalizer_preset")
         val EqualizerBandGains = stringPreferencesKey("equalizer_band_gains")
@@ -2022,12 +2072,14 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         replayGainEnabled = replayGainEnabled,
         replayGainMode = replayGainMode,
         replayGainPreampDb = replayGainPreampDb,
+        volume = volume,
         shuffleMode = shuffleOptions.mode.id,
         shuffleSpreadArtists = shuffleOptions.spreadArtists,
         shuffleRecentTrackCount = shuffleOptions.normalized.recentTrackCount,
         trackTransitions = trackTransitions,
         equalizerEnabled = equalizerEnabled,
         mseb = mseb,
+        msebUserPresets = msebUserPresets,
         equalizerPreset = equalizerPreset,
         equalizerBandGains = equalizerBandGains,
         equalizerPreampDb = equalizerPreampDb,

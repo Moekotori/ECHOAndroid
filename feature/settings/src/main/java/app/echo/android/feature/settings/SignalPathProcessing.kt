@@ -12,12 +12,14 @@ internal fun signalProcessingStage(
     equalizer: EchoEqualizerState,
     balance: EchoChannelBalanceState,
     dsp: EchoDspSettings,
+    volume: EchoVolumeSettings = EchoVolumeSettings(),
 ): SignalPathStage {
     val bypassed = status.diagnostics.usbBitPerfectEnabled
     val unknown = stringResource(R.string.diag_unreported)
     val off = stringResource(R.string.path_disabled)
     val enabled = stringResource(R.string.path_enabled)
     val effects = buildList {
+        if (volume.changesSamples) add(stringResource(R.string.volume_title))
         if (equalizer.active) add(stringResource(R.string.feature_settings_equalizer_7ccb03))
         if (equalizer.mseb.active) add(stringResource(R.string.mseb_title))
         if (balance.active) add(stringResource(R.string.channel_balance))
@@ -27,6 +29,10 @@ internal fun signalProcessingStage(
         if (status.playbackSpeed != 1f || status.playbackPitch != 1f) add(stringResource(R.string.path_speed_pitch))
     }
     val facts = buildList {
+        add(stringResource(R.string.volume_level) to formatEqGain(volume.levelDb))
+        add(stringResource(R.string.volume_gain) to formatEqGain(volume.gainDb))
+        add(stringResource(R.string.volume_limit) to formatEqGain(volume.limitDb))
+        add(stringResource(R.string.volume_mute) to if (volume.muted) enabled else off)
         add(stringResource(R.string.mseb_title) to if (equalizer.mseb.enabled) enabled else off)
         if (equalizer.mseb.active) {
             add(stringResource(R.string.mseb_headroom) to formatEqGain(equalizer.msebHeadroomDb))

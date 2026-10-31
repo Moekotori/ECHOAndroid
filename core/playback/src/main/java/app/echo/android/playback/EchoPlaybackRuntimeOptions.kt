@@ -70,6 +70,9 @@ object EchoPlaybackProcessRuntime {
     @Volatile var dspSettings = app.echo.android.model.playback.EchoDspSettings()
         private set
     @Volatile internal var dspReplayGainDb = 0f
+    @Volatile var volumeSettings = app.echo.android.model.playback.EchoVolumeSettings()
+        private set
+    fun setVolumeSettings(value: app.echo.android.model.playback.EchoVolumeSettings) { volumeSettings = value.normalized }
     fun setDspSettings(value: app.echo.android.model.playback.EchoDspSettings) { dspSettings = value.normalized }
 
     @Volatile
@@ -397,6 +400,13 @@ object EchoPlaybackProcessRuntime {
 
     suspend fun resolveRemoteStreamUri(mediaId: String, uri: String): String {
         return resolveEchoLinkStreamUri(mediaId, uri, streamResolver)
+    }
+
+    suspend fun updateTrackArtwork(trackId: String, artworkUri: String) {
+        withContext(Dispatchers.Main.immediate) {
+            val player = enginePolicy?.boundPlayer() ?: mediaController ?: return@withContext
+            updatePlayerTrackArtwork(player, trackId, Uri.parse(artworkUri))
+        }
     }
 
     suspend fun reResolveBoundPlayerQueue() {

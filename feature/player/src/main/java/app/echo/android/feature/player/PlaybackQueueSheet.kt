@@ -180,7 +180,7 @@ fun PlaybackQueueSheet(
             if (visible && dragOffset.offsetPx > 0f) restoreDrag()
         }
 
-        Box(Modifier.fillMaxSize()) {
+        app.echo.android.design.EchoInteractionGate(active = visible, modifier = Modifier.fillMaxSize()) {
             val theme = echoTheme()
             Box(
                 modifier = Modifier

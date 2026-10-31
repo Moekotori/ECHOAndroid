@@ -19,4 +19,5 @@
     <plurals name="artist_track_count">
         <item quantity="other">%1$d곡</item>
     </plurals>
+    <string name="artist_playback_actions">재생 옵션</string>
 </resources>

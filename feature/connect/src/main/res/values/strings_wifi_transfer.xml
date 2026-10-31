@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wifi_transfer_title">Wi-Fi music transfer</string>
+    <string name="wifi_transfer_detail">Choose a receiving folder, start transfer and open the address in a computer browser. Connect using the six-digit code. Keep this window in the foreground on the same LAN.</string>
+    <string name="wifi_transfer_no_directory">No receiving folder selected</string>
+    <string name="wifi_transfer_choose">Choose folder</string>
+    <string name="wifi_transfer_code">Pairing code: %1$s</string>
+    <string name="wifi_transfer_expired">Session expired. Start again to receive more files.</string>
+    <string name="wifi_transfer_receiving">Receiving: %1$s</string>
+    <string name="wifi_transfer_counts">Saved %1$d · Failed %2$d</string>
+    <string name="wifi_transfer_no_lan">No LAN address available. Connect to Wi-Fi and retry.</string>
+    <string name="wifi_transfer_directory_error">Folder access failed. Choose a local writable folder.</string>
+    <string name="wifi_transfer_start_error">Unable to start. Check folder access, LAN permission and Wi-Fi connection.</string>
+    <string name="wifi_transfer_result_saved">Saved · %1$s</string>
+    <string name="wifi_transfer_result_failed">Failed · %1$s — check browser details, storage and folder access</string>
+    <string name="wifi_transfer_limits">One upload at a time; up to 500 files, 1 GiB per file and 8 GiB per 20-minute session. Same-name files are rejected, never overwritten. Partial files are removed after a failed transfer when the provider permits. Closing this window or moving the app to the background stops receiving. Uses local HTTP. Folder scans follow your library scan rules.</string>
+    <string name="wifi_transfer_scan">Scan receiving folder</string>
+    <string name="wifi_transfer_scanning">Scanning library…</string>
+    <string name="wifi_transfer_stop">Stop receiving</string>
+    <string name="wifi_transfer_start">Start receiving</string>
+    <string name="wifi_transfer_close">Close</string>
+</resources>

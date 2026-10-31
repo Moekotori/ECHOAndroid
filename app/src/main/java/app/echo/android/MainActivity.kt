@@ -232,6 +232,13 @@ class MainActivity : ComponentActivity() {
 
     private fun consumeLaunchIntent(intent: Intent?) {
         if (intent == null) return
+        app.echo.android.nfc.NfcMusicTag.request(intent)?.let {
+            EchoLaunchActions.requestNfcMusic(it)
+            intent.action = Intent.ACTION_MAIN
+            intent.removeExtra(android.nfc.NfcAdapter.EXTRA_NDEF_MESSAGES)
+            intent.removeExtra(android.nfc.NfcAdapter.EXTRA_TAG)
+            return
+        }
         app.echo.android.library.EchoLibraryShortcuts.request(intent)?.let {
             EchoLaunchActions.requestLibraryShortcut(it)
             intent.action = Intent.ACTION_MAIN

@@ -1,7 +1,7 @@
 package app.echo.android.feature.player
 
 import app.echo.android.design.EchoIcon
-import androidx.activity.compose.BackHandler
+import app.echo.android.design.EchoPageBackHandler as BackHandler
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -66,7 +66,6 @@ internal fun LyricsSettingsPanel(
     lyricsWordHighlightIntensity: Float,
     lyricsWordHighlightStyle: String,
     lyricsImmersiveModeEnabled: Boolean,
-    lyricsMotionMode: String,
     lyricAccent: Color,
     showTranslation: Boolean,
     showRomanization: Boolean,
@@ -90,7 +89,6 @@ internal fun LyricsSettingsPanel(
     onLyricsWordHighlightIntensityChange: (Float) -> Unit,
     onLyricsWordHighlightStyleChange: (String) -> Unit,
     onLyricsImmersiveModeChange: (Boolean) -> Unit,
-    onLyricsMotionModeChange: (String) -> Unit,
     onLyricsShowTranslationChange: (Boolean) -> Unit,
     onLyricsShowRomanizationChange: (Boolean) -> Unit,
     onLyricsFocusGlowChange: (Boolean) -> Unit,
@@ -110,14 +108,14 @@ internal fun LyricsSettingsPanel(
     val scrollState = remember(category) { ScrollState(0) }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // The style gallery is long and shares the sheet with a pinned preview, so it gets a taller sheet.
-        val sheetMaxHeight by animateDpAsState(
+        val sheetMaxHeight = animateDpAsState(
             targetValue = if (category == LyricsSettingsCategory.WordStyle) minOf(maxHeight * 0.88f, 780.dp)
             else minOf(maxHeight * 0.72f, 600.dp),
             animationSpec = if (LocalEchoEffectivePerformanceMode.current.isLightweight) snap() else EchoMotion.silkDp(260),
             label = "lyrics-settings-sheet-height",
         )
         Column(
-            Modifier.fillMaxWidth().heightIn(max = sheetMaxHeight)
+            Modifier.fillMaxWidth().settingsSheetHeightLimit(sheetMaxHeight)
                 .settingsSheetSurface()
                 .navigationBarsPadding(),
         ) {
@@ -149,7 +147,7 @@ internal fun LyricsSettingsPanel(
                     backgroundDim = lyricsBackgroundDim,
                     highlightEnabled = lyricsWordHighlightEnabled,
                     highlightIntensity = lyricsWordHighlightIntensity,
-                    motionMode = lyricsMotionMode,
+                    motionMode = DefaultLyricsMotionMode,
                     animateMotion = category == LyricsSettingsCategory.Motion || category == LyricsSettingsCategory.WordStyle,
                 )
             }
@@ -165,7 +163,7 @@ internal fun LyricsSettingsPanel(
                                 backdropSummary = stringResource(lyricsBackdropLabel(EchoLyricsBackdrop.fromId(lyricsBackdrop))),
                                 typographySummary = "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",
                                 colorSummary = lyricsColorLabel(lyricsColorMode),
-                                motionSummary = lyricsMotionLabel(lyricsMotionMode),
+                                motionSummary = "${stringResource(L10nR.string.lyrics_setting_word_highlight)} · ${stringResource(L10nR.string.feature_player_immersive_d86793)}",
                                 wordStyleSummary = stringResource(lyricsWordStyleLabel(EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle))),
                                 onSelect = { category = it },
                             )
@@ -206,8 +204,6 @@ internal fun LyricsSettingsPanel(
                                 LyricsSettingToggle(stringResource(L10nR.string.feature_player_emphasis_6517be), focusGlowEnabled, onLyricsFocusGlowChange)
                             }
                             if (page == LyricsSettingsCategory.Motion) {
-                                LyricsSettingChoices(options = LyricsMotionOptions.map { it.value to lyricsMotionLabel(it.value) },
-                                    selected = lyricsMotionMode, onSelect = onLyricsMotionModeChange)
                                 LyricsSettingToggle(stringResource(L10nR.string.lyrics_setting_word_highlight), lyricsWordHighlightEnabled, onLyricsWordHighlightEnabledChange)
                                 app.echo.android.design.EchoExpand(lyricsWordHighlightEnabled) {
                                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -319,13 +315,6 @@ private fun lyricsAlignmentLabel(mode: String): String = when (mode) {
 }
 
 @Composable
-private fun lyricsMotionLabel(mode: String): String = when (mode) {
-    "calm" -> stringResource(L10nR.string.feature_player_calm_207bcb)
-    "stage" -> stringResource(L10nR.string.feature_player_stage_fffe7d)
-    else -> stringResource(L10nR.string.feature_player_smooth_4989bb)
-}
-
-@Composable
 private fun lyricsLayoutDetail(alignment: String, spacing: Float): String =
     "${lyricsAlignmentLabel(alignment)} / ${(spacing.coerceIn(0.50f, 1.38f) * 100f).roundToInt()}%"
 
@@ -370,12 +359,6 @@ private val LyricsAlignmentOptions = listOf(
     LyricsTextOption("start"),
     LyricsTextOption("dynamic"),
     LyricsTextOption("vertical"),
-)
-
-private val LyricsMotionOptions = listOf(
-    LyricsTextOption("calm"),
-    LyricsTextOption("smooth"),
-    LyricsTextOption("stage"),
 )
 
 

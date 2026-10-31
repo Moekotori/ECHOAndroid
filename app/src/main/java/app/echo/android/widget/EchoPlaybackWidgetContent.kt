@@ -28,71 +28,78 @@ internal fun EchoPlaybackWidgetContent(
     }
     val lyric = lyricLine.takeIf { snapshot.hasTrack && !largeText && !it.isNullOrBlank() }
     val intent = widgetLaunchIntent(context)
-    val root = GlanceModifier.fillMaxSize().background(widgetBackground(context))
-        .widgetSurface().clickable(actionStartActivity(intent))
+    val root = GlanceModifier.fillMaxSize().clickable(actionStartActivity(intent))
     when (mode) {
         EchoPlaybackWidgetMode.Compact, EchoPlaybackWidgetMode.Wide -> Row(
             root.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            WidgetArtwork(artwork, 32.dp)
-            Spacer(GlanceModifier.width(8.dp))
+            if (LocalWidgetOptions.current.showArtwork) {
+                WidgetArtwork(artwork, 36.dp)
+                Spacer(GlanceModifier.width(10.dp))
+            }
             WidgetTrackText(title, if (largeText) "" else artist, GlanceModifier.defaultWeight(), 14, 11)
             Spacer(GlanceModifier.width(8.dp))
             WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 44.dp,
                 full = mode == EchoPlaybackWidgetMode.Wide)
         }
         EchoPlaybackWidgetMode.Expanded -> Row(
-            root.padding(horizontal = 12.dp, vertical = 6.dp),
+            root.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            WidgetArtwork(artwork, 60.dp)
-            Spacer(GlanceModifier.width(12.dp))
+            if (LocalWidgetOptions.current.showArtwork) {
+                WidgetArtwork(artwork, 72.dp)
+                Spacer(GlanceModifier.width(14.dp))
+            }
             Column(GlanceModifier.defaultWeight()) {
-                WidgetTrackText(title, if (largeText) "" else artist, GlanceModifier.fillMaxWidth(), 15, 12)
+                WidgetTrackText(title, if (largeText) "" else artist, GlanceModifier.fillMaxWidth(), 16, 12)
                 Spacer(GlanceModifier.height(4.dp))
                 Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 44.dp, gap = 4.dp)
+                    WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 44.dp, gap = 2.dp,
+                        full = !largeText)
                 }
             }
         }
         EchoPlaybackWidgetMode.Tall -> Column(
-            root.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            root.padding(16.dp),
         ) {
-            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                WidgetArtwork(artwork, 68.dp)
-                Spacer(GlanceModifier.width(12.dp))
-                WidgetTrackText(title, artist, GlanceModifier.defaultWeight(), 17, 13)
+            Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
+                if (LocalWidgetOptions.current.showArtwork) {
+                    WidgetArtwork(artwork, 76.dp)
+                    Spacer(GlanceModifier.width(14.dp))
+                }
+                WidgetTrackText(title, if (largeText) "" else artist, GlanceModifier.defaultWeight(), 19, 13)
             }
-            if (lyric != null) {
+            if (lyric != null && availableHeightDp >= 210f) {
                 Spacer(GlanceModifier.height(8.dp))
                 WidgetLyric(lyric)
             }
-            Spacer(GlanceModifier.height(10.dp))
-            Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+            Spacer(GlanceModifier.height(12.dp))
+            Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.End,
                 verticalAlignment = Alignment.CenterVertically) {
-                WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 48.dp, gap = 16.dp)
+                WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 48.dp, gap = 12.dp)
             }
         }
         EchoPlaybackWidgetMode.Square -> Column(
-            root.padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalAlignment = Alignment.CenterVertically,
+            root,
         ) {
-            // Responsive sizes are finite; artwork reuses the existing capped bitmap, with no extra decode.
-            val coverSize = (availableHeightDp - 164f).coerceIn(72f, 136f).dp
-            WidgetArtwork(artwork, coverSize)
-            Spacer(GlanceModifier.height(8.dp))
-            WidgetTrackText(title, artist, GlanceModifier.fillMaxWidth(), 18, 13, centered = true)
-            if (lyric != null) {
-                Spacer(GlanceModifier.height(8.dp))
-                WidgetLyric(lyric, centered = true)
+            val showArtwork = LocalWidgetOptions.current.showArtwork
+            if (showArtwork) {
+                WidgetArtworkWindow(artwork, GlanceModifier.fillMaxWidth().defaultWeight())
             }
-            Spacer(GlanceModifier.height(12.dp))
-            Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
-                verticalAlignment = Alignment.CenterVertically) {
-                WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 52.dp, gap = 20.dp)
+            val footer = GlanceModifier.fillMaxWidth().let { if (showArtwork) it else it.defaultWeight() }
+            Column(footer.padding(16.dp)) {
+                WidgetTrackText(title, if (largeText) "" else artist, GlanceModifier.fillMaxWidth(), if (showArtwork) 20 else 26, 13)
+                if (lyric != null && (!showArtwork || availableHeightDp >= 300f)) {
+                    Spacer(GlanceModifier.height(6.dp))
+                    WidgetLyric(lyric)
+                }
+                if (!showArtwork) Spacer(GlanceModifier.defaultWeight())
+                Spacer(GlanceModifier.height(12.dp))
+                Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.End,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 48.dp, gap = 12.dp)
+                }
             }
         }
     }

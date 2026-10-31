@@ -73,7 +73,8 @@ suspend fun EchoLibraryRepository.createImportedPlaylist(name: String, preview: 
     return createOrderedLocalPlaylist(name, preview.trackIds)
 }
 
-private suspend fun EchoLibraryRepository.createOrderedLocalPlaylist(name: String, ids: List<String>): EchoPlaylist? =
+/** Creates the playlist and its initial membership in one transaction. */
+suspend fun EchoLibraryRepository.createOrderedLocalPlaylist(name: String, ids: List<String>): EchoPlaylist? =
     withContext(Dispatchers.IO) {
         val normalized = LibraryPlaylistPolicy.normalizeName(name) ?: return@withContext null
         val unique = ids.distinct()

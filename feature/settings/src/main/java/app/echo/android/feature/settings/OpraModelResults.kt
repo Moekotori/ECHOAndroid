@@ -16,6 +16,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.rounded.CheckCircle
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
 import app.echo.android.design.echoClickable
@@ -39,6 +41,7 @@ import app.echo.android.model.playback.OpraHeadphoneCorrectionProduct
 internal fun androidx.compose.foundation.lazy.LazyListScope.opraModelItems(
     state: OpraHeadphoneCorrectionState,
     visibleResults: List<OpraHeadphoneCorrectionProduct>,
+    appliedEqId: String?,
     expandedProduct: String?,
     onExpandedProduct: (String?) -> Unit,
     logosByVendorName: Map<String, String?>,
@@ -68,14 +71,19 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.opraModelItems(
                     size = 36.dp,
                 )
                 Column(Modifier.weight(1f)) {
-                    Text(product.productName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                    Text(product.productName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
                     val summary = if (state.catalog == app.echo.android.model.playback.HeadphoneCorrectionCatalog.AutoEq && product.presets.size == 1) {
                         product.presets.first().author
                     } else {
                         pluralStringResource(L10nR.plurals.opra_model_curves, product.presets.size, product.presets.size)
                     }
-                    SignalNote(product.vendorName + " · " + summary)
+                    SignalNote(if (state.catalog == app.echo.android.model.playback.HeadphoneCorrectionCatalog.AutoEq)
+                        summary else product.vendorName + " · " + summary)
                 }
+                if (product.presets.any { it.eqId == appliedEqId }) EchoIcon(Icons.Rounded.CheckCircle,
+                    contentDescription = androidx.compose.ui.res.stringResource(L10nR.string.correction_applied_short),
+                    tint = scheme.onSurfaceVariant)
                 EchoIcon(
                     if (product.presets.size == 1) Icons.AutoMirrored.Rounded.KeyboardArrowRight else Icons.Default.ExpandMore,
                     contentDescription = null,
@@ -116,9 +124,13 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.opraModelItems(
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium,
                                     color = if (selected) scheme.primary else scheme.onSurface,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                                 )
                                 preset.details?.let { SignalNote(it) }
                             }
+                            if (preset.eqId == appliedEqId) EchoIcon(Icons.Rounded.CheckCircle,
+                                contentDescription = androidx.compose.ui.res.stringResource(L10nR.string.correction_applied_short),
+                                tint = scheme.onSurfaceVariant)
                         }
                     }
                 }

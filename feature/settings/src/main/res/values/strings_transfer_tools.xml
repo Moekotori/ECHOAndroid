@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mseb_adjustment_range">Adjustment range</string>
+    <string name="mseb_adjustment_range_note">Fine ±20 · Standard ±40 · Wide ±100. Existing values outside the slider range stay unchanged; use the number field to edit them.</string>
+    <string name="mseb_personal_count">Personal presets · %1$d/%2$d</string>
+    <string name="mseb_personal_save">Save as</string>
+    <string name="mseb_personal_current">Current</string>
+    <string name="mseb_personal_apply">Apply</string>
+    <string name="mseb_personal_rename">Rename</string>
+    <string name="mseb_personal_update">Overwrite</string>
+    <string name="mseb_personal_delete">Delete</string>
+    <string name="mseb_personal_import">Import</string>
+    <string name="mseb_personal_export">Export all</string>
+    <string name="mseb_personal_name">Preset name</string>
+    <string name="mseb_personal_cancel">Cancel</string>
+    <string name="mseb_personal_delete_confirm">Delete this saved preset? Current sound settings will be kept.</string>
+    <string name="mseb_personal_import_note">Import these presets as copies. Duplicate names receive a suffix. Current sound settings will be kept.</string>
+    <string name="mseb_personal_full">Not enough preset slots. Remove saved presets before importing.</string>
+    <string name="mseb_personal_failed">Operation failed. Check file format, storage access or preset capacity, then retry.</string>
+    <string name="mseb_personal_close">Close</string>
+    <string name="usb_fine_title">USB output volume</string>
+    <string name="usb_fine_muted">Muted</string>
+    <string name="usb_fine_value">%1$.1f dB</string>
+    <string name="usb_fine_down">−0.2 dB</string>
+    <string name="usb_fine_up">+0.2 dB</string>
+    <string name="usb_fine_note">0.2 dB steps, plus mute. Values are relative to the connected DAC baseline, not measured loudness. Up to 16 DAC models are remembered by vendor/product ID; automatic restore never increases digital level. Hardware resolution depends on the DAC.</string>
+</resources>

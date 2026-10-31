@@ -67,30 +67,7 @@ internal fun EchoLibraryPage(
     onOpenPlayer: () -> Unit = {},
     bottomInset: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp(0f),
 ) {
-    var musicRelationsOpen by rememberSaveable { mutableStateOf(false) }
-    val musicRelationsState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
-    val musicRelationsActions = remember(viewModel) {
-        val source = viewModel.musicRelations
-        app.echo.android.feature.library.MusicRelationsActions(source::initialize, source::entities, source::tracks,
-            source::readFileTags, source::overview)
-    }
-    val musicRelationPlayback = remember(viewModel) {
-        app.echo.android.feature.library.MusicRelationsPlaybackActions(viewModel::playMusicRelationTracks,
-            viewModel::playMusicRelationNext, viewModel::enqueueMusicRelation)
-    }
-    if (musicRelationsOpen) {
-        if (pageInteractive) musicRelationsState.SaveableStateProvider("music-relations") {
-            app.echo.android.feature.library.MusicRelationsScreen(musicRelationsActions,
-                onBack = { musicRelationsOpen = false }, onPlay = viewModel::playMusicRelationTrack,
-                modifier = androidx.compose.ui.Modifier.padding(bottom = bottomInset), playback = musicRelationPlayback)
-        }
-        return
-    }
-    var broadcastPage by rememberSaveable { mutableStateOf<String?>(null) }
-    broadcastPage?.let { page ->
-        EchoBroadcastHost(viewModel, page, pageInteractive, onBack = { broadcastPage = null }, onOpenPlayer = onOpenPlayer, bottomInset = bottomInset)
-        return
-    }
+    EchoLibraryDestinations(viewModel, pageInteractive, onOpenPlayer, bottomInset) { _, openBroadcast ->
     val experienceActions = rememberLibraryExperienceActions(viewModel) { onScanFolder(appSettings.libraryScanOptions) }
     val shortcutContext = androidx.compose.ui.platform.LocalContext.current
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
@@ -137,12 +114,14 @@ internal fun EchoLibraryPage(
         batchConsent?.complete(it.resultCode == android.app.Activity.RESULT_OK)
     }
     val batchDelete = rememberLibraryBatchDelete(viewModel)
-    val batchActions = remember(viewModel, localPlaylists, batchWriteLauncher, batchDelete) {
+    val shareOriginal = rememberOriginalAudioShare()
+    val batchActions = remember(viewModel, localPlaylists, batchWriteLauncher, batchDelete, shareOriginal) {
         app.echo.android.feature.library.LibraryBatchActions(localPlaylists,
             viewModel.libraryExperience::favorites, viewModel.libraryExperience::addToPlaylist,
             viewModel::batchQueue, viewModel::batchTags,
             delete = batchDelete,
             canDeleteOriginals = app.echo.android.data.LibraryTrackDeletionPolicy::canDeleteOriginals,
+            share = shareOriginal,
             writeAccess = { selected ->
                 val uris = selected.map { android.net.Uri.parse(it.uri) }.filter { it.authority == "media" }
                 if (android.os.Build.VERSION.SDK_INT < 30 || uris.isEmpty()) true else {
@@ -264,16 +243,16 @@ internal fun EchoLibraryPage(
         loader = app.echo.android.feature.library.EmbeddedLyricsLoader { viewModel.loadEmbeddedLyrics(it) },
     ) {
     app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
-    app.echo.android.feature.library.LibraryBatchProvider(batchActions, pageInteractive = pageInteractive) {
+    app.echo.android.feature.library.LibraryBatchProvider(batchActions,
+        pageInteractive = pageInteractive && app.echo.android.design.LocalEchoPageInteractive.current) {
         LibraryScreen(
-            onOpenMusicRelations = { musicRelationsOpen = true },
             libraryLayout = appSettings.libraryLayout,
             onLibraryLayoutChange = viewModel::setLibraryLayout,
             radioStations = radioStations,
             radioLoadFailed = radioLoadFailed,
             onRetryRadio = viewModel.radioController::reload,
-            onOpenRadio = { broadcastPage = "radio" },
-            onOpenPodcasts = { broadcastPage = "podcasts" },
+            onOpenRadio = { openBroadcast("radio") },
+            onOpenPodcasts = { openBroadcast("podcasts") },
             onPlayRadio = { viewModel.play(it.toTrack()) },
             onSaveRadio = viewModel.radioController::save,
             onDeleteRadio = viewModel.radioController::delete,
@@ -377,6 +356,12 @@ internal fun EchoLibraryPage(
             },
             onPinPlaylistShortcut = { playlist, play -> app.echo.android.library.EchoLibraryShortcuts.pin(shortcutContext,
                 app.echo.android.playback.EchoPlaybackLibraryIds.playlist(playlist.id), playlist.name, play) },
+            onWriteAlbumNfc = if (viewModel.nfcMusic.supported) { album ->
+                viewModel.nfcMusic.prepare(app.echo.android.playback.EchoPlaybackLibraryIds.album(album.albumKey), album.title)
+            } else null,
+            onWritePlaylistNfc = if (viewModel.nfcMusic.supported) { playlist ->
+                viewModel.nfcMusic.prepare(app.echo.android.playback.EchoPlaybackLibraryIds.playlist(playlist.id), playlist.name)
+            } else null,
             onPlayAlbum = { album -> viewModel.playAlbum(album.albumKey) },
             onShuffleAlbum = { album -> viewModel.shuffleAlbum(album.albumKey) },
             onPlayArtist = { artist -> viewModel.playArtist(artist.artistKey) },
@@ -458,6 +443,7 @@ internal fun EchoLibraryPage(
                 exportM3uLauncher.launch("$fileName.m3u")
             },
         )
+    }
     }
     }
     }

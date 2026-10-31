@@ -4,9 +4,7 @@ import app.echo.android.design.EchoIcon
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
@@ -18,6 +16,7 @@ import app.echo.android.design.EchoPageEntrance
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -124,7 +123,7 @@ internal fun SettingsNavigation(
         )
     }
     if (wide) {
-        SettingsStyle(compactMode) {
+        SettingsStyle(compactMode, interactive = isActive) {
             EchoPageEntrance(active = isPageVisible) {
                 SettingsWideNavigation(selected, home = {
                     stateHolder.SaveableStateProvider("home") { home() }
@@ -138,7 +137,7 @@ internal fun SettingsNavigation(
         return
     }
     // PageChrome draws its own background without providing a content color.
-    SettingsStyle(compactMode) {
+    SettingsStyle(compactMode, interactive = isActive) {
         EchoPageEntrance(active = isPageVisible) {
             EchoPageContent(
                 targetState = SettingsPage(selected, activeSub),
@@ -149,31 +148,22 @@ internal fun SettingsNavigation(
                 back = if (selected != null) EchoPageBack(SettingsPage(selected.takeIf { activeSub != null }, null)) { detailBack.value } else null,
                 transitionSpec = {
                     val backward = targetState.depth < initialState.depth
-                    val exitSpec = EchoMotion.pageFadeOut(lightweight)
-                    // PageChrome is translucent: finish fading the old text before revealing
-                    // the new page, including in lightweight mode and when returning home.
-                    val enter = fadeIn(tween(
-                        durationMillis = if (lightweight) EchoMotion.PageLightweightMs else EchoMotion.FadeMs,
-                        delayMillis = exitSpec.durationMillis,
-                        easing = EchoMotion.Silk,
-                    ))
-                    val exit = fadeOut(exitSpec)
-                    ContentTransform(
+                    // Each page paints its own opaque background. Both pages can now move
+                    // together, without overlapping text or an empty fade-out/fade-in gap.
+                    if (lightweight) EchoMotion.pageFade(lightweight = true) else ContentTransform(
                         targetContentEnter = when {
-                            lightweight -> enter
                             backward -> scaleIn(
                                 initialScale = EchoMotion.PageDepthScale,
                                 animationSpec = EchoMotion.silkFloat(EchoMotion.PageMs),
-                            ) + enter
-                            else -> slideInHorizontally(EchoMotion.silkOffset(EchoMotion.PageMs)) { it } + enter
+                            )
+                            else -> slideInHorizontally(EchoMotion.silkOffset(EchoMotion.PageMs)) { it }
                         },
                         initialContentExit = when {
-                            lightweight -> exit
-                            backward -> EchoMotion.pagePop().initialContentExit + exit
+                            backward -> slideOutHorizontally(EchoMotion.silkOffset(EchoMotion.PageMs)) { it }
                             else -> scaleOut(
                                 targetScale = EchoMotion.PageDepthScale,
                                 animationSpec = EchoMotion.silkFloat(EchoMotion.PageExitMs),
-                            ) + exit
+                            )
                         },
                         targetContentZIndex = if (backward) 0f else 1f,
                         sizeTransform = null,
@@ -183,6 +173,7 @@ internal fun SettingsNavigation(
                 val category = page.category
                 val sub = page.sub
                 stateHolder.SaveableStateProvider(page.key) {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                     PageChrome(
                         title = stringResource(sub?.title ?: category?.title ?: R.string.settings_title),
                         subtitle = null,
@@ -220,6 +211,7 @@ internal fun SettingsNavigation(
                                 compactMode, searchFocus, content,
                             )
                         }
+                    }
                     }
                 }
             }

@@ -89,6 +89,7 @@ internal fun PlaylistDetailTopBar(
     onExport: (() -> Unit)? = null,
     onArtwork: (() -> Unit)? = null,
     onEditRules: (() -> Unit)? = null,
+    onWriteNfc: (() -> Unit)? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val colors = rememberPlaylistDetailColors()
@@ -104,7 +105,7 @@ internal fun PlaylistDetailTopBar(
         Text(title, modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             color = colors.muted, style = MaterialTheme.typography.bodySmall,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (canEdit || onCopy != null || onExport != null || onEditRules != null) {
+        if (canEdit || onCopy != null || onExport != null || onEditRules != null || onWriteNfc != null) {
             Box {
                 IconButton(onClick = { menuOpen = true }) {
                     EchoIcon(Icons.Rounded.MoreVert,
@@ -113,6 +114,8 @@ internal fun PlaylistDetailTopBar(
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false },
                     containerColor = MaterialTheme.colorScheme.surface) {
+                    onWriteNfc?.let { action -> DropdownMenuItem(text = { Text(stringResource(L10nR.string.nfc_music_write)) },
+                        onClick = { menuOpen = false; action() }) }
                     if (canEdit) DropdownMenuItem(
                         text = { Text(stringResource(L10nR.string.feature_library_rename_d1a28e)) },
                         leadingIcon = { EchoIcon(Icons.Rounded.Edit, contentDescription = null) },

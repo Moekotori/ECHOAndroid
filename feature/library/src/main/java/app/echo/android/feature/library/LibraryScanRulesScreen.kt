@@ -1,6 +1,6 @@
 package app.echo.android.feature.library
 
-import androidx.activity.compose.BackHandler
+import app.echo.android.design.EchoPageBackHandler as BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState

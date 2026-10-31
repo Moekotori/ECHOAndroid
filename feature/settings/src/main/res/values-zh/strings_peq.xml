@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="peq_neutral">中性 · 仅预览</string>
-    <string name="peq_editor_detail">最多 32 段滤波器。点击数值精确输入，也可用滑杆调整。切换图形 EQ 会替换滤波器，可先保存预设。</string>
+    <string name="peq_editor_detail">最多 32 段。选择图下的滤波段，再调整频率、增益和 Q 值。</string>
 </resources>

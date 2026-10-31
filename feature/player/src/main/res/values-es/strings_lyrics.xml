@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_manager_title">Letra · %1$s</string>
-    <string name="lyrics_manager_hint">Toca un resultado para usarlo y guardarlo sin conexión.</string>
+    <string name="lyrics_manager_hint">Toca un resultado para ver la letra. Pulsa Usar para guardarla y aplicarla.</string>
     <string name="lyrics_manager_search">Buscar / actualizar en línea</string>
     <string name="lyrics_manager_import">Importar archivo de letra</string>
     <string name="lyrics_manager_clear">Borrar selección y usar letra automática</string>

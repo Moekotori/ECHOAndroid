@@ -1,7 +1,6 @@
 package app.echo.android.feature.settings
 
 import app.echo.android.model.settings.EchoBackgroundMode
-import app.echo.android.model.settings.EchoLyricsMotionMode
 import app.echo.android.model.settings.EchoThemeMode
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -84,6 +83,7 @@ fun SettingsScreen(
     lyricsFontScale: Float,
     importedFontUri: String?,
     themeMode: String,
+    palette: SettingsPaletteState,
     appLanguage: String,
     scheduledDarkModeEnabled: Boolean,
     scheduledDarkStartMinute: Int,
@@ -144,6 +144,7 @@ fun SettingsScreen(
     onImportLyricsFont: () -> Unit,
     onClearImportedFont: () -> Unit,
     onThemeModeChange: (String) -> Unit,
+    paletteActions: SettingsPaletteActions,
     onAppLanguageChange: (String) -> Unit,
     onScheduledDarkModeEnabledChange: (Boolean) -> Unit,
     onScheduledDarkStartMinuteChange: (Int) -> Unit,
@@ -175,8 +176,6 @@ fun SettingsScreen(
     soundSummary: String = "",
     permissionState: SettingsPermissionState = SettingsPermissionState(),
     onOpenPermissionSettings: (SettingsPermissionTarget) -> Unit = {},
-    lyricsMotionMode: String = EchoLyricsMotionMode.Smooth,
-    onLyricsMotionModeChange: (String) -> Unit = {},
     lyricsWordHighlightEnabled: Boolean = true,
     onLyricsWordHighlightEnabledChange: (Boolean) -> Unit = {},
     accessibilityCareContent: @Composable () -> Unit = {},
@@ -245,6 +244,7 @@ fun SettingsScreen(
                     lyricsFontScale = lyricsFontScale,
                     importedFontUri = importedFontUri,
                     themeMode = themeMode,
+                    palette = palette,
                     scheduledDarkModeEnabled = scheduledDarkModeEnabled,
                     scheduledDarkStartMinute = scheduledDarkStartMinute,
                     scheduledDarkEndMinute = scheduledDarkEndMinute,
@@ -266,6 +266,7 @@ fun SettingsScreen(
                     onImportLyricsFont = onImportLyricsFont,
                     onClearImportedFont = onClearImportedFont,
                     onThemeModeChange = onThemeModeChange,
+                    paletteActions = paletteActions,
                     onScheduledDarkModeEnabledChange = onScheduledDarkModeEnabledChange,
                     onScheduledDarkStartMinuteChange = onScheduledDarkStartMinuteChange,
                     onScheduledDarkEndMinuteChange = onScheduledDarkEndMinuteChange,
@@ -280,14 +281,12 @@ fun SettingsScreen(
                     lyricsFontScale = lyricsFontScale,
                     compactModeEnabled = compactModeEnabled,
                     lyricsWordHighlightEnabled = lyricsWordHighlightEnabled,
-                    lyricsMotionMode = lyricsMotionMode,
                     playbackHapticsEnabled = playbackHapticsEnabled,
                     onUiFontScaleChange = onUiFontScaleChange,
                     onLyricsFontScaleChange = onLyricsFontScaleChange,
                     onCompactModeEnabledChange = onCompactModeEnabledChange,
                     onLyricsWordHighlightEnabledChange = onLyricsWordHighlightEnabledChange,
                     careContent = accessibilityCareContent,
-                    onLyricsMotionModeChange = onLyricsMotionModeChange,
                     onPlaybackHapticsEnabledChange = onPlaybackHapticsEnabledChange,
                 )
                 SettingsCategory.Interface -> SettingsInterfaceContent(

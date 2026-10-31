@@ -38,7 +38,16 @@ internal suspend fun followLyricsLine(
         motion.layoutKey = layoutKey
         withFrameNanos { }
     }
-    if (!motion.anchored || list.layoutInfo.visibleItemsInfo.none { it.index == index }) {
+    val visible = list.layoutInfo.visibleItemsInfo
+    if (motion.anchored && visible.isNotEmpty() && visible.none { it.index == index } &&
+        lyricFollowCanBridge(index, visible.first().index, visible.last().index)) {
+        // A tall verse can push the very next line outside the viewport. Bridge that short
+        // distance with the lazy list's measured scroll instead of treating it as a far seek.
+        motion.velocity = 0f
+        list.animateScrollToItem(index)
+        return
+    }
+    if (!motion.anchored || visible.none { it.index == index }) {
         // Initial content / a far seek should not fly past an entire song's lyrics.
         motion.velocity = 0f
         if (list.firstVisibleItemIndex != index || list.firstVisibleItemScrollOffset != 0) {
@@ -69,3 +78,6 @@ internal suspend fun followLyricsLine(
     }
     motion.velocity = 0f
 }
+
+internal fun lyricFollowCanBridge(index: Int, firstVisible: Int, lastVisible: Int): Boolean =
+    index >= 0 && index.toLong() in (firstVisible.toLong() - 2)..(lastVisible.toLong() + 2)

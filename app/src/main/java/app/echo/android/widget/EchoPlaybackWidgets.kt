@@ -11,6 +11,7 @@ import kotlinx.coroutines.CancellationException
 internal object EchoPlaybackWidgets {
     private val widgets = listOf(
         EchoPlaybackWidget(), EchoMiniPlaybackWidget(), EchoCoverPlaybackWidget(), EchoLyricsPlaybackWidget(),
+        EchoRecordPlaybackWidget(), EchoBannerPlaybackWidget(), EchoTypographyPlaybackWidget(),
     )
 
     suspend fun updateChanged(context: Context, previous: EchoPlaybackWidgetChrome?, next: EchoPlaybackWidgetChrome) {
@@ -34,6 +35,9 @@ internal object EchoPlaybackWidgets {
             EchoMiniPlaybackWidgetReceiver::class.java.name -> widgets[1]
             EchoCoverPlaybackWidgetReceiver::class.java.name -> widgets[2]
             EchoLyricsPlaybackWidgetReceiver::class.java.name -> widgets[3]
+            EchoRecordPlaybackWidgetReceiver::class.java.name -> widgets[4]
+            EchoBannerPlaybackWidgetReceiver::class.java.name -> widgets[5]
+            EchoTypographyPlaybackWidgetReceiver::class.java.name -> widgets[6]
             else -> return
         }
         widget.update(context, id)

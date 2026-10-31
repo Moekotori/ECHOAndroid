@@ -30,28 +30,29 @@ internal fun EchoLyricsWidgetContent(context: Context, snapshot: EchoPlaybackSur
     val lyric = lyricLine?.takeIf { snapshot.hasTrack && it.isNotBlank() }
     val text = if (!LocalWidgetOptions.current.showLyrics) title else lyric ?: context.getString(if (snapshot.hasTrack) R.string.widget_lyrics_unavailable else R.string.widget_lyrics_hint)
     Column(
-        GlanceModifier.fillMaxSize().background(widgetBackground(context))
-            .widgetSurface().clickable(actionStartActivity(intent)).padding(if (header) 16.dp else 12.dp),
+        GlanceModifier.fillMaxSize().clickable(actionStartActivity(intent)).padding(if (header) 20.dp else 16.dp),
     ) {
         if (header && !largeText) {
             Text(context.getString(R.string.widget_lyrics_label), maxLines = 1,
-                style = TextStyle(color = widgetAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold))
+                style = TextStyle(color = widgetSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium))
             Spacer(GlanceModifier.height(8.dp))
         }
         Box(GlanceModifier.fillMaxWidth().defaultWeight(), contentAlignment = Alignment.CenterStart) {
             Text(text, maxLines = if (largeText) 1 else if (tall) 3 else 2,
                 style = TextStyle(color = if (lyric != null) widgetForeground else widgetSecondary,
-                    fontSize = (if (largeText || lyric == null) 17 else if (tall) 26 else 20).sp,
+                    fontSize = (if (largeText || lyric == null) 17 else if (tall) 28 else 21).sp,
                     fontWeight = if (lyric != null) FontWeight.Bold else FontWeight.Normal))
         }
-        Spacer(GlanceModifier.height(12.dp))
+        Spacer(GlanceModifier.height(16.dp))
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            WidgetArtwork(artwork, 32.dp)
-            Spacer(GlanceModifier.width(8.dp))
+            if (LocalWidgetOptions.current.showArtwork) {
+                WidgetArtwork(artwork, 36.dp)
+                Spacer(GlanceModifier.width(10.dp))
+            }
             WidgetTrackText(title, if (largeText) "" else artist, GlanceModifier.defaultWeight(), 12, 11)
             Spacer(GlanceModifier.width(8.dp))
             WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 44.dp,
-                full = size.width >= 300.dp && !largeText, gap = 4.dp)
+                full = size.width >= 360.dp && !largeText, gap = 4.dp)
         }
     }
 }

@@ -67,11 +67,17 @@ fun RadioScreen(
     LaunchedEffect(savedQuery, favorites) { actions.searchSaved(savedQuery, favorites) }
     LaunchedEffect(global, group, directory.query) { listState.scrollToItem(0) }
     val detail = selected?.let { snapshot -> saved.firstOrNull { it.id == snapshot.id || it.url == snapshot.url } ?: snapshot }
-    androidx.activity.compose.BackHandler(enabled = interactive) { goBack() }
-    if (detail != null) {
-        RadioStationDetail(detail, saved.any { it.id == detail.id || it.url == detail.url }, currentId == "radio:${detail.id}" && playing,
-            playbackPending && currentId == "radio:${detail.id}", actions, onBack = { selected = null }, onEdit = { editing = detail; editorOpen = true }, videoSurface = videoSurface,
-            onFilter = { query -> selected = null; browse(query) }, streamTitle = streamTitle?.takeIf { currentId == "radio:${detail.id}" })
+    app.echo.android.design.EchoPageBackHandler(enabled = interactive) { goBack() }
+    app.echo.android.design.EchoPageContent(
+        targetState = detail,
+        contentKey = { it?.id ?: "radio-list" },
+        isBackward = { _, target -> target == null },
+        label = "radio-detail",
+    ) { shownDetail ->
+    if (shownDetail != null) {
+        RadioStationDetail(shownDetail, saved.any { it.id == shownDetail.id || it.url == shownDetail.url }, currentId == "radio:${shownDetail.id}" && playing,
+            playbackPending && currentId == "radio:${shownDetail.id}", actions, onBack = { selected = null }, onEdit = { editing = shownDetail; editorOpen = true }, videoSurface = videoSurface,
+            onFilter = { query -> selected = null; browse(query) }, streamTitle = streamTitle?.takeIf { currentId == "radio:${shownDetail.id}" })
     } else BoxWithConstraints(Modifier.fillMaxSize()) {
         val columns = if (maxWidth >= 720.dp) 3 else 2
         val directoryRows = remember(directory.rows, columns) { directory.rows.chunked(columns) }
@@ -170,6 +176,7 @@ fun RadioScreen(
                 }
             }
         }
+    }
     }
     if (addOptions) RadioAddOptions(onDismiss = { addOptions = false }, onExplore = { addOptions = false; browse(view = "home") },
         onManual = { addOptions = false; editing = null; editorOpen = true }, onClipboard = {

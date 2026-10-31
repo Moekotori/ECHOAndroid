@@ -12,6 +12,8 @@ import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -92,7 +94,7 @@ internal fun SongListNavigation(
         onDispose { jumpJob?.cancel() }
     }
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(0.dp), horizontalAlignment = Alignment.End) {
         SnackbarHost(snackbar)
         if (!selecting && currentIndex != null && !currentVisible) {
             SongNavigationButton(
@@ -128,9 +130,9 @@ internal fun SongListNavigation(
                 enabled = !locating && refresh is LoadState.NotLoading,
             ) {
                 if (locating) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSurface)
+                    color = LocalContentColor.current)
                 else EchoIcon(LibraryPlayingLocationIcon, null,
-                    Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+                    Modifier.size(18.dp), tint = LocalContentColor.current)
             }
         }
         if (!selecting && showTop) {
@@ -142,7 +144,7 @@ internal fun SongListNavigation(
                 }
             }) {
                 EchoIcon(Icons.Rounded.VerticalAlignTop, null,
-                    Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+                    Modifier.size(18.dp), tint = LocalContentColor.current)
             }
         }
     }
@@ -159,13 +161,15 @@ private fun SongNavigationButton(
     IconButton(onClick, enabled = enabled, modifier = Modifier.size(48.dp)
         .semantics { contentDescription = label }) {
         Surface(
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(32.dp),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            border = BorderStroke(0.75.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
-            shadowElevation = 1.dp,
+            color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.72f),
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
         ) {
-            Box(contentAlignment = Alignment.Center) { content() }
+            CompositionLocalProvider(LocalContentColor provides
+                MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 0.56f else 0.3f)) {
+                Box(contentAlignment = Alignment.Center) { content() }
+            }
         }
     }
 }

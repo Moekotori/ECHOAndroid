@@ -1,0 +1,20 @@
+<resources>
+    <string name="volume_title">Volume</string>
+    <string name="volume_summary">App volume, gain, fine adjustment and loudness</string>
+    <string name="volume_scope">Controls audio played on this phone, including streamed tracks. Android media volume and USB DAC volume remain separate. Remote playback on a PC or cast receiver uses that device’s volume.</string>
+    <string name="volume_bypassed">USB bit-perfect output bypasses these controls, including mute. Use the DAC’s hardware volume.</string>
+    <string name="volume_combined">Combined gain setting</string>
+    <string name="volume_muted">Muted</string>
+    <string name="volume_mute">Mute app audio</string>
+    <string name="volume_reset">Reset volume</string>
+    <string name="volume_level">App volume</string>
+    <string name="volume_gain">Gain</string>
+    <string name="volume_limit">Combined gain ceiling</string>
+    <string name="volume_limit_detail">Caps app volume + gain + ReplayGain before the peak limiter. This is a gain setting, not a measured sound level or a limit on Android or DAC volume.</string>
+    <string name="volume_gain_hint">Positive gain can clip loud tracks. Enable the peak limiter below to control sample peaks.</string>
+    <string name="volume_step">Fine adjustment step</string>
+    <string name="volume_step_value">%1$s dB per tap</string>
+    <string name="volume_decrease">Decrease app volume</string>
+    <string name="volume_increase">Increase app volume</string>
+    <string name="volume_replaygain_summary">Track or album loudness compensation</string>
+</resources>

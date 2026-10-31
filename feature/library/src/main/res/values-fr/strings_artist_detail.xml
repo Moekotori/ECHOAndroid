@@ -23,4 +23,5 @@
         <item quantity="many">%1$d titres</item>
         <item quantity="other">%1$d titres</item>
     </plurals>
+    <string name="artist_playback_actions">Options de lecture</string>
 </resources>

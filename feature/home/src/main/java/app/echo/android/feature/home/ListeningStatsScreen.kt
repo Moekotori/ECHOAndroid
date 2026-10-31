@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -42,23 +44,16 @@ import app.echo.android.model.playback.ListeningStatsRange
  * [onOpenTrack] 以 trackId 回调，曲目可能已不在曲库里，由调用方决定如何处理。
  */
 @Composable
-fun ListeningStatsScreen(
+internal fun ListeningStatsOverview(
     stats: ListeningStats?,
     onLoad: (ListeningStatsRange) -> Unit,
     onOpenTrack: (trackId: String) -> Unit,
     onBack: () -> Unit,
+    onOpenMonthly: () -> Unit,
     modifier: Modifier = Modifier,
-    monthlyReport: app.echo.android.model.playback.EchoMonthlyRecap? = null,
-    monthlyError: Boolean = false,
-    onLoadMonthly: (Int, Int) -> Unit = { _, _ -> },
 ) {
-    var monthlyVisible by rememberSaveable { mutableStateOf(false) }
-    if (monthlyVisible) {
-        androidx.activity.compose.BackHandler { monthlyVisible = false }
-        MonthlyRecapScreen(monthlyReport, monthlyError, onLoadMonthly, onBack = { monthlyVisible = false }, modifier = modifier)
-        return
-    }
     var range by rememberSaveable { mutableStateOf(ListeningStatsRange.Month) }
+    val listState = rememberLazyListState()
     LaunchedEffect(range) { onLoad(range) }
     val current = stats?.takeIf { it.range == range }
 
@@ -85,7 +80,7 @@ fun ListeningStatsScreen(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
-            androidx.compose.material3.TextButton(onClick = { monthlyVisible = true }) {
+            androidx.compose.material3.TextButton(onClick = onOpenMonthly) {
                 Text(stringResource(R.string.recap_title))
             }
         }
@@ -106,14 +101,15 @@ fun ListeningStatsScreen(
                 CircularProgressIndicator()
             }
             current.isEmpty -> ListeningStatsEmpty()
-            else -> ListeningStatsContent(current, onOpenTrack)
+            else -> ListeningStatsContent(current, listState, onOpenTrack)
         }
     }
 }
 
 @Composable
-private fun ListeningStatsContent(stats: ListeningStats, onOpenTrack: (String) -> Unit) {
+private fun ListeningStatsContent(stats: ListeningStats, listState: LazyListState, onOpenTrack: (String) -> Unit) {
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),

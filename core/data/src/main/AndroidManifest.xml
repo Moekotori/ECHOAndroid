@@ -1,1 +1,19 @@
-<manifest />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <provider
+            android:name="app.echo.android.data.EchoLibraryDocumentsProvider"
+            android:authorities="${applicationId}.library-documents"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+        <provider
+            android:name="app.echo.android.data.OriginalAudioShareProvider"
+            android:authorities="${applicationId}.audio-share"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+    </application>
+</manifest>

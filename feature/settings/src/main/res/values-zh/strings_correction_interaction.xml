@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="correction_apply">应用校正</string>
+    <string name="correction_applied_short">已应用</string>
+    <string name="correction_save_short">收藏</string>
+    <string name="correction_saved_short">已收藏</string>
+    <string name="correction_refresh_results">刷新列表</string>
+    <string name="correction_loading_offline">正在读取内置 AutoEQ 目录…</string>
+    <string name="correction_favorites_full">已存满 %1$d 个预设。可在均衡器中删除不需要的预设，再收藏此校正。</string>
+</resources>

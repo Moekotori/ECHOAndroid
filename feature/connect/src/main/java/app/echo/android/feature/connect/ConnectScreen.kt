@@ -16,6 +16,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoContentMaxWidth
@@ -141,6 +142,7 @@ fun ConnectScreen(
     onOpenFullQueue: (() -> Unit)? = null,
     queueTotalCount: Int = queueItems.size,
     networkPermissionContent: @Composable () -> Unit = {},
+    onOpenWifiTransfer: () -> Unit = {},
     phoneLibraryShareStatus: String = "off",
     onPhoneLibraryShareChange: (Boolean) -> Unit = {},
 ) {
@@ -148,6 +150,7 @@ fun ConnectScreen(
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
     val savedTabs = rememberSaveableStateHolder()
     val keyboard = LocalSoftwareKeyboardController.current
+    val focus = LocalFocusManager.current
     val scheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
     var openShareConnectionNonce by remember { mutableIntStateOf(0) }
@@ -155,8 +158,21 @@ fun ConnectScreen(
     val innerFling = rememberSilkPagerFlingBehavior(pagerState)
     val innerNestedScroll = rememberContentPagerNestedScroll(pagerState, innerFling)
     fun selectTab(index: Int) {
+        focus.clearFocus()
         keyboard?.hide()
         scope.launch { pagerState.animateSilkToPage(index, lightweight) }
+    }
+    var previousPage by remember { mutableIntStateOf(pagerState.targetPage) }
+    var wasActive by remember { mutableStateOf(remoteControlsActive) }
+    LaunchedEffect(pagerState.targetPage, remoteControlsActive) {
+        // Swipes and external navigation must release the editor as well as tab clicks.
+        // Precomposing an inactive neighbour must never steal focus from the visible page.
+        if (wasActive && (previousPage != pagerState.targetPage || !remoteControlsActive)) {
+            focus.clearFocus()
+            keyboard?.hide()
+        }
+        previousPage = pagerState.targetPage
+        wasActive = remoteControlsActive
     }
     LaunchedEffect(openCastTabNonce) {
         if (openCastTabNonce > 0) pagerState.animateSilkToPage(2, lightweight)
@@ -194,6 +210,7 @@ fun ConnectScreen(
                 }
             }
             networkPermissionContent()
+            Box(Modifier.padding(horizontal = 16.dp)) { WifiTransferEntry(onOpenWifiTransfer) }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth().weight(1f).connectPagerEdgeSwipe(

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_record_name">ECHO · 唱片</string>
+    <string name="widget_record_description">圆形唱片、歌曲信息与播放控制</string>
+    <string name="widget_banner_name">ECHO · 横幅播放器</string>
+    <string name="widget_banner_description">贴边封面、歌曲信息与横向播放控制</string>
+    <string name="widget_typography_name">ECHO · 文字播放器</string>
+    <string name="widget_typography_description">大字歌名、歌词与播放控制，不显示封面</string>
+</resources>

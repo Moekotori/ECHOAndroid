@@ -20,11 +20,12 @@ internal fun SignalOverview(
     dspSettings: EchoDspSettings = EchoDspSettings(),
     onAdjust: () -> Unit,
     onDiagnostics: () -> Unit,
+    volume: EchoVolumeSettings = EchoVolumeSettings(),
 ) {
     val d = status.diagnostics
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SignalDeviceCard(status)
-        SignalPathPanel(status, equalizer, channelBalance, dspSettings)
+        SignalPathPanel(status, equalizer, channelBalance, dspSettings, volume)
         SignalDacPanel(status, onDiagnostics)
         SignalSection(stringResource(L10nR.string.feature_settings_output_details_f242d2)) {
             SignalReadout(

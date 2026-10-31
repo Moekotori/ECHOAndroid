@@ -411,6 +411,15 @@ internal class LibraryController(
         }
     }
 
+    fun refreshReceivedMusicFolder(treeUri: Uri, options: LibraryScanOptions) {
+        val folder = MediaStoreAudioFolder.fromTreeUri(treeUri) ?: return
+        rememberWatchedTree(treeUri, folder, options)
+        // SAF has the completed files immediately, before MediaStore indexing catches up.
+        startScanJob(auto = false) {
+            scanDocumentTree(folder.copy(treeUri = treeUri), options, quiet = false, freshListing = true)
+        }
+    }
+
     private fun refreshLibrary(relativePathPrefix: String?, options: LibraryScanOptions?, auto: Boolean = false) {
         startScanJob(auto = auto) {
             try {
@@ -544,6 +553,7 @@ internal class LibraryController(
         folder: MediaStoreAudioFolder,
         options: LibraryScanOptions,
         quiet: Boolean,
+        freshListing: Boolean = false,
     ) {
         val treeUri = folder.treeUri ?: return
         try {
@@ -557,7 +567,7 @@ internal class LibraryController(
                 skipSampleRateRead = skipSampleRateRead(),
                 options = effectiveOptions,
                 removeExcludedFromLibrary = !quiet,
-                reuseDirectoryListings = LibraryFolderWatchPolicy.shouldReuseCachedDirectoryListing(),
+                reuseDirectoryListings = !freshListing && LibraryFolderWatchPolicy.shouldReuseCachedDirectoryListing(),
             ).collect { progress ->
                 if (!quiet) {
                     publishScanProgress(_scanState, progress, "Document tree scan failed")

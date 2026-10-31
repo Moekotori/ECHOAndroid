@@ -17,7 +17,8 @@ internal fun mergeEchoLinkSnapshot(
         }
     }
     val queue = if (message.queueIncluded) incoming.queue else {
-        val currentId = incoming.track?.id ?: previous.queue.currentTrackId
+        val currentId = if (incoming.queueIdentityAvailable) incoming.queue.currentTrackId ?: incoming.track?.id
+            else incoming.track?.id ?: previous.queue.currentTrackId
         previous.queue.copy(currentTrackId = currentId,
             revision = if (incoming.queueIdentityAvailable) incoming.queue.revision else previous.queue.revision,
             currentQueueId = if (incoming.queueIdentityAvailable) incoming.queue.currentQueueId else previous.queue.currentQueueId)

@@ -23,6 +23,7 @@ internal fun signalPathStages(
     equalizer: EchoEqualizerState,
     balance: EchoChannelBalanceState,
     dsp: EchoDspSettings,
+    volume: EchoVolumeSettings = EchoVolumeSettings(),
 ): List<SignalPathStage> {
     val d = status.diagnostics
     val live = status.isPlaying && status.state != EchoPlaybackState.Error
@@ -77,7 +78,7 @@ internal fun signalPathStages(
                 stringResource(R.string.path_decoded_bits) to (d.bitPerfectDecodedBits?.takeIf { it > 0 }?.let { "$it bit" } ?: unknown),
             ),
         ))
-        add(signalProcessingStage(status, equalizer, balance, dsp))
+        add(signalProcessingStage(status, equalizer, balance, dsp, volume))
         add(SignalPathStage(
             label = stringResource(R.string.path_transport),
             value = when {

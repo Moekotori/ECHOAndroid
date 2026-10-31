@@ -19,6 +19,8 @@ import java.net.URL
 
 /** One decoded cover, shared by widget instances. Failures expire so reconnection can recover. */
 internal object EchoWidgetArtwork {
+    // A single shared 512px ARGB cover is at most 1 MiB; large artwork widgets need more than a thumbnail.
+    private const val MaxArtworkEdgePx = 512
     private data class Cached(val key: String, val bitmap: Bitmap?, val expiresAtMs: Long)
     private val mutex = Mutex()
     private var cached: Cached? = null
@@ -30,7 +32,7 @@ internal object EchoWidgetArtwork {
                 cached?.takeIf { it.key == key && SystemClock.elapsedRealtime() < it.expiresAtMs }?.let { return@withLock it.bitmap }
                 currentCoroutineContext().ensureActive()
                 val local = EchoPlaybackArtwork.load(context, snapshot.artworkUri, snapshot.playUri,
-                    EchoPlaybackArtwork.WidgetMaxEdgePx, maxBytes = 2 * 1024 * 1024)
+                    MaxArtworkEdgePx, maxBytes = 2 * 1024 * 1024)
                 val bitmap = local ?: if (allowRemote) loadRemote(snapshot.artworkUri) else null
                 currentCoroutineContext().ensureActive()
                 cached = Cached(key, bitmap, SystemClock.elapsedRealtime() + if (bitmap == null) 30_000 else 300_000)
@@ -44,16 +46,16 @@ internal object EchoWidgetArtwork {
         var connection: HttpURLConnection? = null
         return try {
             if (EchoBridgeArtwork.handles(remote)) {
-                val image = EchoBridgeArtwork.read(remote, EchoPlaybackArtwork.WidgetMaxEdgePx) ?: return null
+                val image = EchoBridgeArtwork.read(remote, MaxArtworkEdgePx) ?: return null
                 return EchoPlaybackArtwork.decodeCapped(java.io.ByteArrayInputStream(image.bytes),
-                    EchoPlaybackArtwork.WidgetMaxEdgePx, 256 * 1024)
+                    MaxArtworkEdgePx, 2 * 1024 * 1024)
             }
             connection = URL(remote).openConnection() as HttpURLConnection
             connection.connectTimeout = 2_500
             connection.readTimeout = 2_500
             if (connection.responseCode !in 200..299) return null
             connection.inputStream.use {
-                EchoPlaybackArtwork.decodeCapped(it, EchoPlaybackArtwork.WidgetMaxEdgePx, 2 * 1024 * 1024)
+                EchoPlaybackArtwork.decodeCapped(it, MaxArtworkEdgePx, 2 * 1024 * 1024)
             }
         } catch (cancelled: CancellationException) {
             throw cancelled

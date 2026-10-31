@@ -5,7 +5,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -14,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -31,7 +29,6 @@ internal fun OpraCatalogControls(
     onRefresh: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val uriHandler = LocalUriHandler.current
     val autoEq = state.catalog == HeadphoneCorrectionCatalog.AutoEq
     val brandName = state.brands.firstOrNull { it.id == state.selectedBrandId }?.name
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -65,11 +62,9 @@ internal fun OpraCatalogControls(
         Text(if (state.status.eqCount > 0) stringResource(R.string.opra_catalog_summary, state.status.productCount, state.status.eqCount)
             else stringResource(R.string.opra_browse_workflow),
             modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-        IconButton(onClick = {
-            if (autoEq) uriHandler.openUri("https://github.com/jaakkopasanen/AutoEq") else onRefresh()
-        }, enabled = !state.loading) {
-            EchoIcon(if (autoEq) Icons.AutoMirrored.Rounded.OpenInNew else Icons.Default.Refresh,
-                contentDescription = stringResource(if (autoEq) R.string.autoeq_check_updates else R.string.diag_refresh_library),
+        IconButton(onClick = onRefresh, enabled = !state.loading) {
+            EchoIcon(Icons.Default.Refresh,
+                contentDescription = stringResource(R.string.correction_refresh_results),
                 tint = scheme.onSurfaceVariant)
         }
     }

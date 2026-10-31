@@ -30,7 +30,10 @@ internal fun parseEchoLinkEventData(
     val playbackJson = snapshotJson.optJSONObject("playback") ?: snapshotJson
     return EchoRemoteMessage.StatusSnapshot(
         payload = playbackJson.toPlaybackSnapshot(endpoint),
-        queueIncluded = playbackJson.has("queue"),
+        // V2 includes a queue summary without rows. Only explicit rows replace the preview.
+        queueIncluded = playbackJson.optJSONObject("queue")?.let {
+            it.has("items") || it.has("tracks")
+        } == true || playbackJson.has("queue") && playbackJson.isNull("queue"),
         trackArtworkIncluded = playbackJson.optJSONObject("track")?.let {
             it.has("artworkUrl") || it.has("coverUrl") || it.has("coverThumb") ||
                 it.has("cover") || it.has("albumArtUrl") || it.has("albumArt")
@@ -50,7 +53,9 @@ internal fun JSONObject.toPlaybackSnapshot(endpoint: EchoRemoteEndpoint): EchoRe
         volume = optDouble("volume", 1.0).toFloat().coerceIn(0f, 1f),
         outputMode = optText("outputMode") ?: optJSONObject("output")?.optText("mode")
             ?: if (opt("output") is String) optText("output") ?: "PC ECHO" else "PC ECHO",
-        updatedAtEpochMs = optLong("updatedAtEpochMs", System.currentTimeMillis()),
+        updatedAtEpochMs = optLong("updatedAtEpochMs", 0L).takeIf { it > 0L }
+            ?: optText("observedAt")?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
+            ?: 0L,
         queue = optJSONObject("queue")?.toRemoteQueue(endpoint) ?: EchoRemotePlaybackQueue(
             revision = optLong("queueRevision", -1).takeIf { it >= 0 },
             currentQueueId = optText("currentQueueId")),

@@ -44,18 +44,20 @@ fun EchoOverlayBackHandler(
     onCancel: () -> Unit = { onProgress(0f) },
     onDismiss: () -> Unit,
 ) {
-    val active = rememberUpdatedState(enabled)
-    val ownership = remember(enabled) { Any() }
+    val interactive = enabled && LocalEchoPageInteractive.current
+    val active = rememberUpdatedState(interactive)
+    val ownership = remember(interactive) { Any() }
     val currentOwnership = rememberUpdatedState(ownership)
     val update = rememberUpdatedState(onProgress)
     val cancel = rememberUpdatedState(onCancel)
     val dismiss = rememberUpdatedState(onDismiss)
-    PredictiveBackHandler(enabled = enabled) { progress ->
+    PredictiveBackHandler(enabled = interactive) { progress ->
         val gestureOwner = currentOwnership.value
         val gestureUpdate = update.value
         val gestureCancel = cancel.value
         val gestureDismiss = dismiss.value
         fun ownerActive() = active.value && currentOwnership.value === gestureOwner
+        // Keep collection explicit here: Activity Compose lint must see the gesture being consumed.
         var lostOwnership = !ownerActive()
         try {
             progress.collect { event ->

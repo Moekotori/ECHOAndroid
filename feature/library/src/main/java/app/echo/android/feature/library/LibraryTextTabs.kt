@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -45,7 +46,9 @@ internal fun LibraryTextTabs(
     val density = LocalDensity.current
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val widths = remember(labels, density) { mutableStateMapOf<Int, Int>() }
-    val spacing = if (compact) 24.dp else 18.dp
+    val spacing = if (compact) 24.dp else 12.dp
+    val labelStyle = if (compact) MaterialTheme.typography.labelLarge
+        else MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp, lineHeight = 18.sp)
     val indicatorWidth = if (compact) 16.dp else 18.dp
     val spacingPx = with(density) { spacing.toPx() }
     val scroll = rememberScrollState()
@@ -75,20 +78,20 @@ internal fun LibraryTextTabs(
                 Column(
                     Modifier.onSizeChanged { widths[index] = it.width }
                         .selectable(selected, role = Role.Tab, onClick = { keyboard?.hide(); onSelect(index) })
-                        .heightIn(min = 48.dp).padding(top = 12.dp),
+                        .heightIn(min = 48.dp).padding(top = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     // Reserve the bold width so selecting a label cannot shift its neighbours.
                     Box(contentAlignment = Alignment.Center) {
                         Text(label, color = androidx.compose.ui.graphics.Color.Transparent,
                             modifier = Modifier.clearAndSetSemantics { },
-                            style = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleSmall,
+                            style = labelStyle,
                             fontWeight = FontWeight.SemiBold)
                         Text(label, color = color,
-                            style = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleSmall,
+                            style = labelStyle,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(6.dp))
                 }
             }
         }

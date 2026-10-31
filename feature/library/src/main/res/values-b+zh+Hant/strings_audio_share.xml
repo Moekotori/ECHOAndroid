@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_share_title">分享原音樂檔案</string>
+    <string name="audio_share_action">分享原檔案</string>
+    <string name="audio_share_count">分享所選的 %1$d 首歌曲</string>
+    <string name="audio_share_original_note">原音訊保持不變，不轉碼。歌詞與封面以獨立檔案附帶，暫存分享連結有效期為 24 小時。</string>
+    <string name="audio_share_skipped">%1$d 首歌曲無法作為本機原檔案分享，將略過；不會下載遠端音源。</string>
+    <string name="audio_share_whole_original">CUE 曲目與片段分享的是整份原音訊；相同原檔案只傳送一次。</string>
+    <string name="audio_share_lyrics">附帶歌詞</string>
+    <string name="audio_share_cover">附帶封面</string>
+    <string name="audio_share_lyrics_note">使用已儲存或本機歌詞，不連網搜尋。附帶通用 LRC 或 TXT；另附 ECHO JSON 保留詳細時序與聲部。</string>
+    <string name="audio_share_progress">正在準備 %1$d / %2$d</string>
+    <string name="audio_share_missing">缺少或無法讀取的附件：歌詞 %1$d 份，封面 %2$d 份。是否繼續分享原音訊與現有附件？</string>
+    <string name="audio_share_continue">分享可用檔案</string>
+    <string name="audio_share_cancel">取消</string>
+    <string name="audio_share_read_failed">無法讀取「%1$s」的原檔案。請檢查檔案存取權限後重試，尚未分享任何檔案。</string>
+    <string name="audio_share_cache_full">暫存分享空間已滿，分享連結在 24 小時後到期，請稍後重試。</string>
+    <string name="audio_share_failed">檔案準備失敗，請檢查檔案權限與剩餘空間後重試。</string>
+    <string name="audio_share_launch_failed">無法開啟分享應用程式，請安裝可接收檔案的應用程式後重試。</string>
+    <string name="audio_share_expired">準備好的檔案已到期，請再次點分享重新準備。</string>
+    <string name="audio_share_return">檔案已準備好，回到 ECHO 後點分享繼續。</string>
+</resources>

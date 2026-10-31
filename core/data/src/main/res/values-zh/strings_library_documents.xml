@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="documents_root">ECHO 曲库</string>
+    <string name="documents_root_summary">手机本地原音频 · 只读</string>
+    <string name="documents_albums">专辑</string>
+    <string name="documents_playlists">歌单</string>
+    <string name="documents_all">全部歌曲</string>
+    <string name="documents_playlists_summary">普通本地歌单，仅显示本地音频文件</string>
+    <string name="documents_unknown_album">未知专辑</string>
+    <string name="documents_whole_original">整份原音频，不裁剪 CUE 曲目或片段</string>
+    <string name="documents_unavailable">请打开 ECHO 扫描本地曲库或恢复文件访问权限，然后重试。</string>
+</resources>

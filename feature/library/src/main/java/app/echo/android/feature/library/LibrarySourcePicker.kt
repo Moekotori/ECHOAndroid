@@ -89,13 +89,13 @@ internal fun LibrarySourcePicker(
                     if (expanded) MaterialTheme.colorScheme.surfaceContainerHigh
                     else MaterialTheme.colorScheme.surfaceContainer,
                     RoundedCornerShape(50),
-                ).padding(horizontal = 10.dp, vertical = 6.dp),
+                ).padding(horizontal = 8.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(sourceLabel, Modifier.weight(1f, fill = false),
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(2.dp))
                 EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.size(16.dp))
             }
         }

@@ -36,10 +36,7 @@ internal object EchoSmartTransitionPlanner {
         val density = ((current.tailEnergy + next.headEnergy) / 2f).coerceIn(0f, 1f)
         val conflict = EchoSmartTransitionVocalMath.conflict(current.outroVocal, next.introVocal)
         val tailRide = current.tailEnergy <= 0.52f && next.headEnergy <= 0.55f
-        val nextStart = EchoSmartTransitionTempoMath.entryMs(
-            leadingSilenceMs = next.leadingSilenceMs,
-            beatsMs = if (next.bpmConfidence >= EchoSmartTransitionTempoMath.MinimumConfidence) next.beatsMs else intArrayOf(),
-        )
+        val nextStart = EchoSmartTransitionBeatEntry.select(next)
         if (!current.hasOutro || !next.hasIntro || maxOverlapMs <= 0 ||
             !current.tailEnergy.isFinite() || !next.headEnergy.isFinite()) return null
         // Preserve the outgoing timeline and natural tail. Never end a mix before that stream ends.

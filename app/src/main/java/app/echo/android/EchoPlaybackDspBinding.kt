@@ -15,6 +15,10 @@ import kotlinx.coroutines.launch
 @UnstableApi
 internal fun bindPlaybackDspSettings(store: EchoSettingsStore, applicationContextForAudioProfiles: android.content.Context) {
     EchoPlaybackProcessRuntime.scope.launch {
+        store.appSettings.map { it.volume }.distinctUntilChanged()
+            .collect(EchoPlaybackProcessRuntime::setVolumeSettings)
+    }
+    EchoPlaybackProcessRuntime.scope.launch {
         store.appSettings.map { it.channelBalance }.distinctUntilChanged()
             .collect { EchoPlaybackProcessRuntime.channelBalanceController().setState(it) }
     }

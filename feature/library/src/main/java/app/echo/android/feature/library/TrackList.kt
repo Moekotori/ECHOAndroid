@@ -402,6 +402,7 @@ internal fun TrackContextMenu(
     content: @Composable (Modifier) -> Unit,
 ) {
     val selection = LocalLibraryBatchSelection.current
+    val shareOriginal = LocalOriginalAudioShare.current
     val requestTrackDeletion = LocalLibraryDeleteTrack.current
     val hiddenTracks = LocalHiddenTracksUi.current
     val openTrackVersions = LocalTrackVersionsAction.current
@@ -636,6 +637,7 @@ internal fun TrackContextMenu(
                         sheetMode = null
                         showInfo = true
                     },
+                    onShare = shareOriginal?.let { share -> { sheetMode = null; share(listOf(track)) } },
                     onSelectForBatch = onSelectForBatch?.let { select ->
                         {
                             actionScope.launch {
@@ -972,131 +974,6 @@ private fun NumericMetadataField(
 }
 
 @Composable
-private fun TrackInfoDialog(
-    track: EchoTrack,
-    onDismiss: () -> Unit,
-    onOpenArtist: (() -> Unit)? = null,
-) {
-    val artistLabel = stringResource(L10nR.string.feature_library_go_to_artist)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                displayMetadataOrUnknown(track.libraryDisplayTitle(LocalLibraryFileNames.current), unknownTrackLabel()),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                val notProvided = stringResource(L10nR.string.feature_library_not_available_7d3220)
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_artist_b6e7ad),
-                    displayMetadataOrUnknown(track.artist, unknownArtistLabel()),
-                    onClick = onOpenArtist?.takeIf { track.artist.isNotBlank() },
-                    onClickLabel = artistLabel,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_album_eb13be),
-                    displayMetadataOrUnknown(track.album, unknownAlbumLabel()),
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_album_artist_8a1c9e),
-                    track.albumArtist?.takeIf { it.isNotBlank() } ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.metadata_composer),
-                    track.composer?.takeIf { it.isNotBlank() } ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_track_000e4d),
-                    track.trackNumber?.toString() ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_disc_3128c0),
-                    track.discNumber?.toString() ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_year_fe373f),
-                    track.year?.toString() ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_format_a7775b),
-                    formatTrackMimeType(track.mimeType)
-                        ?: track.mimeType?.takeIf { it.isNotBlank() }
-                        ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_sample_rate_f6382c),
-                    track.sampleRateHz?.let(::formatTrackSampleRate) ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_duration_573e08),
-                    formatDuration(track.durationMs),
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_size_f63a75),
-                    formatTrackFileSize(track.sizeBytes),
-                )
-                TrackInfoLine(stringResource(L10nR.string.feature_library_source_4aff16), track.source.id)
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(L10nR.string.feature_library_done_a5e659))
-            }
-        },
-    )
-}
-
-@Composable
-private fun TrackInfoLine(
-    label: String,
-    value: String,
-    onClick: (() -> Unit)? = null,
-    onClickLabel: String? = null,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (onClick != null) {
-                    Modifier.echoClickable(
-                        onClickLabel = onClickLabel,
-                        role = Role.Button,
-                        onClick = onClick,
-                    )
-                } else {
-                    Modifier
-                },
-            ),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Text(
-            label,
-            modifier = Modifier.widthIn(min = 76.dp, max = 96.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-        )
-        Text(
-            value,
-            modifier = Modifier.weight(1f),
-            color = if (onClick != null) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
 private fun TrackInfoTag(
     text: String,
     tone: TrackInfoTagTone,
@@ -1128,7 +1005,7 @@ internal fun trackSubtitle(track: EchoTrack): String {
     }.joinToString(" / ")
 }
 
-private fun formatTrackSampleRate(hz: Int): String =
+internal fun formatTrackSampleRate(hz: Int): String =
     if (hz % 1000 == 0) {
         "${hz / 1000}kHz"
     } else {
@@ -1136,7 +1013,7 @@ private fun formatTrackSampleRate(hz: Int): String =
     }
 
 @Composable
-private fun formatTrackFileSize(bytes: Long): String =
+internal fun formatTrackFileSize(bytes: Long): String =
     when {
         bytes <= 0L -> stringResource(L10nR.string.feature_library_not_available_7d3220)
         bytes >= 1024L * 1024L * 1024L -> "%.1f GB".format(bytes / (1024f * 1024f * 1024f))
@@ -1145,7 +1022,7 @@ private fun formatTrackFileSize(bytes: Long): String =
         else -> "$bytes B"
     }
 
-private fun formatTrackMimeType(mimeType: String?): String? {
+internal fun formatTrackMimeType(mimeType: String?): String? {
     val raw = mimeType
         ?.substringAfter("audio/", missingDelimiterValue = mimeType)
         ?.substringBefore(";")

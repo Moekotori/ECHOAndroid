@@ -54,8 +54,14 @@ internal fun DspValueSlider(
     label: String, value: Float, valueRange: ClosedFloatingPointRange<Float>, enabled: Boolean,
     format: (Float) -> String, onCommit: (Float) -> Unit,
     unit: String = "dB", scale: Float = 1f, decimals: Int = 1,
+    onPreview: ((Float) -> Unit)? = null,
 ) {
-    var draft by remember(value, enabled) { mutableFloatStateOf(value.coerceIn(valueRange)) }
+    var draft by remember { mutableFloatStateOf(value.coerceIn(valueRange)) }
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(value, enabled) {
+        if (!enabled) dragging = false
+        if (!dragging) draft = value.coerceIn(valueRange)
+    }
     val commit = rememberUpdatedState(onCommit)
     val colors = MaterialTheme.colorScheme
     Column {
@@ -67,9 +73,11 @@ internal fun DspValueSlider(
             }, valueLabel = format(draft), unit = unit, scale = scale, decimals = decimals)
         }
         EchoSlider(value = draft, onValueChange = {
+            dragging = true
             val factor = 10f.pow(decimals) * scale
             draft = (round(it * factor) / factor).coerceIn(valueRange)
-        }, onValueChangeFinished = { if (enabled) commit.value(draft) }, valueRange = valueRange, enabled = enabled,
+            onPreview?.invoke(draft)
+        }, onValueChangeFinished = { dragging = false; if (enabled) commit.value(draft) }, valueRange = valueRange, enabled = enabled,
             neutralValue = 0f.takeIf { it in valueRange },
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = label; stateDescription = format(draft) })
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

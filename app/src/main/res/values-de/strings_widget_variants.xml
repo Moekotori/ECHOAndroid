@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_record_name">ECHO · Schallplatte</string>
+    <string name="widget_record_description">Schallplatte mit Titelinformationen und Wiedergabesteuerung</string>
+    <string name="widget_banner_name">ECHO · Querformat-Player</string>
+    <string name="widget_banner_description">Cover neben Titelinformationen und Wiedergabesteuerung</string>
+    <string name="widget_typography_name">ECHO · Text-Player</string>
+    <string name="widget_typography_description">Großer Titel, Liedtext und Wiedergabesteuerung ohne Cover</string>
+</resources>

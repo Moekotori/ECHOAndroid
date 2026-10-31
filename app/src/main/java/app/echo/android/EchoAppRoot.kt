@@ -91,6 +91,7 @@ import app.echo.android.design.EchoMobileTheme
 import app.echo.android.design.echoStartupWindowColor
 import app.echo.android.model.settings.EchoColorTheme
 import app.echo.android.design.EchoPageOverlay
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import app.echo.android.design.echoPageUnderlay
 import app.echo.android.design.echoLocaleSwitchLayer
 import app.echo.android.design.runEchoLocaleSwitch
@@ -103,6 +104,8 @@ import app.echo.android.lock.EchoLockLyricsPolicy
 import app.echo.android.lock.isEchoKeyguardLocked
 import app.echo.android.feature.settings.DiagnosticsScreen
 import app.echo.android.feature.settings.ErrorLogScreen
+import app.echo.android.feature.settings.SettingsPaletteActions
+import app.echo.android.feature.settings.SettingsPaletteState
 import app.echo.android.feature.settings.SettingsScreen
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorRecord
@@ -432,6 +435,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     var openPcTabNonce by remember { mutableIntStateOf(0) }
     var openPcQueueNonce by remember { mutableIntStateOf(0) }
     var settingsSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
+    var playerEqualizerRequestId by rememberSaveable { mutableIntStateOf(0) }
+    var playerEqualizerReturnPage by rememberSaveable { mutableStateOf<Int?>(null) }
     var localCastSetupError by remember { mutableStateOf<String?>(null) }
     val phoneCastIssueMessage = phoneCastTransferState.issue?.let { issue ->
         val resource = when (issue) {
@@ -983,6 +988,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             tabPagerState.currentPage != targetPage ||
             tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
     fun navigateToPage(page: EchoPagerPage) {
+        if (page != EchoPagerPage.Diagnostics) playerEqualizerReturnPage = null
         val targetPage = page.ordinal
         if (routeNavigationJob[0]?.isActive == true && tabPagerState.targetPage == targetPage) return
         page.dockTab?.let { selectedTab = it.ordinal }
@@ -1118,6 +1124,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     }
     LaunchedEffect(tabPagerState.settledPage, tabPagerState.isScrollInProgress) {
         if (!tabPagerState.isScrollInProgress) {
+            if (tabPagerState.settledPage != EchoPagerPage.Diagnostics.ordinal) playerEqualizerReturnPage = null
             EchoPagerPage.entries[tabPagerState.settledPage].dockTab?.let { settledTab ->
                 if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
             }
@@ -1246,6 +1253,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         effectivePerformanceMode = effectivePerformanceMode,
         customBackgroundActive = customBackgroundActive,
     ) {
+        app.echo.android.nfc.NfcMusicHost(viewModel.nfcMusic) { mediaId ->
+            viewModel.setLibrarySelectedSource("local")
+            EchoLaunchActions.requestLibraryShortcut(app.echo.android.library.EchoLibraryShortcutRequest(mediaId, true))
+        }
         EchoPlayerTransitionRoot(
             expanded = nowPlayingExpanded,
             suppressArtworkFlight = suppressPlayerArtworkFlight,
@@ -1283,6 +1294,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 },
                 onSelectTab = { selectDockTab(EchoTab.entries[it]) },
                 modifier = Modifier.fillMaxSize()
+                    .then(if (shellOverlayOpen) Modifier.clearAndSetSemantics { } else Modifier)
                     .echoPageUnderlay(
                         obscured = searchVisible || errorLogVisible || listeningStatsVisible || playbackHistoryVisible || listeningVisible || pluginsVisible || addMusicVisible,
                         // Hand the page back only when the dragged overlay is the sole cover.
@@ -1554,6 +1566,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 lyricsFontScale = appSettings.lyricsFontScale,
                                 importedFontUri = appSettings.importedFontUri,
                                 themeMode = appSettings.themeMode,
+                                palette = SettingsPaletteState(
+                                    colorTheme = appSettings.colorTheme,
+                                    customColors = appSettings.customColors,
+                                    savedColorThemes = appSettings.savedColorThemes,
+                                    appliedSavedColorThemeId = appSettings.appliedSavedColorThemeId,
+                                    dynamicColorEnabled = appSettings.dynamicColorEnabled,
+                                ),
                                 appLanguage = appSettings.appLanguage,
                                 scheduledDarkModeEnabled = appSettings.scheduledDarkModeEnabled,
                                 scheduledDarkStartMinute = appSettings.scheduledDarkStartMinute,
@@ -1614,8 +1633,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onCustomBackgroundStyleChange = viewModel::setCustomBackgroundStyle,
                                 onUiFontFamilyChange = viewModel::setUiFontFamily,
                                 onUiFontScaleChange = viewModel::setUiFontScale,
-                                lyricsMotionMode = appSettings.lyricsMotionMode,
-                                onLyricsMotionModeChange = viewModel::setLyricsMotionMode,
                                 lyricsWordHighlightEnabled = appSettings.lyricsWordHighlightEnabled,
                                 onLyricsWordHighlightEnabledChange = viewModel::setLyricsWordHighlightEnabled,
                                 accessibilityCareContent = {
@@ -1636,6 +1653,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                     viewModel.setImportedFontUri(null)
                                 },
                                 onThemeModeChange = viewModel::setThemeMode,
+                                paletteActions = SettingsPaletteActions(
+                                    onColorThemeChange = viewModel::setColorTheme,
+                                    onCustomColorsChange = viewModel::setCustomColors,
+                                    onSaveCustomColorTheme = viewModel::saveCustomColorTheme,
+                                    onApplySavedColorTheme = viewModel::applySavedColorTheme,
+                                    onDeleteSavedColorTheme = viewModel::deleteSavedColorTheme,
+                                    onDynamicColorEnabledChange = viewModel::setDynamicColorEnabled,
+                                ),
                                 onAppLanguageChange = ::changeAppLanguage,
                                 onScheduledDarkModeEnabledChange = viewModel::setScheduledDarkModeEnabled,
                                 onScheduledDarkStartMinuteChange = viewModel::setScheduledDarkStartMinute,
@@ -1702,6 +1727,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             val lanRenderers by viewModel.lanRenderers.collectAsStateWithLifecycle()
                             val lanRendererState by viewModel.lanRendererDiscoveryState.collectAsStateWithLifecycle()
                             ConnectScreen(
+                                onOpenWifiTransfer = app.echo.android.ui.connect.rememberWifiTransferAction(viewModel, appSettings.libraryScanOptions, localNetwork),
                                 phoneLibraryShareStatus = phoneLibraryShareStatus,
                                 onPhoneLibraryShareChange = { enabled ->
                                     if (enabled) localNetwork.run { echoLinkSession.setPhoneLibrarySharingEnabled(true) }
@@ -1862,61 +1888,23 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             }
 
                             EchoPagerPage.Diagnostics -> {
-                                val equalizerState by viewModel.equalizerState.collectAsStateWithLifecycle()
-                                val channelBalanceState by viewModel.channelBalanceState.collectAsStateWithLifecycle()
-                                val opraState by viewModel.opraState.collectAsStateWithLifecycle()
-                                val replayGainScan by viewModel.replayGainScanState.collectAsStateWithLifecycle()
-                                DiagnosticsScreen(
-                                    isActive = appVisible && !shellOverlayOpen &&
-                                        tabPagerState.currentPage == EchoPagerPage.Diagnostics.ordinal,
+                                app.echo.android.ui.settings.EchoDiagnosticsHost(
+                                    viewModel = viewModel,
+                                    appSettings = appSettings,
+                                    playbackStatus = playbackStatus,
+                                    isActive = appVisible && !shellOverlayOpen && tabPagerState.currentPage == EchoPagerPage.Diagnostics.ordinal,
                                     soundRequestId = settingsSoundRequestId,
+                                    equalizerRequestId = if (playerEqualizerReturnPage != null) playerEqualizerRequestId else 0,
+                                    onCloseRequestedEqualizer = {
+                                        val page = playerEqualizerReturnPage
+                                        playerEqualizerReturnPage = null
+                                        if (page != null) {
+                                            navigateToPage(EchoPagerPage.entries[page])
+                                            expandNowPlaying()
+                                        }
+                                    },
                                     onSwipeToConnect = { navigateToPage(EchoPagerPage.Connect) },
-                                    status = playbackStatus,
-                                    positionFlow = viewModel.playbackPosition,
-                                    equalizerState = equalizerState,
-                                    dspSettings = appSettings.dsp,
-                                    replayGainScan = replayGainScan,
-                                    onDspSettings = viewModel::setDspSettings,
-                                    onReplayGain = viewModel::setReplayGain,
-                                    onReplayGainMode = viewModel::setReplayGainMode,
-                                    onReplayGainScan = viewModel::scanReplayGainForCurrentTrack,
-                                    onParametricChange = viewModel::setParametricFilters,
-                                    channelBalanceState = channelBalanceState,
-                                    opraState = opraState,
-                                    onEqualizerEnabledChange = viewModel::setEqualizerEnabled,
-                                    onEqualizerPresetSelected = viewModel::setEqualizerPreset,
-                                    onEqualizerBandGainChange = viewModel::setEqualizerBandGain,
-                                    onEqualizerReset = viewModel::resetEqualizer,
-                                    onEqualizerPreampChange = viewModel::setEqualizerPreamp,
-                                    onMsebChange = viewModel::setMseb,
-                                    onChannelBalanceChange = viewModel::setChannelBalance,
-                                    onChannelBalanceReset = viewModel::resetChannelBalance,
-                                    onOpraBrandSelected = viewModel::browseOpraBrand,
-                                    onOpraQueryChange = viewModel::updateOpraQuery,
-                                    onOpraSearch = { viewModel.searchOpraHeadphoneCorrections(refresh = false) },
-                                    onOpraRefresh = { viewModel.searchOpraHeadphoneCorrections(refresh = true) },
-                                    onOpraPresetSelected = viewModel::selectOpraPreset,
-                                    onOpraApplySelected = viewModel::applySelectedOpraPreset,
-                                    userPresets = appSettings.equalizerUserPresets,
-                                    activeUserPresetId = appSettings.equalizerActiveUserPresetId,
-                                    opraLastQuery = appSettings.opraLastQuery,
-                                    onSaveUserPreset = viewModel::saveCurrentEqualizerPreset,
-                                    onUpdateUserPreset = viewModel::updateCurrentEqualizerUserPreset,
-                                    onApplyUserPreset = viewModel::applyEqualizerUserPreset,
-                                    onRenameUserPreset = viewModel::renameEqualizerUserPreset,
-                                    onDeleteUserPreset = viewModel::deleteEqualizerUserPreset,
-                                    onImportShareCode = viewModel::importEqualizerShareCode,
-                                    onImportBundle = viewModel::importEqualizerBundle,
-                                    onSaveOutputAudioProfile = viewModel::saveOutputAudioProfile,
-                                    onRemoveOutputAudioProfile = viewModel::removeOutputAudioProfile,
-                                    outputAudioProfileBound = appSettings.outputAudioProfileKeys.contains(viewModel.currentOutputProfileKey()),
-                                    onBindPresetToOutput = viewModel::bindActiveEqualizerPresetToOutput,
-                                    onUnbindPresetFromOutput = viewModel::unbindEqualizerPresetFromOutput,
-                                    outputDeviceLabel = viewModel.currentOutputProfileLabel(),
-                                    outputPresetBound = appSettings.equalizerDevicePresetIds.containsKey(viewModel.currentOutputProfileKey()),
-                                    onToggleOpraFavorite = viewModel::toggleStarredOpraPreset,
-                                    bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission &&
-                                        playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
+                                    bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission && playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
                                     onRequestBluetoothCodecPermission = {
                                         if (!hasBluetoothConnectPermission) {
                                             bluetoothPermissionLauncher.launch(bluetoothPermName)
@@ -2015,6 +2003,34 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                         fontImportLauncher.launch(FontDocumentMimeTypes)
                     },
                     openLyricsRequestId = lyricsLaunchToken,
+                    onOpenAlbum = { album ->
+                        nowPlayingExpanded = false
+                        queueSheetVisible = false
+                        if (detailReturnPage == null) detailReturnPage = EchoPagerPage.entries[tabPagerState.settledPage]
+                        selectedArtist = null
+                        selectedGenre = null
+                        selectedFolder = null
+                        selectedPlaylist = null
+                        selectedAlbum = album
+                        selectDockTab(EchoTab.Library)
+                    },
+                    onOpenFolder = { folder ->
+                        nowPlayingExpanded = false
+                        queueSheetVisible = false
+                        if (detailReturnPage == null) detailReturnPage = EchoPagerPage.entries[tabPagerState.settledPage]
+                        selectedArtist = null
+                        selectedGenre = null
+                        selectedAlbum = null
+                        selectedPlaylist = null
+                        selectedFolder = folder
+                        selectDockTab(EchoTab.Library)
+                    },
+                    onOpenEqualizer = {
+                        playerEqualizerReturnPage = tabPagerState.settledPage
+                        playerEqualizerRequestId++
+                        nowPlayingExpanded = false
+                        navigateToPage(EchoPagerPage.Diagnostics)
+                    },
                     onOpenArtist = { artist ->
                         nowPlayingExpanded = false
                         queueSheetVisible = false
@@ -2194,6 +2210,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             }
             EchoPageOverlay(
                 visible = playbackHistoryVisible,
+                interactive = !listeningStatsVisible && !pluginsVisible,
                 onHidden = { historyBack.reset() },
                 backProgress = { historyBack.value },
             ) {

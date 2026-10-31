@@ -2,8 +2,8 @@ package app.echo.android.feature.library
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -30,8 +30,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+
+internal val LibraryAlphabetIndexWidth = 20.dp
 
 @Composable
 internal fun SongAlphabetIndex(
@@ -63,13 +66,14 @@ internal fun LibraryAlphabetIndex(
 
     Box(
         modifier = modifier
-            .width(28.dp)
+            .width(LibraryAlphabetIndexWidth)
             .fillMaxHeight()
             .padding(top = 8.dp, bottom = bottomPadding),
     ) {
-        BoxWithConstraints(Modifier.fillMaxWidth().fillMaxHeight(0.92f).align(Alignment.CenterEnd)) {
+        val letterHeight = 18.dp * fontScale
+        Box(Modifier.fillMaxWidth().heightIn(max = letterHeight * 26)
+            .fillMaxHeight().align(Alignment.CenterEnd)) {
             // Keep every letter readable in short windows; scroll rather than overlap labels.
-            val letterHeight = maxOf(maxHeight / 26, 20.dp * fontScale)
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 for (letter in 'A'..'Z') {
                     val label = stringResource(R.string.library_jump_to_letter, letter.toString())
@@ -87,10 +91,10 @@ internal fun LibraryAlphabetIndex(
                     ) {
                         Text(
                             text = letter.toString(),
-                            modifier = Modifier.padding(end = 4.dp),
-                            color = colors.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelSmall.copy(lineHeight = 1.em),
-                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(end = 3.dp),
+                            color = colors.onSurfaceVariant.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, lineHeight = 1.em),
+                            fontWeight = FontWeight.Normal,
                             maxLines = 1,
                         )
                     }

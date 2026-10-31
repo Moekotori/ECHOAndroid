@@ -53,11 +53,21 @@ internal fun SignalPeqEditor(
     onChange: (List<OpraEqBand>) -> Unit,
     selectedBand: Int,
     onSelectBand: (Int) -> Unit,
+    onPreview: (List<OpraEqBand>) -> Unit,
+    currentFilters: () -> List<OpraEqBand>,
 ) {
     val scheme = MaterialTheme.colorScheme
     val stripState = rememberLazyListState()
     LaunchedEffect(selectedBand, filters.size) {
-        if (filters.isNotEmpty()) stripState.scrollToItem(selectedBand.coerceIn(filters.indices))
+        if (filters.isNotEmpty()) {
+            val target = selectedBand.coerceIn(filters.indices)
+            val layout = stripState.layoutInfo
+            val visible = layout.visibleItemsInfo.any {
+                it.index == target && it.offset >= layout.viewportStartOffset &&
+                    it.offset + it.size <= layout.viewportEndOffset
+            }
+            if (!visible) stripState.scrollToItem(target)
+        }
     }
     val addLabel = stringResource(R.string.dsp_add_band)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -83,8 +93,11 @@ internal fun SignalPeqEditor(
             }
             IconButton(
                 onClick = {
-                    onSelectBand(filters.size)
-                    onChange(filters + OpraEqBand(EchoEqFilterType.PeakDip, 1000f, 0f, 1f, null))
+                    val current = currentFilters()
+                    if (current.size < EchoParametricEq.MaxBands) {
+                        onSelectBand(current.size)
+                        onChange(current + OpraEqBand(EchoEqFilterType.PeakDip, 1000f, 0f, 1f, null))
+                    }
                 },
                 enabled = enabled && filters.size < EchoParametricEq.MaxBands,
                 modifier = Modifier.height(68.dp).semantics { contentDescription = addLabel },
@@ -96,10 +109,12 @@ internal fun SignalPeqEditor(
                     band = band,
                     enabled = enabled,
                     canDelete = filters.size > 1,
-                    onCommit = { updated -> onChange(filters.toMutableList().also { it[selectedBand] = updated }) },
+                    onCommit = { updated -> onChange(currentFilters().toMutableList().also { it[selectedBand] = updated }) },
+                    onPreview = { updated -> onPreview(currentFilters().toMutableList().also { it[selectedBand] = updated }) },
                     onDelete = {
+                        val current = currentFilters()
                         onSelectBand((selectedBand - 1).coerceAtLeast(0))
-                        onChange(filters.filterIndexed { i, _ -> i != selectedBand })
+                        onChange(current.filterIndexed { i, _ -> i != selectedBand })
                     },
                 )
             }
@@ -113,6 +128,7 @@ private fun PeqBandEditor(
     enabled: Boolean,
     canDelete: Boolean,
     onCommit: (OpraEqBand) -> Unit,
+    onPreview: (OpraEqBand) -> Unit,
     onDelete: () -> Unit,
 ) {
     var typeMenu by remember { mutableStateOf(false) }
@@ -155,7 +171,7 @@ private fun PeqBandEditor(
                 EchoIcon(Icons.Outlined.Delete, null, Modifier.size(18.dp))
             }
         }
-        PeqBandControls(band, enabled, onCommit)
+        PeqBandControls(band, enabled, onCommit, onPreview)
         if (pass) {
             Box {
                 TextButton(onClick = { slopeMenu = true }, enabled = enabled, contentPadding = PaddingValues(0.dp)) {

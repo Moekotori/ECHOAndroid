@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A record sleeve for the picker only; never substituted for a user's album artwork. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="300dp" android:height="190dp"
+    android:viewportWidth="300" android:viewportHeight="190">
+    <path android:fillColor="#526574" android:pathData="M0,0h300v190h-300z" />
+    <path android:fillColor="#394D5C" android:pathData="M0,140L180,0h120v190h-300z" />
+    <path android:fillColor="#20303C" android:pathData="M196,-30a118,118 0,1 0,0 236a118,118 0,1 0,0 -236" />
+    <path android:strokeColor="#40525F" android:strokeWidth="1" android:fillColor="#00000000"
+        android:pathData="M196,-9a97,97 0,1 0,0 194a97,97 0,1 0,0 -194M196,5a83,83 0,1 0,0 166a83,83 0,1 0,0 -166M196,20a68,68 0,1 0,0 136a68,68 0,1 0,0 -136" />
+    <path android:fillColor="#B8C7D0" android:pathData="M196,52a36,36 0,1 0,0 72a36,36 0,1 0,0 -72" />
+    <path android:fillColor="#20303C" android:pathData="M196,84a4,4 0,1 0,0 8a4,4 0,1 0,0 -8" />
+</vector>

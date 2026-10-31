@@ -16,6 +16,16 @@ class EchoPlaybackWidgetLayoutTest {
         assertTrue(EchoWidgetStyle.Lyrics.needsRefresh(previous, next))
         assertFalse(EchoWidgetStyle.Mini.needsRefresh(previous, next))
         assertFalse(EchoWidgetStyle.Cover.needsRefresh(previous, next))
+        assertFalse(EchoWidgetStyle.Record.needsRefresh(previous, next))
+        assertFalse(EchoWidgetStyle.Banner.needsRefresh(previous, next))
+        assertTrue(EchoWidgetStyle.Typography.needsRefresh(previous, next))
+    }
+
+    @Test
+    fun typographyNeverLoadsArtwork() {
+        assertFalse(EchoWidgetStyle.Typography.usesArtwork)
+        assertTrue(EchoWidgetStyle.Record.usesArtwork)
+        assertTrue(EchoWidgetStyle.Banner.usesArtwork)
     }
 
     @Test

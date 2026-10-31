@@ -27,8 +27,7 @@ internal fun EchoCoverWidgetContent(context: Context, snapshot: EchoPlaybackSurf
     }
     val foreground = if (artwork != null) widgetSolidColor(ArtworkOverlayForeground) else widgetForeground
     val secondary = if (artwork != null) widgetSolidColor(ArtworkOverlaySecondary) else widgetSecondary
-    val root = GlanceModifier.fillMaxSize().background(widgetBackground(context)).widgetSurface()
-        .clickable(actionStartActivity(intent))
+    val root = GlanceModifier.fillMaxSize().clickable(actionStartActivity(intent))
     Box(root, contentAlignment = Alignment.BottomStart) {
         if (artwork != null) {
             Image(ImageProvider(artwork), null, modifier = GlanceModifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -39,18 +38,18 @@ internal fun EchoCoverWidgetContent(context: Context, snapshot: EchoPlaybackSurf
             }
         }
         if (artwork != null) Box(GlanceModifier.fillMaxSize().background(ImageProvider(R.drawable.echo_widget_artwork_scrim))) {}
-        Column(GlanceModifier.fillMaxWidth().padding(if (wide) 16.dp else 12.dp)) {
+        Column(GlanceModifier.fillMaxWidth().padding(if (wide) 20.dp else 12.dp)) {
             Text(title, maxLines = if (wide || largeText) 1 else 2,
-                style = TextStyle(color = foreground, fontSize = (if (wide) 19 else 16).sp,
+                style = TextStyle(color = foreground, fontSize = (if (wide) 22 else 16).sp,
                     fontWeight = FontWeight.Bold))
             Spacer(GlanceModifier.height(4.dp))
-            if (wide && LocalWidgetOptions.current.fullControls) {
+            if (wide && LocalWidgetOptions.current.fullControls && !largeText) {
                 Text(artist, maxLines = 1, style = TextStyle(color = secondary, fontSize = 13.sp, fontWeight = FontWeight.Medium))
-                Spacer(GlanceModifier.height(8.dp))
-                Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+                Spacer(GlanceModifier.height(16.dp))
+                Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.End,
                     verticalAlignment = Alignment.CenterVertically) {
                     WidgetTransport(context, snapshot.isPlaying, snapshot.hasTrack, intent, 44.dp,
-                        full = true, onArtwork = artwork != null)
+                        full = true, gap = 8.dp, onArtwork = artwork != null)
                 }
             } else {
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

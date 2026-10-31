@@ -13,6 +13,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -42,14 +43,19 @@ internal class EchoPageRevealScope(val progress: State<Float>) {
 
 internal val LocalEchoPageReveal = compositionLocalOf<EchoPageRevealScope?> { null }
 
-/** A pager activation can reveal its sections without fading or moving the whole page twice. */
+/** Reveal a pager page once. Returning to already visible content must never reset its alpha. */
 @Composable
 fun EchoPageEntrance(active: Boolean, content: @Composable () -> Unit) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val progress = remember { Animatable(if (active && !lightweight) 0f else 1f) }
+    var presented by rememberSaveable { mutableStateOf(false) }
+    val progress = remember { Animatable(if (active && !lightweight && !presented) 0f else 1f) }
     LaunchedEffect(active, lightweight) {
-        if (!active || lightweight) progress.snapTo(1f)
-        else {
+        if (!active || lightweight || presented) {
+            if (active) presented = true
+            progress.snapTo(1f)
+        } else {
+            // Mark at the start so interrupting an entrance cannot replay it on the next visit.
+            presented = true
             progress.snapTo(0f)
             progress.animateTo(1f, tween(EchoPageRevealPolicy.TimelineMs, easing = LinearEasing))
         }

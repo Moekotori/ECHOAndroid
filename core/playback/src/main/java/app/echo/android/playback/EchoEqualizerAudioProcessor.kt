@@ -29,8 +29,26 @@ class EchoEqualizerAudioProcessor(
     private var configuredFilters: List<OpraEqBand>? = null
     private var packedCoeffs = FloatArray(0)
     private var packedFrom: Array<EchoBiquadNormalized>? = null
+    @Volatile private var preparationSampleRateHz = 0
+    @Volatile private var preparedFilters: PreparedFilters? = null
+
+    private data class PreparedFilters(
+        val filters: List<OpraEqBand>,
+        val sampleRateHz: Int,
+        val coefficients: Array<EchoBiquadNormalized>,
+        val packed: FloatArray,
+    )
 
     fun setRuntime(runtime: EchoEqualizerRuntime) {
+        // Control-thread edits prepare coefficients before publishing the new runtime. The
+        // audio callback only adopts them; initial/changed stream formats have a fallback.
+        val rate = preparationSampleRateHz
+        if (runtime.shouldProcess && rate > 0) {
+            val cached = preparedFilters
+            if (cached?.filters != runtime.filters || cached.sampleRateHz != rate) {
+                preparedFilters = prepareFilters(runtime.filters, rate)
+            }
+        }
         this.runtime = runtime
     }
 
@@ -45,6 +63,7 @@ class EchoEqualizerAudioProcessor(
         }
         configuredSampleRateHz = 0
         configuredFilters = null
+        preparationSampleRateHz = inputAudioFormat.sampleRate
         return inputAudioFormat
     }
 
@@ -89,16 +108,45 @@ class EchoEqualizerAudioProcessor(
         coeffs = emptyArray()
         configuredSampleRateHz = 0
         configuredFilters = null
+        preparationSampleRateHz = 0
+        preparedFilters = null
+        packedCoeffs = FloatArray(0)
+        packedFrom = null
     }
 
     private fun ensureCoeffs(filters: List<OpraEqBand>, sampleRateHz: Int) {
         if (configuredSampleRateHz == sampleRateHz && configuredFilters == filters) return
-        val nextCoeffs = filters.flatMap { band -> EchoBiquadMath.stages(band, sampleRateHz.toFloat()) }
-            .mapNotNull { it.normalizedOrNull() }
-        coeffs = nextCoeffs.toTypedArray()
+        val cached = preparedFilters
+        val next = if (cached?.filters == filters && cached.sampleRateHz == sampleRateHz) cached
+            else prepareFilters(filters, sampleRateHz)
+        val previous = configuredFilters
+        val sameTopology = configuredSampleRateHz == sampleRateHz && previous != null &&
+            previous.size == filters.size && previous.indices.all { index ->
+                previous[index].type == filters[index].type && previous[index].slope == filters[index].slope
+            }
+        coeffs = next.coefficients
+        packedCoeffs = next.packed
+        packedFrom = coeffs
         configuredSampleRateHz = sampleRateHz
         configuredFilters = filters
-        delayLine = FloatArray((inputAudioFormat.channelCount.coerceAtLeast(1) * coeffs.size * 2).coerceAtLeast(0))
+        val required = inputAudioFormat.channelCount.coerceAtLeast(1) * coeffs.size * 2
+        // Frequency/gain/Q drags retain filter history instead of restarting every buffer.
+        if (!sameTopology || delayLine.size != required) delayLine = FloatArray(required)
+    }
+
+    private fun prepareFilters(filters: List<OpraEqBand>, sampleRateHz: Int): PreparedFilters {
+        val coefficients = filters.flatMap { EchoBiquadMath.stages(it, sampleRateHz.toFloat()) }
+            .mapNotNull { it.normalizedOrNull() }.toTypedArray()
+        val packed = FloatArray(coefficients.size * 5)
+        coefficients.forEachIndexed { index, coeff ->
+            val at = index * 5
+            packed[at] = coeff.b0
+            packed[at + 1] = coeff.b1
+            packed[at + 2] = coeff.b2
+            packed[at + 3] = coeff.a1
+            packed[at + 4] = coeff.a2
+        }
+        return PreparedFilters(filters, sampleRateHz, coefficients, packed)
     }
 
     private fun processPcm16(

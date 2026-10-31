@@ -1,14 +1,12 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
@@ -16,12 +14,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.EchoDropdownMenu
 import app.echo.android.design.EchoDropdownMenuItem
 import app.echo.android.model.settings.EchoWidgetOptions
 import app.echo.android.model.settings.EchoWidgetPlaylistOption
+import app.echo.android.design.R as DesignR
 
 @Composable
 fun WidgetConfigurationScreen(initial: EchoWidgetOptions, playlists: List<EchoWidgetPlaylistOption>,
@@ -36,29 +37,7 @@ fun WidgetConfigurationScreen(initial: EchoWidgetOptions, playlists: List<EchoWi
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(stringResource(R.string.widget_config_title), style = MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.widget_config_hint), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
-        // A quiet record sleeve preview is the visual focus; controls never start playback here.
-        Surface(shape = MaterialTheme.shapes.large, color = scheme.surfaceVariant.copy(alpha = options.backgroundOpacity),
-            modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (options.showArtwork) Surface(shape = MaterialTheme.shapes.medium, color = scheme.surface) {
-                        EchoIcon(Icons.Rounded.MusicNote, null, Modifier.padding(16.dp).size(28.dp))
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                        Text(artist, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1)
-                    }
-                }
-                if (options.showLyrics) Text(lyric ?: stringResource(R.string.widget_config_lyrics_preview),
-                    style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, maxLines = 2)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    if (options.fullControls) EchoIcon(Icons.Rounded.SkipPrevious, null, Modifier.padding(10.dp).size(24.dp))
-                    EchoIcon(Icons.Rounded.PlayArrow, null, Modifier.padding(10.dp).size(24.dp))
-                    if (options.fullControls) EchoIcon(Icons.Rounded.SkipNext, null, Modifier.padding(10.dp).size(24.dp))
-                }
-                options.playlistName?.let { Text(stringResource(R.string.widget_config_playlist_preview, it), style = MaterialTheme.typography.labelMedium) }
-            }
-        }
+        WidgetConfigurationPreview(options, title, artist, lyric)
         WidgetConfigurationToggle(stringResource(R.string.widget_config_artwork), options.showArtwork) { options = options.copy(showArtwork = it) }
         WidgetConfigurationToggle(stringResource(R.string.widget_config_lyrics), options.showLyrics) { options = options.copy(showLyrics = it) }
         WidgetConfigurationToggle(stringResource(R.string.widget_config_controls), options.fullControls) { options = options.copy(fullControls = it) }
@@ -90,6 +69,46 @@ fun WidgetConfigurationScreen(initial: EchoWidgetOptions, playlists: List<EchoWi
             TextButton(onClick = onCancel, enabled = !busy) { Text(stringResource(R.string.widget_config_cancel)) }
             Button(onClick = { onSave(options.normalized()) }, enabled = !busy) {
                 Text(stringResource(R.string.widget_config_save))
+            }
+        }
+    }
+}
+
+/** Static layout sample; all controls here are decorative and never send playback commands. */
+@Composable
+private fun WidgetConfigurationPreview(options: EchoWidgetOptions, title: String, artist: String, lyric: String?) {
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    val surface = if (dark) Color(0xFF202429) else Color(0xFFF8F9FA)
+    val foreground = if (dark) Color(0xFFF2F4F6) else Color(0xFF202429)
+    val secondary = if (dark) Color(0xFFA9B1B9) else Color(0xFF646B73)
+    Surface(shape = RoundedCornerShape(28.dp), color = surface.copy(alpha = options.backgroundOpacity),
+        contentColor = foreground, modifier = Modifier.fillMaxWidth()) {
+        Column {
+            if (options.showArtwork) Box(Modifier.fillMaxWidth().height(152.dp)
+                .background(if (dark) Color(0xFF30373E) else Color(0xFFE4E8EB)), contentAlignment = Alignment.Center) {
+                EchoIcon(Icons.Rounded.MusicNote, null, Modifier.size(48.dp), tint = secondary)
+            }
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1)
+                Text(artist, style = MaterialTheme.typography.bodyMedium, color = secondary, maxLines = 1)
+                if (options.showLyrics) Text(lyric ?: stringResource(R.string.widget_config_lyrics_preview),
+                    style = MaterialTheme.typography.bodySmall, color = secondary, maxLines = 1)
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)) {
+                    if (options.fullControls) Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        EchoIcon(painterResource(DesignR.drawable.echo_widget_ic_previous), null, Modifier.size(26.dp), tint = foreground)
+                    }
+                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        EchoIcon(painterResource(DesignR.drawable.echo_widget_ic_play), null, Modifier.size(32.dp), tint = foreground)
+                    }
+                    if (options.fullControls) Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        EchoIcon(painterResource(DesignR.drawable.echo_widget_ic_next), null, Modifier.size(26.dp), tint = foreground)
+                    }
+                }
+                options.playlistName?.let {
+                    Text(stringResource(R.string.widget_config_playlist_preview, it),
+                        style = MaterialTheme.typography.labelMedium, color = secondary, maxLines = 1)
+                }
             }
         }
     }

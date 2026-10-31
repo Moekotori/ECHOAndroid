@@ -10,7 +10,7 @@ import app.echo.android.model.playback.EchoParametricEq
 
 class AutoEqCatalogTest {
     @Test fun bundledCatalogLoadsOfflineAndPreservesTheUpstreamFilters() {
-        val catalog = AutoEqCatalog.read(File("src/main/assets/autoeq/catalog-v1.tsv.gz").inputStream())
+        val catalog = AutoEqCatalog.read(File("src/main/assets/autoeq/catalog-v1.tsv.gzip").inputStream())
         assertEquals(8850, catalog.status.eqCount)
         assertEquals("7ae0f56d53074872b028649617a22bbb4232feb7", catalog.revision)
         val profile = catalog.search("HD650", "Auriculares Argentina").single().presets.single()

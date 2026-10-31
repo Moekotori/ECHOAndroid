@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_manager_title">歌词 · %1$s</string>
-    <string name="lyrics_manager_hint">点击候选即可选用，并自动保存到本地。</string>
+    <string name="lyrics_manager_hint">点击候选预览歌词，确认后点“选用并离线保存”。</string>
     <string name="lyrics_manager_search">在线搜索 / 重新获取</string>
     <string name="lyrics_manager_import">导入歌词文件</string>
     <string name="lyrics_manager_clear">解除选择 / 导入绑定，恢复自动歌词</string>

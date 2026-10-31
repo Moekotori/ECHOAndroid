@@ -8,6 +8,7 @@ import org.json.JSONObject
 internal object EchoMsebCodec {
     fun encode(state: EchoMsebState): String = JSONObject().apply {
         put("enabled", state.enabled)
+        put("adjustmentRange", state.adjustmentRange.name)
         put("values", JSONArray(state.normalized.values))
     }.toString()
 
@@ -18,6 +19,7 @@ internal object EchoMsebCodec {
             val values = json.optJSONArray("values")
             EchoMsebState(
                 enabled = json.optBoolean("enabled", false),
+                adjustmentRange = app.echo.android.model.playback.EchoMsebAdjustmentRange.fromId(json.optString("adjustmentRange")),
                 values = EchoMsebParameter.entries.map { values?.optDouble(it.ordinal, 0.0)?.toFloat() ?: 0f },
             ).normalized
         }.getOrDefault(EchoMsebState())

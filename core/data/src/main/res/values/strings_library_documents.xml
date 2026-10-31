@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="documents_root">ECHO Library</string>
+    <string name="documents_root_summary">Local original audio · Read only</string>
+    <string name="documents_albums">Albums</string>
+    <string name="documents_playlists">Playlists</string>
+    <string name="documents_all">All songs</string>
+    <string name="documents_playlists_summary">Ordinary local playlists; only local audio files are shown</string>
+    <string name="documents_unknown_album">Unknown album</string>
+    <string name="documents_whole_original">Complete original audio (not a cropped CUE track or clip)</string>
+    <string name="documents_unavailable">Open ECHO to scan your local library or restore file access, then try again.</string>
+</resources>

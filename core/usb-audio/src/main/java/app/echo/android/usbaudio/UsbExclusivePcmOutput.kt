@@ -200,17 +200,18 @@ class UsbExclusivePcmSession internal constructor(
     val volumeRamp: UsbPcmGainRamp? get() = volumeControl?.ramp
     val volumeState: UsbDacVolumeState? get() = volumeControl?.state
     val volumeFailed: Boolean get() = volumeControl?.fatal == true
-    fun configureVolume(mode: String, percent: Int) {
+    fun configureVolume(mode: String, percent: Int) = configureVolumeGain(mode, percent.coerceIn(0, 100) / 100f)
+    fun configureVolumeGain(mode: String, gain: Float) {
         if (sessionClosed || dop) return
         val existing = volumeControl
-        if (existing != null) { existing.request(mode, percent); return }
+        if (existing != null) { existing.requestGain(mode, gain); return }
         val connection = connection ?: return
         val format = selectedFormat ?: return
         val spec = spec ?: return
         volumeControl = UsbDacVolumeController(connection.rawDescriptors, format,
-            UsbAudioControlTransfer(connection::controlTransfer), percent, mode, spec.sampleRateHz,
+            UsbAudioControlTransfer(connection::controlTransfer), 100, mode, spec.sampleRateHz,
             150L + capacityFrames() * 1000 / spec.sampleRateHz.coerceAtLeast(1) +
-                32768L * 1000 / (spec.sampleRateHz.coerceAtLeast(1) * spec.channelCount.coerceAtLeast(1) * bytesPerSample))
+                32768L * 1000 / (spec.sampleRateHz.coerceAtLeast(1) * spec.channelCount.coerceAtLeast(1) * bytesPerSample), initialGain = gain)
     }
     private val snapshotBuffer = LongArray(17)
     private var nextSnapshotMs = 0L

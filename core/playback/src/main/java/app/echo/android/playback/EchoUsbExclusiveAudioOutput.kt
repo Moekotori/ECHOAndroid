@@ -37,7 +37,7 @@ internal class EchoUsbExclusiveAudioOutput(
     private var volume: Float = 1f
 
     private val updateVolume: (app.echo.android.model.playback.EchoUsbOutputOptions) -> Unit = { options ->
-        if (!released) session.configureVolume(options.volumeMode.id, options.volumePercent)
+        if (!released) session.configureVolumeGain(options.volumeMode.id, options.volumeGain)
     }
     init {
         updateVolume(EchoPlaybackProcessRuntime.usbOutputOptions)

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sound_undo_edit">Undo last adjustment</string>
+    <string name="sound_edit_help">About %1$s</string>
+    <string name="sound_help_close">Got it</string>
+    <string name="sound_live_edit_hint">Drag to listen · release to save</string>
+    <string name="sound_live_edit_detail">Hear changes as you drag. Release to save; tap a value for precise entry.</string>
+    <string name="sound_reset_parameter">Reset %1$s to zero</string>
+    <string name="eq_switch_graphic_title">Switch to graphic EQ?</string>
+    <string name="eq_switch_graphic_detail">This replaces the current PEQ filters with a flat graphic EQ. Cancel to save your curve as a preset first. MSEB keeps its settings.</string>
+    <string name="eq_switch_graphic_action">Switch and clear PEQ</string>
+    <string name="eq_mseb_combined_detail">MSEB is also on. Extra headroom: %1$s. This graph shows EQ only.</string>
+</resources>

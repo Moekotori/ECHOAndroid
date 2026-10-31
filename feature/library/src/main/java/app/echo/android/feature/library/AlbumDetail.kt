@@ -118,6 +118,7 @@ internal fun AlbumDetailPage(
     tracks: LazyPagingItems<EchoTrack>,
     onBack: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
+    onWriteNfc: (() -> Unit)? = null,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
@@ -150,6 +151,7 @@ internal fun AlbumDetailPage(
             )
             AlbumDetailLayout(
                 album = album,
+                onWriteNfc = onWriteNfc,
                 tracks = loadedTracks,
                 accent = palette.vibrant,
                 onBack = onBack,

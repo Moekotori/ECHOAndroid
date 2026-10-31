@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mseb_adjustment_range">调节范围</string>
+    <string name="mseb_adjustment_range_note">精细 ±20 · 标准 ±40 · 宽范围 ±100。范围外的已有参数保持原值，可点击数字编辑。</string>
+    <string name="mseb_personal_count">个人预设 · %1$d/%2$d</string>
+    <string name="mseb_personal_save">另存为</string>
+    <string name="mseb_personal_current">当前参数</string>
+    <string name="mseb_personal_apply">应用</string>
+    <string name="mseb_personal_rename">重命名</string>
+    <string name="mseb_personal_update">覆盖</string>
+    <string name="mseb_personal_delete">删除</string>
+    <string name="mseb_personal_import">导入</string>
+    <string name="mseb_personal_export">全部导出</string>
+    <string name="mseb_personal_name">预设名称</string>
+    <string name="mseb_personal_cancel">取消</string>
+    <string name="mseb_personal_delete_confirm">删除这个已保存的预设？当前声音设置会保留。</string>
+    <string name="mseb_personal_import_note">以下预设将作为副本导入，重名自动改名。当前声音设置保持原样。</string>
+    <string name="mseb_personal_full">预设容量不足，请删除部分已保存预设后再导入。</string>
+    <string name="mseb_personal_failed">操作失败，请检查文件格式、存储权限或预设容量后重试。</string>
+    <string name="mseb_personal_close">关闭</string>
+    <string name="usb_fine_title">USB 输出音量</string>
+    <string name="usb_fine_muted">静音</string>
+    <string name="usb_fine_value">%1$.1f dB</string>
+    <string name="usb_fine_down">−0.2 dB</string>
+    <string name="usb_fine_up">+0.2 dB</string>
+    <string name="usb_fine_note">每档 0.2 dB，最低可静音。数值相对连接时的 DAC 电平，不代表实测响度。按厂商／产品 ID 记忆最多 16 款 DAC；自动恢复不会提高数字电平。硬件音量精度由 DAC 决定。</string>
+</resources>

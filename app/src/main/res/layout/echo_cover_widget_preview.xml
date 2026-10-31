@@ -4,16 +4,15 @@
     tools:ignore="UseAppTint"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/echo_widget_cover_surface">
+    android:background="@drawable/echo_widget_cover_surface"
+    android:clipToOutline="true">
 
     <ImageView
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:layout_gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:contentDescription="@null"
-        android:tint="#DEDEE4"
-        android:src="@drawable/media3_notification_small_icon" />
-
+        android:scaleType="centerCrop"
+        android:src="@drawable/echo_widget_preview_artwork" />
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -56,11 +55,11 @@
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:layout_marginStart="8dp"
-                android:background="@drawable/echo_widget_artwork_play_surface"
+
                 android:contentDescription="@string/playback_widget_play"
-                android:padding="10dp"
-                android:tint="#303036"
-                android:src="@drawable/echo_ic_play" />
+                android:padding="6dp"
+                android:tint="#FFFFFF"
+                android:src="@drawable/echo_widget_ic_play" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

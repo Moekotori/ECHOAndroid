@@ -76,6 +76,7 @@ internal fun PlaylistDetailPage(
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     onPinShortcut: ((Boolean) -> Unit)? = null,
+    onWriteNfc: (() -> Unit)? = null,
     management: PlaylistManagementActions? = null,
     experienceActions: LibraryExperienceActions? = null,
     onCopyCreated: (EchoPlaylist) -> Unit = {},
@@ -160,6 +161,7 @@ internal fun PlaylistDetailPage(
     ) {
         Box(Modifier.widthIn(max = EchoContentMaxWidth).fillMaxWidth()) {
             PlaylistDetailTopBar(
+                onWriteNfc = onWriteNfc,
                 title = stringResource(L10nR.string.feature_library_playlists_56bf76),
                 canEdit = playlist.canEdit,
                 onBack = onBack,

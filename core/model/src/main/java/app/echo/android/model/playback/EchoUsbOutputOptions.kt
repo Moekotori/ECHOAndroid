@@ -26,8 +26,20 @@ data class EchoUsbOutputOptions(
     /** Explicit DoP opt-in per USB VID:PID; value is the highest DSD bit rate. */
     val dopDeviceLimits: Map<String, Int> = emptyMap(),
     val volumeMode: EchoUsbVolumeMode = EchoUsbVolumeMode.Software,
+    val volumeStep: Int? = null,
+    val volumeDeviceKey: String? = null,
+    val deviceVolumeSteps: Map<String, Int> = emptyMap(),
 ) {
+    val effectiveVolumeStep: Int get() = volumeStep?.coerceIn(0, 300) ?: EchoUsbFineVolume.fromPercent(volumePercent)
+    val volumeGain: Float get() = volumeStep?.let(EchoUsbFineVolume::gain) ?: (volumePercent.coerceIn(0, 100) / 100f)
+    fun withVolumeStep(step: Int): EchoUsbOutputOptions = copy(volumeStep = step.coerceIn(0, 300),
+        volumePercent = EchoUsbFineVolume.percent(step))
+
     val normalized: EchoUsbOutputOptions get() = copy(
+        volumeStep = volumeStep?.coerceIn(0, 300),
+        volumeDeviceKey = volumeDeviceKey?.takeIf(EchoUsbFineVolume::validKey),
+        deviceVolumeSteps = deviceVolumeSteps.entries.filter { EchoUsbFineVolume.validKey(it.key) && it.value in 0..300 }
+            .takeLast(EchoUsbFineVolume.MaxDevices).associate { it.toPair() },
         sampleRateHz = sampleRateHz.takeIf { it in SAMPLE_RATES } ?: 0,
         bitDepth = bitDepth.takeIf { it in listOf(16, 24, 32) } ?: 0,
         channelCount = channelCount.takeIf { it in 1..2 } ?: 0,

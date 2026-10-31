@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -102,6 +103,12 @@ internal fun LyricsLineList(
         val scale = lyricsFontScale.coerceIn(0.50f, 1.28f)
         val spacing = lyricsLineSpacing.coerceIn(0.50f, 1.38f)
         val motion = lyricsMotionProfile(if (animateFocus) lyricsMotionMode else "calm")
+        val density = LocalDensity.current
+        val blurEffects = remember(density, motion.blurDp) {
+            if (android.os.Build.VERSION.SDK_INT >= 31 && motion.blurDp > 0f) {
+                LyricsBlurEffects(with(density) { (motion.blurDp * 3f).dp.toPx() })
+            } else null
+        }
         val immersive = lyricsImmersiveModeEnabled && synced
         LazyColumn(
             state = listState,
@@ -134,7 +141,7 @@ internal fun LyricsLineList(
                     wordHighlightEnabled = lyricsWordHighlightEnabled && !lightweight && animationsVisible,
                     estimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
                     focusGlowEnabled = focusGlowEnabled, showTranslation = showTranslation,
-                    showRomanization = showRomanization, motion = motion,
+                    showRomanization = showRomanization, motion = motion, blurEffects = blurEffects,
                     animateFocus = animateFocus, paper = paper, passed = focusIndex >= 0 && index < focusIndex,
                     stationNumber = index + 1,
                     onClick = if (seekable) ({

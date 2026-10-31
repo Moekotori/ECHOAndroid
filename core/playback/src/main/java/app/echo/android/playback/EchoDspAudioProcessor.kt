@@ -52,7 +52,8 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         streamFrames = 0L
         needsClockAnchor = true
         stages.forEach { it.flush(metadata) }
-        kernel.setTarget(EchoPlaybackProcessRuntime.dspSettings, EchoPlaybackProcessRuntime.dspReplayGainDb)
+        kernel.setTarget(EchoPlaybackProcessRuntime.dspSettings, EchoPlaybackProcessRuntime.dspReplayGainDb,
+            EchoPlaybackProcessRuntime.volumeSettings)
         kernel.reset()
     }
 
@@ -73,7 +74,8 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         val output = replaceOutputBuffer(frames * channels * bytesPerSample).order(order)
         val settings = EchoPlaybackProcessRuntime.dspSettings
         val replayGain = EchoPlaybackProcessRuntime.dspReplayGainDb
-        if (!settings.limiterEnabled && !settings.crossfeedEnabled && replayGain == 0f && kernel.neutral && stages.none { it.isActive }) {
+        val volume = EchoPlaybackProcessRuntime.volumeSettings
+        if (!settings.limiterEnabled && !settings.crossfeedEnabled && replayGain == 0f && !volume.changesSamples && kernel.neutral && stages.none { it.isActive }) {
             val originalLimit = input.limit()
             input.limit(input.position() + frames * channels * bytesPerSample)
             output.put(input)
@@ -92,7 +94,7 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
                 samples = stage.output.order(ByteOrder.nativeOrder())
             }
         }
-        kernel.setTarget(settings, replayGain)
+        kernel.setTarget(settings, replayGain, volume)
         if (channels <= 2 && kernel.processBuffer(samples, frames, channels)) {
             samples.position(0)
             samples.limit(frames * channels * 4)

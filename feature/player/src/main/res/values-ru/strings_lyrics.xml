@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_manager_title">Текст песни · %1$s</string>
-    <string name="lyrics_manager_hint">Нажмите на результат, чтобы применить текст и сохранить его офлайн.</string>
+    <string name="lyrics_manager_hint">Нажмите на результат для просмотра текста, затем выберите «Использовать», чтобы сохранить и применить его.</string>
     <string name="lyrics_manager_search">Искать / обновить онлайн</string>
     <string name="lyrics_manager_import">Импортировать файл текста</string>
     <string name="lyrics_manager_clear">Сбросить выбор и использовать автоматический текст</string>

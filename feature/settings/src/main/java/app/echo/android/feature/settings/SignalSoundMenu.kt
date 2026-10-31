@@ -7,6 +7,7 @@ import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Waves
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.*
@@ -31,11 +32,14 @@ internal fun SignalSoundMenu(labels: List<String>, onSelect: (Int) -> Unit) {
         stringResource(R.string.signal_sound_channels_summary),
         stringResource(R.string.signal_sound_dsp_summary),
         stringResource(R.string.signal_sound_mseb_summary),
+        stringResource(R.string.volume_summary),
     )
-    val icons = listOf(Icons.Rounded.Equalizer, Icons.Rounded.Headphones, Icons.Rounded.SwapHoriz, Icons.Rounded.Tune, Icons.Rounded.Waves)
+    val icons = listOf(Icons.Rounded.Equalizer, Icons.Rounded.Headphones, Icons.Rounded.SwapHoriz, Icons.Rounded.Tune, Icons.Rounded.Waves, Icons.AutoMirrored.Rounded.VolumeUp)
     val scheme = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth()) {
-        labels.forEachIndexed { index, label ->
+        val order = listOf(labels.lastIndex) + (0 until labels.lastIndex)
+        order.forEach { index ->
+            val label = labels[index]
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 76.dp)
                     .echoClickable(role = Role.Button, onClick = { onSelect(index) })
@@ -50,7 +54,7 @@ internal fun SignalSoundMenu(labels: List<String>, onSelect: (Int) -> Unit) {
                 }
                 EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp))
             }
-            if (index < labels.lastIndex) HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.55f))
+            if (index != order.last()) HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.55f))
         }
     }
 }

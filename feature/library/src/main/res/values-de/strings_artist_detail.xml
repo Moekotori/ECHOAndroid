@@ -21,4 +21,5 @@
         <item quantity="one">%1$d Titel</item>
         <item quantity="other">%1$d Titel</item>
     </plurals>
+    <string name="artist_playback_actions">Wiedergabeoptionen</string>
 </resources>

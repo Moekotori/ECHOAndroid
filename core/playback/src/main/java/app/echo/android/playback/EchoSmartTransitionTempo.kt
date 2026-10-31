@@ -9,7 +9,9 @@ internal data class EchoSmartTransitionTempo(
     val beatsMs: IntArray = intArrayOf(),
 ) {
     val reliable: Boolean
-        get() = bpm != null && confidence >= EchoSmartTransitionTempoMath.MinimumConfidence
+        get() = bpm != null && bpm.isFinite() && bpm in 80f..180f &&
+            confidence.isFinite() && confidence in EchoSmartTransitionTempoMath.MinimumConfidence..1f &&
+            beatOffsetMs != null && beatsMs.size >= 3
 }
 
 internal object EchoSmartTransitionTempoMath {
@@ -73,7 +75,9 @@ internal object EchoSmartTransitionTempoMath {
         } else {
             Math.round(offsetFrames * hop * 1000f / sampleRate)
         }
-        val beats = beatTimesMs(windowStartMs, samples.size * 1000 / sampleRate, bpm, offsetMs ?: 0)
+        val beats = if (offsetMs != null && bestScore >= MinimumConfidence) {
+            beatTimesMs(windowStartMs, samples.size * 1000 / sampleRate, bpm, offsetMs)
+        } else intArrayOf()
         return EchoSmartTransitionTempo(
             bpm = (Math.round(bpm * 1000f) / 1000f),
             confidence = bestScore.coerceIn(0f, 1f),

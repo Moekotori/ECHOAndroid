@@ -94,9 +94,10 @@ internal class EchoDspKernel {
         reset()
     }
 
-    fun setTarget(settings: EchoDspSettings, replayGainDb: Float) {
+    fun setTarget(settings: EchoDspSettings, replayGainDb: Float,
+        volume: app.echo.android.model.playback.EchoVolumeSettings = app.echo.android.model.playback.EchoVolumeSettings()) {
         targetMix = if (settings.crossfeedEnabled) settings.crossfeedAmount else 0f
-        targetLevel = 10.0.pow(replayGainDb.coerceIn(-36f, 30f) / 20.0).toFloat()
+        targetLevel = if (volume.muted) 0f else 10.0.pow(volume.combinedGainDb(replayGainDb) / 20.0).toFloat()
         limiting = settings.limiterEnabled
         ceiling = 10.0.pow(settings.limiterCeilingDb / 20.0).toFloat()
     }

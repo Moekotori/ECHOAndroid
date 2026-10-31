@@ -40,6 +40,9 @@ internal fun EchoNowPlayingHost(
     onSuppressArtworkFlight: (Boolean) -> Unit = {},
     /** 投送到 DLNA / Chromecast 时换成远端进度。 */
     positionFlow: StateFlow<PlaybackPositionState> = viewModel.playbackPosition,
+    onOpenAlbum: (app.echo.android.model.library.AlbumSummary) -> Unit,
+    onOpenFolder: (app.echo.android.model.library.FolderSummary) -> Unit,
+    onOpenEqualizer: () -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit = {},
 ) {
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
@@ -58,6 +61,7 @@ internal fun EchoNowPlayingHost(
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
     val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
     var showLyricsManager by remember(playbackStatus.track?.id) { mutableStateOf(false) }
+    var lyricsSearchRequested by remember(playbackStatus.track?.id) { mutableStateOf(false) }
     var showLyricsEditor by remember(playbackStatus.track?.id) { mutableStateOf(false) }
     if (showLyricsEditor) playbackStatus.track?.let { track ->
         val source = (lyricsState as? app.echo.android.model.lyrics.EchoLyricsLoadState.Ready)?.lyrics
@@ -87,7 +91,7 @@ internal fun EchoNowPlayingHost(
             (lyricsState as? app.echo.android.model.lyrics.EchoLyricsLoadState.Ready)?.lyrics, tools,
             onSeek = onSeek, onDismiss = { showTrackTools = false }, loopAvailable = !castActive)
     }
-    if (showLyricsManager) {
+    if (showLyricsManager) key(playbackStatus.track?.id) {
         val candidates by viewModel.lyricsCandidates.collectAsStateWithLifecycle()
         val searching by viewModel.lyricsSearching.collectAsStateWithLifecycle()
         val error by viewModel.lyricsManagementError.collectAsStateWithLifecycle()
@@ -95,9 +99,13 @@ internal fun EchoNowPlayingHost(
         LyricsManagerDialog(
             trackTitle = playbackStatus.track?.title.orEmpty(), candidates = candidates,
             searching = searching, error = error,
+            searchRequested = lyricsSearchRequested,
             selectedId = (lyricsState as? app.echo.android.model.lyrics.EchoLyricsLoadState.Ready)?.lyrics?.metadata?.get("selection_id"),
             onSearch = viewModel::searchLyrics,
             onChoose = viewModel::selectLyricsCandidate,
+            onChooseAwait = { id ->
+                playbackStatus.track?.id?.let { viewModel.selectPlayerLyrics(id, it) } ?: false
+            },
             onImport = { showLyricsManager = false; onImportLyrics() },
             onRemove = viewModel::removeLyricsSelection,
             onAdjustOffset = viewModel::adjustLyricsOffset,
@@ -105,7 +113,21 @@ internal fun EchoNowPlayingHost(
             onEdit = { showLyricsManager = false; showLyricsEditor = true },
         )
     }
+    val songActions = if (presentationExpanded) key(playbackStatus.track?.id) {
+        rememberNowPlayingSongActions(
+            viewModel, playbackStatus.track, onOpenAlbum, onOpenFolder, onOpenEqualizer,
+            onSearchLyrics = { lyricsSearchRequested = true; showLyricsManager = true; viewModel.searchLyrics() },
+        )
+    } else app.echo.android.feature.player.NowPlayingSongActions()
+    LaunchedEffect(presentationExpanded) {
+        if (!presentationExpanded) {
+            showLyricsManager = false
+            showLyricsEditor = false
+            showTrackTools = false
+        }
+    }
     NowPlayingScreen(
+        songActions = songActions,
         status = playbackStatus,
         positionState = playbackPosition,
         smartTransitionState = smartTransition,
@@ -129,7 +151,6 @@ internal fun EchoNowPlayingHost(
         lyricsWordHighlightIntensity = appSettings.lyricsWordHighlightIntensity,
         lyricsWordHighlightStyle = appSettings.lyricsWordHighlightStyle,
         lyricsImmersiveModeEnabled = appSettings.lyricsImmersiveModeEnabled,
-        lyricsMotionMode = appSettings.lyricsMotionMode,
         lyricsShowTranslation = appSettings.lyricsShowTranslation,
         lyricsShowRomanization = appSettings.lyricsShowRomanization,
         lyricsFocusGlowEnabled = appSettings.lyricsFocusGlowEnabled,
@@ -156,7 +177,7 @@ internal fun EchoNowPlayingHost(
         onAdjustReplayGainPreamp = viewModel::adjustReplayGainPreamp,
         replayGainScanState = viewModel.replayGainScanState.collectAsStateWithLifecycle().value,
         onScanReplayGain = viewModel::scanReplayGainForCurrentTrack,
-        onImportLyrics = { showLyricsManager = true },
+        onImportLyrics = { lyricsSearchRequested = false; showLyricsManager = true },
         onAdjustLyricsOffset = viewModel::adjustLyricsOffset,
         onResetLyricsOffset = viewModel::resetLyricsOffset,
         onImportLyricsFont = onImportLyricsFont,
@@ -172,7 +193,6 @@ internal fun EchoNowPlayingHost(
         onLyricsEstimatedWordHighlightEnabledChange = viewModel::setLyricsEstimatedWordHighlightEnabled,
         onLyricsWordHighlightIntensityChange = viewModel::setLyricsWordHighlightIntensity,
         onLyricsImmersiveModeChange = viewModel::setLyricsImmersiveModeEnabled,
-        onLyricsMotionModeChange = viewModel::setLyricsMotionMode,
         onLyricsWordHighlightStyleChange = viewModel::setLyricsWordHighlightStyle,
         onLyricsShowTranslationChange = viewModel::setLyricsShowTranslation,
         onLyricsShowRomanizationChange = viewModel::setLyricsShowRomanization,

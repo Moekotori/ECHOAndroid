@@ -11,6 +11,27 @@ import org.junit.Test
 
 @UnstableApi
 class EchoEqualizerAudioProcessorTest {
+    @Test fun liveFrequencyEditRetainsFilterHistory() {
+        val processor = EchoEqualizerAudioProcessor()
+        val band = OpraEqBand(EchoEqFilterType.PeakDip, 1000f, 6f, 4f, null)
+        processor.setRuntime(EchoEqualizerRuntime(true, -6f, listOf(band)))
+        processor.configure(AudioProcessor.AudioFormat(48000, 1, C.ENCODING_PCM_FLOAT))
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        fun sample(value: Float): Float {
+            val input = java.nio.ByteBuffer.allocateDirect(4).order(java.nio.ByteOrder.nativeOrder())
+            input.putFloat(value).flip()
+            processor.queueInput(input)
+            return processor.output.order(java.nio.ByteOrder.nativeOrder()).float
+        }
+        sample(0.1f)
+        processor.setRuntime(EchoEqualizerRuntime(true, -6f, listOf(band.copy(frequencyHz = 1010f))))
+        // Clearing the delay line at each edit incorrectly removes the impulse tail.
+        val tail = sample(0f)
+        assertTrue(tail.isFinite() && kotlin.math.abs(tail) > 0.00001f)
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        assertEquals(0f, sample(0f), 0f)
+    }
+
     @Test fun realPcmShelfAndPreampMatchReferenceGain() {
         var processingRate: Int? = null
         val processor = EchoEqualizerAudioProcessor { processingRate = it }

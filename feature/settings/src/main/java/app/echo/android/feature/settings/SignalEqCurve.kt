@@ -101,18 +101,24 @@ internal fun SignalEqPlot(
     onMarkerDrag: ((index: Int, frequencyHz: Float, gainDb: Float) -> Unit)? = null,
     selectedMarkerIndex: Int = -1,
     onMarkerSelected: ((Int) -> Unit)? = null,
+    onMarkerDragFinished: (() -> Unit)? = null,
+    markerSupportsGain: List<Boolean> = emptyList(),
 ) {
     val scheme = MaterialTheme.colorScheme
     val stroke = if (live) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.75f)
     val grid = scheme.outlineVariant
     val zero = scheme.onSurface.copy(alpha = 0.22f)
     val description = stringResource(R.string.eq_curve_reference)
-    val range = maxOf(12f, ceil((points.maxOfOrNull { abs(it.gainDb) } ?: 0f) / 6f) * 6f).coerceAtMost(48f)
+    val autoRange = maxOf(12f, ceil((points.maxOfOrNull { abs(it.gainDb) } ?: 0f) / 6f) * 6f).coerceAtMost(48f)
+    var heldRange by remember { mutableStateOf<Float?>(null) }
+    val range = heldRange ?: autoRange
     val interactive = onMarkerDrag != null &&
         markerFrequenciesHz.isNotEmpty() &&
         markerGainsDb.size == markerFrequenciesHz.size
     val dragCallback = rememberUpdatedState(onMarkerDrag)
     val selectCallback = rememberUpdatedState(onMarkerSelected)
+    val finishCallback = rememberUpdatedState(onMarkerDragFinished)
+    val gainEditable = rememberUpdatedState(markerSupportsGain)
     val frequencies = rememberUpdatedState(markerFrequenciesHz)
     val gains = rememberUpdatedState(markerGainsDb)
     var dragIndex by remember { mutableIntStateOf(-1) }
@@ -168,13 +174,14 @@ internal fun SignalEqPlot(
                             detectEchoTargetDrag(
                                 targetAt = { nearest(it).takeIf { index -> index >= 0 } },
                                 onStart = { index, _ ->
+                                    heldRange = range
                                     dragIndex = index
                                     selectCallback.value?.invoke(index)
                                     localFreq = frequencies.value[index].toFloat()
                                     localGain = gains.value[index]
                                 },
-                                onStop = { dragIndex = -1 },
-                                onCancel = { dragIndex = -1 },
+                                onStop = { finishCallback.value?.invoke(); dragIndex = -1; heldRange = null },
+                                onCancel = { finishCallback.value?.invoke(); dragIndex = -1; heldRange = null },
                                 onDrag = { change, _ ->
                                     val index = dragIndex
                                     change.consume()
@@ -185,7 +192,7 @@ internal fun SignalEqPlot(
                                     } else {
                                         eqFreqFromX(change.position.x, width)
                                     }
-                                    val nextGain = snapEqGain(
+                                    val nextGain = if (gainEditable.value.getOrNull(index) == false) gains.value[index] else snapEqGain(
                                         eqGainFromY(change.position.y, height, range)
                                             .coerceIn(minGainDb, maxGainDb),
                                     )

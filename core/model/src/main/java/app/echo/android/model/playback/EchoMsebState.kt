@@ -9,6 +9,7 @@ enum class EchoMsebParameter {
 data class EchoMsebState(
     val enabled: Boolean = false,
     val values: List<Float> = List(EchoMsebParameter.entries.size) { 0f },
+    val adjustmentRange: EchoMsebAdjustmentRange = EchoMsebAdjustmentRange.Wide,
 ) {
     fun value(parameter: EchoMsebParameter): Float =
         values.getOrElse(parameter.ordinal) { 0f }.let { if (it.isFinite()) it.coerceIn(-100f, 100f) else 0f }

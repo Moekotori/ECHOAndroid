@@ -183,8 +183,9 @@ class EchoRemoteClient internal constructor(
     fun librarySyncSession(): EchoLibrarySyncSession {
         val target = endpoint ?: error("PC is not connected")
         if (target.token.isBlank()) throw app.echo.android.model.connect.EchoSyncPairingRequiredException()
+        val connection = connectGeneration
         fun assertCurrent() {
-            check(endpoint?.id == target.id && endpoint?.token == target.token &&
+            check(connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target) &&
                 status.value.connectionState == EchoRemoteConnectionState.Connected)
         }
         return object : EchoLibrarySyncSession {
@@ -194,16 +195,16 @@ class EchoRemoteClient internal constructor(
             override suspend fun importPersonalState(expectedRevision: String, state: app.echo.android.model.connect.EchoPersonalState): app.echo.android.model.connect.EchoPersonalStateResult {
                 assertCurrent(); return transport.importPersonalState(target, expectedRevision, state).also { assertCurrent() }
             }
-            override suspend fun snapshot(key: String): app.echo.android.model.connect.EchoSyncState { assertCurrent(); return transport.syncSnapshot(target,key) }
-            override suspend fun replace(expected: String,desired: app.echo.android.model.connect.EchoSyncState): app.echo.android.model.connect.EchoSyncApplyResult { assertCurrent(); return transport.syncReplace(target,expected,desired) }
+            override suspend fun snapshot(key: String): app.echo.android.model.connect.EchoSyncState { assertCurrent(); return transport.syncSnapshot(target,key).also { assertCurrent() } }
+            override suspend fun replace(expected: String,desired: app.echo.android.model.connect.EchoSyncState): app.echo.android.model.connect.EchoSyncApplyResult { assertCurrent(); return transport.syncReplace(target,expected,desired).also { assertCurrent() } }
             override suspend fun collections(): List<app.echo.android.model.connect.EchoSyncCollection> {
-                assertCurrent(); return transport.syncCollections(target)
+                assertCurrent(); return transport.syncCollections(target).also { assertCurrent() }
             }
             override suspend fun exportBatch(collection: app.echo.android.model.connect.EchoSyncCollection, offset: Int): app.echo.android.model.connect.EchoSyncBatch {
-                assertCurrent(); return transport.syncExportBatch(target, collection, offset)
+                assertCurrent(); return transport.syncExportBatch(target, collection, offset).also { assertCurrent() }
             }
             override suspend fun importBatch(batch: app.echo.android.model.connect.EchoSyncBatch, preview: Boolean): app.echo.android.model.connect.EchoSyncBatchResult {
-                assertCurrent(); return transport.syncImportBatch(target, batch, preview)
+                assertCurrent(); return transport.syncImportBatch(target, batch, preview).also { assertCurrent() }
             }
         }
     }
@@ -343,6 +344,8 @@ class EchoRemoteClient internal constructor(
                 return@launch
             }
             endpoint = resolvedTarget
+            // The pair exchange replaces a short-lived secret with the actual access token.
+            controls.bind(resolvedTarget)
             _status.update { current ->
                 current.copy(endpoint = resolvedTarget)
             }

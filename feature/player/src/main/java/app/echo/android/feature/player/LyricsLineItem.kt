@@ -49,6 +49,7 @@ internal fun LyricsLineItem(
     showTranslation: Boolean,
     showRomanization: Boolean,
     motion: LyricsMotionProfile,
+    blurEffects: LyricsBlurEffects?,
     animateFocus: Boolean,
     paper: Boolean,
     passed: Boolean = false,
@@ -101,7 +102,7 @@ internal fun LyricsLineItem(
         label = "lyrics-secondary-alpha",
     )
     val textScale = animateFloatAsState(
-        // Calm keeps a fixed size; the other presets draw within the same measured bounds.
+        // Draw within the same measured bounds, including during an interrupted focus transition.
         targetValue = motion.scale(focused, focusDistance),
         animationSpec = contextMotion,
         label = "lyrics-text-scale",
@@ -206,7 +207,7 @@ internal fun LyricsLineItem(
                 scaleX = textScale.value
                 scaleY = textScale.value
                 val blur = textBlur.value.dp.toPx()
-                renderEffect = if (blur >= 0.5f) BlurEffect(blur, blur, TileMode.Decal) else null
+                renderEffect = blurEffects?.at(blur)
                 transformOrigin = TransformOrigin(if (alignment == "start") 0f else 0.5f, 0.5f)
             },
             // Reserve the focused size and scale only the main lyric in drawing:

@@ -11,6 +11,9 @@ enum class EchoColorTheme(val id: String) {
     Plum("plum"),
     Copper("copper"),
     Frost("frost"),
+    Forest("forest"),
+    Aurora("aurora"),
+    Obsidian("obsidian"),
     Custom("custom"),
     ;
 

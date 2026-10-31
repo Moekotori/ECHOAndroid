@@ -64,7 +64,7 @@ internal fun AlbumWall(
         LazyVerticalGrid(
             state = gridState,
             columns = LibraryWallGridCells,
-            modifier = Modifier.fillMaxSize().padding(end = if (findLetterIndex != null) 28.dp else 0.dp),
+            modifier = Modifier.fillMaxSize().padding(end = if (findLetterIndex != null) LibraryAlphabetIndexWidth else 0.dp),
             horizontalArrangement = Arrangement.spacedBy(LibraryWallHorizontalSpacing),
             verticalArrangement = Arrangement.spacedBy(LibraryWallVerticalSpacing),
             contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),

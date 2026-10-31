@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -37,6 +39,7 @@ import app.echo.android.design.EchoSwitch
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoEqualizerUserPresets
+import app.echo.android.model.playback.normalizedType
 import kotlin.math.roundToInt
 
 @Composable
@@ -63,7 +66,10 @@ internal fun SignalEqualizer(
     outputBound: Boolean = false,
     onBindToOutput: () -> Unit = {},
     onUnbindFromOutput: () -> Unit = {},
+    onParametricPreview: ((List<app.echo.android.model.playback.OpraEqBand>) -> Unit)? = null,
 ) {
+    val edits = rememberSignalEditSession(onParametricPreview, onParametricChange)
+    var confirmGraphic by rememberSaveable { mutableStateOf(false) }
     var selectedBand by rememberSaveable { mutableIntStateOf(0) }
     val activeBand = selectedBand.coerceIn(0, (state.filters.size - 1).coerceAtLeast(0))
     val title = stringResource(L10nR.string.feature_settings_equalizer_7ccb03)
@@ -93,9 +99,30 @@ internal fun SignalEqualizer(
                 onParametricChange(state.bands.map {
                     app.echo.android.model.playback.OpraEqBand("peak_dip", it.frequencyHz.toFloat(), it.gainDb, 1f, null)
                 })
-            } else if (mode == 0 && state.parametric) onPresetSelected(EchoEqualizerPreset.Flat)
+            } else if (mode == 0 && state.parametric) confirmGraphic = true
         }
-        if (state.parametric) SignalNote(stringResource(L10nR.string.peq_editor_detail))
+        if (confirmGraphic) {
+            AlertDialog(
+                onDismissRequest = { confirmGraphic = false },
+                title = { Text(stringResource(L10nR.string.eq_switch_graphic_title)) },
+                text = { Text(stringResource(L10nR.string.eq_switch_graphic_detail)) },
+                confirmButton = { TextButton(enabled = canAdjust, onClick = {
+                    edits.finish()
+                    confirmGraphic = false
+                    onPresetSelected(EchoEqualizerPreset.Flat)
+                }) { Text(stringResource(L10nR.string.eq_switch_graphic_action)) } },
+                dismissButton = { TextButton(onClick = { confirmGraphic = false }) {
+                    Text(stringResource(L10nR.string.error_log_clear_cancel))
+                } },
+            )
+        }
+        if (bypassed) SignalNote(stringResource(L10nR.string.signal_bypass_detail))
+        if (state.parametric) SignalEditorActions(
+            title = stringResource(L10nR.string.eq_mode_parametric),
+            detail = stringResource(L10nR.string.peq_editor_detail) + "\n\n" + stringResource(L10nR.string.sound_live_edit_detail),
+            canUndo = canAdjust && edits.canUndo(state.filters), onUndo = { edits.undo(state.filters) },
+            hint = if (!bypassed && state.enabled) stringResource(L10nR.string.sound_live_edit_hint) else null,
+        )
         state.warning?.let { SignalNote(it, error = true) }
         if (!state.parametric) SignalEqPresetPicker(state.presetId, onPresetSelected, enabled = canAdjust)
         if (state.parametric) state.sourceLabel?.takeIf { it.isNotBlank() }?.let { SignalNote(it) }
@@ -112,22 +139,34 @@ internal fun SignalEqualizer(
                 minGainDb = app.echo.android.model.playback.EchoParametricEq.MinGainDb,
                 maxGainDb = app.echo.android.model.playback.EchoParametricEq.MaxGainDb,
                 selectedMarkerIndex = activeBand,
-                onMarkerSelected = { selectedBand = it },
+                onMarkerSelected = { edits.finish(); selectedBand = it },
                 onMarkerDrag = if (canAdjust && state.enabled) {
                     { index, frequencyHz, gainDb ->
-                        onParametricChange(
+                        edits.preview(
                             state.filters.toMutableList().also { bands ->
                                 val current = bands.getOrNull(index) ?: return@also
-                                bands[index] = current.copy(frequencyHz = frequencyHz, gainDb = gainDb)
-                            },
+                                val type = current.normalizedType()
+                                val hasGain = type == app.echo.android.model.playback.EchoEqFilterType.PeakDip ||
+                                    type == app.echo.android.model.playback.EchoEqFilterType.LowShelf ||
+                                    type == app.echo.android.model.playback.EchoEqFilterType.HighShelf
+                                bands[index] = current.copy(frequencyHz = frequencyHz, gainDb = if (hasGain) gainDb else 0f)
+                            }, state.filters,
                         )
                     }
                 } else {
                     null
                 },
                 modifier = Modifier.fillMaxWidth().height(192.dp),
+                onMarkerDragFinished = edits::finish,
+                markerSupportsGain = state.filters.map {
+                    it.normalizedType() in listOf(app.echo.android.model.playback.EchoEqFilterType.PeakDip,
+                        app.echo.android.model.playback.EchoEqFilterType.LowShelf, app.echo.android.model.playback.EchoEqFilterType.HighShelf)
+                },
             )
-            SignalPeqEditor(state.filters, canAdjust, onParametricChange, activeBand) { selectedBand = it }
+            SignalPeqEditor(state.filters, canAdjust,
+                { edits.commit(it, state.filters) }, activeBand,
+                { edits.finish(); selectedBand = it }, { edits.preview(it, state.filters) },
+                currentFilters = { edits.currentOr(state.filters) })
         } else {
             SignalEqPlot(
                 points = state.responseCurve,
@@ -163,6 +202,9 @@ internal fun SignalEqualizer(
             }
         }
 
+        if (state.mseb.active && !bypassed) {
+            SignalNote(stringResource(L10nR.string.eq_mseb_combined_detail, formatEqGain(state.msebHeadroomDb)))
+        }
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             HorizontalDivider(color = scheme.outlineVariant)
             Row(

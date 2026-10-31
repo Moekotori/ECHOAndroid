@@ -2,10 +2,30 @@ package app.echo.android.data
 
 import app.echo.android.model.playback.EchoEqFilterType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OpraDatabaseParserTest {
+    @Test
+    fun optionalBandFieldsStayAbsentAndPassFiltersKeepTheirDefaultSlope() {
+        val database = OpraDatabaseParser.parse(SampleDatabase + "\n" + """
+            {"type":"eq","id":"pass-correction","data":{"author":"Test","type":"parametric_eq","product_id":"sennheiser::hd650","parameters":{"gain_db":-3,"bands":[{"type":"high_pass","frequency":30},{"type":"peak_dip","frequency":1500,"q":1.25}]}}}
+        """.trimIndent(), "fixture")
+        assertEquals(2, database.status.eqCount)
+        val presets = OpraDatabaseParser.search(database, "HD650").single().presets
+        val pass = presets.single { it.eqId == "pass-correction" }
+        assertEquals(2, pass.bands.size)
+        assertNull(pass.bands[0].q)
+        assertNull(pass.bands[0].slope)
+        assertEquals(0f, pass.bands[1].gainDb, 0f)
+        // Absent optional values must remain serializable, rather than becoming NaN.
+        presets.flatMap { it.bands }.forEach {
+            assertTrue(it.q?.isFinite() != false)
+            assertTrue(it.slope?.isFinite() != false)
+        }
+    }
+
     @Test
     fun brandBrowseIncludesOnlyCorrectableModelsAndDoesNotTruncate() {
         val original = OpraDatabaseParser.parse(SampleDatabase, "fixture")

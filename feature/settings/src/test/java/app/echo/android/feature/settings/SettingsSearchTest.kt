@@ -61,8 +61,9 @@ class SettingsSearchTest {
         assertEquals(R.string.audio_output_title, settingsSearchAnchorResource(audioOutput, availability()))
         assertFalse(R.string.settings_lyrics_sync_tools in titles)
         assertFalse(R.string.settings_connect_pc in titles)
-        assertFalse(R.string.settings_color_theme in titles)
-        assertFalse(R.string.settings_dynamic_color in titles)
+        assertFalse(R.string.accessibility_lyrics_motion in titles)
+        assertTrue(R.string.settings_color_theme in titles)
+        assertTrue(R.string.settings_dynamic_color in titles)
         // Secondary controls remain searchable without changing their saved values.
         assertTrue(R.string.settings_performance_mode in titles)
         assertTrue(R.string.settings_usb_bitperfect in titles)
@@ -93,7 +94,7 @@ class SettingsSearchTest {
         val state = availability()
         val items = availableSettingsSearchItems(state)
         listOf(R.string.settings_ui_font_size, R.string.settings_lyrics_font_size,
-            R.string.accessibility_spacious_layout, R.string.accessibility_lyrics_motion,
+            R.string.accessibility_spacious_layout,
             R.string.accessibility_word_highlight,
             R.string.accessibility_lyrics_spacing, R.string.accessibility_translation,
             R.string.accessibility_romanization, R.string.accessibility_mono,

@@ -18,22 +18,23 @@ import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.round
 
-/** Keep slider drafts local; rebuild and save filters only at the end of a gesture. */
+/** Local thumb feedback; preview is coalesced by the editor and saved on release. */
 @Composable
-internal fun PeqBandControls(band: OpraEqBand, enabled: Boolean, onCommit: (OpraEqBand) -> Unit) {
+internal fun PeqBandControls(band: OpraEqBand, enabled: Boolean, onCommit: (OpraEqBand) -> Unit,
+    onPreview: (OpraEqBand) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         PeqLogControl(stringResource(R.string.dsp_frequency), band.frequencyHz,
             EchoParametricEq.MinFrequencyHz..EchoParametricEq.MaxFrequencyHz, "Hz", 1, enabled,
-            { formatEqFrequency(it.toInt()) }) { onCommit(band.copy(frequencyHz = it)) }
+            { formatEqFrequency(it.toInt()) }, { onPreview(band.copy(frequencyHz = it)) }) { onCommit(band.copy(frequencyHz = it)) }
         val type = band.normalizedType()
         if (type == EchoEqFilterType.PeakDip || type == EchoEqFilterType.LowShelf || type == EchoEqFilterType.HighShelf) {
             DspValueSlider(stringResource(R.string.dsp_band_gain), band.gainDb,
                 EchoParametricEq.MinGainDb..EchoParametricEq.MaxGainDb, enabled, ::formatEqGain,
-                { onCommit(band.copy(gainDb = it)) })
+                { onCommit(band.copy(gainDb = it)) }, onPreview = { onPreview(band.copy(gainDb = it)) })
         }
         if (!EchoParametricEq.isPass(type)) {
             PeqLogControl("Q", band.q ?: 0.707f, EchoParametricEq.MinQ..EchoParametricEq.MaxQ,
-                "Q", 2, enabled, { signalNumber(it, 2) }) { onCommit(band.copy(q = it)) }
+                "Q", 2, enabled, { signalNumber(it, 2) }, { onPreview(band.copy(q = it)) }) { onCommit(band.copy(q = it)) }
         }
     }
 }
@@ -41,9 +42,14 @@ internal fun PeqBandControls(band: OpraEqBand, enabled: Boolean, onCommit: (Opra
 @Composable
 private fun PeqLogControl(
     label: String, value: Float, range: ClosedFloatingPointRange<Float>, unit: String,
-    decimals: Int, enabled: Boolean, format: (Float) -> String, onCommit: (Float) -> Unit,
+    decimals: Int, enabled: Boolean, format: (Float) -> String, onPreview: (Float) -> Unit, onCommit: (Float) -> Unit,
 ) {
-    var draft by remember(value, enabled) { mutableFloatStateOf(value.coerceIn(range)) }
+    var draft by remember { mutableFloatStateOf(value.coerceIn(range)) }
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(value, enabled) {
+        if (!enabled) dragging = false
+        if (!dragging) draft = value.coerceIn(range)
+    }
     val commit = rememberUpdatedState(onCommit)
     val scheme = MaterialTheme.colorScheme
     Column {
@@ -55,10 +61,12 @@ private fun PeqLogControl(
             }, valueLabel = format(draft), unit = unit, decimals = decimals)
         }
         EchoSlider(ln(draft), { position ->
+            dragging = true
             val factor = 10f.pow(decimals)
             draft = (round(exp(position) * factor) / factor).coerceIn(range)
+            onPreview(draft)
         }, valueRange = ln(range.start)..ln(range.endInclusive), enabled = enabled,
-            onValueChangeFinished = { if (enabled) commit.value(draft) },
+            onValueChangeFinished = { dragging = false; if (enabled) commit.value(draft) },
             modifier = Modifier.fillMaxWidth().semantics {
                 contentDescription = label
                 stateDescription = format(draft)

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="playback_widget_background">#2B2930</color>
-    <color name="playback_widget_foreground">#E6E1E5</color>
-    <color name="playback_widget_secondary">#CAC4D0</color>
-    <color name="playback_widget_artwork_background">#49454F</color>
-    <color name="playback_widget_accent">#D0BCFF</color>
-    <color name="playback_widget_on_accent">#381E72</color>
-    <color name="playback_widget_tonal">#4A4458</color>
-    <color name="playback_widget_on_tonal">#E8DEF8</color>
+    <color name="playback_widget_background">#202429</color>
+    <color name="playback_widget_foreground">#F2F4F6</color>
+    <color name="playback_widget_secondary">#A9B1B9</color>
+    <color name="playback_widget_artwork_background">#30373E</color>
+    <color name="playback_widget_accent">#E5E9ED</color>
+    <color name="playback_widget_on_accent">#202429</color>
+    <color name="playback_widget_tonal">#353C43</color>
+    <color name="playback_widget_on_tonal">#D9DFE5</color>
 </resources>

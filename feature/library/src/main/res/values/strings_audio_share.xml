@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_share_title">Share original music files</string>
+    <string name="audio_share_action">Share original files</string>
+    <string name="audio_share_count">Selected tracks: %1$d</string>
+    <string name="audio_share_original_note">Original audio is shared unchanged, without conversion. Optional attachments are separate files and remain available for up to 24 hours.</string>
+    <string name="audio_share_skipped">Unavailable local originals: %1$d. These tracks will be skipped. Remote sources are not downloaded.</string>
+    <string name="audio_share_whole_original">CUE tracks and clips share the entire original audio file. Duplicate originals are sent once.</string>
+    <string name="audio_share_lyrics">Include lyrics</string>
+    <string name="audio_share_cover">Include covers</string>
+    <string name="audio_share_lyrics_note">Uses saved or local lyrics without online searches. Includes LRC or TXT; an extra ECHO JSON file preserves detailed timing and vocals.</string>
+    <string name="audio_share_progress">Preparing %1$d / %2$d</string>
+    <string name="audio_share_missing">Unavailable lyrics: %1$d. Unavailable covers: %2$d. Continue with the original audio and available attachments?</string>
+    <string name="audio_share_continue">Share available files</string>
+    <string name="audio_share_cancel">Cancel</string>
+    <string name="audio_share_read_failed">Cannot read the original for “%1$s”. Check file access and try again. No files have been shared.</string>
+    <string name="audio_share_cache_full">Temporary share storage is full. Share links expire after 24 hours. Please try again later.</string>
+    <string name="audio_share_failed">Could not prepare these files. Check file access and available storage, then try again.</string>
+    <string name="audio_share_launch_failed">Could not open a sharing app. Install an app that accepts files and try again.</string>
+    <string name="audio_share_expired">The prepared files have expired. Tap share again to prepare them.</string>
+    <string name="audio_share_return">Files are ready. Return to ECHO and tap share to continue.</string>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_record_name">ECHO · 레코드</string>
+    <string name="widget_record_description">원형 레코드, 곡 정보와 재생 컨트롤</string>
+    <string name="widget_banner_name">ECHO · 배너 플레이어</string>
+    <string name="widget_banner_description">앨범 아트 옆에 곡 정보와 재생 컨트롤 표시</string>
+    <string name="widget_typography_name">ECHO · 텍스트 플레이어</string>
+    <string name="widget_typography_description">앨범 아트 없이 큰 곡 제목, 가사와 재생 컨트롤 표시</string>
+</resources>

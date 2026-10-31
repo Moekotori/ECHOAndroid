@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="documents_root">ECHO 曲庫</string>
+    <string name="documents_root_summary">手機本機原音訊 · 唯讀</string>
+    <string name="documents_albums">專輯</string>
+    <string name="documents_playlists">歌單</string>
+    <string name="documents_all">所有歌曲</string>
+    <string name="documents_playlists_summary">一般本機歌單，僅顯示本機音訊檔案</string>
+    <string name="documents_unknown_album">未知專輯</string>
+    <string name="documents_whole_original">整份原音訊，不裁切 CUE 曲目或片段</string>
+    <string name="documents_unavailable">請開啟 ECHO 掃描本機曲庫或恢復檔案存取權限，然後重試。</string>
+</resources>

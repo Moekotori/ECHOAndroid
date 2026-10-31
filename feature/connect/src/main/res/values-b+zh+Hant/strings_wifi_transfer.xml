@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wifi_transfer_title">Wi-Fi 傳歌</string>
+    <string name="wifi_transfer_detail">選擇接收目錄，開啟後在電腦瀏覽器開啟位址，輸入六位配對碼。兩台裝置須在同一區域網路，並保持此視窗在前景。</string>
+    <string name="wifi_transfer_no_directory">尚未選擇接收目錄</string>
+    <string name="wifi_transfer_choose">選擇目錄</string>
+    <string name="wifi_transfer_code">配對碼：%1$s</string>
+    <string name="wifi_transfer_expired">本次工作階段已到期，請重新開啟。</string>
+    <string name="wifi_transfer_receiving">正在接收：%1$s</string>
+    <string name="wifi_transfer_counts">已儲存 %1$d · 失敗 %2$d</string>
+    <string name="wifi_transfer_no_lan">無法取得區域網路位址，請連接 Wi-Fi 後重試。</string>
+    <string name="wifi_transfer_directory_error">目錄授權失敗，請選擇可寫入的本機目錄。</string>
+    <string name="wifi_transfer_start_error">無法開啟，請檢查目錄權限、區域網路權限和 Wi-Fi 連線。</string>
+    <string name="wifi_transfer_result_saved">已儲存 · %1$s</string>
+    <string name="wifi_transfer_result_failed">失敗 · %1$s — 請查看瀏覽器詳細資訊，檢查儲存空間與目錄權限</string>
+    <string name="wifi_transfer_limits">同時接收一個檔案；每次工作階段最多 500 個檔案，單檔 1 GiB，總計 8 GiB，20 分鐘到期。同名檔案提示失敗，不覆寫。傳輸失敗後會嘗試刪除未完成檔案。關閉視窗或應用程式退到背景會停止接收。使用區域網路 HTTP，目錄掃描遵循既有曲庫掃描規則。</string>
+    <string name="wifi_transfer_scan">掃描接收目錄</string>
+    <string name="wifi_transfer_scanning">正在掃描曲庫…</string>
+    <string name="wifi_transfer_stop">停止接收</string>
+    <string name="wifi_transfer_start">開啟接收</string>
+    <string name="wifi_transfer_close">關閉</string>
+</resources>

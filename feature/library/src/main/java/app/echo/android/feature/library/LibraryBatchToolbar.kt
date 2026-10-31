@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Queue
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -50,7 +51,7 @@ import app.echo.android.design.EchoIcon
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 
-internal enum class LibraryBatchCommand { Favorite, Unfavorite, Playlist, Queue, Next, NextUp, Tags, Delete }
+internal enum class LibraryBatchCommand { Favorite, Unfavorite, Playlist, Queue, Next, NextUp, Tags, Delete, Share }
 
 /** Covers the normal page header without moving the list or replacing the player dock. */
 @Composable
@@ -60,6 +61,7 @@ internal fun LibraryBatchToolbar(
     error: Boolean,
     canEditTags: Boolean,
     canDelete: Boolean,
+    canShare: Boolean,
     deleting: Boolean,
     onExit: () -> Unit,
     onClear: () -> Unit,
@@ -140,6 +142,12 @@ internal fun LibraryBatchToolbar(
                                 onClick = { expanded = false; onCommand(command) },
                             )
                         }
+                        if (canShare) DropdownMenuItem(
+                            text = { Text(stringResource(R.string.audio_share_action)) },
+                            leadingIcon = { EchoIcon(Icons.Rounded.Share, null) },
+                            onClick = { expanded = false; onCommand(LibraryBatchCommand.Share) },
+                            enabled = enabled,
+                        )
                         if (canDelete) DropdownMenuItem(
                             text = { Text(stringResource(R.string.batch_delete), color = scheme.error) },
                             leadingIcon = { EchoIcon(Icons.Rounded.DeleteOutline, null) },

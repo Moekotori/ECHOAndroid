@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="song_menu_add_playlist">Add to playlist</string>
+    <string name="song_menu_share">Share</string>
+    <string name="song_menu_equalizer">Equalizer</string>
+    <string name="song_menu_album">View album</string>
+    <string name="song_menu_info">Song information</string>
+    <string name="song_menu_online_assets">Get cover and lyrics online</string>
+    <string name="song_menu_folder">Open containing folder</string>
+    <string name="song_menu_share_failed">Unable to share this song. Please try again.</string>
+    <string name="song_assets_cover_source">Search MusicBrainz / Cover Art Archive using the album and artist. Preview the cover before applying it. Lyrics are selected separately.</string>
+    <string name="song_assets_search_cover">Search for cover</string>
+    <string name="song_assets_apply_cover">Use this cover</string>
+    <string name="song_assets_cover_missing">No matching cover found. Check the album and artist tags, then try again.</string>
+    <string name="song_assets_failed">Could not search or save the cover. Please try again.</string>
+    <string name="song_assets_search_lyrics">Search and choose lyrics</string>
+    <string name="song_menu_load_failed">Could not load all song actions. Please retry.</string>
+    <string name="song_menu_retry">Retry</string>
+    <string name="song_playlist_added">Added to playlist</string>
+    <string name="song_playlist_failed">Could not add the song. Your draft is kept; please retry.</string>
+    <string name="song_assets_applied">Cover applied</string>
+    <string name="song_assets_searching">Searching for a matching cover…</string>
+    <string name="song_assets_saving">Saving cover…</string>
+    <string name="song_assets_library_only">Library cover updated. The original file tags were not changed.</string>
+    <string name="song_assets_saved">Cover saved to the library and original file.</string>
+    <string name="song_assets_search_again">Search again</string>
+    <string name="song_assets_cancel">Cancel operation</string>
+    <string name="song_assets_done">Done</string>
+    <string name="song_lyrics_saving">Applying lyrics…</string>
+    <string name="song_lyrics_save_failed">Could not apply these lyrics. Please try again.</string>
+</resources>

@@ -29,13 +29,13 @@ data class EchoStartupThemeSnapshot(
             lyricsPageStyle = lyrics.id,
             lyricsFontFamily = lyrics.defaultFontFamily,
             lyricsAlignment = lyrics.defaultAlignment,
-            colorTheme = EchoColorTheme.Default.id,
+            colorTheme = EchoColorTheme.fromId(colorTheme).id,
             appLanguage = EchoAppLanguage.fromId(appLanguage),
             scheduledDarkModeEnabled = scheduledDarkModeEnabled,
             scheduledDarkStartMinute = scheduledDarkStartMinute.coerceMinuteOfDay(),
             scheduledDarkEndMinute = scheduledDarkEndMinute.coerceMinuteOfDay(),
             startupBackgroundUri = startupBackgroundUri,
-            customColors = EchoCustomColors.Default,
+            customColors = customColors.normalized(),
         )
     }
 }
@@ -47,7 +47,7 @@ fun Context.readEchoStartupThemeSnapshot(): EchoStartupThemeSnapshot {
     )
     return EchoStartupThemeSnapshot(
         themeMode = normalizeThemeMode(preferences.getString(KeyThemeMode, null)),
-        colorTheme = EchoColorTheme.Default.id,
+        colorTheme = EchoColorTheme.fromId(preferences.getString(KeyColorTheme, null)).id,
         appLanguage = EchoAppLanguage.fromId(preferences.getString(KeyAppLanguage, null)),
         scheduledDarkModeEnabled = preferences.getBoolean(KeyScheduledDarkModeEnabled, false),
         scheduledDarkStartMinute = preferences
@@ -57,7 +57,11 @@ fun Context.readEchoStartupThemeSnapshot(): EchoStartupThemeSnapshot {
             .getInt(KeyScheduledDarkEndMinute, DefaultScheduledDarkEndMinute)
             .coerceMinuteOfDay(),
         startupBackgroundUri = preferences.getString(KeyStartupBackgroundUri, null)?.takeIf { it.isNotBlank() },
-        customColors = EchoCustomColors.Default,
+        customColors = EchoCustomColors.fromStored(
+            preferences.storedColor(KeyCustomAccent),
+            preferences.storedColor(KeyCustomSecondary),
+            preferences.storedColor(KeyCustomBackground),
+        ),
     )
 }
 
@@ -111,13 +115,13 @@ internal fun Context.writeEchoStartupThemeSnapshot(
 internal fun EchoAppSettings.toStartupThemeSnapshot(): EchoStartupThemeSnapshot =
     EchoStartupThemeSnapshot(
         themeMode = normalizeThemeMode(themeMode),
-        colorTheme = EchoColorTheme.Default.id,
+        colorTheme = EchoColorTheme.fromId(colorTheme).id,
         appLanguage = EchoAppLanguage.fromId(appLanguage),
         scheduledDarkModeEnabled = scheduledDarkModeEnabled,
         scheduledDarkStartMinute = scheduledDarkStartMinute.coerceMinuteOfDay(),
         scheduledDarkEndMinute = scheduledDarkEndMinute.coerceMinuteOfDay(),
         startupBackgroundUri = startupBackgroundUri,
-        customColors = EchoCustomColors.Default,
+        customColors = customColors.normalized(),
     )
 
 internal fun normalizeThemeMode(value: String?): String =
@@ -133,12 +137,12 @@ internal fun normalizeThemeMode(value: String?): String =
 private fun EchoStartupThemeSnapshot.normalized(): EchoStartupThemeSnapshot =
     copy(
         themeMode = normalizeThemeMode(themeMode),
-        colorTheme = EchoColorTheme.Default.id,
+        colorTheme = EchoColorTheme.fromId(colorTheme).id,
         appLanguage = EchoAppLanguage.fromId(appLanguage),
         scheduledDarkStartMinute = scheduledDarkStartMinute.coerceMinuteOfDay(),
         scheduledDarkEndMinute = scheduledDarkEndMinute.coerceMinuteOfDay(),
         startupBackgroundUri = startupBackgroundUri?.takeIf { it.isNotBlank() },
-        customColors = EchoCustomColors.Default,
+        customColors = customColors.normalized(),
     )
 
 private fun Int.coerceMinuteOfDay(): Int = coerceIn(0, 23 * 60 + 59)
@@ -169,6 +173,8 @@ private const val KeyCustomAccent = "custom_accent"
 private const val KeyCustomSecondary = "custom_secondary"
 private const val KeyCustomBackground = "custom_background"
 
+private fun android.content.SharedPreferences.storedColor(key: String): Int? =
+    if (contains(key)) getInt(key, 0) else null
 private const val KeyThemeDefaultVersion = "theme_default_version"
 private const val CurrentThemeDefaultVersion = 3
 private const val DefaultScheduledDarkStartMinute = 22 * 60

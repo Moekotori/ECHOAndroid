@@ -35,9 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.semantics.clearAndSetSemantics
 
 /**
  * Where a back gesture is heading. While [progress] is above zero the page stack is scrubbed
@@ -140,6 +138,7 @@ fun EchoPageOverlay(
     modifier: Modifier = Modifier,
     onHidden: () -> Unit = {},
     backProgress: () -> Float = { 0f },
+    interactive: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val motion = rememberEchoContentMotion()
@@ -162,7 +161,7 @@ fun EchoPageOverlay(
         ) { if (it == EnterExitState.PreEnter) 0f else 1f }
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
             EchoPageSurface(
-                active = visible,
+                active = visible && interactive,
                 modifier = Modifier.echoPageBackLayer(lightweight, backProgress, LocalEchoDarkTheme.current),
             ) {
                 EchoLayoutBounds(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
@@ -182,19 +181,7 @@ internal fun EchoPageSurface(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    Box(
-        modifier.fillMaxSize().then(
-            if (active) Modifier else Modifier
-                .clearAndSetSemantics { }
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
-                        }
-                    }
-                },
-        ),
-    ) { content() }
+    EchoInteractionGate(active, modifier.fillMaxSize()) { content() }
 }
 
 /** The covering page follows the back gesture; progress is read in the draw phase only. */

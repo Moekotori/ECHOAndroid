@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="lyrics_manager_title">Lyrics · %1$s</string>
-    <string name="lyrics_manager_hint">Tap a result to use it and save it offline.</string>
+    <string name="lyrics_manager_hint">Tap a result to preview lyrics, then choose Use to save and apply it.</string>
     <string name="lyrics_manager_search">Search / refresh online</string>
     <string name="lyrics_manager_import">Import lyrics file</string>
     <string name="lyrics_manager_clear">Clear selection and use automatic lyrics</string>

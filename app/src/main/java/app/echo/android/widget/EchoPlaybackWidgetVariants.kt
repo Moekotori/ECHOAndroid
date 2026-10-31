@@ -20,3 +20,21 @@ class EchoLyricsPlaybackWidget : EchoPlaybackSurfaceWidget(EchoWidgetStyle.Lyric
 class EchoLyricsPlaybackWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = EchoLyricsPlaybackWidget()
 }
+
+class EchoRecordPlaybackWidget : EchoPlaybackSurfaceWidget(EchoWidgetStyle.Record)
+
+class EchoRecordPlaybackWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = EchoRecordPlaybackWidget()
+}
+
+class EchoBannerPlaybackWidget : EchoPlaybackSurfaceWidget(EchoWidgetStyle.Banner)
+
+class EchoBannerPlaybackWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = EchoBannerPlaybackWidget()
+}
+
+class EchoTypographyPlaybackWidget : EchoPlaybackSurfaceWidget(EchoWidgetStyle.Typography)
+
+class EchoTypographyPlaybackWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = EchoTypographyPlaybackWidget()
+}

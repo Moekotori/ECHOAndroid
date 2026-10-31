@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sound_undo_edit">復原上次調整</string>
+    <string name="sound_edit_help">%1$s使用說明</string>
+    <string name="sound_help_close">知道了</string>
+    <string name="sound_live_edit_hint">邊拖邊聽 · 放開儲存</string>
+    <string name="sound_live_edit_detail">拖動時即時試聽，放開自動儲存；點擊數值可精確輸入。</string>
+    <string name="sound_reset_parameter">將%1$s歸零</string>
+    <string name="eq_switch_graphic_title">切換到圖示等化器？</string>
+    <string name="eq_switch_graphic_detail">目前 PEQ 濾波器將被平直的圖示等化器取代。可取消並先儲存曲線預設。MSEB 的設定會保留。</string>
+    <string name="eq_switch_graphic_action">切換並清除 PEQ</string>
+    <string name="eq_mseb_combined_detail">MSEB 也已開啟，額外增益餘量為 %1$s。此圖僅顯示 EQ 曲線。</string>
+</resources>

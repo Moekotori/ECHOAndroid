@@ -57,7 +57,10 @@ internal fun ArtistDetailPage(
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
     val onlineQuery = ArtistOnlineQuery(artist.name, albums?.itemSnapshotList?.items?.take(3)?.map { it.title }.orEmpty())
     val serverArtwork = rememberServerArtistArtwork(onlineQuery)
-    ArtistDetailPager(artist, onlineQuery, onBack, modifier) {
+    ArtistDetailPager(
+        artist, onlineQuery, onBack, modifier,
+        onPlayAll = onPlayAll, onShuffle = onShuffle, playbackEnabled = artist.trackCount > 0,
+    ) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -72,11 +75,11 @@ internal fun ArtistDetailPage(
                         .padding(horizontal = 24.dp),
                 ) {
                     ArtistProfileHeader(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist)
-                    Spacer(Modifier.height(20.dp))
-                    ArtistPlaybackActions(artist.trackCount > 0, onPlayAll, onShuffle)
                     Spacer(Modifier.height(24.dp))
-                    if (albums != null) ArtistAlbums(albums, palette, albumListState, onOpenAlbum)
-                    Spacer(Modifier.height(22.dp))
+                    if (albums != null) {
+                        ArtistAlbums(albums, artist.albumCount, palette, albumListState, onOpenAlbum)
+                        Spacer(Modifier.height(28.dp))
+                    }
                     ArtistTracksHeading(count = artist.trackCount)
                     Spacer(Modifier.height(10.dp))
                     ArtistTrackTools(query, sort, onQueryChange, onSortChange)
@@ -155,7 +158,11 @@ internal fun ArtistDetailListPage(
         ArtistOnlineQuery(artist.name, tracks.take(24).mapNotNull { it.album }.distinct().take(3))
     }
     val serverArtwork = rememberServerArtistArtwork(onlineQuery)
-    ArtistDetailPager(artist, onlineQuery, onBack, modifier) {
+    ArtistDetailPager(
+        artist, onlineQuery, onBack, modifier,
+        onPlayAll = onPlayAll, onShuffle = onShuffle,
+        playbackEnabled = tracks.isNotEmpty(), onPlayOnPc = onPlayOnPc,
+    ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = AlbumDetailBottomPadding),
@@ -169,8 +176,6 @@ internal fun ArtistDetailListPage(
                         .padding(horizontal = 24.dp),
                 ) {
                     ArtistProfileHeader(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist)
-                    Spacer(Modifier.height(18.dp))
-                    ArtistPlaybackActions(tracks.isNotEmpty(), onPlayAll, onShuffle, onPlayOnPc)
                     Spacer(Modifier.height(24.dp))
                     ArtistTracksHeading(count = artist.trackCount)
                     Spacer(Modifier.height(10.dp))
@@ -225,7 +230,7 @@ private fun ArtistTrackTools(query: String, sort: LibraryTrackSortMode, onQueryC
             decorationBox = { innerTextField ->
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        .background(scheme.surfaceContainerLow, RoundedCornerShape(10.dp))
+                        .background(scheme.surfaceContainerLow, RoundedCornerShape(14.dp))
                         .padding(start = 12.dp, end = if (query.isEmpty()) 12.dp else 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -243,7 +248,9 @@ private fun ArtistTrackTools(query: String, sort: LibraryTrackSortMode, onQueryC
             },
         )
         Box {
-            IconButton(onClick = { showSort = true }) { EchoIcon(Icons.AutoMirrored.Rounded.Sort, stringResource(L10nR.string.artist_sort_tracks)) }
+            IconButton(onClick = { showSort = true }) {
+                EchoIcon(Icons.AutoMirrored.Rounded.Sort, stringResource(L10nR.string.artist_sort_tracks), tint = scheme.onSurfaceVariant)
+            }
             EchoDropdownMenu(expanded = showSort, onDismissRequest = { showSort = false }) {
                 listOf(LibraryTrackSortMode.Album, LibraryTrackSortMode.Title, LibraryTrackSortMode.Duration).forEach { mode ->
                     EchoDropdownMenuItem(text = { Text(stringResource(when (mode) {

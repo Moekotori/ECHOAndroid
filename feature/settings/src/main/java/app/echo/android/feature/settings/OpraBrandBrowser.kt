@@ -48,10 +48,11 @@ import app.echo.android.design.EchoIcon
 
 internal fun androidx.compose.foundation.lazy.LazyListScope.opraBrandItems(
     brands: List<OpraHeadphoneBrand>,
+    enabled: Boolean,
     onBrandSelected: (String) -> Unit,
 ) {
     items(brands, key = { "brand:${it.id}" }, contentType = { "brand" }) { brand ->
-        OpraBrandRow(brand = brand, enabled = true, onClick = { onBrandSelected(brand.id) })
+        OpraBrandRow(brand = brand, enabled = enabled, onClick = { onBrandSelected(brand.id) })
     }
 }
 

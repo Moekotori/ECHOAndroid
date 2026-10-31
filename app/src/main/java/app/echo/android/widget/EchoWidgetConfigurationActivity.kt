@@ -81,7 +81,9 @@ class EchoWidgetConfigurationActivity : ComponentActivity() {
                             try {
                                 val manager = AppWidgetManager.getInstance(this@EchoWidgetConfigurationActivity)
                                 val activeIds = listOf(EchoPlaybackWidgetReceiver::class.java, EchoMiniPlaybackWidgetReceiver::class.java,
-                                    EchoCoverPlaybackWidgetReceiver::class.java, EchoLyricsPlaybackWidgetReceiver::class.java)
+                                    EchoCoverPlaybackWidgetReceiver::class.java, EchoLyricsPlaybackWidgetReceiver::class.java,
+                                    EchoRecordPlaybackWidgetReceiver::class.java, EchoBannerPlaybackWidgetReceiver::class.java,
+                                    EchoTypographyPlaybackWidgetReceiver::class.java)
                                     .flatMap { manager.getAppWidgetIds(ComponentName(this@EchoWidgetConfigurationActivity, it)).toList() }.toSet() + widgetId
                                 withContext(Dispatchers.IO) { store.save(widgetId, next, activeIds) }
                                 EchoPlaybackWidgets.updateInstance(this@EchoWidgetConfigurationActivity,

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_record_name">ECHO · Vinilo</string>
+    <string name="widget_record_description">Disco con información de la canción y control de reproducción</string>
+    <string name="widget_banner_name">ECHO · Reproductor horizontal</string>
+    <string name="widget_banner_description">Carátula junto a la información de la canción y los controles</string>
+    <string name="widget_typography_name">ECHO · Reproductor de texto</string>
+    <string name="widget_typography_description">Título grande, letras y controles de reproducción sin carátula</string>
+</resources>

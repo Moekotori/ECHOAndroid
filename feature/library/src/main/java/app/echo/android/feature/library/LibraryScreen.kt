@@ -346,9 +346,10 @@ fun LibraryScreen(
     onRadioDirectoryQuery: (String) -> Unit = {},
     onOpenRadio: (() -> Unit)? = null,
     onOpenPodcasts: () -> Unit = {},
-    onOpenMusicRelations: (() -> Unit)? = null,
     albumArtistAlbums: ((AlbumSummary) -> Flow<PagingData<AlbumSummary>>?)? = null,
     onPinPlaylistShortcut: ((EchoPlaylist, Boolean) -> Unit)? = null,
+    onWriteAlbumNfc: ((AlbumSummary) -> Unit)? = null,
+    onWritePlaylistNfc: ((EchoPlaylist) -> Unit)? = null,
     libraryLayout: EchoLibraryLayout = EchoLibraryLayout(),
     onLibraryLayoutChange: ((EchoLibraryLayout) -> Unit)? = null,
 ) {
@@ -388,8 +389,16 @@ fun LibraryScreen(
     var selectedLinkedPlaylist by remember { mutableStateOf<EchoRemotePlaylist?>(null) }
     val songListState = rememberLazyListState()
     // A different browse order starts at the top; filter-only changes retain the current list.
-    LaunchedEffect(libraryQuery, trackSortMode, selectedLibrarySourceId) {
-        songListState.scrollToItem(0)
+    val songNavigation = remember(libraryQuery, trackSortMode, selectedLibrarySourceId) {
+        listOf(libraryQuery, trackSortMode.name, selectedLibrarySourceId)
+    }
+    var previousSongNavigation by rememberSaveable { mutableStateOf(songNavigation) }
+    LaunchedEffect(songNavigation) {
+        // Re-entering from radio, podcasts or relations restores the saved list, not a new search.
+        if (previousSongNavigation != songNavigation) {
+            songListState.scrollToItem(0)
+            previousSongNavigation = songNavigation
+        }
     }
     var addToPlaylistTrack by remember { mutableStateOf<EchoTrack?>(null) }
     var scanWasActiveForBanner by remember { mutableStateOf(false) }
@@ -590,7 +599,7 @@ fun LibraryScreen(
                                             listState = songListState,
                                             playingTrackId = playingTrackId,
                                             modifier = Modifier.fillMaxSize().then(
-                                                if (showAlphabetIndex) Modifier.padding(end = 28.dp) else Modifier,
+                                                if (showAlphabetIndex) Modifier.padding(end = LibraryAlphabetIndexWidth) else Modifier,
                                             ),
                                         )
                                         if (showAlphabetIndex) {
@@ -608,7 +617,7 @@ fun LibraryScreen(
                                             queryKey = Triple(libraryQuery, trackSortMode, trackFilter),
                                             findIndex = onFindPlayingSongIndex,
                                             modifier = Modifier.align(Alignment.BottomEnd)
-                                                .padding(end = if (showAlphabetIndex) 36.dp else 8.dp,
+                                                .padding(end = if (showAlphabetIndex) LibraryAlphabetIndexWidth + 4.dp else 8.dp,
                                                     bottom = LibraryBottomControlsPadding),
                                         )
                                     }
@@ -728,9 +737,6 @@ fun LibraryScreen(
             },
             actions = {
                 if (selectedSource == LibrarySourceMode.Local) LibraryHiddenTracksAccess()
-                if (selectedSource == LibrarySourceMode.Local && selectedMode != LibraryViewMode.Radio) {
-                    onOpenMusicRelations?.let { LibraryMusicRelationsButton(it) }
-                }
                 when (selectedSource) {
                     LibrarySourceMode.Local -> if (selectedMode != LibraryViewMode.Radio && selectedMode != LibraryViewMode.Playlists) {
                         LibrarySourceScanButton(onAddMusic)
@@ -902,6 +908,7 @@ fun LibraryScreen(
         when (target) {
             is LibraryDetailTransitionTarget.AlbumDetail -> AlbumDetailPage(
                 album = target.album,
+                onWriteNfc = onWriteAlbumNfc?.takeIf { selectedSource == LibrarySourceMode.Local }?.let { write -> { write(target.album) } },
                 tracks = target.tracks,
                 onBack = onCloseDetail,
                 onPlayTrack = { track ->
@@ -1005,6 +1012,7 @@ fun LibraryScreen(
                 onBack = onCloseDetail,
                 onPlayAll = { onPlayPlaylist(target.playlist) },
                 onPinShortcut = onPinPlaylistShortcut?.let { pin -> { play -> pin(target.playlist, play) } },
+                onWriteNfc = onWritePlaylistNfc?.takeIf { target.playlist.source == LibrarySource.MediaStore.id }?.let { write -> { write(target.playlist) } },
                 onShuffle = { onShufflePlaylist(target.playlist) },
                 onPlayTrack = { track ->
                     onPlayTrack(track, LibraryPlaybackOrigin.Playlist(target.playlist.id))
@@ -2015,8 +2023,8 @@ private fun LibraryBrowserHeader(
         }
         when (selectedMode) {
             LibraryViewMode.Songs -> if (selectedSource == LibrarySourceMode.Local) {
-                LibraryTrackFilterButton(trackFilter, onTrackFilterChange, lyricsIndexState, onInspectLyrics, onCancelLyricsInspection)
-                LibraryTrackSortMenu(selectedSortMode, onSortModeChange, onCustomize)
+                LibraryBrowseOptionsMenu(selectedSortMode, trackFilter, onSortModeChange, onTrackFilterChange,
+                    lyricsIndexState, onInspectLyrics, onCancelLyricsInspection, onCustomize)
             }
             LibraryViewMode.Albums, LibraryViewMode.Cloud ->
                 LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange, onCustomize)

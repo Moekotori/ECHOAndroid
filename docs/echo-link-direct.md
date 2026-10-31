@@ -18,6 +18,14 @@ PC 对应仓库为 https://github.com/moekotori/echosteam。两端均更新到�
 
 Android 本地 HTTP 回归覆盖无凭据访问被拒绝、v2 链接换取 token、v1 状态读取及凭据重连。既有直连请求头与旧 token 测试保留。这些测试不替代真实 PC 与手机联调。
 
+### 配对与实时状态兼容
+
+- 配对换取 access token 后，遥控会话立即绑定正式凭据，播放/暂停、进度和音量操作不会继续使用配对 secret。
+- 同步会话绑定本次连接的代数；断开后重连，即使地址和 token 相同，旧预览与在途读取结果也不能继续用于同步写入。
+- PC v2 的 `queue` 可能只有 `revision`、`currentQueueId`、`currentTrackId`、`total` 摘要。摘要更新队列身份，只有明确的 `items` / `tracks` 数组替换队列条目。
+- v1 的 `updatedAtEpochMs` 与 v2 的 `observedAt` 都使用 PC 时钟判定新旧，不混用手机接收时间。
+- 队列分页沿用 `/echo-link/v1/playback/queue?page=…&pageSize=100`，新 PC 将其接入真实播放队列；旧 PC 缺少接口时保留原兼容处理。
+
 ## 固定音量反馈
 
 PC 开启固定音量时，v1 状态和 v2 状态／事件快照在 playback 中返回可选字段 `volumeControlEnabled: false` 与 `volumeLockedReason: "fixed_volume"`。Android 禁用音量滑块并显示锁定原因；播放、暂停和跳转仍可用。关闭固定音量后，字段恢复为 `true` 与 `null`，沿现有状态更新恢复音量控制，不新增轮询。

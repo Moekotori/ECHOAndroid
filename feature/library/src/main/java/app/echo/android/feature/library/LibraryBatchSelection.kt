@@ -28,6 +28,7 @@ class LibraryBatchActions(
     val writeAccess: suspend (List<EchoTrack>) -> Boolean = { true },
     val delete: (suspend (List<EchoTrack>, Boolean) -> LibraryBatchDeleteResult)? = null,
     val canDeleteOriginals: (List<EchoTrack>) -> Boolean = { false },
+    val share: ((List<EchoTrack>) -> Unit)? = null,
 )
 
 internal class LibraryBatchSelection {
@@ -159,6 +160,7 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
     CompositionLocalProvider(
         LocalLibraryBatchSelection provides selection,
         LocalLibraryDeleteTrack provides requestTrackDeletion,
+        LocalOriginalAudioShare provides actions.share,
     ) {
         val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -176,6 +178,7 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
                     error = error,
                     canEditTags = selection.selected.isNotEmpty() && selection.selected.values.all { it.canEditFileTags() },
                     canDelete = actions.delete != null,
+                    canShare = actions.share != null,
                     deleting = selection.deletingIds.isNotEmpty(),
                     onExit = { selection.exit(); error = false },
                     onClear = { selection.clear(); error = false },
@@ -189,6 +192,7 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
                             LibraryBatchCommand.NextUp -> operate { actions.queue(it, 2) }
                             LibraryBatchCommand.Tags -> editing = true
                             LibraryBatchCommand.Delete -> deleting = selection.tracks()
+                            LibraryBatchCommand.Share -> actions.share?.invoke(selection.tracks())
                         }
                     },
                 )

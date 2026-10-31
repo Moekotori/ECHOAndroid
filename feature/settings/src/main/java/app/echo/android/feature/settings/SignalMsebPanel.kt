@@ -13,11 +13,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoSlider
 import app.echo.android.design.EchoSwitch
+import app.echo.android.design.EchoIcon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.RestartAlt
 import app.echo.android.model.playback.*
 import kotlin.math.roundToInt
 
 @Composable
-internal fun SignalMsebPanel(equalizer: EchoEqualizerState, status: EchoPlaybackStatus, onChange: (EchoMsebState) -> Unit) {
+internal fun SignalMsebPanel(equalizer: EchoEqualizerState, status: EchoPlaybackStatus, onChange: (EchoMsebState) -> Unit,
+    onPreview: ((EchoMsebState) -> Unit)? = null, personal: MsebPresetActions = MsebPresetActions()) {
+    val edits = rememberSignalEditSession(onPreview, onChange)
     val state = equalizer.mseb
     val bypassed = status.diagnostics.usbBitPerfectEnabled
     val scheme = MaterialTheme.colorScheme
@@ -37,14 +42,28 @@ internal fun SignalMsebPanel(equalizer: EchoEqualizerState, status: EchoPlayback
     )
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         SignalProcessorHeader(title, statusText, live, state.enabled, !bypassed,
-            { onChange(state.copy(enabled = it)) }, warning = bypassed)
-        SignalNote(stringResource(if (bypassed) R.string.signal_bypass_detail else R.string.mseb_detail))
+            { edits.commit(edits.currentOr(state).copy(enabled = it), state) }, warning = bypassed)
+        if (bypassed) SignalNote(stringResource(R.string.signal_bypass_detail))
+        SignalEditorActions(
+            title = title,
+            detail = stringResource(R.string.mseb_detail) + "\n\n" + stringResource(R.string.sound_live_edit_detail),
+            canUndo = !bypassed && edits.canUndo(state), onUndo = { edits.undo(state) },
+            hint = if (!bypassed && state.enabled) stringResource(R.string.sound_live_edit_hint) else null,
+        )
         DspChoices(presetLabels, EchoMsebPreset.entries.indexOfFirst { it.values == state.normalized.values }, !bypassed) {
-            onChange(EchoMsebPreset.entries[it].applyTo(state))
+            edits.commit(EchoMsebPreset.entries[it].applyTo(state), state)
         }
         if (state.active && !bypassed) {
             SignalReadout(stringResource(R.string.mseb_headroom), formatEqGain(equalizer.msebHeadroomDb))
         }
+        MsebPersonalPresets(state, personal, !bypassed) { preset ->
+            edits.commit(edits.currentOr(state).copy(values = preset.values), state)
+        }
+        Text(stringResource(R.string.mseb_adjustment_range), style = MaterialTheme.typography.labelLarge)
+        DspChoices(listOf("±20", "±40", "±100"), state.adjustmentRange.ordinal, !bypassed) {
+            edits.commit(edits.currentOr(state).copy(adjustmentRange = EchoMsebAdjustmentRange.entries[it]), state)
+        }
+        SignalNote(stringResource(R.string.mseb_adjustment_range_note))
         val groups = listOf(
             R.string.signal_mseb_tone to listOf(EchoMsebParameter.Temperature, EchoMsebParameter.BassExtension,
                 EchoMsebParameter.BassTexture, EchoMsebParameter.NoteThickness),
@@ -58,12 +77,14 @@ internal fun SignalMsebPanel(equalizer: EchoEqualizerState, status: EchoPlayback
                     key(parameter) {
                         val labels = msebLabels(parameter)
                         MsebControl(stringResource(labels.first), stringResource(labels.second), stringResource(labels.third),
-                            state.value(parameter), !bypassed) { onChange(state.withValue(parameter, it)) }
+                            state.value(parameter), !bypassed, limit = state.adjustmentRange.limit,
+                            onPreview = { edits.preview(edits.currentOr(state).withValue(parameter, it), state) },
+                            onCommit = { edits.commit(edits.currentOr(state).withValue(parameter, it), state) })
                     }
                 }
             }
         }
-        TextButton(enabled = !bypassed, onClick = { onChange(EchoMsebPreset.Neutral.applyTo(state)) },
+        TextButton(enabled = !bypassed && state.values.any { it != 0f }, onClick = { edits.commit(EchoMsebPreset.Neutral.applyTo(state), state) },
             contentPadding = PaddingValues(horizontal = 0.dp)) {
             Text(stringResource(R.string.mseb_reset))
         }
@@ -71,22 +92,35 @@ internal fun SignalMsebPanel(equalizer: EchoEqualizerState, status: EchoPlayback
 }
 
 @Composable
-private fun MsebControl(label: String, low: String, high: String, value: Float, enabled: Boolean, onCommit: (Float) -> Unit) {
-    var draft by remember(value, enabled) { mutableFloatStateOf(value) }
+private fun MsebControl(label: String, low: String, high: String, value: Float, enabled: Boolean, limit: Float,
+    onPreview: (Float) -> Unit, onCommit: (Float) -> Unit) {
+    var draft by remember { mutableFloatStateOf(value) }
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(value, enabled) {
+        if (!enabled) dragging = false
+        if (!dragging) draft = value
+    }
     val commit = rememberUpdatedState(onCommit)
     val scheme = MaterialTheme.colorScheme
     val display = if (draft > 0) "+${draft.roundToInt()}" else draft.roundToInt().toString()
     Column {
         Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            IconButton(onClick = { draft = 0f; commit.value(0f) }, enabled = enabled && draft != 0f) {
+                EchoIcon(Icons.Outlined.RestartAlt, stringResource(R.string.sound_reset_parameter, label), Modifier.size(18.dp))
+            }
             SignalNumericValue(label, draft, -100f..100f, enabled, {
                 draft = it.roundToInt().toFloat()
                 commit.value(draft)
             }, valueLabel = display, unit = "", decimals = 0)
         }
-        EchoSlider(draft, { draft = it.roundToInt().toFloat() },
-            enabled = enabled, valueRange = -100f..100f, neutralValue = 0f,
-            onValueChangeFinished = { if (enabled) commit.value(draft) },
+        EchoSlider(draft.coerceIn(-limit, limit), {
+            dragging = true
+            draft = it.roundToInt().toFloat().let { next -> if (kotlin.math.abs(next) < 0.5f) 0f else next }
+            onPreview(draft)
+        },
+            enabled = enabled, valueRange = -limit..limit, neutralValue = 0f,
+            onValueChangeFinished = { dragging = false; if (enabled) commit.value(draft) },
             modifier = Modifier.fillMaxWidth().semantics {
                 contentDescription = "$label: $low / $high"
                 stateDescription = display

@@ -20,6 +20,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -105,6 +106,7 @@ fun EchoExpand(
     content: @Composable () -> Unit,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val interactive = expanded && LocalEchoPageInteractive.current
     AnimatedVisibility(
         visible = expanded,
         modifier = modifier,
@@ -114,7 +116,9 @@ fun EchoExpand(
         exit = fadeOut(EchoMotion.silkFloat(EchoMotion.FadeExitMs)) + shrinkVertically(
             animationSpec = if (lightweight) snap() else EchoMotion.silkSize(EchoMotion.CollapseMs),
         ),
-    ) { content() }
+    ) {
+        CompositionLocalProvider(LocalEchoPageInteractive provides interactive, content = content)
+    }
 }
 
 /** For small state changes (icons / labels), never for continuously ticking playback position. */

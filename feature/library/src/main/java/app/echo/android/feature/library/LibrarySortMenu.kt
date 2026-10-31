@@ -1,6 +1,5 @@
 package app.echo.android.feature.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -66,7 +65,7 @@ internal fun <T> LibrarySortMenu(
     }
     if (!expanded) return
 
-    val maxContentHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.85f }
+    val maxContentHeight = minOf(360.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.65f })
     EchoModalSheet(
         onDismissRequest = { expanded = false },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -77,47 +76,8 @@ internal fun <T> LibrarySortMenu(
                 subtitle = scopeNote,
             )
             // Bound the scrolling content, not the sheet, so its expanded anchor remains stable.
-            BoxWithConstraints(Modifier.fillMaxWidth().weight(1f, fill = false).padding(horizontal = 20.dp)) {
-                val columns = if (maxWidth >= (136 * LocalDensity.current.fontScale).dp * 2) 2 else 1
-                Column(
-                    Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                        .verticalScroll(rememberScrollState())
-                        .padding(8.dp),
-                ) {
-                    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        options.groupBy(section).forEach { (title, sectionOptions) ->
-                            if (title != 0) Text(
-                                stringResource(title),
-                                modifier = Modifier.padding(start = 12.dp, top = 16.dp, bottom = 6.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            repeat((sectionOptions.size + columns - 1) / columns) { row ->
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    repeat(columns) { column ->
-                                        val index = row * columns + column
-                                        if (index < sectionOptions.size) {
-                                            val option = sectionOptions[index]
-                                            LibrarySortOption(
-                                                text = label(option),
-                                                selected = option == selected,
-                                                modifier = Modifier.weight(1f),
-                                                onClick = {
-                                                    expanded = false
-                                                    onSelect(option)
-                                                },
-                                            )
-                                        } else {
-                                            Spacer(Modifier.weight(1f))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
+                LibrarySortChoices(selected, options, label, onSelect = { expanded = false; onSelect(it) }, section = section)
             }
             if (onCustomize != null) {
                 Row(
@@ -149,6 +109,52 @@ internal fun <T> LibrarySortMenu(
 }
 
 @Composable
+internal fun <T> LibrarySortChoices(
+    selected: T,
+    options: List<T>,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    section: (T) -> Int = { 0 },
+) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val columns = if (maxWidth >= (136 * LocalDensity.current.fontScale).dp * 2) 2 else 1
+        Column(
+            Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                options.groupBy(section).forEach { (title, sectionOptions) ->
+                    if (title != 0) Text(
+                        stringResource(title),
+                        modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 2.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    repeat((sectionOptions.size + columns - 1) / columns) { row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            repeat(columns) { column ->
+                                val index = row * columns + column
+                                if (index < sectionOptions.size) {
+                                    val option = sectionOptions[index]
+                                    LibrarySortOption(
+                                        text = label(option),
+                                        selected = option == selected,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { onSelect(option) },
+                                    )
+                                } else {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun LibrarySortOption(
     text: String,
     selected: Boolean,
@@ -158,14 +164,14 @@ private fun LibrarySortOption(
     Row(
         modifier.clip(RoundedCornerShape(16.dp))
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .heightIn(min = 56.dp).padding(horizontal = 12.dp, vertical = 14.dp),
+            .heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
         )

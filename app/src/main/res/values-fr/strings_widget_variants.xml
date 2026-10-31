@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_record_name">ECHO · Vinyle</string>
+    <string name="widget_record_description">Disque avec informations du morceau et commande de lecture</string>
+    <string name="widget_banner_name">ECHO · Lecteur horizontal</string>
+    <string name="widget_banner_description">Pochette à côté des informations et des commandes de lecture</string>
+    <string name="widget_typography_name">ECHO · Lecteur texte</string>
+    <string name="widget_typography_description">Grand titre, paroles et commandes de lecture sans pochette</string>
+</resources>

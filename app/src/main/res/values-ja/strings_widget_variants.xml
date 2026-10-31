@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_record_name">ECHO · レコード</string>
+    <string name="widget_record_description">円形のレコード、曲情報と再生コントロール</string>
+    <string name="widget_banner_name">ECHO · 横長プレーヤー</string>
+    <string name="widget_banner_description">ジャケットを横に配置した曲情報と再生コントロール</string>
+    <string name="widget_typography_name">ECHO · テキストプレーヤー</string>
+    <string name="widget_typography_description">ジャケットなしの大きな曲名、歌詞と再生コントロール</string>
+</resources>

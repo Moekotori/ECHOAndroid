@@ -54,6 +54,9 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
             },
         ), subsonicReferenceInfo)
     }
+    internal val onlineTrackArtwork by lazy {
+        app.echo.android.data.OnlineTrackArtworkRepository(this, musicBrainzGate, BuildConfig.VERSION_NAME)
+    }
     val albumOnlineInfo by lazy {
         app.echo.android.data.SubsonicAlbumOnlineInfoLoader(
             app.echo.android.data.AlbumOnlineInfoRepository(File(cacheDir, "album-online-info"), BuildConfig.VERSION_NAME, musicBrainzGate), subsonicReferenceInfo)
@@ -110,6 +113,7 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
         )
         val settingsStore = EchoSettingsStore(this)
         bindPlaybackDspSettings(settingsStore, this)
+        bindUsbFineVolumeSettings(this, settingsStore)
         EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore) { ids ->
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 ids.distinct().chunked(256).flatMap { EchoLibraryDatabase.create(this@EchoApplication).hiddenTrackDao().hiddenIds(it) }.toSet()

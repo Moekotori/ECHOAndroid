@@ -145,6 +145,7 @@ object EchoBackupCodec {
         putOptNullableBoolean("replayGainEnabled", settings.replayGainEnabled)
         putOpt("replayGainMode", settings.replayGainMode)
         settings.replayGainPreampDb?.let { put("replayGainPreampDb", it.toDouble()) }
+        settings.volume?.let { put("volume", JSONObject(EchoVolumePreferences.encode(it))) }
         putOpt("shuffleMode", settings.shuffleMode)
         putOptNullableBoolean("shuffleSpreadArtists", settings.shuffleSpreadArtists)
         settings.shuffleRecentTrackCount?.let { put("shuffleRecentTrackCount", it) }
@@ -160,6 +161,7 @@ object EchoBackupCodec {
         }
         putOptNullableBoolean("equalizerEnabled", settings.equalizerEnabled)
         settings.mseb?.let { put("mseb", JSONObject(EchoMsebCodec.encode(it))) }
+        settings.msebUserPresets?.let { put("msebUserPresets", JSONArray(EchoMsebPresetCodec.encode(it))) }
         putOpt("equalizerPreset", settings.equalizerPreset)
         settings.equalizerBandGains?.let { put("equalizerBandGains", JSONArray(it)) }
         settings.equalizerPreampDb?.let { put("equalizerPreampDb", it.toDouble()) }
@@ -260,12 +262,14 @@ object EchoBackupCodec {
             replayGainEnabled = json.optionalBoolean("replayGainEnabled"),
             replayGainMode = json.optionalString("replayGainMode"),
             replayGainPreampDb = json.optionalFloat("replayGainPreampDb"),
+            volume = json.optJSONObject("volume")?.let { EchoVolumePreferences.decode(it.toString()) },
             shuffleMode = json.optionalString("shuffleMode"),
             shuffleSpreadArtists = json.optionalBoolean("shuffleSpreadArtists"),
             shuffleRecentTrackCount = json.optionalInt("shuffleRecentTrackCount"),
             trackTransitions = transitions,
             equalizerEnabled = json.optionalBoolean("equalizerEnabled"),
             mseb = json.optJSONObject("mseb")?.let { EchoMsebCodec.decode(it.toString()) },
+            msebUserPresets = json.optJSONArray("msebUserPresets")?.let { EchoMsebPresetCodec.decode(it.toString()) },
             equalizerPreset = json.optionalString("equalizerPreset"),
             equalizerBandGains = json.optJSONArray("equalizerBandGains")?.floats(),
             equalizerPreampDb = json.optionalFloat("equalizerPreampDb"),

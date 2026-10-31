@@ -1,5 +1,8 @@
 package app.echo.android.feature.player
 
+// One motion style for playback and previews; performance and system animation limits still apply.
+internal const val DefaultLyricsMotionMode = "smooth"
+
 /** Shared by the real lyric rows and the settings demo; transforms never change line wrapping. */
 internal data class LyricsMotionProfile(
     val intensity: Float,

@@ -208,6 +208,7 @@ fun NowPlayingScreen(
     onSeek: (Long) -> Unit,
     onOpenQueue: () -> Unit,
     onOpenTrackTools: () -> Unit = {},
+    songActions: NowPlayingSongActions = NowPlayingSongActions(),
     onCast: (() -> Unit)? = null,
     castActive: Boolean = false,
     onSetRepeatMode: (app.echo.android.model.playback.EchoRepeatMode) -> Unit,
@@ -243,7 +244,6 @@ fun NowPlayingScreen(
     lyricsWordHighlightIntensity: Float = 1f,
     lyricsWordHighlightStyle: String = EchoLyricsWordHighlightStyle.Sweep.id,
     lyricsImmersiveModeEnabled: Boolean = false,
-    lyricsMotionMode: String = "smooth",
     lyricsShowTranslation: Boolean = true,
     lyricsShowRomanization: Boolean = true,
     lyricsFocusGlowEnabled: Boolean = false,
@@ -263,7 +263,6 @@ fun NowPlayingScreen(
     onLyricsWordHighlightIntensityChange: (Float) -> Unit = {},
     onLyricsWordHighlightStyleChange: (String) -> Unit = {},
     onLyricsImmersiveModeChange: (Boolean) -> Unit = {},
-    onLyricsMotionModeChange: (String) -> Unit = {},
     onLyricsShowTranslationChange: (Boolean) -> Unit = {},
     onLyricsShowRomanizationChange: (Boolean) -> Unit = {},
     onLyricsFocusGlowChange: (Boolean) -> Unit = {},
@@ -282,6 +281,7 @@ fun NowPlayingScreen(
     playerArtworkScale: Float = 1f,
     onPlayerAppearanceChange: (String, Float, Float) -> Unit = { _, _, _ -> },
 ) {
+    val lyricsMotionMode = DefaultLyricsMotionMode
     val persistedAppearance = remember(playerPageStyle, playerTextScale, playerArtworkScale) {
         PlayerAppearance(
             style = normalizedPlayerStyle(playerPageStyle),
@@ -356,6 +356,12 @@ fun NowPlayingScreen(
     }
     var lyricsSettingsVisible by rememberSaveable { mutableStateOf(false) }
     var playbackSettingsVisible by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(presentationExpanded) {
+        if (!presentationExpanded) {
+            playbackSettingsVisible = false
+            lyricsSettingsVisible = false
+        }
+    }
     var handledLyricsRequestId by rememberSaveable { mutableIntStateOf(openLyricsRequestId) }
     // Opening the drawer can interrupt a horizontal fling. Settle the cover before
     // a style changes its page width, so controls cannot remain partly off-screen.
@@ -795,7 +801,6 @@ fun NowPlayingScreen(
                 lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
                 lyricsWordHighlightStyle = lyricsWordHighlightStyle,
                 lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-                lyricsMotionMode = lyricsMotionMode,
                 lyricAccent = lyricAccent,
                 showTranslation = lyricsShowTranslation,
                 showRomanization = lyricsShowRomanization,
@@ -825,7 +830,6 @@ fun NowPlayingScreen(
                 onLyricsWordHighlightIntensityChange = onLyricsWordHighlightIntensityChange,
                 onLyricsWordHighlightStyleChange = onLyricsWordHighlightStyleChange,
                 onLyricsImmersiveModeChange = onLyricsImmersiveModeChange,
-                onLyricsMotionModeChange = onLyricsMotionModeChange,
                 onLyricsShowTranslationChange = onLyricsShowTranslationChange,
                 onLyricsShowRomanizationChange = onLyricsShowRomanizationChange,
                 onLyricsFocusGlowChange = onLyricsFocusGlowChange,
@@ -840,6 +844,8 @@ fun NowPlayingScreen(
             ) {
                 MaterialTheme(colorScheme = settingsColorScheme, typography = settingsTypography) {
                     PlaybackSettingsDrawer(
+                        songActions = songActions,
+                        actionsEnabled = presentationExpanded,
                         onOpenTrackTools = onOpenTrackTools,
                         appearance = appearance,
                         onAppearancePreview = { next ->
@@ -1036,7 +1042,6 @@ private fun LyricsSettingsDrawer(
     lyricsWordHighlightIntensity: Float,
     lyricsWordHighlightStyle: String,
     lyricsImmersiveModeEnabled: Boolean,
-    lyricsMotionMode: String,
     lyricAccent: Color,
     showTranslation: Boolean,
     showRomanization: Boolean,
@@ -1060,7 +1065,6 @@ private fun LyricsSettingsDrawer(
     onLyricsWordHighlightIntensityChange: (Float) -> Unit,
     onLyricsWordHighlightStyleChange: (String) -> Unit,
     onLyricsImmersiveModeChange: (Boolean) -> Unit,
-    onLyricsMotionModeChange: (String) -> Unit,
     onLyricsShowTranslationChange: (Boolean) -> Unit,
     onLyricsShowRomanizationChange: (Boolean) -> Unit,
     onLyricsFocusGlowChange: (Boolean) -> Unit,
@@ -1089,7 +1093,6 @@ private fun LyricsSettingsDrawer(
             lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
             lyricsWordHighlightStyle = lyricsWordHighlightStyle,
             lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-            lyricsMotionMode = lyricsMotionMode,
             lyricAccent = lyricAccent,
             showTranslation = showTranslation,
             showRomanization = showRomanization,
@@ -1113,7 +1116,6 @@ private fun LyricsSettingsDrawer(
             onLyricsWordHighlightIntensityChange = onLyricsWordHighlightIntensityChange,
             onLyricsWordHighlightStyleChange = onLyricsWordHighlightStyleChange,
             onLyricsImmersiveModeChange = onLyricsImmersiveModeChange,
-            onLyricsMotionModeChange = onLyricsMotionModeChange,
             onLyricsShowTranslationChange = onLyricsShowTranslationChange,
             onLyricsShowRomanizationChange = onLyricsShowRomanizationChange,
             onLyricsFocusGlowChange = onLyricsFocusGlowChange,

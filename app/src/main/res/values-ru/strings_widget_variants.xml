@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_record_name">ECHO · Пластинка</string>
+    <string name="widget_record_description">Пластинка, сведения о треке и управление воспроизведением</string>
+    <string name="widget_banner_name">ECHO · Горизонтальный плеер</string>
+    <string name="widget_banner_description">Обложка рядом со сведениями о треке и управлением</string>
+    <string name="widget_typography_name">ECHO · Текстовый плеер</string>
+    <string name="widget_typography_description">Крупное название, текст песни и управление без обложки</string>
+</resources>

@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -50,6 +52,7 @@
             android:exported="true"
             android:grantUriPermissions="true"
             android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize"
             android:enableOnBackInvokedCallback="true"
             android:resizeableActivity="true"
             android:theme="@style/Theme.EchoAndroid.Splash">
@@ -97,6 +100,17 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+
+        <activity-alias android:name=".nfc.NfcMusicEntry"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:permission="android.permission.DISPATCH_NFC_MESSAGE">
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/vnd.app.echo.android.music" />
+            </intent-filter>
+        </activity-alias>
 
         <activity android:name=".widget.EchoWidgetConfigurationActivity"
             android:exported="true" android:excludeFromRecents="true"
@@ -192,6 +206,22 @@
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/echo_lyrics_widget_info" />
+        </receiver>
+
+        <receiver android:name=".widget.EchoRecordPlaybackWidgetReceiver"
+            android:exported="true" android:label="@string/widget_record_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/echo_record_widget_info" />
+        </receiver>
+        <receiver android:name=".widget.EchoBannerPlaybackWidgetReceiver"
+            android:exported="true" android:label="@string/widget_banner_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/echo_banner_widget_info" />
+        </receiver>
+        <receiver android:name=".widget.EchoTypographyPlaybackWidgetReceiver"
+            android:exported="true" android:label="@string/widget_typography_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/echo_typography_widget_info" />
         </receiver>
 
         <service

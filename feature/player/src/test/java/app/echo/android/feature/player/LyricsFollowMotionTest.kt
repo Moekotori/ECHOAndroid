@@ -1,9 +1,20 @@
 package app.echo.android.feature.player
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LyricsFollowMotionTest {
+    @Test fun offscreenNeighboursAnimateButFarSeeksStillReanchor() {
+        assertTrue(lyricFollowCanBridge(9, 10, 13))
+        assertTrue(lyricFollowCanBridge(14, 10, 13))
+        assertTrue(lyricFollowCanBridge(15, 10, 13))
+        assertFalse(lyricFollowCanBridge(16, 10, 13))
+        assertFalse(lyricFollowCanBridge(7, 10, 13))
+        assertFalse(lyricFollowCanBridge(-1, 0, 3))
+    }
+
     @Test fun consecutiveLinesKeepTheirForwardMomentum() {
         assertEquals(280f, lyricFollowVelocity(120f, 280f), 0f)
         assertEquals(-280f, lyricFollowVelocity(-120f, -280f), 0f)

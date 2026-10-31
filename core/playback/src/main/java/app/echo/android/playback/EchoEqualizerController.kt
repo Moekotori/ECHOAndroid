@@ -101,6 +101,7 @@ class EchoEqualizerController {
 
     fun setParametricFilters(filters: List<OpraEqBand>, applySuggestedPreamp: Boolean = false) {
         val sanitized = EchoParametricEq.sanitize(filters) ?: return
+        if (desiredParametric && desiredFilters == sanitized && !applySuggestedPreamp) return
         desiredParametric = true
         desiredPresetId = EchoEqualizerPreset.Custom
         desiredFilters = sanitized

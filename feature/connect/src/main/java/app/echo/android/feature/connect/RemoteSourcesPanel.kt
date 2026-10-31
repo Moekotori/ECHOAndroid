@@ -139,6 +139,7 @@ private fun SourceEditor(
     var anonymous by rememberSaveable(savedUrl, savedUsername) { mutableStateOf(allowAnonymous && !savedUrl.isNullOrBlank() && savedUsername.isNullOrBlank()) }
     var confirmingRemoval by rememberSaveable { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
     val saved = !savedUrl.isNullOrBlank() &&
         (credentialsOptional || (allowAnonymous && savedUsername.isNullOrBlank()) || (!savedUsername.isNullOrBlank() && !savedPassword.isNullOrBlank()))
     val hasSaved = !savedUrl.isNullOrBlank() || !savedUsername.isNullOrBlank() || !savedPassword.isNullOrBlank()
@@ -152,7 +153,7 @@ private fun SourceEditor(
     )
     val submit = { if (ready && !busy) { keyboard?.hide(); onSync(url.trim(), effectiveUsername, effectivePassword) } }
     ConnectCard(modifier, contentPadding = ListCardPadding, spacing = 0.dp) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).echoClickable(role = Role.Button) { keyboard?.hide(); onExpand() }.padding(vertical = 14.dp),
+        Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).echoClickable(role = Role.Button) { focus.clearFocus(); keyboard?.hide(); onExpand() }.padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ConnectIconTile(icon)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

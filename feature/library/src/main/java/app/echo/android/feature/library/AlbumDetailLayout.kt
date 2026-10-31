@@ -54,6 +54,7 @@ internal fun AlbumDetailLayout(
     accent: Color,
     onBack: () -> Unit,
     onOpenArtist: (() -> Unit)? = null,
+    onWriteNfc: (() -> Unit)? = null,
     trackContent: LazyListScope.() -> Unit,
 ) = key(album.albumKey) {
     val listState = rememberLazyListState()
@@ -129,6 +130,7 @@ internal fun AlbumDetailLayout(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                onWriteNfc?.let { AlbumNfcMenu(it) }
             }
         }
     }

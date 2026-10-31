@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -14,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.LocalEchoPageInteractive
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyricWord
 import app.echo.android.model.lyrics.EchoLyrics
@@ -48,22 +50,27 @@ internal fun LyricsMotionPreview(
         })
     }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val focused = LocalWindowInfo.current.isWindowFocused
-    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val focused = LocalWindowInfo.current.isWindowFocused && LocalEchoPageInteractive.current
+    val performance = LocalEchoEffectivePerformanceMode.current
+    val lightweight = performance.isLightweight
+    val fps = lyricsInterpolationFps(performance)
+    val motionScale = rememberCoroutineScope().coroutineContext[MotionDurationScale]?.scaleFactor ?: 1f
     val position = remember(motionMode, lyrics) { mutableLongStateOf(1200L) }
-    LaunchedEffect(position, focused, lightweight, lifecycle) {
-        if (!focused) return@LaunchedEffect
+    LaunchedEffect(position, focused, fps, lifecycle, motionScale) {
+        if (!focused || motionScale <= 0f) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             if (lightweight) {
                 // Show static focus changes without a continuous animation in the light preset.
                 while (isActive) { delay(3200); position.longValue = (position.longValue + 3200L) % 9600L }
             } else {
-                val gate = LyricsFrameGate(30)
+                val gate = LyricsFrameGate(fps)
                 var origin = 0L
                 val initial = position.longValue
                 while (isActive) withFrameNanos { frame ->
                     if (origin == 0L) origin = frame
-                    if (gate.accept(frame)) position.longValue = (initial + (frame - origin) / 1_000_000L) % 9600L
+                    if (gate.accept(frame)) {
+                        position.longValue = (initial + ((frame - origin) / 1_000_000.0 / motionScale).toLong()) % 9600L
+                    }
                 }
             }
         }
@@ -73,7 +80,7 @@ internal fun LyricsMotionPreview(
         VerticalLyricsList(
             lyrics, position, 9600L, {}, {}, fontFamily, fontScale * 0.6f, lineSpacing,
             accent, MaterialTheme.colorScheme.primary, highlightEnabled, false, highlightIntensity,
-            showTranslation = false, showRomanization = false, visible = focused, motionMode = motionMode, modifier = modifier,
+            showTranslation = false, showRomanization = false, visible = focused && motionScale > 0f, motionMode = motionMode, modifier = modifier,
             interactive = false,
         )
     } else {
@@ -84,7 +91,7 @@ internal fun LyricsMotionPreview(
             lyricsWordHighlightEnabled = highlightEnabled, lyricsEstimatedWordHighlightEnabled = false,
             lyricsWordHighlightIntensity = highlightIntensity, lyricsImmersiveModeEnabled = false,
             lyricsMotionMode = motionMode, showTranslation = false, showRomanization = false,
-            focusGlowEnabled = true, animationsVisible = focused, modifier = modifier,
+            focusGlowEnabled = true, animationsVisible = focused && motionScale > 0f, modifier = modifier,
             highlightColor = MaterialTheme.colorScheme.primary, paper = pageStyle == EchoLyricsPageStyle.Paper, durationMs = 9600L,
             interactive = false,
         )

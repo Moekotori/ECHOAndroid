@@ -1,6 +1,5 @@
 package app.echo.android.feature.settings
 
-import app.echo.android.model.settings.EchoLyricsMotionMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.Animation
@@ -27,13 +26,11 @@ internal fun SettingsAccessibilityContent(
     lyricsFontScale: Float,
     compactModeEnabled: Boolean,
     lyricsWordHighlightEnabled: Boolean,
-    lyricsMotionMode: String,
     playbackHapticsEnabled: Boolean,
     onUiFontScaleChange: (Float) -> Unit,
     onLyricsFontScaleChange: (Float) -> Unit,
     onCompactModeEnabledChange: (Boolean) -> Unit,
     onLyricsWordHighlightEnabledChange: (Boolean) -> Unit,
-    onLyricsMotionModeChange: (String) -> Unit,
     onPlaybackHapticsEnabledChange: (Boolean) -> Unit,
     careContent: @Composable () -> Unit = {},
 ) {
@@ -43,11 +40,6 @@ internal fun SettingsAccessibilityContent(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = SettingsContentInset, vertical = 4.dp),
     )
-    val motionOptions = listOf(
-        SettingsChoiceOption(EchoLyricsMotionMode.Calm, stringResource(R.string.accessibility_motion_calm)),
-        SettingsChoiceOption(EchoLyricsMotionMode.Smooth, stringResource(R.string.accessibility_motion_smooth)),
-        SettingsChoiceOption(EchoLyricsMotionMode.Stage, stringResource(R.string.accessibility_motion_stage)),
-    )
     if (subNav.isHub) {
         SettingsSubPageRow(
             SettingsSubPage.AccessibilityReading, Icons.Rounded.TextFields, subNav,
@@ -55,7 +47,7 @@ internal fun SettingsAccessibilityContent(
         )
         SettingsSubPageRow(
             SettingsSubPage.AccessibilityMotion, Icons.Rounded.Animation, subNav,
-            summary = motionOptions.firstOrNull { it.value == lyricsMotionMode }?.label.orEmpty(),
+            summary = stringResource(R.string.accessibility_word_highlight),
         )
         SettingsSubPageRow(SettingsSubPage.AccessibilityCare, Icons.Rounded.Hearing, subNav)
         SettingsSubPageRow(SettingsSubPage.AccessibilitySystem, Icons.Rounded.Accessibility, subNav)
@@ -82,13 +74,6 @@ internal fun SettingsAccessibilityContent(
                 detail = stringResource(R.string.accessibility_word_highlight_detail),
                 checked = lyricsWordHighlightEnabled,
                 onCheckedChange = onLyricsWordHighlightEnabledChange,
-            )
-            SettingsChoiceGroupRow(
-                title = stringResource(R.string.accessibility_lyrics_motion),
-                detail = stringResource(R.string.accessibility_lyrics_motion_detail),
-                options = motionOptions,
-                selectedValue = lyricsMotionMode,
-                onOptionSelected = onLyricsMotionModeChange,
             )
             SettingsSwitchRow(
                 title = stringResource(R.string.settings_playback_haptics),

@@ -16,8 +16,10 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
@@ -25,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.EchoStateContent
 import app.echo.android.design.LocalEchoDarkTheme
@@ -38,6 +41,13 @@ import app.echo.android.design.rememberEchoContentMotion
 /** Shared look of the player's bottom settings sheets: one surface, an accent wash, no nested cards. */
 @Composable
 internal fun Modifier.settingsSheetSurface(): Modifier = echoSheetSurface()
+
+/** Read animated bounds during measurement, without recomposing the lyrics preview every frame. */
+internal fun Modifier.settingsSheetHeightLimit(height: State<Dp>): Modifier = layout { measurable, constraints ->
+    val limit = height.value.roundToPx().coerceIn(constraints.minHeight, constraints.maxHeight)
+    val placeable = measurable.measure(constraints.copy(maxHeight = limit))
+    layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+}
 
 /** Neutral plate behind round header buttons. */
 @Composable
@@ -138,7 +148,9 @@ internal fun <T> SettingsPageSwitcher(
             )
         },
         label = "settings-sheet-page",
-        content = { content(it) },
+        content = { page ->
+            app.echo.android.design.EchoInteractionGate(active = page == state) { content(page) }
+        },
     )
 }
 

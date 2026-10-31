@@ -6,7 +6,7 @@ import android.widget.Toast
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.playback.EchoPlaybackProcessRuntime
-import app.echo.android.playback.usbKeyVolumePercent
+import app.echo.android.playback.usbKeyVolumeStep
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
@@ -29,7 +29,7 @@ internal class UsbVolumeKeys(context: Context) {
                 while (true) {
                     latest = withTimeoutOrNull(200) { pending.receive() } ?: break
                 }
-                try { store.setUsbVolumePercent(latest) }
+                try { store.setUsbVolumeStep(latest) }
                 catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
                 catch (error: Exception) {
                     app.echo.android.model.error.EchoErrorLog.record(
@@ -51,13 +51,14 @@ internal class UsbVolumeKeys(context: Context) {
             return true
         }
         val current = EchoPlaybackProcessRuntime.usbOutputOptions
-        val next = usbKeyVolumePercent(current.volumePercent, direction, repeat)
-        EchoPlaybackProcessRuntime.setUsbOutputOptions(current.copy(volumePercent = next))
+        val next = usbKeyVolumeStep(current.effectiveVolumeStep, direction, repeat)
+        EchoPlaybackProcessRuntime.setUsbOutputOptions(current.withVolumeStep(next))
         pending.trySend(next)
         val now = android.os.SystemClock.elapsedRealtime()
         if (repeat == 0 || now - lastNoticeMs >= 150) {
             lastNoticeMs = now
-            notice(context.getString(R.string.usb_key_volume_value, next))
+            notice(if (next == 0) context.getString(app.echo.android.feature.settings.R.string.usb_fine_muted)
+                else context.getString(app.echo.android.feature.settings.R.string.usb_fine_value, app.echo.android.model.playback.EchoUsbFineVolume.db(next)))
         }
         return true
     }

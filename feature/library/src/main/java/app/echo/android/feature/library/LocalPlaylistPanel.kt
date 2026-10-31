@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -192,22 +193,30 @@ internal fun LocalPlaylistPanel(
 }
 
 @Composable
-internal fun AddToPlaylistDialog(
+fun AddToPlaylistDialog(
     playlists: List<EchoPlaylist>,
     onDismiss: () -> Unit,
     onSelectPlaylist: (EchoPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
+    busy: Boolean = false,
+    error: String? = null,
+    awaitResult: Boolean = false,
 ) {
-    var creating by remember { mutableStateOf(false) }
+    var creating by rememberSaveable { mutableStateOf(false) }
+    var draftName by rememberSaveable { mutableStateOf("") }
+    val editablePlaylists = remember(playlists) { playlists.filter { it.canEdit || it.isLikedSongs } }
     if (creating) {
         PlaylistNameDialog(
             title = stringResource(L10nR.string.feature_library_new_playlist_and_add_314ff2),
             confirmLabel = stringResource(L10nR.string.feature_library_create_7b4bc9),
-            initialName = "",
-            onDismiss = { creating = false },
+            initialName = draftName,
+            onNameChange = { draftName = it },
+            busy = busy,
+            error = error,
+            onDismiss = { if (busy) onDismiss() else creating = false },
             onConfirm = { name ->
                 onCreatePlaylist(name)
-                creating = false
+                if (!awaitResult) creating = false
             },
         )
         return
@@ -217,21 +226,26 @@ internal fun AddToPlaylistDialog(
         title = { Text(stringResource(L10nR.string.feature_library_add_to_playlist_0f8338)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { creating = true }) {
-                    Text(stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
-                }
-                if (playlists.isEmpty()) {
-                    Text(
-                        stringResource(L10nR.string.feature_library_no_playlists_yet_create_one_first_6af586),
-                    )
-                } else {
-                    playlists.filter { it.canEdit || it.isLikedSongs }.forEach { playlist ->
+                if (busy) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item(key = "create") {
+                        TextButton(onClick = { creating = true }, enabled = !busy) {
+                            Text(stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
+                        }
+                    }
+                    if (editablePlaylists.isEmpty()) item(key = "empty") {
+                        Text(
+                            stringResource(L10nR.string.feature_library_no_playlists_yet_create_one_first_6af586),
+                        )
+                    }
+                    items(editablePlaylists, key = { "playlist:${it.id}" }) { playlist ->
                         Text(
                             stringResource(L10nR.string.feature_library_playlistdisplayname_playlist_playlist_trackcount_tracks_2afcb8, (playlistDisplayName(playlist)).toString(), (playlist.trackCount).toString()),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .echoClickable { onSelectPlaylist(playlist) }
+                                .echoClickable(enabled = !busy) { onSelectPlaylist(playlist) }
                                 .padding(vertical = 10.dp, horizontal = 4.dp),
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -257,18 +271,24 @@ internal fun PlaylistNameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
     supportingText: String? = null,
+    busy: Boolean = false,
+    error: String? = null,
+    onNameChange: (String) -> Unit = {},
 ) {
-    var name by remember { mutableStateOf(initialName) }
-    val canConfirm = name.trim().isNotEmpty()
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    val canConfirm = name.trim().isNotEmpty() && !busy
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (busy) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
             supportingText?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it.take(80) },
+                enabled = !busy,
+                onValueChange = { name = it.take(80); onNameChange(name) },
                 singleLine = true,
                 label = { Text(stringResource(L10nR.string.feature_library_name_57335e)) },
             )
@@ -277,7 +297,7 @@ internal fun PlaylistNameDialog(
         confirmButton = {
             TextButton(
                 enabled = canConfirm,
-                onClick = { onConfirm(name) },
+                onClick = { if (canConfirm) onConfirm(name.trim()) },
             ) {
                 Text(confirmLabel)
             }

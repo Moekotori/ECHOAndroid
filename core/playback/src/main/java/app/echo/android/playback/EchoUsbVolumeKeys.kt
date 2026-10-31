@@ -5,3 +5,9 @@ fun usbKeyVolumePercent(current: Int, direction: Int, repeatCount: Int): Int {
     val step = when { repeatCount >= 16 -> 5; repeatCount >= 6 -> 2; else -> 1 }
     return (current.coerceIn(0, 100) + direction.coerceIn(-1, 1) * step).coerceIn(0, 100)
 }
+
+/** Fine USB keys accelerate only after a held press. Zero is explicit mute. */
+fun usbKeyVolumeStep(current: Int, direction: Int, repeatCount: Int): Int {
+    val step = when { repeatCount >= 16 -> 5; repeatCount >= 6 -> 2; else -> 1 }
+    return (current.coerceIn(0, 300) + direction.coerceIn(-1, 1) * step).coerceIn(0, 300)
+}

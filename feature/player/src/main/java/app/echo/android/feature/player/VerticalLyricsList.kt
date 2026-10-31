@@ -64,14 +64,14 @@ internal fun VerticalLyricsList(
     }
     BoxWithConstraints(modifier) {
         val width = maxWidth
-        LaunchedEffect(focus, following, visible, width, fontScale, spacing, showTranslation, showRomanization, performance.isLightweight, motionMode) {
+        LaunchedEffect(lyrics, focus, following, visible, width, maxHeight, fontFamily, fontScale, spacing, showTranslation, showRomanization, performance.isLightweight, motionMode) {
             if (following && focus >= 0) {
                 if (!visible || performance.isLightweight) {
                     if (list.firstVisibleItemIndex != focus || list.firstVisibleItemScrollOffset != 0) list.scrollToItem(focus)
                     followMotion.reset()
                 } else {
                     followLyricsLine(list, focus, followMotion, false, motionMode,
-                        listOf(lyrics, width, fontScale, spacing, showTranslation, showRomanization, motionMode))
+                        listOf(lyrics, width, maxHeight, fontFamily, fontScale, spacing, showTranslation, showRomanization, motionMode))
                 }
             } else followMotion.reset()
         }
@@ -89,6 +89,10 @@ internal fun VerticalLyricsList(
                     contextMotion, label = "vertical-lyric-scale")
                 val lift = animateFloatAsState(if (!synced || index == focus) 0f else motion.liftDp,
                     contextMotion, label = "vertical-lyric-lift")
+                val alpha = animateFloatAsState(
+                    if (!synced || index == focus || index in active) 1f else 0.45f,
+                    contextMotion, label = "vertical-lyric-alpha",
+                )
                 Column(Modifier.fillParentMaxHeight().then(if (interactive) Modifier.combinedClickable(
                     onClick = {
                         if (synced && line.startMs >= 0) { pendingSeek = index; calibration = null; onSeek(line.startMs) }
@@ -99,9 +103,10 @@ internal fun VerticalLyricsList(
                     VerticalLyricText(
                         line, timeline.endAt(index) ?: durationMs.takeIf { it > line.startMs }, index in active,
                         position, wordHighlight && visible && !performance.isLightweight, estimatedHighlight,
-                        fontFamily, fontScale, spacing, color.copy(alpha = if (!synced || index == focus || index in active) 1f else 0.45f),
+                        fontFamily, fontScale, spacing, color,
                         highlight, highlightIntensity, Modifier.weight(1f).graphicsLayer {
                             scaleX = scale.value; scaleY = scale.value; translationY = lift.value.dp.toPx()
+                            this.alpha = alpha.value
                         },
                     )
                     if (showRomanization) line.romanization?.takeIf(String::isNotBlank)?.let {

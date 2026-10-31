@@ -32,25 +32,27 @@ class EchoStartupThemeSnapshotTest {
     }
 
     @Test
-    fun legacyPalettesFallBackToFixedColorsWithoutChangingDarkMode() {
+    fun everyPaletteSurvivesTheStartupSnapshotRoundTrip() {
         val colors = EchoCustomColors(0xFFFF0000.toInt(), 0xFF00FF00.toInt(), 0xFF0000FF.toInt())
         for (theme in EchoColorTheme.entries) {
             val snapshot = EchoAppSettings(
                 themeMode = EchoThemeMode.Dark,
                 colorTheme = theme.id,
                 customColors = colors,
-                dynamicColorEnabled = true,
             ).toStartupThemeSnapshot()
-            assertEquals(EchoColorTheme.Default.id, snapshot.colorTheme)
-            assertEquals(EchoCustomColors.Default, snapshot.customColors)
-            // Also cover a directly constructed legacy launch snapshot.
-            val restored = snapshot.copy(colorTheme = theme.id, customColors = colors).toAppSettings()
+            assertEquals(theme.id, snapshot.colorTheme)
+            assertEquals(colors, snapshot.customColors)
+            val restored = snapshot.toAppSettings()
             assertEquals(EchoThemeMode.Dark, restored.themeMode)
-            assertEquals(EchoColorTheme.Default.id, restored.colorTheme)
-            assertEquals(EchoCustomColors.Default, restored.customColors)
-            assertEquals(false, restored.dynamicColorEnabled)
-            assertEquals(emptyList<app.echo.android.model.settings.EchoSavedColorTheme>(), restored.savedColorThemes)
+            assertEquals(theme.id, restored.colorTheme)
+            assertEquals(colors, restored.customColors)
         }
+    }
+
+    @Test
+    fun unknownPaletteInSnapshotFallsBackToDefault() {
+        val restored = EchoStartupThemeSnapshot(colorTheme = "nyanCat").toAppSettings()
+        assertEquals(EchoColorTheme.Default.id, restored.colorTheme)
     }
 
     @Test

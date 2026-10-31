@@ -82,9 +82,10 @@ internal class EchoSmartTransitionCache(private val directory: File) {
         val parts = raw.split(',')
         require(parts.size >= 5)
         val durationMs = parts[0].toLong()
-        val bpm = parts.getOrNull(8)?.toFloatOrNull()?.takeIf { it > 0f }
+        val bpm = parts.getOrNull(8)?.toFloatOrNull()?.takeIf { it.isFinite() && it in 80f..180f }
         val offset = parts.getOrNull(10)?.toIntOrNull()?.takeIf { it >= 0 }
-        val windowMs = minOf(EchoSmartTransitionPolicy.WindowMs, durationMs.toInt().coerceAtLeast(0))
+        val confidence = parts.getOrNull(9)?.toFloatOrNull()?.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f
+        val windowMs = durationMs.coerceIn(0L, EchoSmartTransitionPolicy.WindowMs.toLong()).toInt()
         return EchoSmartTransitionAnalysis(
             durationMs = durationMs,
             leadingSilenceMs = parts[1].toInt(),
@@ -95,10 +96,11 @@ internal class EchoSmartTransitionCache(private val directory: File) {
             hasIntro = parts.getOrNull(6) != "0",
             hasOutro = parts.getOrNull(7) != "0",
             bpm = bpm,
-            bpmConfidence = parts.getOrNull(9)?.toFloatOrNull()?.coerceIn(0f, 1f) ?: 0f,
+            bpmConfidence = confidence,
             beatOffsetMs = offset,
-            beatsMs = if (bpm != null) {
-                EchoSmartTransitionTempoMath.beatTimesMs(0, windowMs, bpm, offset ?: 0)
+            beatsMs = if (bpm != null && offset != null && offset < 60_000f / bpm &&
+                confidence >= EchoSmartTransitionTempoMath.MinimumConfidence) {
+                EchoSmartTransitionTempoMath.beatTimesMs(0, windowMs, bpm, offset)
             } else {
                 intArrayOf()
             },
