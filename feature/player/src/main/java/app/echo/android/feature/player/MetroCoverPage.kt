@@ -72,7 +72,7 @@ internal fun MetroCoverPage(
         modifier = modifier,
         artwork = {
             MetroPlatformContent {
-                MetroLedSign(sign, animate)
+                MetroLedSign(sign, animate, compact = LocalPlayerCoverLandscape.current)
                 Spacer(Modifier.height(12.dp))
                 MetroTrackBoard(track, artworkScale, actions, lyricsLabel)
                 Spacer(Modifier.height(6.dp))
@@ -120,7 +120,7 @@ internal fun MetroCoverPage(
 @Composable
 private fun ColumnScope.MetroPlatformContent(content: @Composable ColumnScope.() -> Unit) {
     if (LocalPlayerCoverLandscape.current) {
-        val minimumHeight = (380f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp
+        val minimumHeight = (292f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .height(maxOf(maxHeight, minimumHeight)), content = content)

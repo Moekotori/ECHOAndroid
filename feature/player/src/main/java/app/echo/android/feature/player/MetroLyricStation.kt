@@ -56,13 +56,13 @@ internal fun MetroLyricStationLabel(number: Int, startMs: Long, focused: Boolean
             Modifier.background(if (focused) MetroStyle.Line else if (passed) MetroStyle.SoftRed else Color.Transparent,
                 RoundedCornerShape(2.dp)).padding(horizontal = 5.dp, vertical = 3.dp),
             color = if (focused) Color.White else if (passed) MetroStyle.Line else MetroStyle.Muted,
-            fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 9.sp, letterSpacing = 0.5.sp)
+            fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 9.sp, lineHeight = 12.sp, letterSpacing = 0.5.sp)
         Spacer(Modifier.width(8.dp))
         Text(if (startMs >= 0) lyricTimestamp(startMs) else "",
-            color = MetroStyle.Muted, fontFamily = FontFamily.Monospace, fontSize = 10.sp,
+            color = MetroStyle.Muted, fontFamily = FontFamily.Monospace, fontSize = 10.sp, lineHeight = 14.sp,
         )
         Spacer(Modifier.weight(1f))
         if (focused) Text(stringResource(R.string.player_style_metro_current),
-            color = MetroStyle.Line, fontSize = 9.sp, fontWeight = FontWeight.Medium)
+            color = MetroStyle.Line, fontSize = 9.sp, lineHeight = 12.sp, fontWeight = FontWeight.Medium)
     }
 }

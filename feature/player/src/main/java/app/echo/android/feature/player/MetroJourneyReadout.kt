@@ -27,9 +27,9 @@ internal fun MetroJourneyReadout(position: State<Long>, duration: State<Long>) {
         drawLine(MetroStyle.Rule, Offset.Zero, Offset(size.width, 0f), 1.dp.toPx())
     }.padding(top = 14.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Column {
-            Text(stringResource(R.string.player_style_metro_progress), color = MetroStyle.Muted, fontSize = 9.sp)
+            Text(stringResource(R.string.player_style_metro_progress), color = MetroStyle.Muted, fontSize = 9.sp, lineHeight = 12.sp)
             Text(formatDuration(elapsed * 1000L), color = MetroStyle.Ink, fontFamily = FontFamily.Monospace,
-                fontSize = 22.sp, letterSpacing = (-1).sp)
+                fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-1).sp)
         }
         Canvas(Modifier.weight(1f).padding(horizontal = 28.dp).height(20.dp)) {
             val y = size.height / 2f
@@ -43,9 +43,9 @@ internal fun MetroJourneyReadout(position: State<Long>, duration: State<Long>) {
             drawLine(MetroStyle.Muted, Offset(end - 4.dp.toPx(), y + 3.dp.toPx()), Offset(end, y), 1.dp.toPx())
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(stringResource(R.string.player_style_metro_terminus), color = MetroStyle.Muted, fontSize = 9.sp)
+            Text(stringResource(R.string.player_style_metro_terminus), color = MetroStyle.Muted, fontSize = 9.sp, lineHeight = 12.sp)
             Text(if (total > 0) formatDuration(total) else "—", color = MetroStyle.Ink,
-                fontFamily = FontFamily.Monospace, fontSize = 22.sp, letterSpacing = (-1).sp)
+                fontFamily = FontFamily.Monospace, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-1).sp)
         }
     }
 }

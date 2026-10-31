@@ -50,10 +50,10 @@ internal object MetroStyle {
 /** The arrival sign: a line badge and amber text that scrolls only when it does not fit and motion is allowed. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun MetroLedSign(text: String, animate: Boolean, modifier: Modifier = Modifier) {
+internal fun MetroLedSign(text: String, animate: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
     val moving = animate && !LocalEchoEffectivePerformanceMode.current.isLightweight
     Row(
-        modifier.fillMaxWidth().heightIn(min = 58.dp)
+        modifier.fillMaxWidth().heightIn(min = if (compact) 50.dp else 58.dp)
             .background(MetroStyle.Sign, RoundedCornerShape(5.dp))
             .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(5.dp))
             .drawWithCache {
@@ -82,17 +82,17 @@ internal fun MetroLedSign(text: String, animate: Boolean, modifier: Modifier = M
                     drawCircle(screw, screwRadius, Offset(screwInset, size.height - screwInset))
                     drawCircle(screw, screwRadius, Offset(size.width - screwInset, size.height - screwInset))
                 }
-            }.padding(horizontal = 12.dp, vertical = 10.dp),
+            }.padding(horizontal = 12.dp, vertical = if (compact) 8.dp else 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MetroLineBadge()
         Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(stringResource(R.string.player_style_metro_line), color = Color.White.copy(alpha = 0.58f),
-                fontSize = 9.sp, letterSpacing = 1.8.sp, fontWeight = FontWeight.Medium)
+                fontSize = 9.sp, lineHeight = 12.sp, letterSpacing = 1.8.sp, fontWeight = FontWeight.Medium)
             Text(
                 text, Modifier.fillMaxWidth().clipToBounds()
                     .then(if (moving) Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1500, velocity = 30.dp) else Modifier),
-                color = MetroStyle.Amber, fontFamily = FontFamily.Monospace, fontSize = 13.sp, maxLines = 1, softWrap = false,
+                color = MetroStyle.Amber, fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false,
             )
         }
     }
@@ -112,8 +112,8 @@ internal fun MetroLyricsHeading(track: EchoTrackRef, animate: Boolean) {
         MetroLedSign("${displayTrack(track.title)}  /  ${displayArtist(track.artist)}", animate)
         Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(stringResource(R.string.player_style_metro_lyric_route), color = MetroStyle.Ink,
-                fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-            Text(stringResource(R.string.player_style_metro_seek_hint), color = MetroStyle.Muted, fontSize = 10.sp)
+                fontSize = 10.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(stringResource(R.string.player_style_metro_seek_hint), color = MetroStyle.Muted, fontSize = 10.sp, lineHeight = 14.sp)
         }
     }
 }

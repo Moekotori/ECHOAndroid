@@ -47,12 +47,12 @@ internal fun MetroLineDiagram(
     }
     val total = duration.value
     Column(modifier) {
-        Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 8.dp),
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.player_style_metro_route), color = MetroStyle.Muted,
-                fontSize = 10.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
+                fontSize = 10.sp, lineHeight = 14.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
             Text(stringResource(if (playing) R.string.radio_state_playing else R.string.radio_state_paused),
-                color = MetroStyle.Ink, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                color = MetroStyle.Ink, fontSize = 10.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium)
         }
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             // Short landscape panes use a horizontal route instead of overflowing five vertical rows.
@@ -100,23 +100,23 @@ internal fun MetroLineDiagram(
                         Text(stationCode(k), Modifier.background(if (current) MetroStyle.SoftRed else Color.Transparent,
                             RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 3.dp),
                             color = if (k <= reached) MetroStyle.Line else MetroStyle.Muted,
-                            fontFamily = FontFamily.Monospace, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            fontFamily = FontFamily.Monospace, fontSize = 10.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold)
                         Text(stationLabel(k), Modifier.weight(1f),
                             color = if (k <= reached) MetroStyle.Ink else MetroStyle.Muted,
                             fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = if (current) 17.sp else 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(formatDuration(time), color = MetroStyle.Muted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                            fontSize = if (current) 17.sp else 14.sp, lineHeight = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(formatDuration(time), color = MetroStyle.Muted, fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 16.sp)
                     }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 12.dp),
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
                 if (total <= 0) "—"
                 else if (reached == StationCount - 1) stringResource(R.string.player_style_metro_arrived)
                 else stringResource(R.string.player_style_metro_next, stationLabel(reached + 1)),
-                Modifier.weight(1f), color = MetroStyle.Ink, fontSize = 10.sp,
+                Modifier.weight(1f), color = MetroStyle.Ink, fontSize = 10.sp, lineHeight = 14.sp,
                 fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             MetroArrivalTime(position, duration, reached)
@@ -134,7 +134,7 @@ private fun MetroArrivalTime(position: State<Long>, duration: State<Long>, reach
     }
     Text(if (duration.value <= 0 || reached == StationCount - 1) "—"
         else stringResource(R.string.player_style_metro_arrival_in, formatDuration(seconds * 1000L)),
-        color = MetroStyle.Muted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+        color = MetroStyle.Muted, fontSize = 10.sp, lineHeight = 14.sp, fontFamily = FontFamily.Monospace)
 }
 
 @Composable
@@ -147,8 +147,8 @@ private fun CompactMetroRoute(position: State<Long>, duration: State<Long>, reac
         val span = routeWidth - step
         Box(Modifier.fillMaxSize().horizontalScroll(rememberScrollState())) {
             Box(Modifier.width(routeWidth).fillMaxHeight()) {
-                Canvas(Modifier.fillMaxWidth().height(44.dp)) {
-                    val y = 22.dp.toPx()
+                Canvas(Modifier.fillMaxWidth().height(40.dp)) {
+                    val y = 20.dp.toPx()
                     val x = start.toPx()
                     val length = span.toPx()
                     val fraction = progressFraction(position.value, duration.value)
@@ -161,14 +161,14 @@ private fun CompactMetroRoute(position: State<Long>, duration: State<Long>, reac
                 Row(Modifier.fillMaxWidth()) {
                     for (k in 0 until StationCount) {
                         val time = stationTime(total, k)
-                        Column(Modifier.weight(1f).heightIn(min = 82.dp)
+                        Column(Modifier.weight(1f).heightIn(min = 74.dp)
                             .clickable(enabled = total > 0, role = Role.Button,
                                 onClickLabel = stringResource(R.string.player_style_metro_seek_to, formatDuration(time))) { onSeek(time) }
-                            .semantics { selected = k == reached }.padding(top = 44.dp),
+                            .semantics { selected = k == reached }.padding(top = 40.dp),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(stationCode(k), color = MetroStyle.Ink, fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+                            Text(stationCode(k), color = MetroStyle.Ink, fontSize = 10.sp, lineHeight = 14.sp, fontFamily = FontFamily.Monospace,
                                 fontWeight = if (k == reached) FontWeight.Bold else FontWeight.Normal)
-                            Text(formatDuration(time), color = MetroStyle.Muted, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                            Text(formatDuration(time), color = MetroStyle.Muted, fontSize = 9.sp, lineHeight = 13.sp, fontFamily = FontFamily.Monospace)
                         }
                     }
                 }

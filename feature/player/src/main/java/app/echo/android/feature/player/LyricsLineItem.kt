@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.echo.android.model.lyrics.EchoLyricLine
@@ -216,6 +217,7 @@ internal fun LyricsLineItem(
                 lineHeight = maxOf((if (paper) 38f else 41f) * scale * spacing,
                     (if (paper) 28f else 30f) * scale * 1.1f).sp,
                 letterSpacing = 0.sp,
+                lineBreak = if (metro) LineBreak.Heading else MaterialTheme.typography.titleLarge.lineBreak,
             ),
             weight = FontWeight.Medium,
             align = textAlign,
