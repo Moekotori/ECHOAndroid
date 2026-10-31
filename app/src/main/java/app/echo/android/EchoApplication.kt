@@ -29,6 +29,8 @@ import app.echo.android.playback.EchoPlaybackCachePolicy
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.playback.EchoRemotePlaybackAuthRegistry
 import app.echo.android.playback.EchoPlaybackRuntimeOptionsStore
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @UnstableApi
