@@ -11,6 +11,10 @@ internal class EchoDspKernel {
         private set
     var right = 0f
         private set
+    private val compressor = EchoDynamicsCompressor()
+    private var compressorActive = false
+    private var requestedCeiling = 1f
+    private var requestedLimiting = false
     private var lowLeft = 0f
     private var lowRight = 0f
     private var delayedLeft = FloatArray(1)
@@ -32,7 +36,7 @@ internal class EchoDspKernel {
     /** In-place stereo or mono. Surround stays on the per-frame path. */
     internal fun processBuffer(samples: ByteBuffer, frames: Int, channels: Int): Boolean {
         if (channels !in 1..2 || frames <= 0) return false
-        if (samples.isDirect && samples.order() == ByteOrder.nativeOrder() && processNative(samples, frames, channels)) {
+        if (compressor.neutral && samples.isDirect && samples.order() == ByteOrder.nativeOrder() && processNative(samples, frames, channels)) {
             return true
         }
         val view = samples.duplicate().order(ByteOrder.nativeOrder()).asFloatBuffer()
@@ -83,9 +87,10 @@ internal class EchoDspKernel {
         return true
     }
 
-    val neutral: Boolean get() = crossMix == 0f && level == 1f && reduction == 1f
+    val neutral: Boolean get() = crossMix == 0f && level == 1f && reduction == 1f && compressor.neutral
 
     fun configure(rate: Int) {
+        compressor.configure(rate)
         lowAlpha = (1 - exp(-2 * PI * 700 / rate)).toFloat()
         smooth = (1 - exp(-1.0 / (rate * 0.02))).toFloat()
         release = (1 - exp(-1.0 / (rate * 0.08))).toFloat()
@@ -98,11 +103,16 @@ internal class EchoDspKernel {
         volume: app.echo.android.model.playback.EchoVolumeSettings = app.echo.android.model.playback.EchoVolumeSettings()) {
         targetMix = if (settings.crossfeedEnabled) settings.crossfeedAmount else 0f
         targetLevel = if (volume.muted) 0f else 10.0.pow(volume.combinedGainDb(replayGainDb) / 20.0).toFloat()
-        limiting = settings.limiterEnabled
-        ceiling = 10.0.pow(settings.limiterCeilingDb / 20.0).toFloat()
+        compressor.setMode(settings.compressor)
+        compressorActive = settings.compressor != app.echo.android.model.playback.EchoCompressorMode.Off
+        requestedLimiting = settings.limiterEnabled
+        requestedCeiling = 10.0.pow(settings.limiterCeilingDb / 20.0).toFloat()
+        limiting = requestedLimiting || compressorActive
+        ceiling = if (compressorActive) minOf(requestedCeiling, 0.8912509f) else requestedCeiling
     }
 
     fun reset() {
+        compressor.reset()
         lowLeft = 0f; lowRight = 0f; cursor = 0
         delayedLeft.fill(0f); delayedRight.fill(0f)
         crossMix = targetMix; level = targetLevel; reduction = 1f
@@ -122,8 +132,13 @@ internal class EchoDspKernel {
         cursor = (cursor + 1) % delayedLeft.size
         // Normalize low-frequency gain. Mono is never crossfed.
         val mix = if (stereo) crossMix else 0f
-        val a = ((l + dr * mix) / (1 + mix)) * level
-        val b = ((r + dl * mix) / (1 + mix)) * level
+        val mixedLeft = (l + dr * mix) / (1 + mix)
+        val mixedRight = (r + dl * mix) / (1 + mix)
+        val dynamicsGain = compressor.gain(max(abs(mixedLeft), if (stereo) abs(mixedRight) else 0f))
+        val a = mixedLeft * dynamicsGain * level
+        val b = mixedRight * dynamicsGain * level
+        limiting = requestedLimiting || !compressor.neutral
+        ceiling = if (!compressor.neutral) minOf(requestedCeiling, 0.8912509f) else requestedCeiling
         val peak = max(abs(a), if (stereo) abs(b) else 0f)
         val wanted = if (limiting && peak > ceiling) ceiling / peak else 1f
         reduction = if (wanted < reduction) wanted else reduction + release * (wanted - reduction)

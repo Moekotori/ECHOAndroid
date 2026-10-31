@@ -1,7 +1,6 @@
 package app.echo.android.feature.player
 
 import android.graphics.Canvas
-import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
@@ -12,7 +11,7 @@ import app.echo.android.design.ArtworkPalette
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Soft, overlapping elliptical fields. Shaders, paints and matrices are reused on every frame. */
+/** Soft, overlapping elliptical fields. Shaders and paints are reused on every frame. */
 internal class FluidArtworkField(palette: ArtworkPalette) : BackdropField {
     private val base = Paint().apply { color = palette.deep.toArgb() }
     private val fields = arrayOf(
@@ -33,18 +32,19 @@ internal class FluidArtworkField(palette: ArtworkPalette) : BackdropField {
             val x = width * (field.x + 0.24f * sin(time * 0.13 + phase).toFloat())
             val y = height * (field.y + 0.20f * cos(time * 0.11 + phase).toFloat())
             val breathing = 1f + 0.12f * sin(time * 0.09 + phase).toFloat()
-            field.matrix.setScale(width * 0.80f * breathing, height * 0.62f / breathing)
-            field.matrix.postRotate((sin(time * 0.07 + phase) * 28.0).toFloat())
-            field.matrix.postTranslate(x, y)
-            field.shader.setLocalMatrix(field.matrix)
             field.paint.alpha = alpha
-            canvas.drawRect(0f, 0f, width, height, field.paint)
+            // Animate recorded canvas commands; keep the cached shader itself immutable.
+            val checkpoint = canvas.save()
+            canvas.translate(x, y)
+            canvas.rotate((sin(time * 0.07 + phase) * 28.0).toFloat())
+            canvas.scale(width * 0.80f * breathing, height * 0.62f / breathing)
+            canvas.drawCircle(0f, 0f, 1f, field.paint)
+            canvas.restoreToCount(checkpoint)
         }
     }
 
     private class Field(color: Color, val x: Float, val y: Float, val phase: Double) {
-        val matrix = Matrix()
-        val shader = RadialGradient(
+        private val shader = RadialGradient(
             0f, 0f, 1f,
             intArrayOf(color.toArgb(), color.copy(alpha = 0.68f).toArgb(), color.copy(alpha = 0f).toArgb()),
             floatArrayOf(0f, 0.38f, 1f), Shader.TileMode.CLAMP,

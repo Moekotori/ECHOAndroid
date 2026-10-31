@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="duplicates_title">Merge duplicate versions</string>
+    <string name="duplicates_scope">The local song list and new queues started from it show one version per matching song. Original files, albums and playlists are preserved. Other versions stay available from the song menu.</string>
+    <string name="duplicates_enabled">Show one version per song</string>
+    <string name="duplicates_summary">Last analysis · Groups: %1$d · Foldable versions: %2$d</string>
+    <string name="duplicates_not_analyzed">Analyze first, then use the switch to show or fold matching versions.</string>
+    <string name="duplicates_progress">Candidate files checked: %1$d</string>
+    <string name="duplicates_skipped">Candidate groups left unchanged because they were too large: %1$d</string>
+    <string name="duplicates_failed">Analysis did not finish. Wait for library scanning to end, check file access, and retry. The previous analysis is preserved.</string>
+    <string name="duplicates_quality_note">Recommendations use format, bit depth, sample rate and bitrate when available. These parameters do not establish audible quality. A manual preferred version takes priority.</string>
+    <string name="duplicates_refresh_note">Reanalyze after changing your library. Changed files or an invalid representative make stale groups expand again. Unreadable files are left unchanged.</string>
+    <string name="duplicates_cancel">Cancel analysis</string>
+    <string name="duplicates_analyze">Analyze and merge</string>
+    <string name="duplicates_entry_note">Fold matching local songs and recommend a version by audio parameters</string>
+    <string name="duplicates_manage">Manage</string>
+    <string name="duplicates_recommended">Recommended by audio parameters</string>
+    <string name="duplicates_auto">Automatic · prefer recommended audio parameters</string>
+    <string name="duplicates_preserved">Original files and playlists are kept</string>
+    <string name="duplicates_groups_label">Matching groups</string>
+    <string name="duplicates_folded_label">Foldable versions</string>
+    <string name="duplicates_updated">Last analysis · %1$s</string>
+    <string name="duplicates_short_scope">Local song list and new queues</string>
+    <string name="duplicates_rules">Matching and quality rules</string>
+    <string name="duplicates_cancelling">Cancelling after the current file…</string>
+    <string name="duplicates_scan_blocked">Library scanning started. Wait for it to finish, then analyze again. Your previous result is kept.</string>
+    <string name="duplicates_saving">Saving preferred version…</string>
+    <string name="duplicates_auto_support">Choose an available version when playback starts</string>
+    <string name="duplicates_audio_file">Audio</string>
+    <string name="duplicates_unknown_quality">Audio parameters unavailable</string>
+    <string name="duplicates_recommended_short">Recommended</string>
+    <string name="duplicates_preferred_short">Preferred</string>
+    <string name="duplicates_reload_versions">Reload</string>
+    <string name="duplicates_loading_versions">Loading matching versions…</string>
+</resources>

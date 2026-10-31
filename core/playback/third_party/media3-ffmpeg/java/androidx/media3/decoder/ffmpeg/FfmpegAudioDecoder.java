@@ -71,6 +71,13 @@ public final class FfmpegAudioDecoder
   // ECHO: integer output avoids a float round trip on the strict lossless path.
   public FfmpegAudioDecoder(Format format, int numInputBuffers, int numOutputBuffers,
       int initialInputBufferSize, @C.PcmEncoding int outputEncoding) throws FfmpegDecoderException {
+    this(format, numInputBuffers, numOutputBuffers, initialInputBufferSize, outputEncoding, false);
+  }
+
+  // ECHO: CUE playback retains the valid PCM suffix of the block enclosing its start point.
+  public FfmpegAudioDecoder(Format format, int numInputBuffers, int numOutputBuffers,
+      int initialInputBufferSize, @C.PcmEncoding int outputEncoding, boolean exactClipStart)
+      throws FfmpegDecoderException {
     super(new DecoderInputBuffer[numInputBuffers], new SimpleDecoderOutputBuffer[numOutputBuffers]);
     if (!FfmpegLibrary.isAvailable()) {
       throw new FfmpegDecoderException("Failed to load decoder native libraries.");
@@ -78,7 +85,7 @@ public final class FfmpegAudioDecoder
     checkNotNull(format.sampleMimeType);
     codecName = checkNotNull(FfmpegLibrary.getCodecName(format.sampleMimeType));
     boolean demuxedByEcho = format.sampleMimeType.startsWith("audio/x-echo-ffmpeg-");
-    trimSeekFrame = demuxedByEcho || "ape".equals(codecName);
+    trimSeekFrame = exactClipStart || demuxedByEcho || "ape".equals(codecName);
     extraData = getExtraData(format.sampleMimeType, format.initializationData);
     encoding = outputEncoding;
     outputBufferSize =

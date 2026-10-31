@@ -7,7 +7,8 @@ internal data class ReadId3Tag(val version: Int, val frames: List<ReadId3Frame>)
 
 /** Read selected frames individually. Large pictures never hide text after them. */
 internal object Id3TagReader {
-    fun read(header: ByteArray, input: InputStream): ReadId3Tag? {
+    fun read(header: ByteArray, input: InputStream, maxPictures: Int = 1): ReadId3Tag? {
+        require(maxPictures in 1..8)
         val version = header[3].toInt() and 255
         if (version !in 2..4) return null
         val size = header.tagSyncSafe(6) ?: return null
@@ -23,7 +24,9 @@ internal object Id3TagReader {
             if (extra < 0 || extra > raw.remaining || !body.skipTagBytes(extra)) return null
         }
         val frames = ArrayList<ReadId3Frame>()
+        val retainedLimit = if (maxPictures > 1) 24 * 1024 * 1024 else MaxRetainedBytes
         var retained = 0
+        var pictureCount = 0
         var retainedPicture = false
         var frontPicture = false
         repeat(512) {
@@ -48,20 +51,20 @@ internal object Id3TagReader {
             val frameFlags = if (version == 2) byteArrayOf(0, 0) else frameHeader.copyOfRange(8, 10)
             if (version == 4 && flags and 0x80 != 0) frameFlags[1] = (frameFlags[1].toInt() or 2).toByte()
             val cap = if (picture) MaxEmbeddedArtworkBytes + 4096 else MaxEmbeddedTextBytes
-            if (id !in ReadableIds || length > cap || retained + length > MaxRetainedBytes || (picture && frontPicture)) {
+            if (id !in ReadableIds || length > cap || retained + length > retainedLimit || (picture && (if (maxPictures == 1) frontPicture else pictureCount >= maxPictures))) {
                 if (!body.skipTagBytes(length)) return null
             } else {
                 val payload = body.tagBytes(length.toInt()) ?: return null
                 // Keep at most one picture, preferring the front cover over a back cover.
                 val type = if (picture) EmbeddedTagArtwork.id3PictureType(payload, id == "PIC") else null
-                if (!picture || !retainedPicture || type == 3) {
-                    if (picture && retainedPicture) {
+                if (!picture || maxPictures > 1 || !retainedPicture || type == 3) {
+                    if (picture && retainedPicture && maxPictures == 1) {
                         val previous = frames.indexOfFirst { it.id == "APIC" || it.id == "PIC" }
                         if (previous >= 0) retained -= frames.removeAt(previous).payload.size
                     }
                     frames += ReadId3Frame(id, frameFlags, payload)
                     retained += payload.size
-                    if (picture) { retainedPicture = true; frontPicture = type == 3 }
+                    if (picture) { pictureCount++; retainedPicture = true; frontPicture = type == 3 }
                 }
             }
         }

@@ -72,6 +72,9 @@ internal fun EchoLibraryPage(
     val shortcutContext = androidx.compose.ui.platform.LocalContext.current
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val playbackMetadata by viewModel.playbackMetadata.collectAsStateWithLifecycle()
+    val visiblePlayingId by remember(viewModel, playbackMetadata.track?.id) {
+        viewModel.duplicateLibrary.displayTrackId(playbackMetadata.track?.id)
+    }.collectAsStateWithLifecycle(initialValue = playbackMetadata.track?.id)
     val remotePlayback by playbackRouter.remoteMode.collectAsStateWithLifecycle()
     val libraryTrackFilter by viewModel.libraryTrackFilter.collectAsStateWithLifecycle()
     val libraryTrackSortMode by viewModel.libraryTrackSortMode.collectAsStateWithLifecycle()
@@ -230,7 +233,11 @@ internal fun EchoLibraryPage(
         app.echo.android.feature.library.LibraryHiddenTrackActions(viewModel.observeHiddenTracksCount(), viewModel::hiddenTracks,
             viewModel::hideLibraryTracks, viewModel::restoreLibraryTracks, viewModel::restoreAllLibraryTracks)
     }, showFileNames = appSettings.libraryLayout.showFileNames, hiddenTrackActions = appSettings.libraryLayout.hiddenTrackActions,
-        showPlayNext = appSettings.libraryLayout.showPlayNext) {
+        showPlayNext = appSettings.libraryLayout.showPlayNext, mediaTools = rememberLibraryMediaTools(viewModel)) {
+    app.echo.android.feature.library.LibraryDuplicatesProvider(
+        viewModel.duplicateLibrary.state, viewModel.duplicateLibrary::analyze, viewModel.duplicateLibrary::cancel,
+        viewModel.duplicateLibrary::setEnabled,
+    ) {
     app.echo.android.feature.library.TrackVersionsProvider(
         load = viewModel::trackVersions, save = viewModel::setPreferredTrackVersion,
     ) {
@@ -308,7 +315,8 @@ internal fun EchoLibraryPage(
             onTrackSortModeChange = viewModel::updateLibraryTrackSortMode,
             onFindSongLetterIndex = viewModel::localTitleIndex,
             onFindAlbumLetterIndex = viewModel::albumTitleIndex,
-            playingTrackId = if (remotePlayback) null else playbackMetadata.track?.id,
+            playingTrackId = if (remotePlayback) null else if (selectedAlbum == null && selectedArtist == null &&
+                selectedGenre == null && selectedFolder == null && selectedPlaylist == null) visiblePlayingId else playbackMetadata.track?.id,
             onFindPlayingSongIndex = { id -> viewModel.localTrackIndex(id, libraryQuery, libraryTrackSortMode, libraryTrackFilter) },
             onAlbumSortModeChange = viewModel::updateLibraryAlbumSortMode,
             onArtistSortModeChange = viewModel::updateLibraryArtistSortMode,
@@ -443,6 +451,7 @@ internal fun EchoLibraryPage(
                 exportM3uLauncher.launch("$fileName.m3u")
             },
         )
+    }
     }
     }
     }

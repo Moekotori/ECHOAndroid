@@ -315,6 +315,7 @@ class EchoRemoteClient internal constructor(
             it.copy(
                 connectionState = EchoRemoteConnectionState.Connecting,
                 endpoint = nextEndpoint,
+                connectionId = generation,
                 error = null,
             )
         }

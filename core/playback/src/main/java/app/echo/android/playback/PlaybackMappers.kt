@@ -260,14 +260,14 @@ fun Player.toPlaybackDiagnosticsState(
     audioPipeline: app.echo.android.model.playback.EchoAudioPipelineDiagnostics = app.echo.android.model.playback.EchoAudioPipelineDiagnostics(),
 ): PlaybackDiagnosticsState {
     val item = currentMediaItem
-    val format = currentAudioFormat()
+    val format = currentAudioFormat()?.let { (it.customData as? EchoCueFormat)?.source ?: it }
     val bitDepth = format?.takeIf { it.pcmEncoding != Format.NO_VALUE }
         ?.let { pcmBitDepth(it.pcmEncoding) }
     val formatSampleRate = format?.sampleRate?.takeIf { it != Format.NO_VALUE }
     val channels = format?.channelCount?.takeIf { it != Format.NO_VALUE }
     val mediaUri = item?.localConfiguration?.uri?.toString() ?: item?.requestMetadata?.mediaUri?.toString()
     val readout = echoAudioFormatReadout(
-        mimeType = format?.sampleMimeType,
+        mimeType = if (format?.sampleMimeType == EchoCueMime) format.containerMimeType else format?.sampleMimeType,
         mediaUri = mediaUri,
         formatSampleRateHz = formatSampleRate,
         sourceSampleRateHz = sourceSampleRateHz,

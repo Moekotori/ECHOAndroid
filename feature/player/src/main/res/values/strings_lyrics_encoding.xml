@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_encoding_title">Import with text encoding</string>
+    <string name="lyrics_encoding_note">Choose a lyric file and preview its text. BOM and compressed KRC keep their declared formats. Apply saves a local selection without changing the lyric or audio source. Clear the selection in lyric management to restore automatic loading.</string>
+    <string name="lyrics_encoding_auto">Automatic</string>
+    <string name="lyrics_encoding_failed">Cannot decode, parse or save this file. Try another encoding or select it again.</string>
+    <string name="lyrics_encoding_apply">Apply lyric selection</string>
+    <string name="lyrics_encoding_close">Cancel</string>
+</resources>

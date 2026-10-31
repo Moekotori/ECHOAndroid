@@ -1,7 +1,11 @@
 <resources>
     <string name="volume_title">音量</string>
-    <string name="volume_summary">应用音量、增益、精细调节与响度补偿</string>
-    <string name="volume_scope">控制在手机上播放的声音，包括拉流歌曲。系统媒体音量和 USB DAC 音量独立调节；遥控 PC 或投放设备播放时，音量由对方设备控制。</string>
+    <string name="volume_summary">音量、增益与按键步长</string>
+    <string name="volume_scope">仅调整手机播放。系统和 DAC 音量独立，投放音量由接收设备控制。</string>
+    <string name="volume_advanced">高级选项</string>
+    <string name="volume_device_saved">自动记忆音量和增益</string>
+    <string name="volume_shared">所有设备共用音量和增益</string>
+    <string name="volume_remember_per_device">按输出设备记忆音量和增益</string>
     <string name="volume_bypassed">USB 严格直通会绕过这里的全部处理，包括静音。请使用 DAC 硬件音量。</string>
     <string name="volume_combined">合成增益设定</string>
     <string name="volume_muted">已静音</string>
@@ -10,11 +14,18 @@
     <string name="volume_level">应用音量</string>
     <string name="volume_gain">增益</string>
     <string name="volume_limit">合成增益上限</string>
-    <string name="volume_limit_detail">限制「应用音量 + 增益 + ReplayGain」的合成值，再交给峰值限幅。这是增益设定，不代表实测声压，也不限制系统或 DAC 音量。</string>
-    <string name="volume_gain_hint">正增益可能使较响的歌曲削波，可开启下方峰值限幅控制采样峰值。</string>
-    <string name="volume_step">精调步长</string>
+    <string name="volume_limit_detail">限制音量、增益和 ReplayGain 的叠加值。</string>
+    <string name="volume_gain_hint">增益较高时，可用高级选项中的限幅减少削波。</string>
+    <string name="volume_step">音量键步长</string>
     <string name="volume_step_value">每次调节 %1$s dB</string>
     <string name="volume_decrease">降低应用音量</string>
     <string name="volume_increase">提高应用音量</string>
     <string name="volume_replaygain_summary">按曲目或专辑补偿响度</string>
+    <string name="volume_remembered_device">音量记忆设备</string>
+    <string name="volume_device_memory_summary">音量与增益按设备保存；前台音量键跟随精调步长。</string>
+    <string name="volume_device_help">音量键与设备识别说明</string>
+    <string name="volume_current_output">当前输出设备</string>
+    <string name="volume_device_memory_detail">开启设备记忆后，各设备分别保存音量和增益。前台音量键按步长调节，加键也会解除静音；后台和锁屏调系统音量。没有唯一标识的设备按类型和名称共用记录，同型号 USB DAC 共用一条记录。</string>
+    <string name="volume_key_value">应用音量：%1$.1f dB</string>
+    <string name="volume_save_failed">音量设置未能保存，再次调节即可重试。</string>
 </resources>

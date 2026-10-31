@@ -4,6 +4,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EchoTrackFadePolicyTest {
+    @Test fun continuousCueBoundariesKeepUnityWithoutPollingSuppressedFades() {
+        for (position in listOf(0L, 500L, 10_000L)) {
+            assertEquals(1f, EchoTrackFadePolicy.gain(position, 10_000, 1000, true,
+                suppressFadeIn = true, suppressFadeOut = true), 0f)
+            assertNull(EchoTrackFadePolicy.nextDelayMs(position, 10_000, 1000, 1f,
+                suppressFadeIn = true, suppressFadeOut = true))
+        }
+        assertNull(EchoTrackFadePolicy.nextDelayMs(2000, 10_000, 1000, 1f, suppressFadeOut = true))
+        assertEquals(9000L, EchoTrackFadePolicy.nextDelayMs(0, 10_000, 1000, 1f, suppressFadeIn = true))
+    }
+
     @Test fun disabledEnvelopeLeavesEveryPositionUnchanged() {
         for (position in listOf(0L, 250L, 5000L, 10000L)) {
             assertEquals(1f, EchoTrackFadePolicy.gain(position, 10000, 1500, false), 0f)

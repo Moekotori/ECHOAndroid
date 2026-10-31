@@ -5,10 +5,63 @@ import app.echo.android.model.playback.EchoTrackRef
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoSavedPlaybackSessionTest {
+    @Test
+    fun cueRangesAndRelativePositionRoundTripIncludingOpenEndedTail() {
+        val track = EchoTrackRef("saf:album#cue:1", "content://audio/album#echo-cue=1", "First", "Artist",
+            durationMs = 60_000L, clipEndMs = 60_000L)
+        val session = savedSession(currentIndex = 1, positionMs = 5_000L).copy(queue = listOf(
+            track,
+            track.copy(id = "saf:album#cue:2", uri = "content://audio/album#echo-cue=2",
+                clipStartMs = 60_000L, clipEndMs = 120_000L),
+            track.copy(id = "saf:album#cue:3", uri = "content://audio/album#echo-cue=3",
+                durationMs = 0L, clipStartMs = 120_000L, clipEndMs = 0L),
+        ))
+
+        val restored = requireNotNull(parsePlaybackSession(session.toPreferenceValue()))
+
+        assertEquals(session.queue, restored.queue)
+        assertEquals(1, restored.currentIndex)
+        assertEquals(5_000L, restored.positionMs)
+        assertEquals(session.playbackQueueIdentity(), restored.playbackQueueIdentity())
+    }
+
+    @Test
+    fun legacyQueueWithoutClipFieldsStillLoadsAsWholeFiles() {
+        val session = savedSession(currentIndex = 0, positionMs = 5_000L)
+        val legacy = org.json.JSONObject(session.toPreferenceValue()).apply {
+            val queue = getJSONArray("queue")
+            for (index in 0 until queue.length()) {
+                queue.getJSONObject(index).apply { remove("clipStartMs"); remove("clipEndMs") }
+            }
+        }
+
+        assertEquals(session, parsePlaybackSession(legacy.toString()))
+    }
+
+    @Test
+    fun changingEitherCueBoundaryInvalidatesQueueIdentityAndStaleResume() {
+        val original = savedSession(currentIndex = 0, positionMs = 5_000L).let { session ->
+            session.copy(queue = listOf(session.queue.first().copy(clipStartMs = 60_000L, clipEndMs = 120_000L)))
+        }
+        val staleResume = parsePlaybackResume(original.copy(positionMs = 20_000L)
+            .toResumePreferenceValue(original.playbackQueueIdentity()))
+        for (track in listOf(
+            original.queue.single().copy(clipStartMs = 70_000L),
+            original.queue.single().copy(clipEndMs = 130_000L),
+            original.queue.single().copy(clipStartMs = 70_000L, clipEndMs = 130_000L),
+            original.queue.single().copy(clipStartMs = 0L, clipEndMs = 0L),
+        )) {
+            val changed = original.copy(queue = listOf(track))
+            assertNotEquals(original.playbackQueueIdentity(), changed.playbackQueueIdentity())
+            assertEquals(changed, changed.withPlaybackResume(staleResume))
+        }
+    }
+
     @Test
     fun shuffleRepeatAndSpeedRoundTripWithQueueAndPosition() {
         val session = savedSession(

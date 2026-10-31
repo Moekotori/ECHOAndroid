@@ -255,7 +255,6 @@ private fun EchoThemeTokens.toMaterialScheme() =
             surfaceContainerHighest = lerp(panel, heading, 0.10f),
         )
     } else {
-        val custom = id == EchoColorTheme.Custom.id
         val primaryBox = lerp(mist, accent, 0.16f)
         val secondaryBox = lerp(mist, secondary, 0.12f)
         val tertiaryBox = lerp(mist, accentDeep, 0.12f)
@@ -284,12 +283,12 @@ private fun EchoThemeTokens.toMaterialScheme() =
             inverseOnSurface = panel,
             outline = this.outline,
             outlineVariant = outlineVariant,
-            surfaceDim = if (custom) lerp(mist, heading, 0.08f) else EchoLightSurfaces.ContainerHighest,
+            surfaceDim = lerp(mist, heading, 0.08f),
             surfaceBright = panel,
-            surfaceContainerLowest = if (custom) Color.White else EchoLightSurfaces.Surface,
+            surfaceContainerLowest = Color.White,
             surfaceContainerLow = panel,
             surfaceContainer = mist,
-            surfaceContainerHigh = if (custom) lerp(mist, accent, 0.08f) else EchoLightSurfaces.ContainerHigh,
-            surfaceContainerHighest = if (custom) lerp(mist, heading, 0.08f) else EchoLightSurfaces.ContainerHighest,
+            surfaceContainerHigh = lerp(mist, accent, 0.08f),
+            surfaceContainerHighest = lerp(mist, heading, 0.08f),
         )
     }

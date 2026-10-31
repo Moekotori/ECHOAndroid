@@ -10,17 +10,29 @@ internal fun EchoDesktopShortcuts(
     onSelectTab: (EchoTab) -> Unit,
     onSettings: () -> Unit,
     onPlayPause: () -> Unit,
+    onNext: () -> Unit = {}, onPrevious: () -> Unit = {},
+    onSeekBy: (Long) -> Unit = {}, onSearch: () -> Unit = {},
 ) {
     val activity = LocalActivity.current as? MainActivity
     val enabled = rememberUpdatedState(navigationEnabled)
     val tabs = rememberUpdatedState(onSelectTab)
     val settings = rememberUpdatedState(onSettings)
     val playback = rememberUpdatedState(onPlayPause)
+    val next = rememberUpdatedState(onNext); val previous = rememberUpdatedState(onPrevious)
+    val seek = rememberUpdatedState(onSeekBy); val search = rememberUpdatedState(onSearch)
+    var help by remember { mutableStateOf(false) }
+    if (help) app.echo.android.feature.settings.KeyboardShortcutsDialog { help = false }
     DisposableEffect(activity) {
         val handler: (Int) -> Boolean = { command ->
             when {
+                !enabled.value || help -> false
                 command == 5 -> { playback.value(); true }
-                !enabled.value -> false
+                command == 6 -> { next.value(); true }
+                command == 7 -> { previous.value(); true }
+                command == 8 -> { seek.value(-10_000); true }
+                command == 9 -> { seek.value(10_000); true }
+                command == 10 -> { search.value(); true }
+                command == 11 -> { help = true; true }
                 command == 4 -> { settings.value(); true }
                 command in EchoTab.entries.indices -> { tabs.value(EchoTab.entries[command]); true }
                 else -> false

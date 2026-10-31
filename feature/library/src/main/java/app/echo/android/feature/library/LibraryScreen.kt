@@ -482,6 +482,7 @@ fun LibraryScreen(
                 Column(Modifier.padding(end = 24.dp)) {
                     if (scanState.isScanning) LibraryScanStatus(scanState, onCancelScan)
                     LibraryBrowserHeader(
+                        showAlbumArtists = layout.showAlbumArtists,
                         scanState = scanState,
                         showScanResultBanner = showScanResultBanner,
                         selectedSource = displayedSource,
@@ -1989,6 +1990,7 @@ private fun LibraryFolderSortMenu(
 
 @Composable
 private fun LibraryBrowserHeader(
+    showAlbumArtists: Boolean,
     scanState: LibraryScanProgress,
     showScanResultBanner: Boolean,
     selectedSource: LibrarySourceMode,
@@ -2019,7 +2021,7 @@ private fun LibraryBrowserHeader(
     if (selectedMode == LibraryViewMode.Radio) return
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
-            LibraryPagerTabs(selectedMode, onSelectMode, modes = modes, pager = pager)
+            LibraryPagerTabs(selectedMode, onSelectMode, modes = modes, pager = pager, showAlbumArtists = showAlbumArtists)
         }
         when (selectedMode) {
             LibraryViewMode.Songs -> if (selectedSource == LibrarySourceMode.Local) {

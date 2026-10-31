@@ -31,6 +31,7 @@ internal fun SettingsAboutContent(
     }
     SettingsAboutIdentity(appVersionLabel)
     SettingsAboutLinks(openLink)
+    KeyboardShortcutsHelpRow()
     SettingsOpenSourceCard(openLink)
     SettingsAboutPanel {
         updateContent()

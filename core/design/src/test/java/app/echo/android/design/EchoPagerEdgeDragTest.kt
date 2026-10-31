@@ -42,4 +42,15 @@ class EchoPagerEdgeDragTest {
         edge.add(Offset.Zero, Offset(100f, 0f), 3)
         assertEquals(0, edge.destination(1, 3, 48f))
     }
+
+    @Test fun verticalListReachingItsEdgeCannotTurnIntoPageNavigation() {
+        val edge = EchoPagerEdgeDrag()
+        edge.begin(0)
+        edge.add(Offset(0f, 50f), Offset(2f, 0f), 3)
+        assertEquals(0f, edge.add(Offset.Zero, Offset(60f, 0f), 3), 0f)
+        assertEquals(0, edge.destination(0, 3, 48f))
+        edge.begin(0)
+        edge.add(Offset.Zero, Offset(60f, 0f), 3)
+        assertEquals(-1, edge.destination(0, 3, 48f))
+    }
 }

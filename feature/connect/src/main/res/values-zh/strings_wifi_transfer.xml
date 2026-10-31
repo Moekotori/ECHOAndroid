@@ -19,4 +19,5 @@
     <string name="wifi_transfer_stop">停止接收</string>
     <string name="wifi_transfer_start">开启接收</string>
     <string name="wifi_transfer_close">关闭</string>
+    <string name="wifi_transfer_cleanup_error">未完成文件暂时无法删除，请重新授权原接收目录，再开启传歌以重试清理。</string>
 </resources>

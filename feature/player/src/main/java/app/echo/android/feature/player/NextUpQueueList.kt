@@ -2,7 +2,6 @@ package app.echo.android.feature.player
 
 import androidx.compose.foundation.background
 import app.echo.android.design.detectEchoTargetDrag
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -21,8 +20,8 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.model.playback.PlaybackQueueState
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.design.EchoMotion
+import app.echo.android.design.EchoDragAutoScroll
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
-import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -72,32 +71,23 @@ internal fun NextUpQueueList(
     var rowHeight by remember { mutableIntStateOf(0) }
     val animateItems = !lightweight && dragSource == null
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val edgeSize = with(density) { 48.dp.toPx() }
-    val edgeStep = with(density) { 12.dp.toPx() }
+    val move by rememberUpdatedState(onMove)
 
     fun updateDropTarget() {
         val group = dragSource?.group ?: return
-        val next = state.layoutInfo.visibleItemsInfo.mapNotNull { info ->
-            dragTargets[info.key]?.takeIf { it.group == group }?.let { it to info }
-        }.minByOrNull { (_, info) -> abs(info.offset + info.size / 2f - pointerY) }?.first
+        var next: QueueDragTarget? = null
+        var nearest = Float.MAX_VALUE
+        for (info in state.layoutInfo.visibleItemsInfo) {
+            val candidate = dragTargets[info.key]?.takeIf { it.group == group } ?: continue
+            val distance = abs(info.offset + info.size / 2f - pointerY)
+            if (distance < nearest) { nearest = distance; next = candidate }
+        }
         if (next != null && next != dropTarget) haptics.seekStep(next.row)
         dropTarget = next
     }
 
-    LaunchedEffect(dragSource) {
-        while (dragSource != null) {
-            delay(16)
-            val layout = state.layoutInfo
-            val direction = when {
-                pointerY < layout.viewportStartOffset + edgeSize -> -1f
-                pointerY > layout.viewportEndOffset - edgeSize -> 1f
-                else -> 0f
-            }
-            if (direction != 0f) {
-                state.scrollBy(direction * edgeStep)
-                updateDropTarget()
-            }
-        }
+    EchoDragAutoScroll(state, dragging = dragSource != null, pointerY = { pointerY }) {
+        updateDropTarget()
     }
     LaunchedEffect(queue.currentItem?.queueContext?.entryId ?: queue.currentIndex) { state.scrollToItem(0) }
     Box(Modifier.fillMaxSize()) {
@@ -134,7 +124,7 @@ internal fun NextUpQueueList(
                     dragSource = null
                     dropTarget = null
                     if (from != null && to != null && from != to) {
-                        onMove(from, to)
+                        move(from, to)
                         haptics.endSeek(committed = true)
                     } else haptics.endSeek(committed = false)
                 },

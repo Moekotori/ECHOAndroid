@@ -48,9 +48,9 @@ class LocalLyricsResolver(
             ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
     }
 
-    fun importFromUri(uri: Uri): EchoLyrics {
+    fun importFromUri(uri: Uri, charsetName: String? = null): EchoLyrics {
         val sourceLabel = displayName(uri) ?: uri.lastPathSegment
-        val text = readText(uri)
+        val text = readText(uri, charsetName)
             ?: throw IllegalArgumentException(context.getString(R.string.lyrics_read_failed))
         val lyrics = runCatching { text.attach(EchoLyricsParser.parse(text.text, sourceLabel = sourceLabel)) }
             .getOrElse { error ->
@@ -176,10 +176,10 @@ class LocalLyricsResolver(
             }
     }
 
-    private fun readText(uri: Uri): EchoLyricsTextDecoder.Result? =
+    private fun readText(uri: Uri, charsetName: String? = null): EchoLyricsTextDecoder.Result? =
         runCatching {
             openLyricsInputStream(uri)?.use { input ->
-                EchoLyricsTextDecoder.decodeResult(input.readLimitedLyricsBytes())?.takeUnless { it.lossy }
+                EchoLyricsTextDecoder.decodeResult(input.readLimitedLyricsBytes(), charsetName)?.takeUnless { it.lossy }
             }
         }.getOrNull()
 

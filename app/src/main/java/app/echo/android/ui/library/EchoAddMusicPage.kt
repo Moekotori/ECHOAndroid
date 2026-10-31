@@ -66,6 +66,7 @@ internal fun EchoAddMusicPage(
                 Toast.LENGTH_SHORT).show()
         }
     }
+    val discoveredPlaylists = rememberScannedPlaylistImports(viewModel, trees.orEmpty().map { it.uri }, scan)
     AddMusicScreen(
         initialOptions = settings.libraryScanOptions,
         scanState = scan, folders = folderRows, foldersLoaded = trees != null,
@@ -83,6 +84,7 @@ internal fun EchoAddMusicPage(
             viewModel.saveLibraryScanOptions(options)
             Toast.makeText(context, LibraryR.string.add_music_rules_saved, Toast.LENGTH_SHORT).show()
         } },
+        playlistDiscovery = discoveredPlaylists,
         onImportPlaylist = { playlistPicker.launch(arrayOf("audio/x-mpegurl", "audio/mpegurl",
             "application/vnd.apple.mpegurl", "application/x-mpegurl", "text/plain", "*/*")) },
         onCancelScan = viewModel::cancelScan,

@@ -56,6 +56,7 @@ internal object EchoTtmlParser {
             ?: element.descendants().mapNotNull { clock(it.attr("begin")) }.minOrNull() ?: return null
         val finish = end(element, start) ?: inheritedEnd
         val words = mutableListOf<EchoLyricWord>()
+        var hasTimedWords = false
         val fullText = StringBuilder()
         var translation: String? = null
         var romanization: String? = null
@@ -80,6 +81,7 @@ internal object EchoTtmlParser {
                 if (value.isEmpty()) return
                 fullText.append(value)
                 if (wordStart != null && value.isNotBlank()) {
+                    hasTimedWords = true
                     words += EchoLyricWord(wordStart, wordEnd, value)
                 } else if (words.isNotEmpty()) {
                     val last = words.last()
@@ -93,9 +95,10 @@ internal object EchoTtmlParser {
         // p timing belongs to the line, not to otherwise untimed child text.
         for (i in 0 until element.childNodes.length) visit(element.childNodes.item(i), null, null)
         if (fullText.isBlank()) return null
-        val hasTimedSpans = element.descendants().any { it.attr("begin").isNotBlank() && it.attr("role").isBlank() }
+        // Only sung text in this vocal owns word timing; annotations and backing
+        // vocals are handled separately, and empty timed spans are not words.
         return EchoLyricLine(start, finish, fullText.toString(), translation, romanization,
-            if (hasTimedSpans) words else emptyList(),
+            if (hasTimedWords) words else emptyList(),
             speaker = element.attr("agent").ifBlank { inheritedSpeaker }, isBackground = background)
     }
 

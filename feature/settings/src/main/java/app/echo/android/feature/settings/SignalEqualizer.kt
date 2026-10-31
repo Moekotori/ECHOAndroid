@@ -43,7 +43,7 @@ import app.echo.android.model.playback.normalizedType
 import kotlin.math.roundToInt
 
 @Composable
-internal fun SignalEqualizer(
+fun SignalEqualizer(
     state: EchoEqualizerState,
     bypassed: Boolean,
     playing: Boolean,

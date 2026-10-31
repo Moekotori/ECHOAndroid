@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_album_artists">Album artists</string>
+    <string name="library_show_album_artists">Show artists as album artists</string>
+    <string name="library_show_album_artists_note">Group local music by album artist. Use the track artist when the album artist is missing.</string>
+</resources>

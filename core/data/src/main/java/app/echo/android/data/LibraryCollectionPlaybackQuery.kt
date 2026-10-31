@@ -10,9 +10,10 @@ internal object LibraryCollectionPlaybackQuery {
         playlistOrder: app.echo.android.model.library.PlaylistTrackOrder = app.echo.android.model.library.PlaylistTrackOrder(),
     ): SimpleSQLiteQuery {
         var from = "visible_library_tracks t"
+        var cte = ""
         val args = ArrayList<Any>()
         val local = "t.source IN ('mediastore', 'saf')"
-        val albumOrder = listOf("COALESCE(t.discNumber, 0)", "COALESCE(t.trackNumber, 0)", "t.title COLLATE NOCASE", "t.id")
+        val albumOrder = listOf("CASE WHEN t.discNumber > 0 THEN t.discNumber ELSE 1 END", "COALESCE(t.trackNumber, 0)", "t.title COLLATE NOCASE", "t.id")
         var order = listOf("COALESCE(t.album, '') COLLATE NOCASE") + albumOrder
         val where = when (origin) {
             is LibraryPlaybackOrigin.Album -> {
@@ -28,7 +29,10 @@ internal object LibraryCollectionPlaybackQuery {
             }
             is LibraryPlaybackOrigin.Artist -> {
                 args += origin.artistKey
-                "$local AND t.id IN (SELECT trackId FROM library_track_artists WHERE artistKey = ?)"
+                if (LibraryAlbumArtistQuery.owns(origin.artistKey)) {
+                    cte = LibraryAlbumArtistQuery.memberships + " "
+                    "$local AND t.id IN (SELECT trackId FROM album_artist_memberships WHERE artistKey = ?)"
+                } else "$local AND t.id IN (SELECT trackId FROM library_track_artists WHERE artistKey = ?)"
             }
             is LibraryPlaybackOrigin.Folder -> {
                 args += origin.folderKey
@@ -78,6 +82,6 @@ internal object LibraryCollectionPlaybackQuery {
             filter
         }
         val limitSql = if (limit == null) "" else " LIMIT ?".also { args += limit.coerceAtLeast(1) }
-        return SimpleSQLiteQuery("SELECT t.* FROM $from WHERE ($where)$anchor ORDER BY ${order.joinToString(", ")}$limitSql", args.toTypedArray())
+        return SimpleSQLiteQuery("${cte}SELECT t.* FROM $from WHERE ($where)$anchor ORDER BY ${order.joinToString(", ")}$limitSql", args.toTypedArray())
     }
 }

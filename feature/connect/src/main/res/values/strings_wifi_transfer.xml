@@ -19,4 +19,5 @@
     <string name="wifi_transfer_stop">Stop receiving</string>
     <string name="wifi_transfer_start">Start receiving</string>
     <string name="wifi_transfer_close">Close</string>
+    <string name="wifi_transfer_cleanup_error">Incomplete files could not be removed. Grant access to the original receiving folder and start again to retry cleanup.</string>
 </resources>

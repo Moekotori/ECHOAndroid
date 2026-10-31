@@ -42,7 +42,6 @@ internal fun EchoNowPlayingHost(
     positionFlow: StateFlow<PlaybackPositionState> = viewModel.playbackPosition,
     onOpenAlbum: (app.echo.android.model.library.AlbumSummary) -> Unit,
     onOpenFolder: (app.echo.android.model.library.FolderSummary) -> Unit,
-    onOpenEqualizer: () -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit = {},
 ) {
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
@@ -56,6 +55,10 @@ internal fun EchoNowPlayingHost(
             onOpenArtist = { artist -> artistPickerTrack = null; onOpenArtist(artist) },
             onDismiss = { artistPickerTrack = null },
         )
+    }
+    var showEqualizer by remember { mutableStateOf(false) }
+    if (showEqualizer && presentationExpanded) {
+        EchoEqualizerSheetHost(viewModel, appSettings, playbackStatus, onDismiss = { showEqualizer = false })
     }
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
@@ -107,6 +110,11 @@ internal fun EchoNowPlayingHost(
                 playbackStatus.track?.id?.let { viewModel.selectPlayerLyrics(id, it) } ?: false
             },
             onImport = { showLyricsManager = false; onImportLyrics() },
+            encodingTools = {
+                app.echo.android.feature.player.LyricsEncodingTools(viewModel::previewEncodedLyrics) { uri, charset ->
+                    playbackStatus.track?.id?.let { viewModel.importEncodedLyrics(it, uri, charset) } ?: false
+                }
+            },
             onRemove = viewModel::removeLyricsSelection,
             onAdjustOffset = viewModel::adjustLyricsOffset,
             onDismiss = { showLyricsManager = false },
@@ -115,12 +123,13 @@ internal fun EchoNowPlayingHost(
     }
     val songActions = if (presentationExpanded) key(playbackStatus.track?.id) {
         rememberNowPlayingSongActions(
-            viewModel, playbackStatus.track, onOpenAlbum, onOpenFolder, onOpenEqualizer,
+            viewModel, playbackStatus.track, onOpenAlbum, onOpenFolder, onOpenEqualizer = { showEqualizer = true },
             onSearchLyrics = { lyricsSearchRequested = true; showLyricsManager = true; viewModel.searchLyrics() },
         )
     } else app.echo.android.feature.player.NowPlayingSongActions()
     LaunchedEffect(presentationExpanded) {
         if (!presentationExpanded) {
+            showEqualizer = false
             showLyricsManager = false
             showLyricsEditor = false
             showTrackTools = false

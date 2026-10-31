@@ -1,5 +1,7 @@
 package app.echo.android.data
 
+import java.util.Locale
+
 /** Read-only SQL plans; every external identifier/value is bound, never interpolated. */
 internal data class LibraryDocumentsSql(val sql: String, val args: List<String>, val order: String)
 
@@ -17,9 +19,12 @@ internal object LibraryDocumentsQueries {
         "wave" to "audio/wav", "aif" to "audio/aiff", "aiff" to "audio/aiff", "ape" to "audio/x-ape",
         "wv" to "audio/x-wavpack", "dsf" to "audio/dsf", "dff" to "audio/dff", "wma" to "audio/x-ms-wma",
         "tta" to "audio/x-tta", "tak" to "audio/x-tak", "mpc" to "audio/x-musepack", "w64" to "audio/x-w64")
-    private val mime = "CASE WHEN t.mimeType LIKE 'audio/%' AND t.mimeType NOT LIKE '%*%' THEN t.mimeType " +
-        "WHEN lower(t.mimeType) IN ('application/flac','application/x-flac') THEN 'audio/flac' " +
-        "WHEN lower(t.mimeType) IN ('application/ogg','application/x-ogg') THEN 'audio/ogg' " +
+    private val cleanMime = "lower(trim(CASE WHEN instr(t.mimeType,';')>0 THEN substr(t.mimeType,1,instr(t.mimeType,';')-1) ELSE COALESCE(t.mimeType,'') END))"
+    private val canonicalMime = "CASE WHEN $cleanMime IN ('application/flac','application/x-flac') THEN 'audio/flac' " +
+        "WHEN $cleanMime IN ('application/ogg','application/x-ogg') THEN 'audio/ogg' ELSE $cleanMime END"
+    private val fallbackExtension = "CASE $canonicalMime " + formats.entries.distinctBy { it.value }
+        .joinToString(" ") { (extension, type) -> "WHEN '$type' THEN '.$extension'" } + " ELSE '.audio' END"
+    private val mime = "CASE WHEN $canonicalMime LIKE 'audio/%' AND $canonicalMime NOT LIKE '%*%' THEN $canonicalMime " +
         formats.entries.joinToString(" ") { (extension, type) -> "WHEN lower(t.fileName) LIKE '%.$extension' THEN '$type'" } +
         " ELSE 'audio/x-unknown' END"
 
@@ -45,7 +50,8 @@ internal object LibraryDocumentsQueries {
         val joins = if (playlist) "JOIN library_playlist_tracks m ON m.trackId=t.id JOIN library_playlists p ON p.id=m.playlistId" else ""
         return LibraryDocumentsSql("""
             SELECT 'track:' || $CanonicalId AS document_id,
-                   COALESCE(NULLIF(t.fileName,''), NULLIF(t.title,''), 'audio') AS _display_name,
+                   CASE WHEN length(trim(COALESCE(t.fileName,'')))>0 THEN t.fileName
+                        ELSE COALESCE(NULLIF(trim(t.title),''),'audio') || $fallbackExtension END AS _display_name,
                    $mime AS mime_type, 0 AS flags, CASE WHEN t.sizeBytes>0 THEN t.sizeBytes ELSE NULL END AS _size,
                    MAX(t.dateModifiedSeconds)*1000 AS last_modified,
                    CASE WHEN instr(t.id,'#cue:')>0 OR t.clipStartMs>0 OR t.clipEndMs>0 THEN ? ELSE t.artist END AS summary,
@@ -86,21 +92,52 @@ internal object LibraryDocumentsQueries {
             List(4) { pattern })
     }
 
-    fun project(plan: LibraryDocumentsSql, projection: Array<out String>?, order: String = plan.order, limit: Int? = null, offset: Int = 0): LibraryDocumentsSql {
-        val columns = projection?.takeIf { it.isNotEmpty() } ?: Columns
+    fun searchFilters(plan: LibraryDocumentsSql, mimeTypes: List<String>? = null, sizeOver: Long? = null, modifiedAfter: Long? = null): LibraryDocumentsSql {
+        val conditions = mutableListOf<String>()
+        val values = mutableListOf<String>()
+        if (mimeTypes != null) {
+            require(mimeTypes.size <= 64 && mimeTypes.all { it.length <= 128 })
+            val matches = mimeTypes.mapNotNull { raw ->
+                val type = raw.trim().lowercase(Locale.ROOT)
+                when {
+                    type == "*/*" -> "1"
+                    !type.matches(Regex("[a-z0-9!#$&^_.+-]+/(?:[a-z0-9!#$&^_.+-]+|\\*)")) -> null
+                    type.endsWith("/*") -> {
+                        values += type.dropLast(1).replace("_", "\\_") + "%"
+                        "mime_type LIKE ? ESCAPE '\\'"
+                    }
+                    else -> { values += type; "mime_type=?" }
+                }
+            }
+            conditions += if (matches.isEmpty()) "0" else "(" + matches.joinToString(" OR ") + ")"
+        }
+        if (sizeOver != null) { conditions += "_size > CAST(? AS INTEGER)"; values += sizeOver.toString() }
+        if (modifiedAfter != null) { conditions += "last_modified > CAST(? AS INTEGER)"; values += modifiedAfter.toString() }
+        return if (conditions.isEmpty()) plan else plan.copy(
+            sql = "SELECT * FROM (${plan.sql}) matches WHERE " + conditions.joinToString(" AND "), args = plan.args + values,
+        )
+    }
+
+    fun columns(projection: Array<out String>?, fallback: Array<out String> = Columns): Array<out String> {
+        val columns = projection?.takeIf { it.isNotEmpty() } ?: fallback
         require(columns.size <= 64 && columns.all { it.length <= 128 })
+        return columns
+    }
+
+    fun project(plan: LibraryDocumentsSql, projection: Array<out String>?, order: String = plan.order, limit: Int? = null, offset: Int = 0): LibraryDocumentsSql {
+        val columns = columns(projection)
         val select = columns.joinToString(",") { column ->
             val quoted = "\"${column.replace("\"", "\"\"")}\""
             if (column in Columns) quoted else "NULL AS $quoted"
         }
-        val pagination = if (limit != null || offset > 0) " LIMIT ${limit?.coerceAtLeast(1) ?: -1} OFFSET ${offset.coerceAtLeast(0)}" else ""
+        val pagination = if (limit != null || offset > 0) " LIMIT ${limit?.coerceAtLeast(0) ?: -1} OFFSET ${offset.coerceAtLeast(0)}" else ""
         return plan.copy(sql = "SELECT $select FROM (${plan.sql}) documents" + (if (order.isEmpty()) "" else " ORDER BY $order") + pagination)
     }
 
     fun sort(order: String?): String? {
         val parts = order?.trim()?.split(Regex("\\s+")) ?: return null
         val column = parts.firstOrNull()?.takeIf { it in setOf("_display_name", "last_modified", "_size") } ?: return null
-        val direction = parts.getOrNull(1)?.uppercase()?.takeIf { it in setOf("ASC", "DESC") } ?: if (parts.size == 1) "ASC" else return null
+        val direction = parts.getOrNull(1)?.uppercase(Locale.ROOT)?.takeIf { it in setOf("ASC", "DESC") } ?: if (parts.size == 1) "ASC" else return null
         if (parts.size > 2) return null
         return "$column ${if (column == "_display_name") "COLLATE NOCASE " else ""}$direction, document_id"
     }

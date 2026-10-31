@@ -47,8 +47,7 @@ internal class NowPlayingDismissDragState {
     fun applyDelta(delta: Float, thresholdPx: Float, onCrossedThreshold: (Boolean) -> Unit) {
         // A new finger movement owns the position immediately; an old spring cannot write it.
         beginDrag()
-        val resisted = if (offsetPx > thresholdPx && delta > 0f) delta * 0.38f else delta
-        offsetPx = (offsetPx + resisted).coerceAtLeast(0f)
+        offsetPx = nowPlayingPullOffset(offsetPx, delta, thresholdPx)
         val crossed = offsetPx >= thresholdPx
         if (crossed != crossedThreshold) {
             crossedThreshold = crossed
@@ -71,13 +70,17 @@ internal class NowPlayingDismissConnection(
     private val onCrossedThreshold: (Boolean) -> Unit,
     private val onSettle: (Float) -> Unit,
 ) : NestedScrollConnection {
+    private var settledInPreFling = false
+
     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
         if (source != NestedScrollSource.UserInput || !enabled() || available.y == 0f || dragState.offsetPx <= 0f) {
             return Offset.Zero
         }
         if (!dragState.isDragging && echoHorizontalGestureOwnsScroll(Offset.Zero, available)) return Offset.Zero
-        val consumed = if (available.y < 0f) available.y.coerceAtLeast(-dragState.offsetPx) else available.y
-        dragState.applyDelta(consumed, threshold(), onCrossedThreshold)
+        val thresholdPx = threshold()
+        val distanceToRest = nowPlayingPullDistance(dragState.offsetPx, thresholdPx)
+        val consumed = if (available.y < 0f) available.y.coerceAtLeast(-distanceToRest) else available.y
+        dragState.applyDelta(consumed, thresholdPx, onCrossedThreshold)
         return Offset(0f, consumed)
     }
 
@@ -89,12 +92,37 @@ internal class NowPlayingDismissConnection(
         return Offset(0f, available.y)
     }
 
+    override suspend fun onPreFling(available: Velocity): Velocity {
+        settledInPreFling = false
+        if (!enabled() || !dragState.isDragging || dragState.offsetPx <= 0f) return Velocity.Zero
+        // The displaced player owns this vertical pull. Settle before the child list can consume
+        // the release velocity, otherwise a fast upward reversal is mistaken for a slow release.
+        dragState.finishDrag()
+        settledInPreFling = true
+        onSettle(available.y)
+        return Velocity(0f, available.y)
+    }
+
     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
         dragState.finishDrag()
+        if (settledInPreFling) { settledInPreFling = false; return Velocity.Zero }
         if (!enabled() || dragState.offsetPx <= 0f) return Velocity.Zero
         onSettle(available.y)
         return Velocity(0f, available.y)
     }
+}
+
+private const val NowPlayingPullResistance = 0.38f
+
+/** Keep resistance reversible and independent of the number of MOVE events. */
+internal fun nowPlayingPullDistance(offsetPx: Float, thresholdPx: Float): Float =
+    if (offsetPx > thresholdPx) thresholdPx + (offsetPx - thresholdPx) / NowPlayingPullResistance
+    else offsetPx
+
+internal fun nowPlayingPullOffset(offsetPx: Float, deltaPx: Float, thresholdPx: Float): Float {
+    val distance = (nowPlayingPullDistance(offsetPx, thresholdPx) + deltaPx).coerceAtLeast(0f)
+    return if (distance > thresholdPx) thresholdPx + (distance - thresholdPx) * NowPlayingPullResistance
+        else distance
 }
 
 @Composable
@@ -153,8 +181,8 @@ internal fun nowPlayingShouldDismiss(
     thresholdPx: Float,
     flingVelocityPx: Float,
     forceDismiss: Boolean = false,
-): Boolean = forceDismiss || offsetPx >= thresholdPx ||
-    (velocityY >= flingVelocityPx && offsetPx > thresholdPx * 0.28f)
+): Boolean = forceDismiss || (velocityY > -flingVelocityPx &&
+    (offsetPx >= thresholdPx || (velocityY >= flingVelocityPx && offsetPx > thresholdPx * 0.28f)))
 
 internal suspend fun settleNowPlayingDismiss(
     dragState: NowPlayingDismissDragState,
@@ -196,7 +224,7 @@ internal suspend fun settleNowPlayingDismiss(
 
 /**
  * Downward drags on non-scrolling surface dismiss the player.
- * A child that already consumed the pointer (pager, lyrics, header) keeps it.
+ * A child that consumes movement (pager, lyrics, header) keeps it; a button's DOWN alone does not.
  */
 @Composable
 internal fun Modifier.nowPlayingSurfaceDismiss(
@@ -215,21 +243,26 @@ internal fun Modifier.nowPlayingSurfaceDismiss(
         try {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                if (!enabledState.value()) return@awaitEachGesture
+                if (!enabledState.value() || currentEvent.changes.size != 1) return@awaitEachGesture
                 var dragging = false
                 var accumulated = Offset.Zero
                 tracker.resetTracking()
+                tracker.addPosition(down.uptimeMillis, down.position)
                 val pointerId = down.id
                 while (true) {
                     val event = awaitPointerEvent(if (dragging) PointerEventPass.Initial else PointerEventPass.Final)
                     val change = event.changes.firstOrNull { it.id == pointerId }
-                    val pressedCount = event.changes.count { it.pressed }
-                    if (change == null || !change.pressed || pressedCount > 1 || !enabledState.value()) {
+                    val singlePointer = event.changes.size == 1
+                    val consumed = change?.isConsumed == true && change.previousPressed
+                    if (change == null || !change.pressed || !singlePointer || consumed || !enabledState.value()) {
                         if (dragging) {
                             dragging = false
                             tracking = false
-                            if (change != null && !change.pressed && pressedCount <= 1 && enabledState.value()) {
+                            if (change != null && !change.pressed && change.previousPressed && singlePointer && !consumed && enabledState.value()) {
+                                val releaseDelta = change.position.y - change.previousPosition.y
+                                if (releaseDelta != 0f) deltaState.value(releaseDelta)
                                 tracker.addPosition(change.uptimeMillis, change.position)
+                                change.consume()
                                 stopState.value(tracker.calculateVelocity().y)
                             } else {
                                 cancelState.value()
@@ -237,8 +270,8 @@ internal fun Modifier.nowPlayingSurfaceDismiss(
                         }
                         break
                     }
-                    if (change.isConsumed && !dragging) break
                     val delta = change.position - change.previousPosition
+                    tracker.addPosition(change.uptimeMillis, change.position)
                     if (!dragging) {
                         accumulated += delta
                         val slop = viewConfiguration.touchSlop
@@ -247,11 +280,9 @@ internal fun Modifier.nowPlayingSurfaceDismiss(
                         if (!downward) break
                         dragging = true
                         tracking = true
-                        tracker.addPosition(change.uptimeMillis, change.position)
-                        deltaState.value(accumulated.y)
+                        deltaState.value(accumulated.y - slop)
                         change.consume()
                     } else {
-                        tracker.addPosition(change.uptimeMillis, change.position)
                         deltaState.value(delta.y)
                         change.consume()
                     }

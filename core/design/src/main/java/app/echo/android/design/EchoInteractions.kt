@@ -28,8 +28,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.absoluteValue
 
 /** Share the click source with Material controls; never intercept pointer input for feedback. */
@@ -206,13 +208,18 @@ fun rememberContentPagerNestedScroll(
     flingBehavior: TargetedFlingBehavior,
 ): NestedScrollConnection {
     val default = PagerDefaults.pageNestedScrollConnection(state, Orientation.Horizontal)
-    return remember(state, default, flingBehavior) {
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    return remember(state, default, flingBehavior, rtl) {
         object : NestedScrollConnection {
             private val dragAxis = EchoPagerDragAxis()
 
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
-                if (source == NestedScrollSource.UserInput && !dragAxis.ownsScroll(Offset.Zero, available)) Offset.Zero
-                else default.onPreScroll(available, source).copy(y = 0f)
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && !dragAxis.ownsScroll(Offset.Zero, available)) return Offset.Zero
+                // The default connection works in layout coordinates; nested scroll is physical.
+                val mirror = if (rtl) -1f else 1f
+                val consumed = default.onPreScroll(available.copy(x = available.x * mirror), source)
+                return Offset(consumed.x * mirror, 0f)
+            }
 
             override fun onPostScroll(
                 consumed: Offset,
@@ -221,7 +228,8 @@ fun rememberContentPagerNestedScroll(
             ): Offset {
                 if (source == NestedScrollSource.UserInput && !dragAxis.ownsScroll(consumed, available)) return Offset.Zero
                 if (source == NestedScrollSource.UserInput && available.x != 0f) {
-                    val consumedX = -state.dispatchRawDelta(-available.x)
+                    val sign = echoPagerScrollSign(rtl, state.layoutInfo.reverseLayout)
+                    val consumedX = sign * state.dispatchRawDelta(sign * available.x)
                     return Offset(x = consumedX, y = 0f)
                 }
                 return default.onPostScroll(consumed, available, source)
@@ -240,10 +248,13 @@ fun rememberContentPagerNestedScroll(
                         return Velocity.Zero
                     }
                     if (available.x != 0f || state.currentPageOffsetFraction.absoluteValue > 0.001f) {
+                        val sign = echoPagerScrollSign(rtl, state.layoutInfo.reverseLayout)
+                        var remaining = sign * available.x
                         state.scroll {
-                            with(flingBehavior) { performFling(-available.x) }
+                            remaining = with(flingBehavior) { performFling(sign * available.x) }
                         }
-                        return available.copy(y = 0f)
+                        // At a boundary the unused velocity remains available to the parent.
+                        return Velocity(available.x - sign * remaining, 0f)
                     }
                     return Velocity.Zero
                 } finally {

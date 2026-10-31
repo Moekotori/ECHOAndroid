@@ -5,6 +5,22 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PseudoRandomQueuePolicyTest {
+    @Test fun unevenArtistBucketsDoNotLeaveAvoidableRepeatsAtTheEnd() {
+        val artists = listOf("Intro", "A", "A", "A", "A", "B", "B", "C", "C")
+        val order = PseudoRandomQueuePolicy.spread((1..8).toList(), 0, artists)
+        assertEquals((1..8).toSet(), order.toSet())
+        assertEquals(8, order.size)
+        assertTrue((listOf(0) + order).zipWithNext().all { (a, b) -> artists[a] != artists[b] })
+    }
+
+    @Test fun artistSpacingRespectsTheCurrentArtistWithUnevenBuckets() {
+        val artists = listOf("A", "A", "A", "B", "B", "B", "C")
+        val order = PseudoRandomQueuePolicy.spread((1..6).toList(), 0, artists)
+        assertEquals((1..6).toSet(), order.toSet())
+        assertEquals(6, order.size)
+        assertTrue((listOf(0) + order).zipWithNext().all { (a, b) -> artists[a] != artists[b] })
+    }
+
     @Test fun artistSpacingKeepsEverySongAndCurrentTrackInPlace() {
         val artists = listOf("A", "A", "A", "B", "B", "B")
         val order = PseudoRandomQueuePolicy.order(artists.indices.toList(), 0, artists, true, Random(7))

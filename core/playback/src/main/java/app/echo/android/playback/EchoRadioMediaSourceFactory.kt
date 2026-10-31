@@ -19,8 +19,11 @@ import app.echo.android.model.radio.EchoRadioStation
 /** Live radio and podcast bytes go upstream without creating an offline song cache. */
 @UnstableApi
 internal class EchoRadioMediaSourceFactory(context: Context) : MediaSource.Factory {
-    private val songs = DefaultMediaSourceFactory(echoPlaybackDataSourceFactory(context),
-        EchoExtractorsFactory(echoRemoteAuthDataSourceFactory(context)))
+    private val songDataSources = echoPlaybackDataSourceFactory(context)
+    private val songExtractors = EchoExtractorsFactory(echoRemoteAuthDataSourceFactory(context))
+    private val songs = DefaultMediaSourceFactory(songDataSources, songExtractors)
+    private var drmProvider: DrmSessionManagerProvider? = null
+    private var errorPolicy: LoadErrorHandlingPolicy? = null
     private val radio = DefaultMediaSourceFactory(
         DefaultDataSource.Factory(
             context.applicationContext,
@@ -36,16 +39,25 @@ internal class EchoRadioMediaSourceFactory(context: Context) : MediaSource.Facto
     override fun createMediaSource(mediaItem: MediaItem): MediaSource =
         if (EchoRadioStation.isRadio(mediaItem.mediaId)) RadioSource(radio.createMediaSource(mediaItem))
         else if (mediaItem.mediaId.startsWith("podcast:")) radio.createMediaSource(mediaItem)
-        else songs.createMediaSource(mediaItem)
+        else mediaItem.cueClip()?.let { clip ->
+            DefaultMediaSourceFactory(songDataSources, EchoCueExtractorsFactory(songExtractors, clip)).also { factory ->
+                drmProvider?.let(factory::setDrmSessionManagerProvider)
+                errorPolicy?.let(factory::setLoadErrorHandlingPolicy)
+            // The CUE decoder/sink handles preroll and exact PCM bounds; keep the output continuous.
+            }.createMediaSource(mediaItem.buildUpon().setClippingConfiguration(
+                mediaItem.clippingConfiguration.buildUpon().setStartsAtKeyFrame(true).build()).build())
+        } ?: songs.createMediaSource(mediaItem)
 
     override fun getSupportedTypes(): IntArray = songs.supportedTypes
 
     override fun setDrmSessionManagerProvider(provider: DrmSessionManagerProvider): MediaSource.Factory = apply {
+        drmProvider = provider
         songs.setDrmSessionManagerProvider(provider)
         radio.setDrmSessionManagerProvider(provider)
     }
 
     override fun setLoadErrorHandlingPolicy(policy: LoadErrorHandlingPolicy): MediaSource.Factory = apply {
+        errorPolicy = policy
         songs.setLoadErrorHandlingPolicy(policy)
     }
 

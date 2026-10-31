@@ -3,6 +3,7 @@ package app.echo.android
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ensureActive
 
 object EchoLaunchActions {
     private val _nfcMusic = MutableStateFlow<String?>(null)
@@ -18,7 +19,18 @@ object EchoLaunchActions {
     private val _libraryShortcut = MutableStateFlow<app.echo.android.library.EchoLibraryShortcutRequest?>(null)
     val libraryShortcut = _libraryShortcut.asStateFlow()
     fun requestLibraryShortcut(request: app.echo.android.library.EchoLibraryShortcutRequest) { _libraryShortcut.value = request }
-    fun consumeLibraryShortcut() { _libraryShortcut.value = null }
+    /** Keep the effect key alive during catalog IO; a superseded lookup must not clear its replacement. */
+    internal suspend fun <T> resolveLibraryShortcut(
+        request: app.echo.android.library.EchoLibraryShortcutRequest,
+        resolve: suspend (String) -> T,
+    ): T {
+        val result = resolve(request.mediaId)
+        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+        if (!_libraryShortcut.compareAndSet(request, null)) {
+            throw kotlinx.coroutines.CancellationException("Library launch was superseded")
+        }
+        return result
+    }
 
     private val _openLyrics = MutableStateFlow(false)
     val openLyrics: StateFlow<Boolean> = _openLyrics.asStateFlow()

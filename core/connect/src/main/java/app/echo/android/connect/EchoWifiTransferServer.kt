@@ -156,15 +156,23 @@ class EchoWifiTransferServer(
             files++; bytes += length
             onReceiving(name)
             try {
-                val savedName = receive(name, length, input)
+                val body = object : FilterInputStream(input) {
+                    private fun checkActive() { if (!running.get() || Thread.currentThread().isInterrupted) throw InterruptedIOException("cancelled") }
+                    override fun read(): Int { checkActive(); return input.read().also { checkActive() } }
+                    override fun read(buffer: ByteArray, offset: Int, count: Int): Int {
+                        checkActive(); return input.read(buffer, offset, count).also { checkActive() }
+                    }
+                }
+                val savedName = receive(name, length, body)
                 needsScan = true
                 onResult(EchoWifiTransferResult(savedName, true))
                 runCatching { reply(client, 200, "saved") }
             } catch (error: Exception) {
-                val reason = when (error) {
-                    is IllegalArgumentException -> if (error.message == "name_conflict") "name_conflict" else "unsupported_file"
-                    is SecurityException -> "permission_lost"
-                    is InterruptedIOException, is SocketException -> "cancelled"
+                val reason = when {
+                    error.message == "cleanup_pending" -> "cleanup_pending"
+                    error is IllegalArgumentException -> if (error.message == "name_conflict") "name_conflict" else "unsupported_file"
+                    error is SecurityException -> "permission_lost"
+                    error is InterruptedIOException || error is SocketException -> "cancelled"
                     else -> "write_failed"
                 }
                 onResult(EchoWifiTransferResult(name, false, reason))

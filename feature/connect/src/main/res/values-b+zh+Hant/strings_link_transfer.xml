@@ -1,0 +1,24 @@
+<resources>
+    <string name="link_transfer_title">傳歌</string>
+    <string name="link_transfer_detail">僅目前 Echo Link 連線可用。在這裡選歌傳到電腦，或在電腦的傳歌面板選歌傳到手機。一次最多 32 個音訊檔案，每個不超過 1 GB。</string>
+    <string name="link_transfer_send">傳送手機歌曲</string>
+    <string name="link_transfer_receive">手機接收位置</string>
+    <string name="link_transfer_no_directory">接收前請選擇資料夾。同名檔案會自動另存。</string>
+    <string name="link_transfer_choose">選擇資料夾</string>
+    <string name="link_transfer_scan">加入曲庫</string>
+    <string name="link_transfer_incoming">電腦 → 手機</string>
+    <string name="link_transfer_outgoing">手機 → 電腦</string>
+    <string name="link_transfer_saved">已儲存</string>
+    <string name="link_transfer_failed">失敗</string>
+    <string name="link_transfer_cancelled">已取消</string>
+    <string name="link_transfer_working">傳輸中</string>
+    <string name="link_transfer_waiting">等待接收</string>
+    <string name="link_transfer_connection">連線已結束。請重新連接電腦，再啟動傳歌。</string>
+    <string name="link_transfer_directory_error">無法存取此資料夾，請重新選擇本機資料夾。</string>
+    <string name="link_transfer_unsupported">請將電腦端 ECHO 更新到支援傳歌的版本。</string>
+    <string name="link_transfer_files_error">請選擇不超過 32 個支援的音訊檔案，每個不超過 1 GB，且能讀取檔案大小。</string>
+    <string name="link_transfer_error">傳輸失敗，請檢查連線、檔案存取權限與剩餘空間後重試。</string>
+    <string name="link_transfer_close">關閉</string>
+    <string name="link_transfer_stop">停止傳輸</string>
+    <string name="link_transfer_start">重新啟動</string>
+</resources>

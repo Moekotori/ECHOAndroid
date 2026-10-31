@@ -34,10 +34,12 @@ private val LibraryLayoutDraftSaver = listSaver<EchoLibraryLayout, String>(
     save = { layout -> layout.normalized().order.map { section ->
         if (section in layout.hidden) "-${section.id}" else section.id
     } + (if (layout.showFileNames) listOf("@fileNames") else emptyList()) +
-        (if (layout.showPlayNext) listOf("@playNext") else emptyList()) + layout.hiddenTrackActions.map { "@menu:${it.id}" } },
+        (if (layout.showPlayNext) listOf("@playNext") else emptyList()) +
+        (if (layout.showAlbumArtists) listOf("@albumArtists") else emptyList()) + layout.hiddenTrackActions.map { "@menu:${it.id}" } },
     restore = { saved -> EchoLibraryLayout(
         showFileNames = "@fileNames" in saved,
         showPlayNext = "@playNext" in saved,
+        showAlbumArtists = "@albumArtists" in saved,
         hiddenTrackActions = saved.filter { it.startsWith("@menu:") }.mapNotNull { app.echo.android.model.settings.EchoTrackMenuAction.fromId(it.removePrefix("@menu:")) }.toSet(),
         order = saved.mapNotNull { EchoLibraryCategory.fromId(it.removePrefix("-")) },
         hidden = saved.filter { it.startsWith("-") }
@@ -71,6 +73,7 @@ internal fun LibraryLayoutEditor(
                 subtitle = stringResource(R.string.library_layout_detail),
             )
             LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                item(key = "duplicate-versions") { LibraryDuplicatesSettingsEntry() }
                 item(key = "file-names") {
                     Row(Modifier.fillMaxWidth().toggleable(value = draft.showFileNames, role = Role.Switch,
                         onValueChange = { draft = draft.copy(showFileNames = it) }).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -92,6 +95,16 @@ internal fun LibraryLayoutEditor(
                     }
                 }
                 item(key = "track-menu") { TrackMenuEditorRows(draft) { draft = it } }
+                item(key = "album-artists") {
+                    Row(Modifier.fillMaxWidth().toggleable(value = draft.showAlbumArtists, role = Role.Switch,
+                        onValueChange = { draft = draft.copy(showAlbumArtists = it) }).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.library_show_album_artists))
+                            Text(stringResource(R.string.library_show_album_artists_note), style = MaterialTheme.typography.bodySmall)
+                        }
+                        app.echo.android.design.EchoSwitch(draft.showAlbumArtists, onCheckedChange = null)
+                    }
+                }
                 itemsIndexed(draft.order, key = { _, section -> section.id }) { index, section ->
                     val label = section.viewMode().label()
                     EchoSheetOrderRow(

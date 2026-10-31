@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compressor_title">Dynamic compression</string>
+    <string name="compressor_detail">Reduce loud/quiet differences for low-volume listening. Gentle uses 2:1 compression; Night uses 4:1. Includes bounded makeup gain and peak protection. Changes samples; bypassed in strict passthrough.</string>
+    <string name="compressor_off">Off</string>
+    <string name="compressor_gentle">Gentle</string>
+    <string name="compressor_night">Night</string>
+    <string name="keyboard_help_title">Keyboard shortcuts</string>
+    <string name="keyboard_help_scope">Available while ECHO is in the foreground and no overlay or text input is active. Hold modifiers and press the key once. Seeking follows the current local or cast output.</string>
+    <string name="keyboard_tabs">Switch dock page</string>
+    <string name="keyboard_settings">Open settings</string>
+    <string name="keyboard_play">Play / pause</string>
+    <string name="keyboard_tracks">Next / previous track</string>
+    <string name="keyboard_seek">Seek forward / back 10 seconds</string>
+    <string name="keyboard_search">Open library search</string>
+    <string name="keyboard_close">Close</string>
+    <string name="keyboard_help_entry">Playback, seeking, search and navigation · Ctrl + /</string>
+</resources>

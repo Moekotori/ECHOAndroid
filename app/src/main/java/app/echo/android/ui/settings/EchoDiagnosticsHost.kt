@@ -18,8 +18,6 @@ internal fun EchoDiagnosticsHost(
     playbackStatus: EchoPlaybackStatus,
     isActive: Boolean,
     soundRequestId: Int,
-    equalizerRequestId: Int,
-    onCloseRequestedEqualizer: () -> Unit,
     onSwipeToConnect: () -> Unit,
     bluetoothCodecNeedsPermission: Boolean,
     onRequestBluetoothCodecPermission: () -> Unit,
@@ -28,17 +26,16 @@ internal fun EchoDiagnosticsHost(
     val channelBalanceState by viewModel.channelBalanceState.collectAsStateWithLifecycle()
     val opraState by viewModel.opraState.collectAsStateWithLifecycle()
     val replayGainScan by viewModel.replayGainScanState.collectAsStateWithLifecycle()
+    val volumeSettings by viewModel.volumeSettings.collectAsStateWithLifecycle()
     DiagnosticsScreen(
         isActive = isActive,
         soundRequestId = soundRequestId,
-        equalizerRequestId = equalizerRequestId,
-        onCloseRequestedEqualizer = onCloseRequestedEqualizer,
         onSwipeToConnect = onSwipeToConnect,
         status = playbackStatus,
         positionFlow = viewModel.playbackPosition,
         equalizerState = equalizerState,
         dspSettings = appSettings.dsp,
-        volumeSettings = appSettings.volume,
+        volumeSettings = volumeSettings,
         onVolumeSettings = viewModel::setVolumeSettings,
         replayGainScan = replayGainScan,
         onDspSettings = viewModel::setDspSettings,

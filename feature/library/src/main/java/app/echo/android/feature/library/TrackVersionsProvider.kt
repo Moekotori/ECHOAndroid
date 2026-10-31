@@ -5,12 +5,22 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.EchoTrackVersions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoModalSheet
+import app.echo.android.design.EchoSheetHeader
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 
 @Composable
 fun TrackVersionsProvider(
@@ -41,19 +51,31 @@ fun TrackVersionsProvider(
             onChoose = { id ->
                 saving = true; failed = false
                 scope.launch {
-                    try { currentSave(anchor, id); versions = loaded.copy(preferredTrackId = id) }
+                    try { currentSave(anchor, id); versions = currentLoad(anchor) }
                     catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { failed = true }
                     finally { saving = false }
                 }
-            }, onDismiss = { target = null })
-        else AlertDialog(onDismissRequest = { target = null },
-            title = { Text(stringResource(R.string.track_versions_title)) },
-            text = { Column {
-                if (failed) Text(stringResource(R.string.track_versions_error))
-                else CircularProgressIndicator()
-            } },
-            confirmButton = { if (failed) TextButton(onClick = { retry++ }) { Text(stringResource(R.string.remote_playlist_retry)) } },
-            dismissButton = { TextButton(onClick = { target = null }) { Text(stringResource(R.string.track_versions_close)) } })
+            }, onDismiss = { target = null }, onRetry = { retry++ })
+        else TrackVersionsLoadingSheet(failed, onRetry = { retry++ }, onDismiss = { target = null })
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TrackVersionsLoadingSheet(failed: Boolean, onRetry: () -> Unit, onDismiss: () -> Unit) {
+    EchoModalSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        EchoSheetHeader(stringResource(R.string.track_versions_title), trailing = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.track_versions_close)) }
+        })
+        Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (failed) {
+                Text(stringResource(R.string.track_versions_error), color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = onRetry) { Text(stringResource(R.string.duplicates_reload_versions)) }
+            } else {
+                if (!LocalEchoEffectivePerformanceMode.current.isLightweight) LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text(stringResource(R.string.duplicates_loading_versions), style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
 }

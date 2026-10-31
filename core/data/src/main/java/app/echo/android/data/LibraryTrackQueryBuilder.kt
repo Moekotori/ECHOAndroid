@@ -98,6 +98,7 @@ internal object LibraryTrackQueryBuilder {
         append(" WHERE ")
         append(if (localSources) LibraryScanPolicy.LocalSourceSql else LibraryScanPolicy.RemoteSourceSql)
         append(" AND library_tracks.id NOT IN (SELECT trackId FROM library_hidden_tracks)")
+        if (localSources) append(" AND ").append(LibraryDuplicateSql.visible("library_tracks"))
         if (query.isNotBlank() && useFts) append(" AND library_tracks_fts MATCH ?")
         librarySearchTerms(query).forEach {
             append(" AND ")
@@ -120,8 +121,8 @@ internal object LibraryTrackQueryBuilder {
     private fun trackSortOrder(sort: LibraryTrackSortMode): String =
         when (sort) {
             LibraryTrackSortMode.TitleDescending -> "library_tracks.title COLLATE NOCASE DESC"
-            LibraryTrackSortMode.ArtistDescending -> "library_tracks.artist COLLATE NOCASE DESC, library_tracks.album COLLATE NOCASE ASC, library_tracks.discNumber, library_tracks.trackNumber, library_tracks.title COLLATE NOCASE ASC"
-            LibraryTrackSortMode.AlbumDescending -> "library_tracks.album COLLATE NOCASE DESC, library_tracks.discNumber, library_tracks.trackNumber, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.ArtistDescending -> "library_tracks.artist COLLATE NOCASE DESC, library_tracks.album COLLATE NOCASE ASC, CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END, library_tracks.trackNumber, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.AlbumDescending -> "library_tracks.album COLLATE NOCASE DESC, CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END, library_tracks.trackNumber, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.DurationAscending -> "library_tracks.durationMs ASC, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.LeastPlayed -> "COALESCE(library_playback_stats.playCount, 0) ASC, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.YearAscending -> "CASE WHEN COALESCE(library_tracks.year, 0) <= 0 THEN 1 ELSE 0 END, library_tracks.year ASC, library_tracks.title COLLATE NOCASE ASC"
@@ -134,7 +135,7 @@ internal object LibraryTrackQueryBuilder {
             LibraryTrackSortMode.SampleRateDescending -> "CASE WHEN COALESCE(library_tracks.sampleRateHz, 0) <= 0 THEN 1 ELSE 0 END, library_tracks.sampleRateHz DESC, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.Format -> "$LibraryFileFormatSql ASC, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.ModifiedOldest -> "library_tracks.dateModifiedSeconds ASC, library_tracks.title COLLATE NOCASE ASC"
-            LibraryTrackSortMode.TrackNumber -> "COALESCE(library_tracks.discNumber, 0), COALESCE(library_tracks.trackNumber, 0), library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.TrackNumber -> "CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END, COALESCE(library_tracks.trackNumber, 0), library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.Title -> "library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.Duration -> "library_tracks.durationMs DESC, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.FrequentlyPlayed -> """
@@ -153,14 +154,14 @@ internal object LibraryTrackQueryBuilder {
                 library_tracks.artist COLLATE NOCASE ASC,
                 CASE WHEN library_tracks.album IS NULL OR trim(library_tracks.album) = '' THEN 1 ELSE 0 END ASC,
                 library_tracks.album COLLATE NOCASE ASC,
-                CASE WHEN library_tracks.discNumber IS NULL THEN 0 ELSE library_tracks.discNumber END ASC,
+                CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END ASC,
                 CASE WHEN library_tracks.trackNumber IS NULL THEN 0 ELSE library_tracks.trackNumber END ASC,
                 library_tracks.title COLLATE NOCASE ASC
             """.trimIndent()
             LibraryTrackSortMode.Album -> """
                 CASE WHEN library_tracks.album IS NULL OR trim(library_tracks.album) = '' THEN 1 ELSE 0 END ASC,
                 library_tracks.album COLLATE NOCASE ASC,
-                CASE WHEN library_tracks.discNumber IS NULL THEN 0 ELSE library_tracks.discNumber END ASC,
+                CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END ASC,
                 CASE WHEN library_tracks.trackNumber IS NULL THEN 0 ELSE library_tracks.trackNumber END ASC,
                 library_tracks.title COLLATE NOCASE ASC
             """.trimIndent()

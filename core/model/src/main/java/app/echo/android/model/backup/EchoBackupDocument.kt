@@ -68,6 +68,7 @@ data class EchoBackupSettings(
     val shuffleRecentTrackCount: Int? = null,
     val trackTransitions: EchoTrackTransitionOptions? = null,
     val equalizerEnabled: Boolean? = null,
+    val compressorMode: String? = null,
     val mseb: app.echo.android.model.playback.EchoMsebState? = null,
     val msebUserPresets: List<app.echo.android.model.playback.EchoMsebUserPreset>? = null,
     val equalizerPreset: String? = null,

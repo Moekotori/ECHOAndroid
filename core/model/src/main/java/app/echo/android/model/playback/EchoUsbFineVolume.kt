@@ -17,6 +17,19 @@ object EchoUsbFineVolume {
     fun percent(step: Int): Int = (gain(step) * 100).roundToInt()
     fun deviceKey(vendor: Int?, product: Int?): String? =
         if (vendor in 0..65535 && product in 0..65535) "$vendor:$product" else null
+    /** Initial open can precede the asynchronous settings/device binding. Apply its ceiling now. */
+    fun gainForDevice(options: EchoUsbOutputOptions, vendor: Int?, product: Int?): Float {
+        val key = deviceKey(vendor, product) ?: return options.volumeGain
+        if (options.volumeDeviceKey == key) return options.volumeGain
+        val saved = options.deviceVolumeSteps[key] ?: return options.volumeGain
+        return minOf(options.volumeGain, gain(saved))
+    }
+
+    fun mergeDeviceSnapshot(requested: EchoUsbOutputOptions, current: EchoUsbOutputOptions): EchoUsbOutputOptions =
+        requested.copy(volumeDeviceKey = current.volumeDeviceKey, deviceVolumeSteps = current.deviceVolumeSteps,
+            volumeStep = if (requested.volumeDeviceKey == current.volumeDeviceKey) requested.volumeStep else current.volumeStep,
+            volumePercent = if (requested.volumeDeviceKey == current.volumeDeviceKey) requested.volumePercent else current.volumePercent)
+
     fun validKey(key: String): Boolean = key.split(':').let { parts ->
         parts.size == 2 && parts.all { it.toIntOrNull() in 0..65535 }
     }

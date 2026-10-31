@@ -45,6 +45,7 @@ import app.echo.android.model.settings.EchoSavedColorThemes
 import app.echo.android.model.settings.toEchoOpaqueColor
 import app.echo.android.model.settings.EchoPerformanceMode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -237,6 +238,9 @@ class EchoSettingsStore(
         cacheStartupThemeSnapshot(settings.toStartupThemeSnapshot(), synchronous)
     }
 
+    val volumeSnapshot: Flow<EchoVolumeSnapshot> = context.echoSettings.data
+        .map(EchoVolumePreferences::snapshot).distinctUntilChanged()
+
     val appSettings: Flow<EchoAppSettings> =
         context.echoSettings.data.mapSettingsSnapshot(
             revision = { preferences ->
@@ -308,6 +312,7 @@ class EchoSettingsStore(
                     preferences[Keys.DspLimiterCeiling] ?: -1f,
                     preferences[Keys.DspCrossfeedEnabled] ?: false,
                     preferences[Keys.DspCrossfeedAmount] ?: 0.3f,
+                    app.echo.android.model.playback.EchoCompressorMode.fromId(preferences[Keys.DspCompressor]),
                 ).normalized,
                 equalizerEnabled = preferences[Keys.EqualizerEnabled] ?: false,
                 mseb = EchoMsebCodec.decode(preferences[Keys.Mseb]),
@@ -592,7 +597,7 @@ class EchoSettingsStore(
         context.echoSettings.edit { prefs ->
             val current = EchoUsbOutputOptionsCodec.decode(prefs[Keys.UsbOutputOptions])
             // A settings control may carry a snapshot from before the last device change.
-            val next = options.copy(volumeDeviceKey = current.volumeDeviceKey, deviceVolumeSteps = current.deviceVolumeSteps)
+            val next = app.echo.android.model.playback.EchoUsbFineVolume.mergeDeviceSnapshot(options, current)
             prefs[Keys.UsbOutputOptions] = EchoUsbOutputOptionsCodec.encode(rememberUsbVolume(next))
         }
     }
@@ -633,13 +638,14 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.UsbExclusiveAutoRequestOnStartup] = enabled }
     }
 
-    suspend fun setVolumeSettings(value: app.echo.android.model.playback.EchoVolumeSettings) {
-        context.echoSettings.edit { it[EchoVolumePreferences.Key] = EchoVolumePreferences.encode(value) }
+    suspend fun setVolumeSettings(value: app.echo.android.model.playback.EchoVolumeSettings, expectedRestoreVersion: Long? = null) {
+        context.echoSettings.edit { EchoVolumePreferences.write(it, value, expectedRestoreVersion) }
     }
 
     suspend fun setDspSettings(value: app.echo.android.model.playback.EchoDspSettings) {
         val state = value.normalized
         context.echoSettings.edit {
+            it[Keys.DspCompressor] = state.compressor.id
             it[Keys.DspLimiterEnabled] = state.limiterEnabled
             it[Keys.DspLimiterCeiling] = state.limiterCeilingDb
             it[Keys.DspCrossfeedEnabled] = state.crossfeedEnabled
@@ -1461,7 +1467,12 @@ class EchoSettingsStore(
         playbackQueueIdentityLoaded = true
         val savedResume = context.echoPlaybackResumeSettings.data.first()[PlaybackResumeKey]
             ?.let(::parsePlaybackResume)
-        return savedSession.withPlaybackResume(savedResume)
+        // Retain the stored identity so the next playback save writes recovered CUE ranges.
+        return savedSession.restorePlaybackSession(savedResume) { ids ->
+            withContext(Dispatchers.IO) {
+                EchoLibraryDatabase.create(context).trackDao().getTracksByIds(ids)
+            }
+        }
     }
 
     suspend fun clearEchoLinkPcEndpoint() {
@@ -1704,7 +1715,7 @@ class EchoSettingsStore(
             backup.replayGainEnabled?.let { prefs[Keys.ReplayGainEnabled] = it }
             backup.replayGainMode?.let { prefs[Keys.ReplayGainMode] = it }
             backup.replayGainPreampDb?.let { prefs[Keys.ReplayGainPreampDb] = it }
-            backup.volume?.let { prefs[EchoVolumePreferences.Key] = EchoVolumePreferences.encode(it) }
+            backup.volume?.let { EchoVolumePreferences.restore(prefs, it) }
             backup.shuffleMode?.let { prefs[Keys.ShuffleMode] = EchoShuffleMode.fromId(it).id }
             backup.shuffleSpreadArtists?.let { prefs[Keys.ShuffleSpreadArtists] = it }
             backup.shuffleRecentTrackCount?.let { prefs[Keys.ShuffleRecentTrackCount] = it.coerceIn(0, EchoShuffleOptions.MaxRecentTracks) }
@@ -1715,6 +1726,7 @@ class EchoSettingsStore(
                 prefs[Keys.ManualPlaybackFade] = transitions.playPauseFadeEnabled
             }
             backup.equalizerEnabled?.let { prefs[Keys.EqualizerEnabled] = it }
+            backup.compressorMode?.let { prefs[Keys.DspCompressor] = app.echo.android.model.playback.EchoCompressorMode.fromId(it).id }
             backup.mseb?.let { prefs[Keys.Mseb] = EchoMsebCodec.encode(it) }
             backup.msebUserPresets?.let { prefs[Keys.MsebUserPresets] = EchoMsebPresetCodec.encode(it) }
             backup.equalizerPreset?.let { prefs[Keys.EqualizerPreset] = it }
@@ -1818,6 +1830,7 @@ class EchoSettingsStore(
         val StopOnTaskRemoved = booleanPreferencesKey("stop_on_task_removed")
         val PauseOnAudioDisconnect = booleanPreferencesKey("pause_on_audio_disconnect")
         val ResumeOnAudioReconnect = booleanPreferencesKey("resume_on_audio_reconnect")
+        val DspCompressor = stringPreferencesKey("dsp_compressor")
         val DspLimiterEnabled = booleanPreferencesKey("dsp_limiter_enabled")
         val DspLimiterCeiling = floatPreferencesKey("dsp_limiter_ceiling")
         val DspCrossfeedEnabled = booleanPreferencesKey("dsp_crossfeed_enabled")
@@ -2078,6 +2091,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         shuffleRecentTrackCount = shuffleOptions.normalized.recentTrackCount,
         trackTransitions = trackTransitions,
         equalizerEnabled = equalizerEnabled,
+        compressorMode = dsp.compressor.id,
         mseb = mseb,
         msebUserPresets = msebUserPresets,
         equalizerPreset = equalizerPreset,
@@ -2156,6 +2170,8 @@ internal fun EchoSavedPlaybackSession.toPreferenceValue(): String =
                             put("album", track.album)
                             put("artworkUri", track.artworkUri)
                             put("durationMs", track.durationMs.coerceAtLeast(0L))
+                            put("clipStartMs", track.clipStartMs.coerceAtLeast(0L))
+                            put("clipEndMs", track.clipEndMs.coerceAtLeast(0L))
                             track.sampleRateHz?.takeIf { it > 0 }?.let { put("sampleRateHz", it) }
                             track.trackNumber?.takeIf { it > 0 }?.let { put("trackNumber", it) }
                             track.discNumber?.takeIf { it > 0 }?.let { put("discNumber", it) }
@@ -2195,6 +2211,13 @@ internal fun EchoSavedPlaybackSession.playbackQueueIdentity(): String {
         ).forEach { value ->
             digest.update(value.toByteArray(StandardCharsets.UTF_8))
             digest.update(0.toByte())
+        }
+        // Keep legacy identities for whole files; changed CUE bounds must rewrite the queue.
+        if (track.clipStartMs > 0L || track.clipEndMs > 0L) {
+            listOf("clip", track.clipStartMs.toString(), track.clipEndMs.toString()).forEach { value ->
+                digest.update(value.toByteArray(StandardCharsets.UTF_8))
+                digest.update(0.toByte())
+            }
         }
     }
     return digest.digest().joinToString(separator = "") { byte ->
@@ -2274,6 +2297,8 @@ internal fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
                         trackNumber = item.optInt("trackNumber").takeIf { it > 0 },
                         discNumber = item.optInt("discNumber").takeIf { it > 0 },
                         sourceId = item.optString("sourceId").takeIf { it.isNotBlank() },
+                        clipStartMs = item.optLong("clipStartMs").coerceAtLeast(0L),
+                        clipEndMs = item.optLong("clipEndMs").coerceAtLeast(0L),
                     ),
                 )
             }

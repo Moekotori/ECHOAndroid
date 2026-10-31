@@ -151,8 +151,12 @@ internal fun LibraryPagerTabs(
     onSelectMode: (LibraryViewMode) -> Unit,
     modes: List<LibraryViewMode>,
     pager: PagerState? = null,
+    showAlbumArtists: Boolean = false,
 ) {
-    LibraryTextTabs(modes.map { it.label() }, modes.indexOf(selectedMode), { onSelectMode(modes[it]) }, pager = pager)
+    LibraryTextTabs(modes.map {
+        if (it == LibraryViewMode.Artists && showAlbumArtists) stringResource(L10nR.string.library_album_artists)
+        else it.label()
+    }, modes.indexOf(selectedMode), { onSelectMode(modes[it]) }, pager = pager)
 }
 
 @Composable

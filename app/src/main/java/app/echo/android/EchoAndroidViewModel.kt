@@ -156,6 +156,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             restore = { tracks, index, position -> preferredPlayback.invalidate()
                 playbackController.playQueue(tracks, index, startPositionMs = position) })
     }
+    internal val mediaInspection by lazy { MediaInspectionController(getApplication(), repository) }
     internal val libraryExperience = LibraryExperienceController(repository, application, remoteLibraryTools::setFavorite)
     internal val playlistTools = PlaylistManagementController(application, repository, viewModelScope, remoteLibraryTools::setFavorite)
     internal val unifiedSearch = UnifiedSearchController(repository, viewModelScope)
@@ -219,6 +220,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     internal suspend fun restoreAllLibraryTracks() = repository.restoreAllHiddenTracks()
 
     internal suspend fun trackVersions(track: EchoTrack) = repository.trackVersions(track)
+    internal val duplicateLibrary by lazy { LibraryDuplicatesController(application, viewModelScope) { !scanState.value.isScanning } }
     internal suspend fun setPreferredTrackVersion(track: EchoTrack, id: String?) = repository.setPreferredTrackVersion(track, id)
     private suspend fun playPreferredQueue(
         queue: List<EchoTrack>, startIndex: Int,
@@ -1343,6 +1345,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.cyclePlayMode()
     }
 
+    internal suspend fun previewEncodedLyrics(uri: String, charset: String?): String =
+        lyricsController.previewEncodedLyrics(Uri.parse(uri), charset).lines.take(16).joinToString("\n") { it.text }
+
+    internal suspend fun importEncodedLyrics(trackId: String, uri: String, charset: String?): Boolean =
+        lyricsController.importEncodedLyrics(Uri.parse(uri), trackId, charset)
+
     fun importLyrics(uri: Uri) {
         val trackId = playbackController.currentTrackId
         lyricsController.importLyrics(uri, trackId) { lyrics, version ->
@@ -1590,9 +1598,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    val volumeSettings = getApplication<EchoApplication>().appVolumeController.state
+
     fun setVolumeSettings(value: app.echo.android.model.playback.EchoVolumeSettings) {
-        EchoPlaybackProcessRuntime.setVolumeSettings(value)
-        updateSettings { setVolumeSettings(value) }
+        getApplication<EchoApplication>().appVolumeController.set(value)
     }
 
     fun setDspSettings(value: app.echo.android.model.playback.EchoDspSettings) {

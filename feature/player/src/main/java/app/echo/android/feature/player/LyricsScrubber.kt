@@ -32,6 +32,7 @@ internal fun LyricsScrubber(
     Column(Modifier.fillMaxWidth()) {
         LinearPlayerSeekBar(
             trackKey = trackKey,
+            durationMs = duration,
             fraction = fraction,
             engaged = preview != null,
             enabled = duration > 0L,

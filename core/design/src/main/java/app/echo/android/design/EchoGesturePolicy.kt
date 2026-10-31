@@ -33,3 +33,7 @@ fun echoPagerOwnsFling(consumed: Velocity, available: Velocity, pageOffsetFracti
         Offset(consumed.x, consumed.y), Offset(available.x, available.y),
     )
 }
+
+/** Convert physical finger movement into PagerState's logical forward direction (and back). */
+internal fun echoPagerScrollSign(rtl: Boolean, reverseLayout: Boolean): Float =
+    if (rtl != reverseLayout) 1f else -1f

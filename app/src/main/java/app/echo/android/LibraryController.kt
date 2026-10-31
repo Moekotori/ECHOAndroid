@@ -129,8 +129,10 @@ internal class LibraryController(
             .cachedIn(scope)
 
     val artists: Flow<PagingData<ArtistSummary>> =
-        combine(debouncedLibraryQuery, _artistSortMode) { query, sort -> query to sort }
-            .flatMapLatest { (query, sort) -> repository.pagedArtists(query, sort) }
+        combine(debouncedLibraryQuery, _artistSortMode,
+            settingsStore.appSettings.map { it.libraryLayout.showAlbumArtists }.distinctUntilChanged(),
+        ) { query, sort, albumArtists -> Triple(query, sort, albumArtists) }
+            .flatMapLatest { (query, sort, albumArtists) -> repository.pagedArtists(query, sort, albumArtists) }
             .cachedIn(scope)
 
     val genres: Flow<PagingData<app.echo.android.model.library.GenreSummary>> =

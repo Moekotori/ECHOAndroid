@@ -192,11 +192,14 @@ class EchoLibraryRepository(
     fun pagedArtists(
         query: String? = null,
         sort: ArtistSortMode = ArtistSortMode.Name,
+        showAlbumArtists: Boolean = false,
     ): Flow<PagingData<ArtistSummary>> =
         Pager(
             config = defaultPagingConfig(),
             pagingSourceFactory = {
-                database.trackDao().pageArtists(query?.trim()?.takeIf { it.isNotBlank() }, sort.name)
+                val search = query?.trim()?.takeIf { it.isNotBlank() }
+                if (showAlbumArtists) database.trackDao().pageAlbumArtists(LibraryAlbumArtistQuery.artists(search, sort.name))
+                else database.trackDao().pageArtists(search, sort.name)
             },
         ).flow
 
@@ -282,16 +285,22 @@ class EchoLibraryRepository(
 
     fun pagedArtistAlbums(artistKey: String): Flow<PagingData<AlbumSummary>> =
         Pager(config = defaultPagingConfig(), pagingSourceFactory = {
-            database.trackDao().pageAlbumsByArtist(artistKey)
+            if (LibraryAlbumArtistQuery.owns(artistKey)) database.trackDao().pageAlbumsByAlbumArtist(LibraryAlbumArtistQuery.albums(artistKey))
+            else database.trackDao().pageAlbumsByArtist(artistKey)
         }).flow
 
     fun observeArtistSummary(artistKey: String): Flow<ArtistSummary?> =
-        database.trackDao().observeArtistSummary(artistKey)
+        if (LibraryAlbumArtistQuery.owns(artistKey)) database.trackDao().observeAlbumArtistSummary(LibraryAlbumArtistQuery.summary(artistKey))
+        else database.trackDao().observeArtistSummary(artistKey)
 
     fun pagedArtistTracks(artistKey: String, query: String? = null, sort: LibraryTrackSortMode = LibraryTrackSortMode.Album): Flow<PagingData<LibraryTrackEntity>> =
         Pager(
             config = defaultPagingConfig(),
-            pagingSourceFactory = { database.trackDao().pageTracksByArtist(artistKey, query?.trim()?.takeIf { it.isNotEmpty() }, sort.name) },
+            pagingSourceFactory = {
+                val search = query?.trim()?.takeIf { it.isNotEmpty() }
+                if (LibraryAlbumArtistQuery.owns(artistKey)) database.trackDao().pageTracksSorted(LibraryAlbumArtistQuery.tracks(artistKey, search, sort.name))
+                else database.trackDao().pageTracksByArtist(artistKey, search, sort.name)
+            },
         ).flow
 
     fun pagedFolderTracks(folderKey: String): Flow<PagingData<LibraryTrackEntity>> =
@@ -744,7 +753,8 @@ class EchoLibraryRepository(
     }
 
     suspend fun artistTracks(artistKey: String): List<LibraryTrackEntity> =
-        database.trackDao().getTracksByArtist(artistKey)
+        if (LibraryAlbumArtistQuery.owns(artistKey)) database.trackDao().queryTracks(LibraryAlbumArtistQuery.tracks(artistKey))
+        else database.trackDao().getTracksByArtist(artistKey)
 
     suspend fun queueAroundTrack(
         query: String?,
@@ -2183,7 +2193,9 @@ class EchoLibraryRepository(
 
     suspend fun localTitleIndex(letter: Char): Int {
         require(letter in 'A'..'Z')
-        return database.trackDao().countLocalTracksBeforeTitle(letter.toString())
+        return database.duplicateDao().count(SimpleSQLiteQuery("""SELECT COUNT(*) FROM library_tracks t
+            WHERE t.source IN ('mediastore','saf') AND t.id NOT IN (SELECT trackId FROM library_hidden_tracks)
+            AND ${LibraryDuplicateSql.visible("t")} AND t.title COLLATE NOCASE < ?""", arrayOf(letter.toString())))
     }
 
     suspend fun localTrackIndex(trackId: String, query: String, sort: LibraryTrackSortMode, filter: LibraryTrackFilter = LibraryTrackFilter()): Int? =
@@ -2306,7 +2318,7 @@ class EchoLibraryRepository(
             WHERE (source = 'mediastore' OR source = 'saf')
               AND albumKey = ?
             ORDER BY
-                CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+                CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
                 CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
                 title COLLATE NOCASE ASC
             LIMIT ?
@@ -2321,7 +2333,7 @@ class EchoLibraryRepository(
             WHERE source = ?
               AND albumKey = ?
             ORDER BY
-                CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+                CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
                 CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
                 title COLLATE NOCASE ASC
             LIMIT ?
@@ -2330,14 +2342,15 @@ class EchoLibraryRepository(
         )
 
     private fun artistPlaybackQuery(artistKey: String, limit: Int): SimpleSQLiteQuery =
-        SimpleSQLiteQuery(
+        if (LibraryAlbumArtistQuery.owns(artistKey)) LibraryAlbumArtistQuery.tracks(artistKey, limit = limit)
+        else SimpleSQLiteQuery(
             """
             SELECT * FROM visible_library_tracks
             WHERE (source = 'mediastore' OR source = 'saf')
               AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = ?)
             ORDER BY
                 album COLLATE NOCASE ASC,
-                CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+                CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
                 CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
                 title COLLATE NOCASE ASC
             LIMIT ?

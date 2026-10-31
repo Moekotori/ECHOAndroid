@@ -24,6 +24,7 @@ internal fun signalProcessingStage(
         if (equalizer.mseb.active) add(stringResource(R.string.mseb_title))
         if (balance.active) add(stringResource(R.string.channel_balance))
         if (status.replayGainEnabled) add(stringResource(R.string.dsp_loudness))
+        if (dsp.compressor != EchoCompressorMode.Off) add(stringResource(R.string.compressor_title))
         if (dsp.limiterEnabled) add(stringResource(R.string.dsp_limiter))
         if (dsp.crossfeedEnabled) add(stringResource(R.string.dsp_crossfeed))
         if (status.playbackSpeed != 1f || status.playbackPitch != 1f) add(stringResource(R.string.path_speed_pitch))
@@ -63,6 +64,11 @@ internal fun signalProcessingStage(
             add(stringResource(R.string.path_tag_gain) to (status.replayGainTrackGainDb?.let(::formatEqGain) ?: unknown))
             add(stringResource(R.string.path_gain_preamp) to formatEqGain(status.replayGainPreampDb))
         }
+        add(stringResource(R.string.compressor_title) to stringResource(when (dsp.compressor) {
+            EchoCompressorMode.Off -> R.string.compressor_off
+            EchoCompressorMode.Gentle -> R.string.compressor_gentle
+            EchoCompressorMode.Night -> R.string.compressor_night
+        }))
         add(stringResource(R.string.dsp_limiter) to if (dsp.limiterEnabled)
             stringResource(R.string.dsp_ceiling, dsp.limiterCeilingDb) else off)
         add(stringResource(R.string.dsp_crossfeed) to if (dsp.crossfeedEnabled)

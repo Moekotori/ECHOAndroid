@@ -678,6 +678,9 @@ internal object AudioFileTagRewriter {
         return null
     }
 
+    internal fun readableId3Payload(frame: ReadId3Frame, majorVersion: Int): ByteArray? =
+        readableId3Payload(Id3Frame(frame.id, frame.flags, frame.payload), majorVersion)
+
     private fun readableId3Payload(frame: Id3Frame, majorVersion: Int): ByteArray? {
         val flags = frame.flags[1].toInt() and 0xFF
         // Compressed/encrypted frames need a codec/key; leave those to the platform fallback.

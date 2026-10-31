@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_album_artists">專輯藝術家</string>
+    <string name="library_show_album_artists">藝術家顯示為專輯藝術家</string>
+    <string name="library_show_album_artists_note">依專輯藝術家分類本機音樂；未填寫時使用歌曲藝術家。</string>
+</resources>

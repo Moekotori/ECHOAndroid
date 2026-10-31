@@ -47,7 +47,10 @@ internal class UsbDacVolumeController(raw: ByteArray, format: UsbAudioStreamingF
     fun request(mode: String, percent: Int) = requestGain(mode, percent.coerceIn(0, 100) / 100f)
     @Synchronized fun requestGain(mode: String, gain: Float) {
         if (closed) return
-        desired = Desired(mode, gain.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f); revision++
+        val next = Desired(mode, gain.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f)
+        // A newer quieter request must take effect even while the control worker is settling.
+        if (next.gain < desired.gain) ramp.target = minOf(ramp.target, next.gain)
+        desired = next; revision++
         if (scheduled) return
         scheduled = true
         try { worker.execute {
@@ -88,22 +91,33 @@ internal class UsbDacVolumeController(raw: ByteArray, format: UsbAudioStreamingF
         val compensation = if (reference != null && db != null) 10.0.pow((reference - db) / (256.0 * 20.0)) else 1.0
         return (value.gain * compensation).toFloat().coerceIn(0f, 1f) // Never digitally boost.
     }
+    @Synchronized private fun setTarget(value: Desired, db: Int?) {
+        ramp.target = gain(value.copy(gain = minOf(value.gain, desired.gain)), db)
+    }
+    private fun externalChange(value: Desired, observedDb: Int, observedMute: Boolean) {
+        currentDb = observedDb
+        originalDb = minOf(originalDb ?: observedDb, observedDb)
+        originalMute = observedMute
+        changedHardware = false; failedHardware = true; failureReason = "device_changed"
+        setTarget(value, observedDb)
+        state = UsbDacVolumeState(value.mode, "software", true, false, observedDb / 256f, reason = failureReason)
+    }
     private fun apply(value: Desired) {
         if (fatal) return
         val software = value.mode == "software"
         if (software && control == null) {
-            ramp.target = value.gain
+            setTarget(value, currentDb)
             state = UsbDacVolumeState(requested = value.mode)
             return
         }
         if (!playing) {
-            ramp.target = gain(value, currentDb)
+            setTarget(value, currentDb)
             state = state.copy(requested = value.mode, handoff = false, reason = "waiting_for_playback")
             return
         }
         val unavailable = if (!software && !failedHardware) inspect() else null
         if (unavailable != null || failedHardware) {
-            ramp.target = gain(value, currentDb)
+            setTarget(value, currentDb)
             state = UsbDacVolumeState(value.mode, "software", true, false, currentDb?.div(256f), reason = unavailable ?: failureReason ?: "control_failed")
             return
         }
@@ -117,11 +131,8 @@ internal class UsbDacVolumeController(raw: ByteArray, format: UsbAudioStreamingF
             return
         }
         if (observedDb != currentDb || observedMute != originalMute) {
-            // A physical control/another owner changed the device. Stop borrowing its old baseline.
-            currentDb = observedDb; originalDb = observedDb; originalMute = observedMute
-            changedHardware = false; failedHardware = true; failureReason = "device_changed"
-            ramp.target = value.gain
-            state = UsbDacVolumeState(value.mode, "software", true, false, observedDb / 256f, reason = failureReason)
+            // Keep an externally reduced level, and never adopt an increased level as a new ceiling.
+            externalChange(value, observedDb, observedMute)
             return
         }
         val desiredDb = if (software) baseline else {
@@ -129,7 +140,7 @@ internal class UsbDacVolumeController(raw: ByteArray, format: UsbAudioStreamingF
             range!!.quantize((baseline.toLong() + delta).coerceAtLeast(-32767).toInt()).coerceAtMost(baseline)
         }
         if (desiredDb == currentDb) {
-            ramp.target = gain(value, currentDb)
+            setTarget(value, currentDb)
             state = UsbDacVolumeState(value.mode, if (software) "software" else "hardware", true, true, currentDb?.div(256f))
             return
         }
@@ -138,44 +149,69 @@ internal class UsbDacVolumeController(raw: ByteArray, format: UsbAudioStreamingF
         ramp.target = 0f
         Thread.sleep(settleMs.coerceIn(150, 3000))
         if (closed) return
+        if (desired != value) return // Superseded requests must not restore their old louder gain.
         if (!playing) {
-            ramp.target = gain(value, currentDb)
+            setTarget(value, currentDb)
             state = state.copy(handoff = false, reason = "waiting_for_playback")
             return
         }
+        // Recheck after the drain wait: physical controls may have changed during that interval.
+        val settledDb = device.readVolume()
+        val settledMute = device.readMute()
+        if (settledDb == null || settledMute == null) {
+            fatal = true; ramp.target = 0f
+            state = UsbDacVolumeState(value.mode, "muted", true, false, reason = "readback_failed")
+            return
+        }
+        if (settledDb != currentDb || settledMute != originalMute) {
+            externalChange(value, settledDb, settledMute)
+            return
+        }
         if (!device.writeMute(true)) {
-            failedHardware = true; failureReason = "mute_failed"
-            // A mute request may have taken effect despite a failed readback. Restore it explicitly.
-            val restored = device.writeMute(originalMute ?: false)
-            if (!restored) { fatal = true; ramp.target = 0f }
-            else ramp.target = gain(value, currentDb)
-            state = UsbDacVolumeState(value.mode, if (fatal) "muted" else "software", true, false,
-                currentDb?.div(256f), reason = "mute_failed")
+            // An unverified mute cannot authorize a gain change or a subsequent unmute.
+            fatal = true; ramp.target = 0f
+            state = UsbDacVolumeState(value.mode, "muted", true, false, reason = "mute_failed")
             return
         }
         ramp.resetWhileMuted()
         changedHardware = true
         val verified = device.writeVolume(desiredDb)
         currentDb = if (verified) desiredDb else device.readVolume()
-        if (currentDb == null || !device.writeMute(originalMute ?: false)) {
+        if (currentDb == null || currentDb!! > baseline || !verified) {
+            fatal = true; ramp.target = 0f
+            state = UsbDacVolumeState(value.mode, "muted", true, false, reason = "readback_failed")
+            return
+        }
+        setTarget(value, currentDb)
+        if (!device.writeMute(originalMute ?: false)) {
             fatal = true; ramp.target = 0f
             state = UsbDacVolumeState(value.mode, "muted", true, false, reason = "readback_failed")
             return
         }
         failedHardware = !verified
         failureReason = if (verified) null else "readback_failed"
-        ramp.target = gain(value, currentDb)
+        setTarget(value, currentDb)
         state = UsbDacVolumeState(value.mode, if (!software && verified) "hardware" else "software", true,
             verified, currentDb?.div(256f), reason = if (verified) null else "readback_failed")
     }
-    override fun close() {
+    override fun close() = close(restoreHardware = true)
+    fun close(restoreHardware: Boolean) {
         closed = true; ramp.target = 0f; worker.shutdownNow()
         // Caller has stopped the USB writer. Restore borrowed device settings before releasing endpoint 0.
         synchronized(controlLock) {
             val device = control
             val baseline = originalDb
             if (changedHardware && device != null && baseline != null) {
+                if (!restoreHardware) {
+                    state = state.copy(readbackVerified = false, reason = "restore_failed", handoff = false)
+                    return
+                }
                 runCatching {
+                    // Do not undo a physical volume/mute change made since our last command.
+                    if (device.readVolume() != currentDb || device.readMute() != originalMute) {
+                        state = state.copy(readbackVerified = false, reason = "device_changed", handoff = false)
+                        return@runCatching
+                    }
                     if (!device.writeMute(true) || !device.writeVolume(baseline) || !device.writeMute(originalMute ?: false))
                         state = state.copy(readbackVerified = false, reason = "restore_failed", handoff = false)
                 }.onFailure { state = state.copy(readbackVerified = false, reason = "restore_failed", handoff = false) }

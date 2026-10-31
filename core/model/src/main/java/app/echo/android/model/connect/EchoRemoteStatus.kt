@@ -7,4 +7,6 @@ data class EchoRemoteStatus(
     val playback: EchoRemotePlaybackSnapshot = EchoRemotePlaybackSnapshot(),
     val error: String? = null,
     val controlPending: Boolean = false,
+    /** Distinguishes reconnects to the same PC so file-transfer sessions cannot outlive a connection. */
+    val connectionId: Long = 0L,
 )

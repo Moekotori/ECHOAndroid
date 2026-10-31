@@ -30,10 +30,11 @@ internal object EchoTrackFadePolicy {
     }
 
     /** Null means no remaining fade boundary; an event will reschedule if the duration changes. */
-    fun nextDelayMs(positionMs: Long, durationMs: Long, requestedMs: Int, speed: Float): Long? {
+    fun nextDelayMs(positionMs: Long, durationMs: Long, requestedMs: Int, speed: Float,
+        suppressFadeOut: Boolean = false, suppressFadeIn: Boolean = false): Long? {
         val fade = duration(durationMs, requestedMs)
-        if (positionMs < fade || (durationMs > 0 && positionMs >= durationMs - fade)) return TickMs
-        if (durationMs <= 0) return null
+        if ((!suppressFadeIn && positionMs < fade) || (!suppressFadeOut && durationMs > 0 && positionMs >= durationMs - fade)) return TickMs
+        if (suppressFadeOut || durationMs <= 0) return null
         return ((durationMs - fade - positionMs) / speed.coerceAtLeast(0.1f)).toLong().coerceAtLeast(TickMs)
     }
 

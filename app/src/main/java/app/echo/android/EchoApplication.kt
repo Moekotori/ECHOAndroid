@@ -75,7 +75,8 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
         super.attachBaseContext(base.wrapEchoAppLocale(base.readEchoStartupThemeSnapshot().appLanguage))
     }
 
-    internal val usbVolumeKeys by lazy { UsbVolumeKeys(this) }
+    internal val appVolumeController by lazy { createAppVolumeController(this, EchoSettingsStore(this)) }
+    internal val appVolumeKeys by lazy { AppVolumeKeys(this) }
     val diagnosticCapture by lazy { app.echo.android.data.EchoDiagnosticRecorder(this, EchoPlaybackProcessRuntime.scope, BuildConfig.VERSION_NAME) }
 
     override fun onCreate() {
@@ -113,6 +114,7 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
         )
         val settingsStore = EchoSettingsStore(this)
         bindPlaybackDspSettings(settingsStore, this)
+        appVolumeController
         bindUsbFineVolumeSettings(this, settingsStore)
         EchoPlaybackProcessRuntime.setSessionStore(EchoSettingsPlaybackSessionStore(settingsStore) { ids ->
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {

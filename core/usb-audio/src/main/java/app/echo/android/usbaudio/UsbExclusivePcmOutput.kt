@@ -413,9 +413,12 @@ class UsbExclusivePcmSession internal constructor(
             val audioInterface = audioInterface
             val controlInterface = controlInterface
             if (connection != null) {
-                volumeControl?.close()
+                // Stop the DAC stream before restoring a higher hardware baseline; otherwise
+                // residual FIFO samples could be replayed at the restored gain.
+                val streamStopped = audioInterface != null &&
+                    runCatching { connection.setInterfaceAlt(audioInterface.id, 0) }.getOrDefault(false)
+                volumeControl?.close(restoreHardware = streamStopped)
                 if (audioInterface != null) {
-                    runCatching { connection.setInterfaceAlt(audioInterface.id, 0) }
                     runCatching { connection.releaseInterface(audioInterface) }
                 }
                 if (controlInterface != null) {

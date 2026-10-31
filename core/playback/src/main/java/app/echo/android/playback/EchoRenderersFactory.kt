@@ -29,7 +29,9 @@ internal class EchoRenderersFactory(
     override fun buildAudioRenderers(context: Context, extensionRendererMode: Int,
         mediaCodecSelector: MediaCodecSelector, enableDecoderFallback: Boolean, audioSink: AudioSink,
         eventHandler: Handler, eventListener: AudioRendererEventListener, out: ArrayList<Renderer>) {
-        out.add(EchoBitPerfectAudioRenderer(eventHandler, eventListener, EchoBitPerfectAudioSink(context)))
+        val strict = EchoBitPerfectAudioSink(context)
+        out.add(EchoBitPerfectAudioRenderer(eventHandler, eventListener, strict, EchoCuePcmAudioSink(strict)))
+        out.add(EchoCueAudioRenderer(eventHandler, eventListener, audioSink))
         val normal = ArrayList<Renderer>()
         super.buildAudioRenderers(context, extensionRendererMode, mediaCodecSelector, enableDecoderFallback,
             audioSink, eventHandler, eventListener, normal)
@@ -49,6 +51,6 @@ internal class EchoRenderersFactory(
             .setAudioProcessors(arrayOf(processor, EchoUsbFormatAudioProcessor(context, audioPipelineState)))
             .setAudioOutputProvider(EchoAudioOutputProvider(context))
             .build()
-        return EchoTransitionClockAudioSink(sink, processor)
+        return EchoCuePcmAudioSink(EchoTransitionClockAudioSink(sink, processor))
     }
 }

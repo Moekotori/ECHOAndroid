@@ -38,6 +38,7 @@ fun WifiTransferDialog(state: EchoWifiTransferState, onChoose: () -> Unit, onSta
             if (state.error != null) Text(stringResource(when (state.error) {
                 "no_lan" -> R.string.wifi_transfer_no_lan
                 "directory" -> R.string.wifi_transfer_directory_error
+                "cleanup" -> R.string.wifi_transfer_cleanup_error
                 else -> R.string.wifi_transfer_start_error
             }), color = MaterialTheme.colorScheme.error)
             state.results.forEach { result ->

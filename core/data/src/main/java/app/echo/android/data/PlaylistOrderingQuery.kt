@@ -17,7 +17,7 @@ internal object PlaylistOrderingQuery {
         val expressions = when (order.sort) {
             PlaylistTrackSort.Title -> listOf("t.title COLLATE NOCASE")
             PlaylistTrackSort.Artist -> listOf("t.artist COLLATE NOCASE", "t.title COLLATE NOCASE")
-            PlaylistTrackSort.Album -> listOf("COALESCE(t.album, '') COLLATE NOCASE", "COALESCE(t.discNumber, 0)", "COALESCE(t.trackNumber, 0)", "t.title COLLATE NOCASE")
+            PlaylistTrackSort.Album -> listOf("COALESCE(t.album, '') COLLATE NOCASE", "CASE WHEN t.discNumber > 0 THEN t.discNumber ELSE 1 END", "COALESCE(t.trackNumber, 0)", "t.title COLLATE NOCASE")
             PlaylistTrackSort.Duration -> listOf("t.durationMs", "t.title COLLATE NOCASE")
             PlaylistTrackSort.RecentlyAdded -> listOf("t.dateModifiedSeconds", "t.title COLLATE NOCASE")
             PlaylistTrackSort.Default -> error("Default order belongs to the collection query")

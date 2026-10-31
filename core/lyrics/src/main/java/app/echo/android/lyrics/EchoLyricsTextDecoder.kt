@@ -13,6 +13,15 @@ object EchoLyricsTextDecoder {
             mapOf("text_encoding" to charset, "text_decoding_lossy" to lossy.toString()))
     }
     fun decode(bytes: ByteArray): String? = decodeResult(bytes)?.text
+    /** Explicit repair for unmarked text. BOM and compressed KRC retain their declared format. */
+    fun decodeResult(bytes: ByteArray, charsetName: String?): Result? {
+        if (charsetName == null) return decodeResult(bytes)
+        require(charsetName in app.echo.android.model.library.EchoTextEncodings.names)
+        if (bytes.startsWith(0xEF, 0xBB, 0xBF) || bytes.startsWith(0xFF, 0xFE) || bytes.startsWith(0xFE, 0xFF) ||
+            bytes.take(4) == "krc1".toByteArray().toList()) return decodeResult(bytes)
+        val charset = Charset.forName(charsetName)
+        return decodeStrict(bytes, charset)?.takeIf { it.isReadableText() }?.let { Result(it, charset.name()) }
+    }
     fun decodeResult(bytes: ByteArray): Result? {
         if (bytes.size >= 4 && bytes.copyOfRange(0, 4).contentEquals("krc1".toByteArray())) {
             return decodeKrc(bytes)?.takeIf { it.isReadableText() }?.let { Result(it, "UTF-8") }

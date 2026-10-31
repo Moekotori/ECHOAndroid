@@ -3,9 +3,6 @@ package app.echo.android.feature.player
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -19,7 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.disabled
@@ -32,7 +28,6 @@ import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoChromeColors
 import app.echo.android.design.progressFraction
-import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.radio.EchoRadioStation
@@ -62,7 +57,6 @@ internal fun MiniPlayerProgress(
     val enabled = onSeek != null && trackKey != null && durationMs > 0L && !EchoRadioStation.isRadio(trackKey)
     var preview by remember(trackKey, durationMs) { mutableStateOf<Float?>(null) }
     val seek by rememberUpdatedState(onSeek)
-    val haptics = rememberEchoHapticPerformer()
     val chrome = echoChromeColors()
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
@@ -77,7 +71,6 @@ internal fun MiniPlayerProgress(
     val commit by rememberUpdatedState<(Float) -> Unit>({ fraction ->
         if (enabled) seek?.invoke((fraction.coerceIn(0f, 1f) * durationMs).toLong().coerceIn(0L, durationMs))
         preview = null
-        haptics.endSeek(committed = true)
     })
     Canvas(
         modifier.fillMaxWidth().height(MiniPlayerProgressTouchHeight)
@@ -90,39 +83,10 @@ internal fun MiniPlayerProgress(
                     enabled
                 }
             }
-            .pointerInput(trackKey, durationMs, enabled, rtl) {
-                if (enabled) detectTapGestures { point ->
-                    val fraction = (point.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f)
-                    commit(if (rtl) 1f - fraction else fraction)
-                }
-            }
-            .pointerInput(trackKey, durationMs, enabled, rtl) {
-                if (enabled) {
-                    fun fractionAt(x: Float): Float {
-                        val fraction = (x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f)
-                        return if (rtl) 1f - fraction else fraction
-                    }
-                    try {
-                        detectDragGestures(
-                            orientationLock = Orientation.Horizontal,
-                            onDragStart = { _, change, _ ->
-                                haptics.grab()
-                                preview = fractionAt(change.position.x)
-                            },
-                            onDrag = { change, _ ->
-                                change.consume()
-                                preview = fractionAt(change.position.x)
-                                haptics.seek(requireNotNull(preview))
-                            },
-                            onDragEnd = { change -> commit(fractionAt(change.position.x)) },
-                            onDragCancel = { preview = null; haptics.endSeek(committed = false) },
-                        )
-                    } finally {
-                        preview = null
-                        haptics.endSeek(committed = false)
-                    }
-                }
-            },
+            .playerSeekInput(
+                trackKey = trackKey, durationMs = durationMs, enabled = enabled, rtl = rtl,
+                onPreview = { preview = it }, onCommit = commit, onCancel = { preview = null },
+            ),
     ) {
         val stroke = (if (preview != null) 3.dp else 1.dp).toPx()
         val y = stroke / 2f

@@ -8,6 +8,39 @@ import java.net.Socket
 import java.util.concurrent.atomic.AtomicReference
 
 class EchoWifiTransferServerTest {
+    @Test fun stoppingAPartialUploadUnblocksTheReceiverAndRunsItsCleanup() {
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val cleaned = java.util.concurrent.CountDownLatch(1)
+        val server = EchoWifiTransferServer("127.0.0.1", byteArrayOf(), { name, length, input ->
+            entered.countDown()
+            try {
+                repeat(length.toInt()) { if (input.read() < 0) throw java.io.EOFException() }
+                name
+            } finally { cleaned.countDown() }
+        })
+        val address = java.net.URI(server.start())
+        try {
+            val paired = Socket(address.host, address.port).use { socket ->
+                socket.soTimeout = 2000
+                socket.getOutputStream().write(("POST /pair HTTP/1.1\r\nHost: ${address.host}:${address.port}\r\n" +
+                    "Content-Length: 0\r\nX-Echo-Code: ${server.pairingCode}\r\n\r\n").toByteArray())
+                socket.getInputStream().readBytes().toString(Charsets.UTF_8)
+            }
+            val token = JSONObject(paired.substringAfter("\r\n\r\n")).getString("token")
+            Socket(address.host, address.port).use { socket ->
+                socket.getOutputStream().apply {
+                    write(("POST /upload?name=track.flac HTTP/1.1\r\nHost: ${address.host}:${address.port}\r\n" +
+                        "Content-Length: 10000\r\nX-Echo-Token: $token\r\n\r\n").toByteArray())
+                    write(byteArrayOf(1, 2, 3)); flush()
+                }
+                assertTrue(entered.await(2, java.util.concurrent.TimeUnit.SECONDS))
+                server.close()
+                assertTrue("closing must promptly release the receiver into its finally block",
+                    cleaned.await(2, java.util.concurrent.TimeUnit.SECONDS))
+            }
+        } finally { server.close() }
+    }
+
     @Test fun pairingAndUploadAreBoundedAndUnrelatedRoutesStayPrivate() {
         val received = AtomicReference<ByteArray>()
         val server = EchoWifiTransferServer("127.0.0.1", "test-page".toByteArray(), { name, length, input ->

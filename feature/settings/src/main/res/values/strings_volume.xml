@@ -1,7 +1,11 @@
 <resources>
     <string name="volume_title">Volume</string>
-    <string name="volume_summary">App volume, gain, fine adjustment and loudness</string>
-    <string name="volume_scope">Controls audio played on this phone, including streamed tracks. Android media volume and USB DAC volume remain separate. Remote playback on a PC or cast receiver uses that device’s volume.</string>
+    <string name="volume_summary">Volume, gain and key step</string>
+    <string name="volume_scope">Applies to phone playback. System and DAC volume are independent; cast volume belongs to the receiving device.</string>
+    <string name="volume_advanced">Advanced options</string>
+    <string name="volume_device_saved">Volume and gain saved automatically</string>
+    <string name="volume_shared">Shared volume and gain for all devices</string>
+    <string name="volume_remember_per_device">Remember volume and gain per output</string>
     <string name="volume_bypassed">USB bit-perfect output bypasses these controls, including mute. Use the DAC’s hardware volume.</string>
     <string name="volume_combined">Combined gain setting</string>
     <string name="volume_muted">Muted</string>
@@ -10,11 +14,18 @@
     <string name="volume_level">App volume</string>
     <string name="volume_gain">Gain</string>
     <string name="volume_limit">Combined gain ceiling</string>
-    <string name="volume_limit_detail">Caps app volume + gain + ReplayGain before the peak limiter. This is a gain setting, not a measured sound level or a limit on Android or DAC volume.</string>
-    <string name="volume_gain_hint">Positive gain can clip loud tracks. Enable the peak limiter below to control sample peaks.</string>
-    <string name="volume_step">Fine adjustment step</string>
+    <string name="volume_limit_detail">Caps the sum of volume, gain and ReplayGain.</string>
+    <string name="volume_gain_hint">At higher gain, use the limiter in Advanced options to reduce clipping.</string>
+    <string name="volume_step">Volume key step</string>
     <string name="volume_step_value">%1$s dB per tap</string>
     <string name="volume_decrease">Decrease app volume</string>
     <string name="volume_increase">Increase app volume</string>
     <string name="volume_replaygain_summary">Track or album loudness compensation</string>
+    <string name="volume_remembered_device">Remembered output</string>
+    <string name="volume_device_memory_summary">Volume and gain follow the output device. Foreground volume keys use the fine adjustment step.</string>
+    <string name="volume_device_help">Volume keys and device identification</string>
+    <string name="volume_current_output">Current output device</string>
+    <string name="volume_device_memory_detail">When device memory is enabled, each output saves its own volume and gain. Foreground volume keys follow the selected step; volume up also unmutes. Background and lock-screen keys control system volume. Devices without a unique ID share records by type and name; identical USB DAC models share a record.</string>
+    <string name="volume_key_value">App volume: %1$.1f dB</string>
+    <string name="volume_save_failed">Volume could not be saved. Adjust it again to retry.</string>
 </resources>

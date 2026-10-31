@@ -1,8 +1,9 @@
 package app.echo.android.playback
 
 import kotlin.random.Random
+import java.util.PriorityQueue
 
-/** Shuffle once per round, then interleave artist buckets in linear time. */
+/** Shuffle once per round, then interleave the largest remaining artist buckets. */
 internal object PseudoRandomQueuePolicy {
     fun order(
         indices: List<Int>,
@@ -30,19 +31,24 @@ internal object PseudoRandomQueuePolicy {
         if (!needsSpreading) return indices
         val buckets = LinkedHashMap<String, ArrayDeque<Int>>()
         indices.forEach { buckets.getOrPut(artist(it)) { ArrayDeque() }.addLast(it) }
-        val groups = ArrayDeque(buckets.entries)
+        // Schedule larger buckets first so smaller ones can separate their final songs.
+        // Mutate a bucket only while it is outside the heap; ties retain shuffled order.
+        val entries = buckets.entries.toList()
+        val groups = PriorityQueue<Int>(compareByDescending<Int> { entries[it].value.size }.thenBy { it })
+        groups.addAll(entries.indices)
         val result = ArrayList<Int>(indices.size)
         previous = artist(current)
         while (groups.isNotEmpty()) {
-            var group = groups.removeFirst()
-            if (group.key == previous && groups.isNotEmpty()) {
-                val alternative = groups.removeFirst()
-                groups.addFirst(group)
+            var group = groups.remove()
+            if (entries[group].key == previous && groups.isNotEmpty()) {
+                val alternative = groups.remove()
+                groups.add(group)
                 group = alternative
             }
-            result += group.value.removeFirst()
-            previous = group.key
-            if (group.value.isNotEmpty()) groups.addLast(group)
+            val entry = entries[group]
+            result += entry.value.removeFirst()
+            previous = entry.key
+            if (entry.value.isNotEmpty()) groups.add(group)
         }
         return result
     }

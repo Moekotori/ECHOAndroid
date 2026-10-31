@@ -5,6 +5,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.decoder.CryptoConfig
 import androidx.media3.decoder.Decoder
 import androidx.media3.decoder.DecoderInputBuffer
@@ -15,20 +16,22 @@ import androidx.media3.decoder.ffmpeg.FfmpegDecoderException
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.RendererCapabilities
 import androidx.media3.exoplayer.audio.AudioRendererEventListener
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DecoderAudioRenderer
 import app.echo.android.model.playback.EchoBitPerfectState
 
 @UnstableApi
 internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRendererEventListener,
-    private val sink: EchoBitPerfectAudioSink) :
-    DecoderAudioRenderer<Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>>(handler, listener, sink) {
+    private val sink: EchoBitPerfectAudioSink, outputSink: AudioSink = sink) :
+    DecoderAudioRenderer<Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>>(handler, listener, outputSink) {
     private var input = Format.Builder().build()
     override fun getName() = "EchoBitPerfectAudioRenderer"
     override fun supportsFormatInternal(format: Format): Int =
         if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled && MimeTypes.isAudio(format.sampleMimeType))
             C.FORMAT_HANDLED else C.FORMAT_UNSUPPORTED_TYPE
 
-    override fun createDecoder(format: Format, cryptoConfig: CryptoConfig?): Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException> {
+    override fun createDecoder(sourceFormat: Format, cryptoConfig: CryptoConfig?): Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException> {
+        val format = sourceFormat.cueInputFormat()
         input = format
         EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot()
         if (format.cryptoType != C.CRYPTO_TYPE_NONE) unsupported()
@@ -38,11 +41,11 @@ internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRend
         }
         return when (format.sampleMimeType) {
             MimeTypes.AUDIO_FLAC, MimeTypes.AUDIO_ALAC -> FfmpegAudioDecoder(format, 4, 4,
-                format.maxInputSize.takeIf { it > 0 } ?: 65536, C.ENCODING_PCM_32BIT)
+                format.maxInputSize.takeIf { it > 0 } ?: 65536, C.ENCODING_PCM_32BIT, format.customData is EchoCueClip)
             MimeTypes.AUDIO_RAW -> {
                 if (format.pcmEncoding !in EchoBitPerfectAudioSink.INTEGER_ENCODINGS ||
                     EchoBitPerfectAudioSink.pcmBytes(format.pcmEncoding) !in 2..3) unsupported()
-                RawPcmDecoder()
+                RawPcmDecoder(format)
             }
             else -> unsupported()
         }
@@ -56,6 +59,7 @@ internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRend
                 .setPcmEncoding(C.ENCODING_PCM_24BIT)
                 .setSampleRate(decoder.outputSampleRateHz)
                 .setChannelCount(decoder.channelCount)
+                .setCustomData(input.customData)
                 .build()
         }
         if (decoder is FfmpegAudioDecoder) {
@@ -63,7 +67,8 @@ internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRend
             if (bits !in listOf(16, 24)) unsupported()
             sink.sourcePrecision(bits)
             return Format.Builder().setSampleMimeType(MimeTypes.AUDIO_RAW).setPcmEncoding(C.ENCODING_PCM_32BIT)
-                .setSampleRate(decoder.sampleRate).setChannelCount(decoder.channelCount).build()
+                .setSampleRate(decoder.sampleRate).setChannelCount(decoder.channelCount)
+                .setCustomData(input.customData).build()
         }
         sink.sourcePrecision(EchoBitPerfectAudioSink.pcmBytes(input.pcmEncoding) * 8)
         return input
@@ -77,7 +82,7 @@ internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRend
 
 @UnstableApi
 @Suppress("UNCHECKED_CAST")
-private class RawPcmDecoder : SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>(
+internal class RawPcmDecoder(private val format: Format) : SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>(
     arrayOfNulls<DecoderInputBuffer>(4) as Array<DecoderInputBuffer>,
     arrayOfNulls<SimpleDecoderOutputBuffer>(4) as Array<SimpleDecoderOutputBuffer>) {
     override fun getName() = "EchoRawPcm"
@@ -86,7 +91,24 @@ private class RawPcmDecoder : SimpleDecoder<DecoderInputBuffer, SimpleDecoderOut
     override fun createUnexpectedDecodeException(error: Throwable) = FfmpegDecoderException("PCM copy failed", error)
     override fun decode(inputBuffer: DecoderInputBuffer, outputBuffer: SimpleDecoderOutputBuffer, reset: Boolean): FfmpegDecoderException? {
         val data = inputBuffer.data ?: return FfmpegDecoderException("Missing PCM")
-        outputBuffer.init(inputBuffer.timeUs, data.remaining()).put(data).flip()
+        val output = outputBuffer.init(inputBuffer.timeUs, data.remaining())
+        output.put(data).flip()
+        if (!isAtLeastOutputStartTimeUs(inputBuffer.timeUs)) {
+            val frameBytes = Util.getPcmFrameSize(format.pcmEncoding, format.channelCount)
+            val frames = output.remaining() / frameBytes
+            if (frames > 0 && isAtLeastOutputStartTimeUs(inputBuffer.timeUs + (frames - 1L) * 1_000_000L / format.sampleRate)) {
+                var low = 0
+                var high = frames - 1
+                while (low < high) {
+                    val middle = low + (high - low) / 2
+                    if (isAtLeastOutputStartTimeUs(inputBuffer.timeUs + middle * 1_000_000L / format.sampleRate)) high = middle
+                    else low = middle + 1
+                }
+                output.position(low * frameBytes)
+                outputBuffer.timeUs = inputBuffer.timeUs + low * 1_000_000L / format.sampleRate
+                outputBuffer.shouldBeSkipped = false
+            }
+        }
         return null
     }
 }
@@ -96,7 +118,7 @@ private class RawPcmDecoder : SimpleDecoder<DecoderInputBuffer, SimpleDecoderOut
 internal class EchoNormalAudioRenderer(private val renderer: Renderer) : Renderer by renderer {
     private val gatedCapabilities = object : RendererCapabilities by renderer.capabilities {
         override fun supportsFormat(format: Format): Int =
-            if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) C.FORMAT_UNSUPPORTED_TYPE
+            if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled || EchoCueAudioRenderer.handlesCue(format)) C.FORMAT_UNSUPPORTED_TYPE
             else renderer.capabilities.supportsFormat(format)
     }
     override fun getCapabilities(): RendererCapabilities = gatedCapabilities

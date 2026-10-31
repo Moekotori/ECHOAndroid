@@ -6,13 +6,13 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
-import androidx.compose.foundation.gestures.drag
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 
@@ -79,6 +79,7 @@ suspend fun <T : Any> PointerInputScope.detectEchoTargetDrag(
 ) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
+        if (currentEvent.changes.size != 1) return@awaitEachGesture
         val target = targetAt(down.position) ?: return@awaitEachGesture
         var active = false
         try {
@@ -88,20 +89,32 @@ suspend fun <T : Any> PointerInputScope.detectEchoTargetDrag(
                     overSlop = over
                     change.consume()
                 }
-            if (start == null) return@awaitEachGesture
+            if (start == null || start.id != down.id || currentEvent.changes.size != 1) return@awaitEachGesture
             active = true
             onStart(target, start.position)
             if (!longPress) onDrag(start, overSlop)
-            val completed = drag(start.id) { change ->
-                onDrag(change, change.position - change.previousPosition)
-                change.consume()
-            }
-            if (completed) {
-                currentEvent.changes.forEach {
-                    if (!it.pressed) it.consume()
+            while (true) {
+                val event = awaitPointerEvent()
+                // Compose's general drag helper can transfer to another finger. Reordering and
+                // editing an explicit target must instead cancel, without consuming that finger.
+                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                if (event.changes.size != 1) {
+                    // Cancel the original row's pending click, without taking the new finger.
+                    change.consume()
+                    break
                 }
-                active = false
-                onStop()
+                if (change.isConsumed) break
+                val delta = change.position - change.previousPosition
+                if (delta != Offset.Zero) onDrag(change, delta)
+                if (!change.pressed) {
+                    if (change.changedToUpIgnoreConsumed()) {
+                        change.consume()
+                        active = false
+                        onStop()
+                    }
+                    break
+                }
+                change.consume()
             }
         } finally {
             if (active) onCancel()

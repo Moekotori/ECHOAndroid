@@ -24,7 +24,8 @@ internal fun SignalDspPanel(
         else -> ""
     }) }
     val enabledCount = (if (settings.limiterEnabled) 1 else 0) +
-        (if (settings.crossfeedEnabled) 1 else 0) + (if (status.replayGainEnabled) 1 else 0)
+        (if (settings.crossfeedEnabled) 1 else 0) + (if (status.replayGainEnabled) 1 else 0) +
+        (if (settings.compressor != EchoCompressorMode.Off) 1 else 0)
     val defaults = remember { EchoDspSettings() }
     val modeLabel = stringResource(when (status.replayGainMode) {
         EchoReplayGainMode.Auto -> R.string.dsp_auto
@@ -69,6 +70,7 @@ internal fun SignalDspPanel(
                 { "${signalNumber(it * 100, 0)}%" }, { onSettings(settings.copy(crossfeedAmount = it)) },
                 unit = "%", scale = 100f, decimals = 0)
         }
+        SignalCompressorControl(settings, !bypassed, onSettings)
         SignalDspSection(
             title = stringResource(R.string.dsp_limiter), detail = stringResource(R.string.dsp_limiter_detail),
             summary = "${signalNumber(settings.limiterCeilingDb)} dBFS",

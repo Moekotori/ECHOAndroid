@@ -199,13 +199,14 @@ interface LibraryTrackDao {
             LibraryPlaybackStatsEntity::class,
             LibraryFavoriteEntity::class,
             LibraryHiddenTrackEntity::class,
+            LibraryDuplicateControl::class,
         ],
     )
     fun pageTracksSorted(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
 
     @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryTrackFtsEntity::class,
         LibraryPlaybackStatsEntity::class, LibraryFavoriteEntity::class, LibraryHiddenTrackEntity::class,
-        LibraryLyricsIndexEntity::class])
+        LibraryLyricsIndexEntity::class, LibraryDuplicateControl::class])
     fun pageTracksSortedWithLyrics(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
 
     @Query(
@@ -359,6 +360,16 @@ interface LibraryTrackDao {
     @RawQuery(observedEntities = [LibraryArtistSummaryEntity::class])
     fun pageArtistsSorted(query: SupportSQLiteQuery): PagingSource<Int, ArtistSummary>
 
+    @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryTrackArtistEntity::class, LibraryHiddenTrackEntity::class])
+    fun pageAlbumArtists(query: SupportSQLiteQuery): PagingSource<Int, ArtistSummary>
+
+    @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryTrackArtistEntity::class, LibraryHiddenTrackEntity::class])
+    fun observeAlbumArtistSummary(query: SupportSQLiteQuery): Flow<ArtistSummary?>
+
+    @RawQuery(observedEntities = [LibraryAlbumSummaryEntity::class, LibraryTrackEntity::class,
+        LibraryTrackArtistEntity::class, LibraryHiddenTrackEntity::class])
+    fun pageAlbumsByAlbumArtist(query: SupportSQLiteQuery): PagingSource<Int, AlbumSummary>
+
     fun pageGenres(query: String?, sort: String): PagingSource<Int, app.echo.android.model.library.GenreSummary> =
         pageGenresSorted(LibrarySummaryPagingQuery.genres(query, sort))
 
@@ -387,7 +398,7 @@ interface LibraryTrackDao {
         """
         SELECT * FROM visible_library_tracks AS library_tracks
         WHERE composerKey = :composerKey AND (source = 'mediastore' OR source = 'saf')
-        ORDER BY album COLLATE NOCASE ASC, discNumber ASC, trackNumber ASC, title COLLATE NOCASE ASC
+        ORDER BY album COLLATE NOCASE ASC, CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC, trackNumber ASC, title COLLATE NOCASE ASC
         """,
     )
     fun pageTracksByComposer(composerKey: String): PagingSource<Int, LibraryTrackEntity>
@@ -460,7 +471,7 @@ interface LibraryTrackDao {
         WHERE (source = 'mediastore' OR source = 'saf')
           AND albumKey = :albumKey
         ORDER BY
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         """,
@@ -473,7 +484,7 @@ interface LibraryTrackDao {
         WHERE source = :source
           AND albumKey = :albumKey
         ORDER BY
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         """,
@@ -490,7 +501,7 @@ interface LibraryTrackDao {
             CASE WHEN :sort = 'Title' THEN title END COLLATE NOCASE ASC,
             CASE WHEN :sort = 'Duration' THEN durationMs END DESC,
             album COLLATE NOCASE ASC,
-            COALESCE(discNumber, 0) ASC, COALESCE(trackNumber, 0) ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC, COALESCE(trackNumber, 0) ASC,
             title COLLATE NOCASE ASC, id ASC
         """,
     )
@@ -523,7 +534,7 @@ interface LibraryTrackDao {
           AND genreKey = :genreKey
         ORDER BY
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         """,
@@ -540,7 +551,7 @@ interface LibraryTrackDao {
           )
         ORDER BY
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         """,
@@ -553,7 +564,7 @@ interface LibraryTrackDao {
         WHERE (source = 'mediastore' OR source = 'saf')
           AND albumKey = :albumKey
         ORDER BY
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         """,
@@ -597,7 +608,7 @@ interface LibraryTrackDao {
         WHERE (source = 'mediastore' OR source = 'saf')
           AND albumKey = :albumKey
         ORDER BY
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         LIMIT :limit OFFSET :offset
@@ -616,7 +627,7 @@ interface LibraryTrackDao {
           AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey)
         ORDER BY
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         LIMIT :limit OFFSET :offset
@@ -656,7 +667,7 @@ interface LibraryTrackDao {
           AND genreKey = :genreKey
         ORDER BY
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         LIMIT :limit OFFSET :offset
@@ -678,7 +689,7 @@ interface LibraryTrackDao {
           )
         ORDER BY
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         LIMIT :limit OFFSET :offset
@@ -696,7 +707,7 @@ interface LibraryTrackDao {
         WHERE source = :source
           AND albumKey = :albumKey
         ORDER BY
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         """,
@@ -713,7 +724,7 @@ interface LibraryTrackDao {
           AND id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey)
         ORDER BY
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         """,
@@ -727,7 +738,7 @@ interface LibraryTrackDao {
           AND genreKey = :genreKey
         ORDER BY
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         LIMIT :limit
@@ -742,7 +753,7 @@ interface LibraryTrackDao {
           AND composerKey = :composerKey
         ORDER BY
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         LIMIT :limit
@@ -760,7 +771,7 @@ interface LibraryTrackDao {
           )
         ORDER BY
             album COLLATE NOCASE ASC,
-            CASE WHEN discNumber IS NULL THEN 0 ELSE discNumber END ASC,
+            CASE WHEN discNumber > 0 THEN discNumber ELSE 1 END ASC,
             CASE WHEN trackNumber IS NULL THEN 0 ELSE trackNumber END ASC,
             title COLLATE NOCASE ASC
         LIMIT :limit

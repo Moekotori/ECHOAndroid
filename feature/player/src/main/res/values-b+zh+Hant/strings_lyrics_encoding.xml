@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_encoding_title">指定編码導入歌詞</string>
+    <string name="lyrics_encoding_note">選擇歌詞文件并預覽文字。BOM 和壓縮 KRC 保持原聲明格式；應用僅保存本地選擇，不改歌詞或音頻源文件。在歌詞管理中清除選擇可恢復自動讀取。</string>
+    <string name="lyrics_encoding_auto">自動識別</string>
+    <string name="lyrics_encoding_failed">無法解码、解析或保存此文件，可尝試其他編码或重新選擇。</string>
+    <string name="lyrics_encoding_apply">應用歌詞選擇</string>
+    <string name="lyrics_encoding_close">取消</string>
+</resources>

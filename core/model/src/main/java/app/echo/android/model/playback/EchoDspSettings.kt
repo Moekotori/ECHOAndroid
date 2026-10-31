@@ -6,6 +6,7 @@ data class EchoDspSettings(
     val limiterCeilingDb: Float = -1f,
     val crossfeedEnabled: Boolean = false,
     val crossfeedAmount: Float = 0.3f,
+    val compressor: EchoCompressorMode = EchoCompressorMode.Off,
 ) {
     val normalized: EchoDspSettings get() = copy(
         limiterCeilingDb = limiterCeilingDb.takeIf(Float::isFinite)?.coerceIn(-6f, -0.1f) ?: -1f,

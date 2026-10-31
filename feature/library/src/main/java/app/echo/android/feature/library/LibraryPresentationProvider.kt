@@ -13,9 +13,10 @@ internal val LocalLibraryPlayNext = staticCompositionLocalOf { false }
 fun LibraryPresentationProvider(actions: LibraryHiddenTrackActions, showFileNames: Boolean,
     hiddenTrackActions: Set<app.echo.android.model.settings.EchoTrackMenuAction> = emptySet(),
     showPlayNext: Boolean = false,
+    mediaTools: LibraryMediaTools? = null,
     content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalLibraryFileNames provides showFileNames, LocalHiddenTrackActions provides hiddenTrackActions,
-        LocalLibraryPlayNext provides showPlayNext) {
+        LocalLibraryPlayNext provides showPlayNext, LocalLibraryMediaTools provides mediaTools) {
         LibraryHiddenTracksProvider(actions, content = content)
     }
 }

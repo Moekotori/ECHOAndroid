@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -24,7 +24,9 @@ fun TrackInfoDialog(
     track: EchoTrack,
     onDismiss: () -> Unit,
     onOpenArtist: (() -> Unit)? = null,
+    mediaTools: LibraryMediaTools? = LocalLibraryMediaTools.current,
 ) {
+    var tool by remember(track.id) { mutableStateOf<String?>(null) }
     val artistLabel = stringResource(L10nR.string.feature_library_go_to_artist)
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -37,6 +39,10 @@ fun TrackInfoDialog(
         },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (mediaTools != null && track.source.isLocalAudioFile) {
+                    TextButton(onClick = { tool = "encoding" }) { Text(stringResource(L10nR.string.encoding_title)) }
+                    TextButton(onClick = { tool = "images" }) { Text(stringResource(L10nR.string.album_images_title)) }
+                }
                 val notProvided = stringResource(L10nR.string.feature_library_not_available_7d3220)
                 TrackInfoLine(
                     stringResource(L10nR.string.feature_library_artist_b6e7ad),
@@ -95,6 +101,10 @@ fun TrackInfoDialog(
             }
         },
     )
+    if (mediaTools != null) when (tool) {
+        "encoding" -> TrackEncodingDialog(track, mediaTools) { tool = null }
+        "images" -> AlbumImagesDialog(track, mediaTools) { tool = null }
+    }
 }
 
 @Composable

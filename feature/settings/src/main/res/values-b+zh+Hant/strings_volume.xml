@@ -1,7 +1,11 @@
 <resources>
     <string name="volume_title">音量</string>
-    <string name="volume_summary">應用程式音量、增益、精細調整與響度補償</string>
-    <string name="volume_scope">控制在手機上播放的聲音，包括串流歌曲。系統媒體音量和 USB DAC 音量獨立調整；遙控 PC 或投放裝置播放時，音量由對方裝置控制。</string>
+    <string name="volume_summary">音量、增益與按鍵步長</string>
+    <string name="volume_scope">僅調整手機播放。系統和 DAC 音量獨立，投放音量由接收裝置控制。</string>
+    <string name="volume_advanced">進階選項</string>
+    <string name="volume_device_saved">自動記憶音量和增益</string>
+    <string name="volume_shared">所有裝置共用音量和增益</string>
+    <string name="volume_remember_per_device">按輸出裝置記憶音量和增益</string>
     <string name="volume_bypassed">USB 嚴格直通會略過這裡的全部處理，包括靜音。請使用 DAC 硬體音量。</string>
     <string name="volume_combined">合成增益設定</string>
     <string name="volume_muted">已靜音</string>
@@ -10,11 +14,18 @@
     <string name="volume_level">應用程式音量</string>
     <string name="volume_gain">增益</string>
     <string name="volume_limit">合成增益上限</string>
-    <string name="volume_limit_detail">限制「應用程式音量 + 增益 + ReplayGain」的合成值，再交給峰值限幅。這是增益設定，不代表實測聲壓，也不限制系統或 DAC 音量。</string>
-    <string name="volume_gain_hint">正增益可能使較響的歌曲削波，可開啟下方峰值限幅控制取樣峰值。</string>
-    <string name="volume_step">精調步長</string>
+    <string name="volume_limit_detail">限制音量、增益和 ReplayGain 的疊加值。</string>
+    <string name="volume_gain_hint">增益較高時，可用進階選項中的限幅減少削波。</string>
+    <string name="volume_step">音量鍵步長</string>
     <string name="volume_step_value">每次調整 %1$s dB</string>
     <string name="volume_decrease">降低應用程式音量</string>
     <string name="volume_increase">提高應用程式音量</string>
     <string name="volume_replaygain_summary">按曲目或專輯補償響度</string>
+    <string name="volume_remembered_device">音量記憶裝置</string>
+    <string name="volume_device_memory_summary">音量與增益按裝置儲存；前景音量鍵跟隨精調步長。</string>
+    <string name="volume_device_help">音量鍵與裝置識別說明</string>
+    <string name="volume_current_output">目前輸出裝置</string>
+    <string name="volume_device_memory_detail">開啟裝置記憶後，各裝置分別儲存音量和增益。前景音量鍵按步長調整，加鍵也會解除靜音；背景和鎖定畫面調整系統音量。沒有唯一識別碼的裝置按類型和名稱共用記錄，同型號 USB DAC 共用一筆記錄。</string>
+    <string name="volume_key_value">應用程式音量：%1$.1f dB</string>
+    <string name="volume_save_failed">音量設定無法儲存，再次調整即可重試。</string>
 </resources>

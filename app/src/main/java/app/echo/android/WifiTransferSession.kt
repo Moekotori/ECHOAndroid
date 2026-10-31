@@ -68,6 +68,7 @@ internal class WifiTransferSession(context: Context, private val onScan: (Uri) -
                     val host = EchoWifiTransferAddresses.ipv4(context) ?: error("no_lan")
                     val receiver = WifiMusicReceiver(context, destination)
                     receiver.directoryName()
+                    receiver.recoverPendingTransfers()
                     val page = context.assets.open("echo-wifi-transfer.html").use { it.readBytes() }
                     EchoWifiTransferServer(host, page, receiver::receive,
                         onReceiving = { name -> if (generation.get() == version) mutable.update { it.copy(receiving = name) } },
@@ -90,7 +91,7 @@ internal class WifiTransferSession(context: Context, private val onScan: (Uri) -
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                if (generation.get() == version) mutable.update { it.copy(phase = "idle", error = if (e.message == "no_lan") "no_lan" else "start") }
+                if (generation.get() == version) mutable.update { it.copy(phase = "idle", error = when (e.message) { "no_lan" -> "no_lan"; "cleanup_pending" -> "cleanup"; else -> "start" }) }
             } finally {
                 withContext(NonCancellable + Dispatchers.IO) { owned?.close() }
             }

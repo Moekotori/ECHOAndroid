@@ -40,6 +40,8 @@ internal class NfcMusicController(context: Context, private val scope: Coroutine
     private var lastScan = 0L
     private var retryOpen = false
     private var tokenOnTag = false
+    private var picking = false
+    private var searchQuery = ""
     val reading get() = when (_state.value?.phase) {
         NfcMusicPhase.Waiting, NfcMusicPhase.Verify -> true
         NfcMusicPhase.Working -> !retryOpen
@@ -90,10 +92,15 @@ internal class NfcMusicController(context: Context, private val scope: Coroutine
         _state.value = null
         token = null; target = null
         approvedTag = null; approvedContent = null; overwriteApproved = false; verifyPending = false; tokenOnTag = false
+        picking = false; searchQuery = ""
     }
 
     fun retry() {
-        if (retryOpen) resolve() else waitForTag()
+        when {
+            picking -> query(searchQuery)
+            retryOpen -> resolve()
+            else -> waitForTag()
+        }
     }
 
     fun refreshHardware() {
@@ -185,6 +192,8 @@ internal class NfcMusicController(context: Context, private val scope: Coroutine
     fun query(query: String) {
         search?.cancel()
         val safe = query.take(100)
+        picking = true
+        searchQuery = safe
         _state.value = NfcMusicUiState(NfcMusicPhase.Choosing, query = safe, loading = true)
         search = scope.launch {
             delay(200)
@@ -206,6 +215,7 @@ internal class NfcMusicController(context: Context, private val scope: Coroutine
                 val binding = NfcMusicBinding(choice.mediaId, choice.label.take(200).ifBlank { "ECHO" })
                 if (!tokenOnTag) {
                     target = binding
+                    picking = false
                     retryOpen = false
                     waitForTag()
                     return@launch

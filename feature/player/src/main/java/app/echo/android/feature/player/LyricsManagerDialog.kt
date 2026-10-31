@@ -31,6 +31,7 @@ fun LyricsManagerDialog(
     onEdit: (() -> Unit)? = null,
     onChooseAwait: (suspend (String) -> Boolean)? = null,
     searchRequested: Boolean = false,
+    encodingTools: @Composable () -> Unit = {},
 ) {
     var previewId by rememberSaveable(trackTitle) { mutableStateOf<String?>(null) }
     var searched by rememberSaveable(trackTitle) { mutableStateOf(false) }
@@ -66,6 +67,7 @@ fun LyricsManagerDialog(
                         Text(stringResource(R.string.lyrics_manager_search))
                     }
                     TextButton(onClick = onImport, enabled = !saving) { Text(stringResource(R.string.lyrics_manager_import)) }
+                    encodingTools()
                     if (onEdit != null) TextButton(onClick = onEdit, enabled = !saving) { Text(stringResource(R.string.lyrics_edit_title)) }
                     TextButton(onClick = { savedId = null; onRemove() }, enabled = !saving) { Text(stringResource(R.string.lyrics_manager_clear)) }
                     Row {

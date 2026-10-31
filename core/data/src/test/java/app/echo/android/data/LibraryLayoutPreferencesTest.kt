@@ -22,7 +22,7 @@ class LibraryLayoutPreferencesTest {
     @Test fun onlyFoldersSurvivesReloadAndReset() {
         val preferences = mutablePreferencesOf()
         val layout = EchoLibraryLayout(EchoLibraryCategory.entries.reversed(),
-            EchoLibraryCategory.entries.toSet() - EchoLibraryCategory.Folders)
+            EchoLibraryCategory.entries.toSet() - EchoLibraryCategory.Folders, showAlbumArtists = true)
         LibraryLayoutPreferences.write(preferences, layout)
         assertEquals(layout, LibraryLayoutPreferences.read(preferences))
         LibraryLayoutPreferences.write(preferences, EchoLibraryLayout())

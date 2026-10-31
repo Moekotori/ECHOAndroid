@@ -2,8 +2,6 @@ package app.echo.android.feature.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,14 +23,15 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.setProgress
@@ -170,6 +169,7 @@ internal fun RecordSleeveScrubber(
     Column(Modifier.fillMaxWidth()) {
         RecordSleeveSeekBar(
             trackKey = trackKey,
+            durationMs = duration,
             fraction = shown,
             engaged = scrubFraction != null,
             enabled = duration > 0,
@@ -193,6 +193,7 @@ internal fun RecordSleeveScrubber(
 @Composable
 private fun RecordSleeveSeekBar(
     trackKey: String?,
+    durationMs: Long,
     fraction: Float,
     engaged: Boolean,
     enabled: Boolean,
@@ -200,48 +201,29 @@ private fun RecordSleeveSeekBar(
     onCommit: (Float) -> Unit,
     onCancel: () -> Unit,
 ) {
-    val preview by rememberUpdatedState(onPreview)
-    val commit by rememberUpdatedState(onCommit)
-    val cancel by rememberUpdatedState(onCancel)
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val face = RecordSleeveStyle.Paper
     Canvas(Modifier.fillMaxWidth().height(48.dp)
         .semantics {
             progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f)
             if (!enabled) disabled()
             setProgress {
-                if (enabled) commit(it.coerceIn(0f, 1f))
+                if (enabled) onCommit(it.coerceIn(0f, 1f))
                 enabled
             }
         }
-        .pointerInput(trackKey, enabled) {
-            if (enabled) detectTapGestures {
-                commit(((it.x - 12.dp.toPx()) / (size.width - 24.dp.toPx()).coerceAtLeast(1f)).coerceIn(0f, 1f))
-            }
+        .playerSeekInput(
+            trackKey = trackKey, durationMs = durationMs, enabled = enabled, inset = 12.dp, rtl = rtl,
+            onPreview = onPreview, onCommit = onCommit, onCancel = onCancel,
+        )) {
+        scale(scaleX = if (rtl) -1f else 1f, scaleY = 1f) {
+            val inset = 12.dp.toPx().coerceAtMost(size.width / 2f)
+            val left = Offset(inset, center.y)
+            val right = Offset(size.width - inset, center.y)
+            val thumb = Offset(inset + (size.width - inset * 2f) * fraction.coerceIn(0f, 1f), center.y)
+            val accent = if (enabled) RecordSleeveStyle.Wine else RecordSleeveStyle.Track
+            drawEchoControlRail(left, right, left, thumb, accent, RecordSleeveStyle.Track)
+            drawEchoControlThumb(thumb, accent, face, engaged, enabled)
         }
-        .pointerInput(trackKey, enabled) {
-            if (enabled) {
-                var target = 0f
-                detectHorizontalDragGestures(
-                    onDragStart = {
-                        target = ((it.x - 12.dp.toPx()) / (size.width - 24.dp.toPx()).coerceAtLeast(1f)).coerceIn(0f, 1f)
-                        preview(target)
-                    },
-                    onHorizontalDrag = { change, _ ->
-                        change.consume()
-                        target = ((change.position.x - 12.dp.toPx()) / (size.width - 24.dp.toPx()).coerceAtLeast(1f)).coerceIn(0f, 1f)
-                        preview(target)
-                    },
-                    onDragEnd = { commit(target) },
-                    onDragCancel = { cancel() },
-                )
-            }
-        }) {
-        val inset = 12.dp.toPx().coerceAtMost(size.width / 2f)
-        val left = Offset(inset, center.y)
-        val right = Offset(size.width - inset, center.y)
-        val thumb = Offset(inset + (size.width - inset * 2f) * fraction.coerceIn(0f, 1f), center.y)
-        val accent = if (enabled) RecordSleeveStyle.Wine else RecordSleeveStyle.Track
-        drawEchoControlRail(left, right, left, thumb, accent, RecordSleeveStyle.Track)
-        drawEchoControlThumb(thumb, accent, face, engaged, enabled)
     }
 }

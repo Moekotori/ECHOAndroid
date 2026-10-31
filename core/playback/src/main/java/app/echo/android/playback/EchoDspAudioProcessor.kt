@@ -75,7 +75,7 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         val settings = EchoPlaybackProcessRuntime.dspSettings
         val replayGain = EchoPlaybackProcessRuntime.dspReplayGainDb
         val volume = EchoPlaybackProcessRuntime.volumeSettings
-        if (!settings.limiterEnabled && !settings.crossfeedEnabled && replayGain == 0f && !volume.changesSamples && kernel.neutral && stages.none { it.isActive }) {
+        if (settings.compressor == app.echo.android.model.playback.EchoCompressorMode.Off && !settings.limiterEnabled && !settings.crossfeedEnabled && replayGain == 0f && !volume.changesSamples && kernel.neutral && stages.none { it.isActive }) {
             val originalLimit = input.limit()
             input.limit(input.position() + frames * channels * bytesPerSample)
             output.put(input)

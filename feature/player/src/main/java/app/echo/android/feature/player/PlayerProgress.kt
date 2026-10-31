@@ -3,9 +3,6 @@ package app.echo.android.feature.player
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -14,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.disabled
@@ -30,7 +26,6 @@ import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.formatDuration
 import app.echo.android.design.progressFraction
-import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.radio.EchoRadioStation
 
 /** Clock reads stay in this leaf; seeking never rebuilds the cover or control row. */
@@ -61,6 +56,7 @@ internal fun NowPlayingScrubber(
     Column(Modifier.fillMaxWidth()) {
         LinearPlayerSeekBar(
             trackKey = trackKey,
+            durationMs = durationMs,
             fraction = shown,
             engaged = scrubFraction != null,
             enabled = durationMs > 0L,
@@ -82,6 +78,7 @@ internal fun NowPlayingScrubber(
 @Composable
 internal fun LinearPlayerSeekBar(
     trackKey: String?,
+    durationMs: Long,
     fraction: Float,
     engaged: Boolean,
     enabled: Boolean,
@@ -91,10 +88,6 @@ internal fun LinearPlayerSeekBar(
     restingThickness: Dp = 3.dp,
     engagedThickness: Dp = 5.dp,
 ) {
-    val haptics by rememberUpdatedState(rememberEchoHapticPerformer())
-    val preview by rememberUpdatedState<(Float) -> Unit>({ onPreview(it); haptics.seek(it) })
-    val commit by rememberUpdatedState<(Float) -> Unit>({ onCommit(it); haptics.endSeek(committed = true) })
-    val cancel by rememberUpdatedState<() -> Unit>({ onCancel(); haptics.endSeek(committed = false) })
     val played = MaterialTheme.colorScheme.primary
     val unplayed = OnArt.copy(alpha = 0.10f)
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -111,45 +104,14 @@ internal fun LinearPlayerSeekBar(
             progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f)
             if (!enabled) disabled()
             setProgress { value ->
-                if (enabled) commit(value.coerceIn(0f, 1f))
+                if (enabled) onCommit(value.coerceIn(0f, 1f))
                 enabled
             }
         }
-        .pointerInput(trackKey, enabled, rtl) {
-            if (enabled) detectTapGestures(
-                onPress = {
-                    pressed = true
-                    try { tryAwaitRelease() } finally { pressed = false }
-                },
-                onTap = { point ->
-                    val inset = 4.dp.toPx().coerceAtMost(size.width / 2f)
-                    val normalized = ((point.x - inset) / (size.width - 2f * inset).coerceAtLeast(1f)).coerceIn(0f, 1f)
-                    commit(if (rtl) 1f - normalized else normalized)
-                },
-            )
-        }
-        .pointerInput(trackKey, enabled, rtl) {
-            if (enabled) {
-                var target: Float
-                fun fractionAt(x: Float): Float {
-                    val inset = 4.dp.toPx().coerceAtMost(size.width / 2f)
-                    val normalized = ((x - inset) / (size.width - 2f * inset).coerceAtLeast(1f)).coerceIn(0f, 1f)
-                    return if (rtl) 1f - normalized else normalized
-                }
-                detectDragGestures(
-                    orientationLock = Orientation.Horizontal,
-                    onDragStart = { _, change, _ -> haptics.grab(); target = fractionAt(change.position.x); preview(target) },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        target = fractionAt(change.position.x)
-                        preview(target)
-                    },
-                    // The release can carry a newer position than the final MOVE event.
-                    onDragEnd = { change -> commit(fractionAt(change.position.x)) },
-                    onDragCancel = { cancel() },
-                )
-            }
-        }) {
+        .playerSeekInput(
+            trackKey = trackKey, durationMs = durationMs, enabled = enabled, inset = 4.dp, rtl = rtl,
+            onPressed = { pressed = it }, onPreview = onPreview, onCommit = onCommit, onCancel = onCancel,
+        )) {
         val inset = 4.dp.toPx().coerceAtMost(size.width / 2f)
         val left = inset
         val right = size.width - inset

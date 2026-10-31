@@ -131,6 +131,27 @@ internal class LyricsController(
     @Volatile
     private var echoLinkLyricsFetcher: (suspend (String) -> EchoRemoteLyrics?)? = null
 
+    suspend fun previewEncodedLyrics(uri: Uri, charsetName: String?): EchoLyrics = withContext(Dispatchers.IO) {
+        lyricsResolver.importFromUri(uri, charsetName)
+    }
+
+    suspend fun importEncodedLyrics(uri: Uri, target: String, charsetName: String?): Boolean {
+        val version = beginSelectionChange(target)
+        importJob?.cancel()
+        val parsed = withContext(Dispatchers.IO) {
+            val imported = lyricsResolver.importFromUri(uri, charsetName)
+            if (!withCurrentSelection(target, version) {
+                importedLyricsStore.save(target, imported, selected = true)
+                recordSelectionAvailability(target, true)
+            }) return@withContext null
+            imported
+        } ?: return false
+        if (!isCurrentSelection(target, version)) return false
+        if (target == lastLyricsTrackId) updateLyricsForTrack(target, force = true)
+        _managementError.value = null
+        return true
+    }
+
     fun importLyrics(
         uri: Uri,
         currentTrackId: String?,

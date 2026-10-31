@@ -85,7 +85,7 @@ internal fun rememberNowPlayingSongActions(
             onSelectPlaylist = { playlist -> submit { viewModel.addPlayerSongToPlaylist(playlist.id, track.id) } },
             onCreatePlaylist = { name -> submit { viewModel.createPlayerPlaylist(name, track.id) } })
     }
-    if (showInfo && track != null) TrackInfoDialog(track, onDismiss = { showInfo = false })
+    if (showInfo && track != null) TrackInfoDialog(track, onDismiss = { showInfo = false }, mediaTools = app.echo.android.ui.library.rememberLibraryMediaTools(viewModel))
     if (showOnline && track != null) OnlineSongAssetsSheet(
         track = track,
         searchCover = { application.onlineTrackArtwork.search(track) },

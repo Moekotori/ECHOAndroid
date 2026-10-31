@@ -32,4 +32,19 @@ class LibraryDocumentsQueriesTest {
         val paged = LibraryDocumentsQueries.project(search, null, limit = 2, offset = 4)
         assertTrue(paged.sql.endsWith("LIMIT 2 OFFSET 4"))
     }
+
+    @Test fun zeroPageReturnsNoRowsAndAnEmptyProjectionUsesTheDocumentContract() {
+        val plan = LibraryDocumentsQueries.search("", "Original")
+        assertTrue(LibraryDocumentsQueries.project(plan, emptyArray(), limit = 0).sql.endsWith("LIMIT 0 OFFSET 0"))
+        assertArrayEquals(LibraryDocumentsQueries.Columns, LibraryDocumentsQueries.columns(emptyArray()))
+    }
+
+    @Test fun mimeFiltersAreBoundAndInvalidPatternsNeverTurnIntoAnUnrestrictedSearch() {
+        val plan = LibraryDocumentsQueries.search("", "Original")
+        val filtered = LibraryDocumentsQueries.searchFilters(plan, listOf("AUDIO/FLAC", "audio/*"), 1024, 1700000000000)
+        assertEquals(listOf("audio/flac", "audio/%", "1024", "1700000000000"), filtered.args.takeLast(4))
+        assertTrue(LibraryDocumentsQueries.searchFilters(plan, listOf("audio/%' OR 1=1 --")).sql.endsWith("WHERE 0"))
+        assertTrue(LibraryDocumentsQueries.searchFilters(plan, emptyList()).sql.endsWith("WHERE 0"))
+        assertThrows(IllegalArgumentException::class.java) { LibraryDocumentsQueries.searchFilters(plan, List(65) { "audio/wav" }) }
+    }
 }

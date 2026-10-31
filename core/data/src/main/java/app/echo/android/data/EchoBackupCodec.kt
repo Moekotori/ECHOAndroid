@@ -160,6 +160,7 @@ object EchoBackupCodec {
             )
         }
         putOptNullableBoolean("equalizerEnabled", settings.equalizerEnabled)
+        putOpt("compressorMode", settings.compressorMode)
         settings.mseb?.let { put("mseb", JSONObject(EchoMsebCodec.encode(it))) }
         settings.msebUserPresets?.let { put("msebUserPresets", JSONArray(EchoMsebPresetCodec.encode(it))) }
         putOpt("equalizerPreset", settings.equalizerPreset)
@@ -268,6 +269,7 @@ object EchoBackupCodec {
             shuffleRecentTrackCount = json.optionalInt("shuffleRecentTrackCount"),
             trackTransitions = transitions,
             equalizerEnabled = json.optionalBoolean("equalizerEnabled"),
+            compressorMode = json.optionalString("compressorMode"),
             mseb = json.optJSONObject("mseb")?.let { EchoMsebCodec.decode(it.toString()) },
             msebUserPresets = json.optJSONArray("msebUserPresets")?.let { EchoMsebPresetCodec.decode(it.toString()) },
             equalizerPreset = json.optionalString("equalizerPreset"),

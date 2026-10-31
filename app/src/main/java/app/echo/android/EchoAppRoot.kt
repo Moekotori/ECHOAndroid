@@ -435,8 +435,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     var openPcTabNonce by remember { mutableIntStateOf(0) }
     var openPcQueueNonce by remember { mutableIntStateOf(0) }
     var settingsSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
-    var playerEqualizerRequestId by rememberSaveable { mutableIntStateOf(0) }
-    var playerEqualizerReturnPage by rememberSaveable { mutableStateOf<Int?>(null) }
     var localCastSetupError by remember { mutableStateOf<String?>(null) }
     val phoneCastIssueMessage = phoneCastTransferState.issue?.let { issue ->
         val resource = when (issue) {
@@ -988,7 +986,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             tabPagerState.currentPage != targetPage ||
             tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
     fun navigateToPage(page: EchoPagerPage) {
-        if (page != EchoPagerPage.Diagnostics) playerEqualizerReturnPage = null
         val targetPage = page.ordinal
         if (routeNavigationJob[0]?.isActive == true && tabPagerState.targetPage == targetPage) return
         page.dockTab?.let { selectedTab = it.ordinal }
@@ -1033,8 +1030,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val libraryShortcutRequest by EchoLaunchActions.libraryShortcut.collectAsStateWithLifecycle()
     LaunchedEffect(libraryShortcutRequest) {
         val request = libraryShortcutRequest ?: return@LaunchedEffect
-        EchoLaunchActions.consumeLibraryShortcut()
-        val target = viewModel.libraryShortcutTarget(request.mediaId)
+        val target = EchoLaunchActions.resolveLibraryShortcut(request, viewModel::libraryShortcutTarget)
         if (target == null) {
             app.echo.android.library.EchoLibraryShortcuts.unavailable(context, request)
             android.widget.Toast.makeText(context, R.string.library_shortcut_missing, android.widget.Toast.LENGTH_SHORT).show()
@@ -1124,7 +1120,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     }
     LaunchedEffect(tabPagerState.settledPage, tabPagerState.isScrollInProgress) {
         if (!tabPagerState.isScrollInProgress) {
-            if (tabPagerState.settledPage != EchoPagerPage.Diagnostics.ordinal) playerEqualizerReturnPage = null
             EchoPagerPage.entries[tabPagerState.settledPage].dockTab?.let { settledTab ->
                 if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
             }
@@ -1213,6 +1208,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         navigationEnabled = appVisible && !shellOverlayOpen,
         onSelectTab = ::selectDockTab, onSettings = { navigateToPage(EchoPagerPage.Settings) },
         onPlayPause = ::routedPlayPause,
+        onNext = ::routedSkipNext, onPrevious = ::routedSkipPrevious,
+        onSeekBy = { delta -> val position = shellPositionFlow.value; if (position.durationMs > 0L) routedSeek((position.positionMs + delta).coerceIn(0L, position.durationMs)) },
+        onSearch = { searchVisible = true },
     )
     val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
         tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
@@ -1728,6 +1726,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             val lanRendererState by viewModel.lanRendererDiscoveryState.collectAsStateWithLifecycle()
                             ConnectScreen(
                                 onOpenWifiTransfer = app.echo.android.ui.connect.rememberWifiTransferAction(viewModel, appSettings.libraryScanOptions, localNetwork),
+                                onOpenLinkSongTransfer = app.echo.android.ui.connect.rememberEchoLinkSongTransferAction(viewModel, remoteClient, appSettings.libraryScanOptions),
                                 phoneLibraryShareStatus = phoneLibraryShareStatus,
                                 onPhoneLibraryShareChange = { enabled ->
                                     if (enabled) localNetwork.run { echoLinkSession.setPhoneLibrarySharingEnabled(true) }
@@ -1894,15 +1893,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                     playbackStatus = playbackStatus,
                                     isActive = appVisible && !shellOverlayOpen && tabPagerState.currentPage == EchoPagerPage.Diagnostics.ordinal,
                                     soundRequestId = settingsSoundRequestId,
-                                    equalizerRequestId = if (playerEqualizerReturnPage != null) playerEqualizerRequestId else 0,
-                                    onCloseRequestedEqualizer = {
-                                        val page = playerEqualizerReturnPage
-                                        playerEqualizerReturnPage = null
-                                        if (page != null) {
-                                            navigateToPage(EchoPagerPage.entries[page])
-                                            expandNowPlaying()
-                                        }
-                                    },
                                     onSwipeToConnect = { navigateToPage(EchoPagerPage.Connect) },
                                     bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission && playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
                                     onRequestBluetoothCodecPermission = {
@@ -2024,12 +2014,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                         selectedPlaylist = null
                         selectedFolder = folder
                         selectDockTab(EchoTab.Library)
-                    },
-                    onOpenEqualizer = {
-                        playerEqualizerReturnPage = tabPagerState.settledPage
-                        playerEqualizerRequestId++
-                        nowPlayingExpanded = false
-                        navigateToPage(EchoPagerPage.Diagnostics)
                     },
                     onOpenArtist = { artist ->
                         nowPlayingExpanded = false

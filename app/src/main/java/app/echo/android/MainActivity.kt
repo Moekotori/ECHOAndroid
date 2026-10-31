@@ -111,17 +111,11 @@ class MainActivity : ComponentActivity() {
     /** 投送到 DLNA / Chromecast 时，音量键调的是远端设备，不是手机。 */
     @OptIn(UnstableApi::class)
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (event?.isCtrlPressed == true && event.repeatCount == 0 && !event.isAltPressed && !event.isShiftPressed) {
-            val command = when (keyCode) {
-                KeyEvent.KEYCODE_1 -> 0
-                KeyEvent.KEYCODE_2 -> 1
-                KeyEvent.KEYCODE_3 -> 2
-                KeyEvent.KEYCODE_4 -> 3
-                KeyEvent.KEYCODE_COMMA -> 4
-                KeyEvent.KEYCODE_SPACE -> 5
-                else -> -1
-            }
-            if (command >= 0 && desktopShortcutHandler?.invoke(command) == true) return true
+        val keyboard = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+        if (event != null && keyboard?.isAcceptingText != true) {
+            val command = echoKeyboardCommand(keyCode, event.isCtrlPressed, event.isShiftPressed, event.isAltPressed)
+            if (command != null && event.repeatCount == 0 && desktopShortcutHandler?.invoke(command) == true) return true
+            if (command != null && event.repeatCount > 0) return true
         }
         val delta = when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> CAST_VOLUME_STEP
@@ -130,14 +124,13 @@ class MainActivity : ComponentActivity() {
         }
         val session = (application as? EchoApplication)?.echoLinkSession
         if (session != null && session.adjustCastVolume(delta)) return true
-        if ((application as? EchoApplication)?.usbVolumeKeys?.down(keyCode, event?.repeatCount ?: 0) == true) return true
+        if ((application as? EchoApplication)?.appVolumeKeys?.down(keyCode, event?.repeatCount ?: 0) == true) return true
         return super.onKeyDown(keyCode, event)
     }
 
     @OptIn(UnstableApi::class)
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) &&
-            (application as? EchoApplication)?.usbVolumeKeys?.up(keyCode) == true) return true
+        if ((application as? EchoApplication)?.appVolumeKeys?.up(keyCode) == true) return true
         return super.onKeyUp(keyCode, event)
     }
 
@@ -156,7 +149,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(UnstableApi::class)
     override fun onPause() {
+        (application as? EchoApplication)?.appVolumeKeys?.clearPressed()
         clearRefreshRatePreference()
         super.onPause()
     }

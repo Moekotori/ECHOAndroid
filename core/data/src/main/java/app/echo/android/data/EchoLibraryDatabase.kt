@@ -27,9 +27,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryRepairArchiveEntity::class,
         LibraryMusicRelationEntity::class,
         LibraryLyricsIndexEntity::class,
+        LibraryDuplicateMember::class,
+        LibraryDuplicateControl::class,
     ],
     views = [VisibleLibraryTrackView::class],
-    version = 27,
+    version = 28,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
@@ -40,6 +42,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
     abstract fun experienceDao(): LibraryExperienceDao
     abstract fun musicRelationDao(): LibraryMusicRelationDao
     abstract fun lyricsIndexDao(): LibraryLyricsIndexDao
+    abstract fun duplicateDao(): LibraryDuplicateDao
 
     companion object {
         @Volatile
@@ -80,6 +83,7 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         LibraryHiddenTrackMigration,
                         LibraryMusicRelationMigration,
                         LibraryLyricsIndexMigration,
+                        LibraryDuplicateMigration,
                     )
                     .build()
                     .also { instance = it }

@@ -42,6 +42,12 @@ fun echoThemeTokens(
     theme: EchoColorTheme,
     dark: Boolean,
     custom: EchoCustomColors = EchoCustomColors.Default,
+): EchoThemeTokens = presetTokens(theme, dark, custom).withAtmosphere()
+
+private fun presetTokens(
+    theme: EchoColorTheme,
+    dark: Boolean,
+    custom: EchoCustomColors,
 ): EchoThemeTokens =
     when (theme) {
         EchoColorTheme.Echo -> if (dark) EchoDefaultDark else EchoDefaultLight

@@ -207,8 +207,8 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
     val theme = echoTheme()
     val scheme = MaterialTheme.colorScheme
     val dark = theme.dark
-    // Light presets keep a soft neutral canvas; color belongs to controls and artwork.
-    if (!dark && theme.id != EchoColorTheme.Custom.id) {
+    // The signature Echo light page stays a soft neutral canvas; other light themes wash it with their hue.
+    if (!dark && theme.id == EchoColorTheme.Echo.id) {
         Box(modifier = modifier.background(scheme.background))
         return
     }
@@ -220,12 +220,12 @@ fun EchoGlassBackground(modifier: Modifier = Modifier) {
             val base = Brush.verticalGradient(listOf(theme.bgTop, theme.bgMid, theme.bgBottom))
             val radius = size.maxDimension
             val accent = Brush.radialGradient(
-                colors = listOf(scheme.primary.copy(alpha = if (dark) 0.20f else 0.12f), Color.Transparent),
+                colors = listOf(scheme.primary.copy(alpha = if (dark) 0.20f else 0.17f), Color.Transparent),
                 center = Offset(size.width * 0.04f, size.height * 0.06f),
                 radius = radius * 0.62f,
             )
             val secondary = Brush.radialGradient(
-                colors = listOf(scheme.tertiary.copy(alpha = if (dark) 0.13f else 0.09f), Color.Transparent),
+                colors = listOf(scheme.tertiary.copy(alpha = if (dark) 0.13f else 0.12f), Color.Transparent),
                 center = Offset(size.width * 1.06f, size.height * 0.40f),
                 radius = radius * 0.54f,
             )

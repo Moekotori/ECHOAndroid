@@ -33,6 +33,7 @@ class EchoBackupCodecTest {
         val layout = app.echo.android.model.settings.EchoLibraryLayout(
             order = app.echo.android.model.settings.EchoLibraryCategory.entries.reversed(),
             hidden = setOf(app.echo.android.model.settings.EchoLibraryCategory.Songs),
+            showAlbumArtists = true,
         )
         val settings = EchoAppSettings(libraryLayout = layout).toBackupSettings()
         val decoded = EchoBackupCodec.decode(EchoBackupCodec.encode(EchoBackupDocument(settings = settings))).settings

@@ -143,6 +143,7 @@ fun ConnectScreen(
     queueTotalCount: Int = queueItems.size,
     networkPermissionContent: @Composable () -> Unit = {},
     onOpenWifiTransfer: () -> Unit = {},
+    onOpenLinkSongTransfer: () -> Unit = {},
     phoneLibraryShareStatus: String = "off",
     onPhoneLibraryShareChange: (Boolean) -> Unit = {},
 ) {
@@ -262,6 +263,9 @@ fun ConnectScreen(
                                 PcLinkPanel(
                                     librarySyncActions = librarySyncActions,
                                     phoneLibraryShareContent = {
+                                        if (!libraryOnly && remoteState == EchoRemoteConnectionState.Connected) {
+                                            TextButton(onClick = onOpenLinkSongTransfer) { Text(stringResource(L10nR.string.link_transfer_title)) }
+                                        }
                                         if (!libraryOnly) ConnectCard {
                                             PhoneLibraryShareControl(
                                                 status = phoneLibraryShareStatus,

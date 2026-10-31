@@ -34,7 +34,7 @@ jobs:
           java-version: 21
       - uses: android-actions/setup-android@v4
         with:
-          packages: "tools platform-tools platforms;android-36 ndk;27.2.12479018 cmake;3.22.1"
+          packages: "tools platform-tools platforms;android-37 ndk;27.2.12479018 cmake;3.22.1"
       - uses: gradle/actions/setup-gradle@v4
       - uses: actions/setup-python@v5
         with:
@@ -44,7 +44,7 @@ jobs:
           path: |
             core/playback/build/ffmpeg/downloads
             core/playback/build/ffmpeg/native
-          key: ffmpeg-${{ runner.os }}-ndk27-${{ hashFiles('scripts/build-ffmpeg.py') }}
+          key: ffmpeg-${{ runner.os }}-ndk27-${{ hashFiles('core/playback/scripts/build-ffmpeg.py', 'core/playback/third_party/media3-ffmpeg/jni/**', 'gradle/libs.versions.toml') }}
       - name: Validate version and prepare signing
         env:
           RELEASE_VERSION: ${{ inputs.version }}

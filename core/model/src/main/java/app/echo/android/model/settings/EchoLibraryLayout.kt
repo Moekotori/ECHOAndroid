@@ -20,6 +20,7 @@ data class EchoLibraryLayout(
     val showFileNames: Boolean = false,
     val hiddenTrackActions: Set<EchoTrackMenuAction> = emptySet(),
     val showPlayNext: Boolean = false,
+    val showAlbumArtists: Boolean = false,
 ) {
     fun normalized(): EchoLibraryLayout {
         val unique = order.distinct()

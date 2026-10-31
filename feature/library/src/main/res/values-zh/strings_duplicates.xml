@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="duplicates_title">合并重复版本</string>
+    <string name="duplicates_scope">本地歌曲列表及从该列表新建的播放队列中，同曲只显示一个版本。原文件、专辑和歌单保持不变，其他版本仍可从歌曲菜单查看。</string>
+    <string name="duplicates_enabled">同曲只显示一个版本</string>
+    <string name="duplicates_summary">上次分析：%1$d 组，可折叠 %2$d 个版本</string>
+    <string name="duplicates_not_analyzed">先分析，再用开关显示或折叠匹配版本。</string>
+    <string name="duplicates_progress">已检查 %1$d 个候选文件</string>
+    <string name="duplicates_skipped">%1$d 组候选数量过多，本轮保留原样。</string>
+    <string name="duplicates_failed">分析未完成。请待曲库扫描结束、检查文件权限后重试，原有分析结果会保留。</string>
+    <string name="duplicates_quality_note">根据可读取的格式、位深、采样率和码率推荐，不代表听感鉴定；手动选择的首选版本优先。</string>
+    <string name="duplicates_refresh_note">曲库变化后请重新分析。文件变化或代表版本失效时，旧分组会展开；无法读取的文件保留原样。</string>
+    <string name="duplicates_cancel">取消分析</string>
+    <string name="duplicates_analyze">分析并合并</string>
+    <string name="duplicates_entry_note">折叠同曲版本，按音频参数推荐播放版本</string>
+    <string name="duplicates_manage">管理</string>
+    <string name="duplicates_recommended">音频参数推荐</string>
+    <string name="duplicates_auto">自动 · 优先参数推荐版本</string>
+    <string name="duplicates_preserved">原文件与歌单均保留</string>
+    <string name="duplicates_groups_label">重复组</string>
+    <string name="duplicates_folded_label">可折叠版本</string>
+    <string name="duplicates_updated">上次分析 · %1$s</string>
+    <string name="duplicates_short_scope">本地歌曲列表及新建队列</string>
+    <string name="duplicates_rules">合并与排序规则</string>
+    <string name="duplicates_cancelling">正在取消，当前文件检查结束后停止…</string>
+    <string name="duplicates_scan_blocked">曲库正在扫描，完成后可重新分析；原有结果已保留。</string>
+    <string name="duplicates_saving">正在保存首选版本…</string>
+    <string name="duplicates_auto_support">开始播放时选择可用版本</string>
+    <string name="duplicates_audio_file">音频</string>
+    <string name="duplicates_unknown_quality">暂无可读取的音频参数</string>
+    <string name="duplicates_recommended_short">推荐</string>
+    <string name="duplicates_preferred_short">首选</string>
+    <string name="duplicates_reload_versions">重新加载</string>
+    <string name="duplicates_loading_versions">正在读取歌曲版本…</string>
+</resources>

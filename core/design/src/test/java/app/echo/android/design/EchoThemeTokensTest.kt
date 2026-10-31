@@ -2,6 +2,7 @@ package app.echo.android.design
 
 import app.echo.android.model.settings.EchoColorTheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -88,30 +89,39 @@ class EchoThemeTokensTest {
     }
 
     @Test
-    fun lightPresetsUseSoftPagesAndNeutralSurfaces() {
-        val page = Color(0xFFF5F5F3)
-        val surface = Color(0xFFFAFAF8)
-        for (theme in EchoColorTheme.entries.filter { it != EchoColorTheme.Custom }) {
+    fun echoLightKeepsTheNeutralPaper() {
+        val tokens = echoThemeTokens(EchoColorTheme.Echo, dark = false)
+        val scheme = echoColorScheme(tokens)
+        assertEquals(Color(0xFFF5F5F3), scheme.background)
+        assertEquals(Color(0xFFFAFAF8), scheme.surface)
+        assertEquals(0xFFF5F5F3.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, false))
+    }
+
+    @Test
+    fun otherLightPresetsWashThePageWithTheirOwnHue() {
+        val paper = Color(0xFFF5F5F3)
+        for (theme in EchoColorTheme.entries.filter { it != EchoColorTheme.Echo && it != EchoColorTheme.Custom }) {
             val tokens = echoThemeTokens(theme, dark = false)
             val scheme = echoColorScheme(tokens)
-            for (color in listOf(tokens.bgTop, tokens.bgMid, tokens.bgBottom, tokens.night, scheme.background)) {
-                assertEquals("${theme.id} soft page", page, color)
+            assertTrue("${theme.id} page is not the shared paper", tokens.bgTop != paper)
+            assertEquals("${theme.id} scheme follows page", tokens.bgTop, scheme.background)
+            assertEquals("${theme.id} startup matches page", tokens.bgTop.toArgb(), echoStartupWindowColor(theme, false))
+            assertTrue("${theme.id} stays a light page", relativeLuminance(tokens.bgBottom) > 0.7f)
+            assertTrue("${theme.id} cards lift off the page", relativeLuminance(tokens.panel) > relativeLuminance(tokens.bgTop))
+            assertTrue("${theme.id} keeps accent", tokens.accent == scheme.primary)
+            for (page in listOf(tokens.bgTop, tokens.bgBottom, tokens.panel)) {
+                assertTrue("${theme.id} body on page ${contrastRatio(tokens.onSurface, page)}", contrastRatio(tokens.onSurface, page) >= 4.5f)
+                assertTrue("${theme.id} secondary text on page ${contrastRatio(tokens.muted, page)}", contrastRatio(tokens.muted, page) >= 4.5f)
             }
-            for (color in listOf(tokens.panel, tokens.ink, tokens.surface, tokens.glassWash,
-                scheme.surface, scheme.surfaceBright, scheme.surfaceContainerLowest, scheme.surfaceContainerLow)) {
-                assertEquals("${theme.id} soft surface", surface, color)
-            }
-            for (color in listOf(tokens.mist, tokens.glassBorder, tokens.softLine, tokens.outlineVariant,
-                scheme.surfaceVariant, scheme.surfaceDim, scheme.surfaceContainer,
-                scheme.surfaceContainerHigh, scheme.surfaceContainerHighest)) {
-                assertEquals("${theme.id} neutral surface red/green", color.red, color.green, 0.0001f)
-                assertTrue("${theme.id} slight warmth", color.red >= color.blue && color.red - color.blue <= 0.01f)
-                assertTrue("${theme.id} below paper brightness", relativeLuminance(color) < relativeLuminance(page))
-            }
-            assertEquals("${theme.id} startup matches page", 0xFFF5F5F3.toInt(), echoStartupWindowColor(theme, false))
-            assertEquals("${theme.id} keeps accent", tokens.accent, scheme.primary)
-            assertTrue("${theme.id} body on page", contrastRatio(tokens.onSurface, page) >= 4.5f)
-            assertTrue("${theme.id} secondary text on page", contrastRatio(tokens.muted, page) >= 4.5f)
+        }
+    }
+
+    @Test
+    fun presetThemesLookDistinctFromEachOther() {
+        for (dark in listOf(true, false)) {
+            val pages = EchoColorTheme.entries.filter { it != EchoColorTheme.Custom }
+                .map { echoThemeTokens(it, dark).bgMid.toArgb() }
+            assertEquals("dark=$dark every theme has its own page tone", pages.size, pages.toSet().size)
         }
     }
 

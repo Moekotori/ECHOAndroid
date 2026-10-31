@@ -49,4 +49,11 @@ class EchoGesturePolicyTest {
     @Test fun equalDiagonalMovementPrefersVerticalContent() {
         assertFalse(echoHorizontalGestureOwnsScroll(Offset.Zero, Offset(10f, -10f)))
     }
+
+    @Test fun nestedPagingUsesTheSameDirectionForDraggingAndFlinging() {
+        assertEquals(-1f, echoPagerScrollSign(rtl = false, reverseLayout = false), 0f)
+        assertEquals(1f, echoPagerScrollSign(rtl = true, reverseLayout = false), 0f)
+        assertEquals(1f, echoPagerScrollSign(rtl = false, reverseLayout = true), 0f)
+        assertEquals(-1f, echoPagerScrollSign(rtl = true, reverseLayout = true), 0f)
+    }
 }

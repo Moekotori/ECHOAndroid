@@ -24,12 +24,14 @@ internal class EchoPagerEdgeDrag {
     var startingPage = -1
         private set
     private var distance = 0f
-    fun begin(page: Int) { startingPage = page; distance = 0f }
-    fun reset() { startingPage = -1; distance = 0f }
+    private val axis = EchoPagerDragAxis()
+    fun begin(page: Int) { startingPage = page; distance = 0f; axis.reset() }
+    fun reset() { startingPage = -1; distance = 0f; axis.reset() }
     fun add(consumed: Offset, available: Offset, pageCount: Int): Float {
         if (startingPage < 0) return 0f
-        if (!echoHorizontalGestureOwnsScroll(consumed, available)) {
-            if (consumed.y != 0f || available.y != 0f) distance = 0f
+        // A list reaching its vertical edge must not turn later horizontal jitter into navigation.
+        if (!axis.ownsScroll(consumed, available) || !echoHorizontalGestureOwnsScroll(consumed, available)) {
+            distance = 0f
             return 0f
         }
         val outward = when {
@@ -80,12 +82,14 @@ fun Modifier.echoPagerEdgeSwipe(
     return nestedScroll(connection).pointerInput(pager, threshold, rtl) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            if (currentEvent.changes.size != 1) return@awaitEachGesture
             if (pager.isScrollInProgress || abs(pager.currentPageOffsetFraction) > 0.001f) return@awaitEachGesture
             edge.begin(pager.settledPage)
+            val pageCount = pager.pageCount
             try {
                 while (true) {
                     val event = awaitPointerEvent(PointerEventPass.Final)
-                    if (event.changes.count { it.pressed } > 1) break
+                    if (event.changes.size != 1 || pager.pageCount != pageCount) break
                     val pointer = event.changes.firstOrNull { it.id == down.id } ?: break
                     if (!pointer.pressed) {
                         if (pointer.changedToUpIgnoreConsumed() && abs(pager.currentPageOffsetFraction) < 0.001f) {

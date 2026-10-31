@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compressor_title">动态压缩</string>
+    <string name="compressor_detail">缩小强弱差异，适合低音量听音。轻度为 2:1，夜间为 4:1；包含有限补偿增益与峰值保护。会改变采样，严格直通时旁路。</string>
+    <string name="compressor_off">关闭</string>
+    <string name="compressor_gentle">轻度</string>
+    <string name="compressor_night">夜间</string>
+    <string name="keyboard_help_title">键盘快捷键</string>
+    <string name="keyboard_help_scope">ECHO 在前台且未打开弹层、未编辑文字时可用。按住组合键再按一次目标键。跳转跟随当前本机或投送输出。</string>
+    <string name="keyboard_tabs">切换底部页面</string>
+    <string name="keyboard_settings">打开设置</string>
+    <string name="keyboard_play">播放／暂停</string>
+    <string name="keyboard_tracks">下一首／上一首</string>
+    <string name="keyboard_seek">快进／后退 10 秒</string>
+    <string name="keyboard_search">打开曲库搜索</string>
+    <string name="keyboard_close">关闭</string>
+    <string name="keyboard_help_entry">播放、跳转、搜索与导航 · Ctrl + /</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_album_artists">专辑艺术家</string>
+    <string name="library_show_album_artists">艺术家显示为专辑艺术家</string>
+    <string name="library_show_album_artists_note">按专辑艺术家归类本地音乐；未填写时使用歌曲艺术家。</string>
+</resources>

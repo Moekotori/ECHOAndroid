@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="encoding_title">文字乱码修復</string>
+    <string name="encoding_note">預覽沒有編码聲明的舊 ID3／WAV INFO 標籤。應用僅修正曲庫顯示，不改音頻文件；UTF 標籤遵守原聲明。歌詞文件請在歌詞管理中指定編码導入。</string>
+    <string name="encoding_auto">自動識別</string>
+    <string name="encoding_restore">撤銷顯示修正</string>
+    <string name="encoding_failed">無法預覽或保存此編码。文件可能已變化，或沒有支持的舊 ID3／WAV INFO 文本。可尝試自動識別或其他編码。</string>
+    <string name="encoding_saved">顯示修正已保存，音頻文件保持原样。</string>
+    <string name="encoding_apply">應用于此曲</string>
+    <string name="media_tools_retry">重試</string>
+    <string name="media_tools_close">關閉</string>
+    <string name="album_images_title">專輯圖片</string>
+    <string name="album_images_front">封面</string>
+    <string name="album_images_back">封底</string>
+    <string name="album_images_disc">碟面</string>
+    <string name="album_images_page">內頁／圖片</string>
+    <string name="album_images_previous">上一張</string>
+    <string name="album_images_next">下一張</string>
+    <string name="album_images_fit">恢復适應大小</string>
+    <string name="album_images_failed">無法加載圖片，可重試或選擇可訪问的目錄。</string>
+    <string name="album_images_empty">未找到可訪问的專輯圖片。</string>
+    <string name="album_images_note">双指縮放。按需讀取 ID3／FLAC 圖片，每次最多 16 張、24 MiB；Android 不允许訪问同目錄圖片時，可手動選擇目錄。</string>
+    <string name="album_images_choose_folder">選擇圖片目錄</string>
+    <string name="album_images_embedded">返回內嵌圖片</string>
+    <string name="scanned_playlists_title">发現目錄中的歌單</string>
+    <string name="scanned_playlists_note">掃描後在已授权目錄查找 M3U／M3U8。先預覽匹配再導入；已有導入必须確認後才更新。</string>
+    <string name="scanned_playlists_discover">查找歌單</string>
+    <string name="scanned_playlists_choose">選擇歌單目錄</string>
+    <string name="scanned_playlists_error">操作未完成。文件或歌單可能已變化，請重新查找後重試。</string>
+    <string name="scanned_playlists_partial">部分目錄無法讀取或達到查找上限，可選擇較小目錄繼續。</string>
+    <string name="scanned_playlists_empty">這些目錄中沒有找到 M3U／M3U8。</string>
+    <string name="scanned_playlists_counts">匹配 %1$d · 缺失 %2$d · 歧義 %3$d · 重復 %4$d</string>
+    <string name="scanned_playlists_read_error">無法讀取或解析此歌單。</string>
+    <string name="scanned_playlists_imported">已導入</string>
+    <string name="scanned_playlists_update">更新已有歌單</string>
+    <string name="scanned_playlists_review">預覽導入</string>
+    <string name="scanned_playlists_confirm">僅導入唯一匹配的曲目，保留文件順序；未解决的条目會跳過。</string>
+    <string name="scanned_playlists_replace_warning">以匹配曲目替換已有導入歌單的內容和順序？此歌單的手動調整會被替換，音頻文件保持原样。</string>
+    <string name="scanned_playlists_import">導入歌單</string>
+    <string name="encoding_folder">預覽同目錄曲目</string>
+    <string name="encoding_folder_note">僅處理目前目錄，最多 50 首；只套用預覽成功的曲目，不支援的檔案會略過。中斷時可能部分完成，可在各曲資訊中撤銷。</string>
+    <string name="encoding_folder_skip">略過：%1$s</string>
+    <string name="encoding_folder_result">已套用 %1$d · 失敗 %2$d</string>
+    <string name="encoding_apply_folder">套用已預覽曲目</string>
+</resources>

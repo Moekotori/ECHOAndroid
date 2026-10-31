@@ -125,4 +125,42 @@ class NowPlayingDismissMotionTest {
             Offset(30f, 0f), Offset(0f, 4f), NestedScrollSource.UserInput,
         ))
     }
+
+    @Test fun resistanceIsReversibleAndIndependentOfMoveEventBatching() {
+        val single = NowPlayingDismissDragState()
+        val batched = NowPlayingDismissDragState()
+        single.applyDelta(200f, 100f) {}
+        repeat(10) { batched.applyDelta(20f, 100f) {} }
+        assertEquals(138f, single.offsetPx, 0.001f)
+        assertEquals(single.offsetPx, batched.offsetPx, 0.001f)
+        single.applyDelta(-200f, 100f) {}
+        assertEquals(0f, single.offsetPx, 0.001f)
+    }
+
+    @Test fun reversingResistedPullReturnsOnlyTheUnusedDistanceToTheList() {
+        val state = NowPlayingDismissDragState()
+        state.applyDelta(200f, 100f) {}
+        val consumed = connection(state).onPreScroll(Offset(0f, -220f), NestedScrollSource.UserInput)
+        assertEquals(-200f, consumed.y, 0.001f)
+        assertEquals(0f, state.offsetPx, 0.001f)
+    }
+
+    @Test fun fastUpwardReleaseCancelsEvenAfterCrossingTheDismissThreshold() {
+        assertFalse(nowPlayingShouldDismiss(120f, -1400f, 100f, 1000f))
+        assertTrue(nowPlayingShouldDismiss(120f, 0f, 100f, 1000f))
+        assertTrue(nowPlayingShouldDismiss(120f, -1400f, 100f, 1000f, forceDismiss = true))
+    }
+
+    @Test fun displacedPlayerSettlesOnceBeforeChildCanConsumeItsReleaseVelocity() = runBlocking {
+        val state = NowPlayingDismissDragState()
+        val releases = mutableListOf<Float>()
+        val connection = connection(state, settle = releases::add)
+        state.applyDelta(150f, 100f) {}
+        assertEquals(Velocity(0f, -1400f), connection.onPreFling(Velocity(900f, -1400f)))
+        assertEquals(Velocity.Zero, connection.onPostFling(Velocity(0f, -1400f), Velocity(900f, 0f)))
+        assertEquals(listOf(-1400f), releases)
+        assertFalse(state.isDragging)
+        state.reset()
+        assertEquals(Velocity.Zero, connection.onPreFling(Velocity(0f, -1400f)))
+    }
 }

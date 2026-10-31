@@ -49,6 +49,7 @@ fun AddMusicScreen(
     onChooseExcludedFolder: () -> Unit,
     onExcludedFolderConsumed: () -> Unit,
     modifier: Modifier = Modifier,
+    playlistDiscovery: @Composable () -> Unit = {},
 ) {
     var options by rememberSaveable { mutableStateOf(initialOptions) }
     var folderToRemove by rememberSaveable { mutableStateOf<String?>(null) }
@@ -92,6 +93,7 @@ fun AddMusicScreen(
             actionError?.let { error -> item("action-error") {
                 Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
             } }
+            item("discovered-playlists") { playlistDiscovery() }
             item("sources") {
                 AddMusicActionRow(Icons.Rounded.FolderOpen, stringResource(R.string.scan_choose_folder),
                     stringResource(R.string.add_music_folder_hint), enabled) { onScanFolder(options) }

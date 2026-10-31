@@ -1,7 +1,6 @@
 package app.echo.android.feature.player
 
 import android.graphics.Canvas
-import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
@@ -14,7 +13,7 @@ import kotlin.math.sin
 
 /**
  * Soft light blobs placed on a 3x4 lattice; each takes the color of the cover at its own position,
- * so the colors on screen line up with the colors in the artwork. Shaders, paints and matrices are reused.
+ * so the colors on screen line up with the colors in the artwork. Shaders and paints are reused.
  */
 internal class MeshBackdropField(deep: Color, grid: ArtworkColorGrid) : BackdropField {
     private val base = Paint().apply { color = deep.toArgb() }
@@ -52,7 +51,6 @@ internal class MeshBackdropField(deep: Color, grid: ArtworkColorGrid) : Backdrop
         midAlpha: Float = 0.5f,
     ) {
         val phase = index.toDouble()
-        private val matrix = Matrix()
         private val shader = RadialGradient(
             0f, 0f, 1f,
             intArrayOf(withAlpha(color, centerAlpha), withAlpha(color, midAlpha), withAlpha(color, 0f)),
@@ -60,13 +58,14 @@ internal class MeshBackdropField(deep: Color, grid: ArtworkColorGrid) : Backdrop
         )
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = this@Blob.shader }
 
-        /** The gradient fades to nothing at [radius], so only its bounding square needs filling. */
+        /** Transform drawing commands instead of mutating the cached shader's local matrix. */
         fun drawAt(canvas: Canvas, x: Float, y: Float, radius: Float, alpha: Int) {
-            matrix.setScale(radius, radius)
-            matrix.postTranslate(x, y)
-            shader.setLocalMatrix(matrix)
             paint.alpha = alpha
-            canvas.drawRect(x - radius, y - radius, x + radius, y + radius, paint)
+            val checkpoint = canvas.save()
+            canvas.translate(x, y)
+            canvas.scale(radius, radius)
+            canvas.drawCircle(0f, 0f, 1f, paint)
+            canvas.restoreToCount(checkpoint)
         }
     }
 

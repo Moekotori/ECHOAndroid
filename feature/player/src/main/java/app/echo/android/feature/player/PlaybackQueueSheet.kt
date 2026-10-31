@@ -13,7 +13,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.Orientation
+import app.echo.android.design.echoDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +59,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -368,20 +368,13 @@ private fun Modifier.queueSheetHandleDrag(
     onDragEnd: () -> Unit,
     onDragCancel: () -> Unit,
 ): Modifier {
-    val drag = rememberUpdatedState(onDrag)
-    val end = rememberUpdatedState(onDragEnd)
-    val cancel = rememberUpdatedState(onDragCancel)
-    return pointerInput(Unit) {
-        detectVerticalDragGestures(
-            onDragStart = { drag.value(0f) },
-            onVerticalDrag = { change, dragAmount ->
-                change.consume()
-                drag.value(dragAmount)
-            },
-            onDragCancel = { cancel.value() },
-            onDragEnd = { end.value() },
-        )
-    }
+    return echoDrag(
+        orientation = Orientation.Vertical,
+        onStart = { onDrag(0f) },
+        onDelta = onDrag,
+        onStop = { onDragEnd() },
+        onCancel = onDragCancel,
+    )
 }
 
 @Composable

@@ -54,10 +54,8 @@ suspend fun EchoLibraryRepository.relinkLibraryTrack(oldId: String, candidate: E
         val old = dao.getTrackById(oldId) ?: archive?.let { decodeRepairTrack(it).also { row -> dao.upsertBatchWithFts(listOf(row)) } }
             ?: error("Track no longer exists")
         if (archive != null) restoreRepairReferences(archive)
-        val originalFragment = android.net.Uri.parse(old.contentUri).fragment
-        val replacementUri = if (old.clipEndMs > old.clipStartMs && !originalFragment.isNullOrBlank())
-            android.net.Uri.parse(CueSheetPolicy.playbackUri(candidate.uri)).buildUpon().fragment(originalFragment).build().toString()
-            else candidate.uri
+        val relink = old.relinkPlan(candidate)
+        val replacementUri = relink.contentUri
         val existing = dao.getTrackByContentUri(replacementUri)
         if (existing?.id == oldId && replacementUri == old.contentUri) {
             dao.refreshMergedPlaylistCounts(oldId)
@@ -72,15 +70,37 @@ suspend fun EchoLibraryRepository.relinkLibraryTrack(oldId: String, candidate: E
             val documentId = runCatching { android.provider.DocumentsContract.getDocumentId(uri) }.getOrNull()
             val baseId = documentId?.let { "saf:${android.net.Uri.encode(it)}" }
                 ?: ("saf:relinked:" + java.security.MessageDigest.getInstance("SHA-256").digest(uri.toString().toByteArray()).joinToString("") { "%02x".format(it) })
-            val newId = if (old.clipEndMs > old.clipStartMs) "$baseId#cue:${oldId.substringAfterLast("#cue:", old.clipStartMs.toString())}" else baseId
+            val newId = relink.trackId(baseId)
             val updated = old.copy(id = newId, contentUri = replacementUri, source = LibrarySource.Saf.id,
                 sizeBytes = candidate.sizeBytes, dateModifiedSeconds = candidate.dateModifiedSeconds,
                 sampleRateHz = candidate.sampleRateHz ?: old.sampleRateHz,
-                durationMs = if (old.clipEndMs > old.clipStartMs) old.durationMs else candidate.durationMs,
+                durationMs = relink.durationMs,
                 relativePath = null, fileName = null).withFingerprint()
             dao.upsertBatchWithFts(listOf(updated))
             dao.mergeScanDuplicate(oldId, newId)
         }
         database.experienceDao().deleteArchive(oldId)
     }
+}
+
+internal data class LibraryTrackRelinkPlan(
+    val contentUri: String,
+    val cueSuffix: String?,
+    val durationMs: Long,
+) {
+    fun trackId(baseId: String): String = baseId + cueSuffix.orEmpty()
+}
+
+/** An open-ended CUE tail is still a clip, including when its source duration is unknown. */
+internal fun LibraryTrackEntity.relinkPlan(candidate: EchoTrack): LibraryTrackRelinkPlan {
+    val clipped = CueSheetPolicy.isCueTrackId(id) || clipStartMs > 0L || clipEndMs > 0L
+    if (!clipped) return LibraryTrackRelinkPlan(candidate.uri, null, candidate.durationMs)
+    val number = id.substringAfterLast(CueSheetPolicy.CueSuffix, clipStartMs.toString())
+    val fragment = contentUri.substringAfter('#', "").takeIf { it.isNotBlank() }
+        ?: "${CueSheetPolicy.CueUriFragment}=$number"
+    return LibraryTrackRelinkPlan(
+        contentUri = "${CueSheetPolicy.playbackUri(candidate.uri)}#$fragment",
+        cueSuffix = "${CueSheetPolicy.CueSuffix}$number",
+        durationMs = durationMs,
+    )
 }
