@@ -15,6 +15,10 @@ import app.echo.android.i18n.initializeEchoAppLocale
 import app.echo.android.i18n.wrapEchoAppLocale
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorProcessInfo
+import app.echo.android.model.playback.EchoReplayGainMode
+import app.echo.android.model.playback.EchoShuffleOptions
+import app.echo.android.model.playback.EchoTrackTransitionOptions
+import app.echo.android.model.settings.EchoLyricsOptions
 import app.echo.android.design.EchoArtworkImageLoader
 import app.echo.android.design.EchoArtworkUrlRewriteRegistry
 import coil.ImageLoader
@@ -119,56 +123,62 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
         scrobbleSession.start(settingsStore.appSettings)
         listeningHistoryRecorder.start(EchoPlaybackProcessRuntime.surface)
         app.echo.android.lyrics.overlay.EchoFloatingLyricsController(this, settingsStore).start()
-        EchoPlaybackProcessRuntime.scope.launch {
-            settingsStore.appSettings.map { it.lyricsOptions }.distinctUntilChanged()
-                .collect(EchoPlaybackProcessRuntime::setLyricsOptions)
-        }
         // Playback preferences and remote stream signing remain live when only the
-        // service/media buttons are running (no ViewModel).
+        // service/media buttons are running (no ViewModel). One collector avoids
+        // re-decoding the whole settings snapshot once per preference.
         EchoPlaybackProcessRuntime.scope.launch {
-            settingsStore.appSettings.map { it.setlistFmApiKey }.distinctUntilChanged()
-                .collect { setlistFmApiKey = it }
-        }
-        EchoPlaybackProcessRuntime.scope.launch {
-            settingsStore.appSettings.map { it.shuffleOptions }.distinctUntilChanged()
-                .collect(EchoPlaybackRuntimeOptionsStore::setShuffleOptions)
-        }
-        EchoPlaybackProcessRuntime.scope.launch {
-            settingsStore.appSettings.map { it.trackTransitions }.distinctUntilChanged()
-                .collect(EchoPlaybackRuntimeOptionsStore::setTrackTransitions)
-        }
-        EchoPlaybackProcessRuntime.scope.launch {
-            settingsStore.appSettings
-                .map {
-                    Triple(
-                        it.replayGainEnabled,
-                        it.replayGainPreampDb,
-                        app.echo.android.model.playback.EchoReplayGainMode.fromId(it.replayGainMode),
+            var lastLyricsOptions: EchoLyricsOptions? = null
+            var setlistKeyInitialized = false
+            var lastSetlistKey: String? = null
+            var lastShuffleOptions: EchoShuffleOptions? = null
+            var lastTrackTransitions: EchoTrackTransitionOptions? = null
+            var lastReplayGain: Triple<Boolean, Float, EchoReplayGainMode>? = null
+            var lastAudioRoutePolicy: Pair<Boolean, Boolean>? = null
+            var lastRemoteCredentials: RemotePlaybackCredentialSnapshot? = null
+            settingsStore.appSettings.collect { settings ->
+                if (settings.lyricsOptions != lastLyricsOptions) {
+                    lastLyricsOptions = settings.lyricsOptions
+                    EchoPlaybackProcessRuntime.setLyricsOptions(settings.lyricsOptions)
+                }
+                if (!setlistKeyInitialized || settings.setlistFmApiKey != lastSetlistKey) {
+                    setlistKeyInitialized = true
+                    lastSetlistKey = settings.setlistFmApiKey
+                    setlistFmApiKey = settings.setlistFmApiKey
+                }
+                if (settings.shuffleOptions != lastShuffleOptions) {
+                    lastShuffleOptions = settings.shuffleOptions
+                    EchoPlaybackRuntimeOptionsStore.setShuffleOptions(settings.shuffleOptions)
+                }
+                if (settings.trackTransitions != lastTrackTransitions) {
+                    lastTrackTransitions = settings.trackTransitions
+                    EchoPlaybackRuntimeOptionsStore.setTrackTransitions(settings.trackTransitions)
+                }
+                val replayGain = Triple(
+                    settings.replayGainEnabled,
+                    settings.replayGainPreampDb,
+                    EchoReplayGainMode.fromId(settings.replayGainMode),
+                )
+                if (replayGain != lastReplayGain) {
+                    lastReplayGain = replayGain
+                    EchoPlaybackProcessRuntime.setReplayGain(replayGain.first, replayGain.second)
+                    EchoPlaybackProcessRuntime.setReplayGainMode(replayGain.third)
+                }
+                val audioRoutePolicy = settings.pauseOnAudioDisconnect to settings.resumeOnAudioReconnect
+                if (audioRoutePolicy != lastAudioRoutePolicy) {
+                    lastAudioRoutePolicy = audioRoutePolicy
+                    EchoPlaybackProcessRuntime.setAudioRoutePlaybackPolicy(
+                        audioRoutePolicy.first,
+                        audioRoutePolicy.second,
                     )
                 }
-                .distinctUntilChanged()
-                .collect { (enabled, preampDb, mode) ->
-                    EchoPlaybackProcessRuntime.setReplayGain(enabled, preampDb)
-                    EchoPlaybackProcessRuntime.setReplayGainMode(mode)
-                }
-        }
-        EchoPlaybackProcessRuntime.scope.launch {
-            settingsStore.appSettings
-                .map { it.pauseOnAudioDisconnect to it.resumeOnAudioReconnect }
-                .distinctUntilChanged()
-                .collect { (pauseOnDisconnect, resumeOnReconnect) ->
-                    EchoPlaybackProcessRuntime.setAudioRoutePlaybackPolicy(pauseOnDisconnect, resumeOnReconnect)
-                }
-        }
-        EchoPlaybackProcessRuntime.scope.launch {
-            settingsStore.appSettings
-                .map { it.remotePlaybackCredentialSnapshot() to it }
-                .distinctUntilChanged { previous, next -> previous.first == next.first }
-                .collect { (_, settings) ->
+                val remoteCredentials = settings.remotePlaybackCredentialSnapshot()
+                if (remoteCredentials != lastRemoteCredentials) {
+                    lastRemoteCredentials = remoteCredentials
                     applyRemotePlaybackCredentials(settings, allowClearIfEmpty = true)
                     EchoSubsonicListen.onCredentialsReady()
                     EchoPlaybackProcessRuntime.notifyRemoteAuthReady()
                 }
+            }
         }
         EchoPlaybackProcessRuntime.scope.launch {
             settingsStore.appSettings.map { app.echo.android.playback.EchoPlaybackRuntimeOptions(
