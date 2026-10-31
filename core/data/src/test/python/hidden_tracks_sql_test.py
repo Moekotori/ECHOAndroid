@@ -58,7 +58,8 @@ def assert_visible(expected):
 def rebuild_and_count(expected):
     sql_file = (source / "EchoLibraryDatabase.kt").read_text(encoding="utf-8")
     for kind, table in (("Album", "album"), ("Folder", "folder"), ("Genre", "genre")):
-        sql = re.search(r'const val Rebuild' + kind + r'SummariesForKeysSql\s*=\s*"""(.*?)"""', sql_file, re.S)[1]
+        suffix = "ForLocalKeysSql" if kind == "Album" else "ForKeysSql"
+        sql = re.search(r'const val Rebuild' + kind + r'Summaries' + suffix + r'\s*=\s*"""(.*?)"""', sql_file, re.S)[1]
         db.execute(f"DELETE FROM library_{table}_summaries")
         db.execute(sql.replace(":keys", ":key"), {"key": {"album": "album", "folder": "Music/", "genre": "rock"}[table]})
         assert db.execute(f"SELECT SUM(trackCount) FROM library_{table}_summaries").fetchone()[0] == expected

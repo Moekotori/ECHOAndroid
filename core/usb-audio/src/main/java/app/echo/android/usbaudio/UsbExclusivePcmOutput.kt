@@ -309,10 +309,11 @@ class UsbExclusivePcmSession internal constructor(
             if (requested && nativeHandle != 0L) {
                 UsbIsochronousNative.prime(nativeHandle)
                 startKeepAliveLocked()
+            } else if (!requested) {
+                // Interrupt under the lock: a concurrent re-enable must not adopt this
+                // thread after the unlock but before the interrupt lands.
+                keepAliveThread?.interrupt()
             }
-        }
-        if (!requested) {
-            keepAliveThread?.interrupt()
         }
     }
 

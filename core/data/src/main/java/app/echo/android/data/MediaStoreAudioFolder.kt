@@ -35,7 +35,7 @@ internal fun normalizeRelativePathPrefix(path: String?): String? {
     return "$cleanPath/"
 }
 
-internal fun escapeSqlLikeArgument(value: String): String =
+fun escapeSqlLikeArgument(value: String): String =
     buildString(value.length) {
         value.forEach { char ->
             when (char) {

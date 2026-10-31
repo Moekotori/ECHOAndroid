@@ -95,12 +95,16 @@ class EchoLibraryRepository(
 
     suspend fun cleanupLocalLibrary(): LibraryHygieneResult = withContext(Dispatchers.IO) {
         val dao = database.trackDao()
-        val missing = LibraryHygienePolicy.missingIds(
-            dao.localTrackLocations().map { row ->
-                row.id to CueSheetPolicy.playbackUri(row.contentUri)
-            },
-            exists = ::localUriExists,
-        )
+        val locations = dao.localTrackLocations().map { row ->
+            row.id to CueSheetPolicy.playbackUri(row.contentUri)
+        }
+        // Existence probes hit the ContentProvider per URI; batch them so large libraries
+        // yield to cancellation between batches instead of one uninterrupted burst.
+        val missing = ArrayList<String>()
+        locations.chunked(LibraryHygienePolicy.MaxCheckBatch).forEach { chunk ->
+            missing += LibraryHygienePolicy.missingIds(chunk, exists = ::localUriExists)
+            yield()
+        }
         val duplicates = LibraryHygienePolicy.duplicateGroups(
             dao.localTrackFingerprints().mapNotNull { row ->
                 val fingerprint = row.fingerprint?.trim().orEmpty()
@@ -108,7 +112,10 @@ class EchoLibraryRepository(
             },
         )
         val ids = LibraryHygienePolicy.idsToDelete(missing, duplicates)
-        if (ids.isNotEmpty()) dao.deleteScanBatch(ids)
+        ids.chunked(DATABASE_BATCH_SIZE).forEach { chunk ->
+            dao.deleteScanBatch(chunk)
+            yield()
+        }
         LibraryHygieneResult(missingRemoved = missing.size, duplicatesRemoved = duplicates.sumOf { it.removeIds.size })
     }
 
@@ -133,13 +140,17 @@ class EchoLibraryRepository(
             val matchQuery = substringFtsQuery(trimmedQuery)
             val useFts = matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)
 
+            val statsSorted = sort == LibraryTrackSortMode.FrequentlyPlayed || sort == LibraryTrackSortMode.RecentlyPlayed || sort == LibraryTrackSortMode.LeastPlayed
             emitAll(
                 Pager(
                     config = defaultPagingConfig(enablePlaceholders = true),
                     pagingSourceFactory = {
                         val request = trackPagingQuery(trimmedQuery, matchQuery, useFts, sort, filter)
-                        if (filter.lyrics == app.echo.android.model.library.LibraryPresenceFilter.Any)
-                            dao.pageTracksSorted(request) else dao.pageTracksSortedWithLyrics(request)
+                        when {
+                            filter.lyrics != app.echo.android.model.library.LibraryPresenceFilter.Any -> dao.pageTracksSortedWithLyrics(request)
+                            statsSorted -> dao.pageTracksSorted(request)
+                            else -> dao.pageTracksSortedWithoutStats(request)
+                        }
                     },
                 ).flow,
             )
@@ -335,20 +346,18 @@ class EchoLibraryRepository(
         val id = trackId.trim()
         if (id.isEmpty()) return false
         val dao = database.playlistDao()
-        val current = LibraryFavoriteSnapshot(dao.getFavoriteTrackIds().toSet())
-        val next = LibraryFavoritePolicy.toggle(current, id)
-        val liked = LibraryFavoritePolicy.isLiked(next, id)
-        if (liked) {
+        return if (dao.isFavorite(id)) {
+            dao.deleteFavorite(id)
+            false
+        } else {
             dao.upsertFavorite(
                 LibraryFavoriteEntity(
                     trackId = id,
                     favoritedAtEpochMs = System.currentTimeMillis(),
                 ),
             )
-        } else {
-            dao.deleteFavorite(id)
+            true
         }
-        return liked
     }
 
     suspend fun exportBackupPlaylists(): List<app.echo.android.model.backup.EchoBackupPlaylist> {
@@ -452,10 +461,16 @@ class EchoLibraryRepository(
         }
         var favoritesRestored = 0
         val liked = database.playlistDao().getFavoriteTrackIds().toSet()
+        val playlistDao = database.playlistDao()
         favorites.forEach { track ->
             val id = resolve(track) ?: return@forEach
             if (id !in liked) {
-                toggleFavorite(id)
+                playlistDao.upsertFavorite(
+                    LibraryFavoriteEntity(
+                        trackId = id,
+                        favoritedAtEpochMs = System.currentTimeMillis(),
+                    ),
+                )
             }
             favoritesRestored++
         }

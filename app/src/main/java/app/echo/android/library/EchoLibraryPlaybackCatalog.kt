@@ -514,7 +514,7 @@ class EchoLibraryPlaybackCatalog(
     private suspend fun searchPlaylists(query: String, limit: Int): List<EchoPlaybackBrowseItem> {
         val pinned = pinnedPlaylistItems().filter { it.title.contains(query, ignoreCase = true) }
         val user = database.playlistDao()
-            .searchPlaylistsForBrowse(LibrarySource.MediaStore.id, query, limit)
+            .searchPlaylistsForBrowse(LibrarySource.MediaStore.id, app.echo.android.data.escapeSqlLikeArgument(query), limit)
             .map { row ->
                 EchoPlaybackBrowseItem(
                     mediaId = EchoPlaybackLibraryIds.playlist(row.id),
