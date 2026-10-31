@@ -315,7 +315,7 @@ class EchoLinkSession(private val application: Application) {
             if (previous != null) {
                 withContext(Dispatchers.IO) { stopRenderer(previous) }
             }
-            val items = publishLocalCast(tracks, peerHost = renderer.host)
+            val items = withContext(Dispatchers.IO) { publishLocalCast(tracks, peerHost = renderer.host) }
             if (items == null) {
                 onFailure(EchoDlnaException(500, "no_lan"))
                 return@launch
@@ -375,7 +375,7 @@ class EchoLinkSession(private val application: Application) {
             if (previous != null && previous.kind != EchoLanRendererKind.Chromecast) {
                 withContext(Dispatchers.IO) { stopRenderer(previous) }
             }
-            val items = publishLocalCast(tracks, peerHost = renderer.host)
+            val items = withContext(Dispatchers.IO) { publishLocalCast(tracks, peerHost = renderer.host) }
             if (items == null) {
                 onFailure(EchoDlnaException(500, "no_lan"))
                 return@launch

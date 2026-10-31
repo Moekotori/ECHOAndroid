@@ -18,8 +18,7 @@ object EchoLyricsParser {
             normalized.startsWith('{') && JsonLyricsKeyRegex.containsMatchIn(normalized)) {
             return EchoJsonLyricsParser.parse(normalized, sourceLabel)
         }
-        val text = Regex("""LyricContent\s*=\s*"([^"]*)""", RegexOption.IGNORE_CASE)
-            .find(normalized)?.groupValues?.get(1)?.let(::decodeEntities) ?: normalized
+        val text = LyricContentRegex.find(normalized)?.groupValues?.get(1)?.let(::decodeEntities) ?: normalized
         if (text.isBlank()) return EchoLyrics(sourceLabel = sourceLabel, format = EchoLyricsFormat.PlainText)
 
         return when {
@@ -258,6 +257,7 @@ object EchoLyricsParser {
 
     private val LrcTimeRegex = Regex("""\[\d{1,3}:\d{1,2}(?:[\.:]\d{1,3})?\]""")
     private val JsonLyricsKeyRegex = Regex(""""(?:lines|lyrics|lrc|yrc|syncedLyrics|plainLyrics)"\s*:""")
+    private val LyricContentRegex = Regex("""LyricContent\s*=\s*"([^"]*)""", RegexOption.IGNORE_CASE)
     private val EntityRegex = Regex("""&(#x[0-9a-fA-F]+|#\d+|[A-Za-z]+);""")
     private val LrcMetadataRegex = Regex("""^\[([A-Za-z][\w-]*):(.*)\]$""")
     private val LineDurationRegex = Regex("""^\[(\d{1,8}),(\d{1,8})\](.*)$""")

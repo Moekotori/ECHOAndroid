@@ -97,6 +97,7 @@ import app.echo.android.data.restoreHiddenTracks
 import app.echo.android.data.restoreAllHiddenTracks
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -1584,9 +1585,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun setEqualizerBandGain(index: Int, gainDb: Float) {
         if (playbackController.equalizerState.value.parametric) return
         playbackController.setEqualizerBandGain(index, gainDb)
-        val gainsDb = playbackController.equalizerState.value.gainsDb
-        updateSettings {
-            setEqualizerBandGains(gainsDb)
+        // Sliders fire per drag frame; the DSP follows live but the DataStore write is
+        // coalesced into one trailing save.
+        equalizerBandGainsPersistJob?.cancel()
+        equalizerBandGainsPersistJob = viewModelScope.launch {
+            delay(SignalDragPersistDebounceMs)
+            updateSettings {
+                setEqualizerBandGains(playbackController.equalizerState.value.gainsDb)
+            }
         }
     }
 
@@ -1604,8 +1610,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setChannelBalance(state: EchoChannelBalanceState) {
         playbackController.setChannelBalance(state)
-        updateSettings { setChannelBalance(state) }
+        // Same drag-frame coalescing as band gains: controller live, settings trailing.
+        channelBalancePersistJob?.cancel()
+        channelBalancePersistJob = viewModelScope.launch {
+            delay(SignalDragPersistDebounceMs)
+            updateSettings { setChannelBalance(playbackController.channelBalanceState.value) }
+        }
     }
+
+    private var channelBalancePersistJob: Job? = null
+    private var equalizerBandGainsPersistJob: Job? = null
 
     fun resetChannelBalance() {
         playbackController.resetChannelBalance()
@@ -2452,6 +2466,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     private companion object {
         const val HOME_HEATMAP_VISIBLE_DAYS = 84L
+        const val SignalDragPersistDebounceMs = 500L
     }
 }
 

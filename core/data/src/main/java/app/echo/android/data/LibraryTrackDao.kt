@@ -50,7 +50,7 @@ data class TrackIdPathRow(
 
 @Dao
 interface LibraryTrackDao {
-    @Query("SELECT * FROM library_tracks WHERE source = :source AND (:query = '' OR title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE, id")
+    @Query("SELECT * FROM library_tracks WHERE source = :source AND (:query = '' OR title LIKE '%' || :query || '%' ESCAPE '\\' OR artist LIKE '%' || :query || '%' ESCAPE '\\') ORDER BY title COLLATE NOCASE, id")
     fun pageRemoteWritebackCandidates(source: String, query: String): PagingSource<Int, LibraryTrackEntity>
 
     @Query(LibraryAudioProfileQuery)
@@ -109,22 +109,6 @@ interface LibraryTrackDao {
         """,
     )
     fun pageTracksByFts(matchQuery: String, rankQuery: String): PagingSource<Int, LibraryTrackEntity>
-
-    @Query(
-        """
-        SELECT * FROM visible_library_tracks AS library_tracks
-        WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'
-        ORDER BY
-            CASE
-                WHEN normalizedTitle LIKE :rankQuery THEN 0
-                WHEN normalizedArtist LIKE :rankQuery THEN 1
-                WHEN normalizedAlbum LIKE :rankQuery THEN 2
-                ELSE 3
-            END,
-            title COLLATE NOCASE ASC
-        """,
-    )
-    fun pageTracksByLike(query: String, rankQuery: String): PagingSource<Int, LibraryTrackEntity>
 
     @Query("SELECT trackId FROM library_tracks_fts WHERE library_tracks_fts MATCH :matchQuery LIMIT 1")
     suspend fun validateFtsQuery(matchQuery: String): String?
@@ -208,6 +192,11 @@ interface LibraryTrackDao {
         LibraryLyricsIndexEntity::class])
     fun pageTracksSortedWithLyrics(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
 
+    /** Orders without a stats join still observe favorite and hidden-track filters. */
+    @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryTrackFtsEntity::class,
+        LibraryFavoriteEntity::class, LibraryHiddenTrackEntity::class])
+    fun pageTracksSortedWithoutStats(query: SupportSQLiteQuery): PagingSource<Int, LibraryTrackEntity>
+
     @Query(
         """
         SELECT COUNT(*) FROM visible_library_tracks AS library_tracks
@@ -251,27 +240,6 @@ interface LibraryTrackDao {
     )
     suspend fun getTrackQueueByFts(
         matchQuery: String,
-        rankQuery: String,
-        limit: Int,
-    ): List<LibraryTrackEntity>
-
-    @Query(
-        """
-        SELECT * FROM visible_library_tracks AS library_tracks
-        WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'
-        ORDER BY
-            CASE
-                WHEN normalizedTitle LIKE :rankQuery THEN 0
-                WHEN normalizedArtist LIKE :rankQuery THEN 1
-                WHEN normalizedAlbum LIKE :rankQuery THEN 2
-                ELSE 3
-            END,
-            title COLLATE NOCASE ASC
-        LIMIT :limit
-        """,
-    )
-    suspend fun getTrackQueueByLike(
-        query: String,
         rankQuery: String,
         limit: Int,
     ): List<LibraryTrackEntity>
@@ -417,7 +385,7 @@ interface LibraryTrackDao {
         """,
     )
     suspend fun getRemoteAlbumSummary(source: String, albumKey: String): AlbumSummary?
-    @Query("SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds FROM library_album_summaries WHERE isRemote = 1 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE LIMIT 30")
+    @Query("SELECT albumKey, title, albumArtist, artist, artworkUri, trackCount, durationMs, year, addedAtSeconds FROM library_album_summaries WHERE isRemote = 1 AND (title LIKE '%' || :query || '%' ESCAPE '\\' OR artist LIKE '%' || :query || '%' ESCAPE '\\') ORDER BY title COLLATE NOCASE LIMIT 30")
     suspend fun searchRemoteAlbumSummaries(query: String): List<AlbumSummary>
 
     @Query(
@@ -1157,6 +1125,14 @@ interface LibraryTrackDao {
     @Query("SELECT * FROM library_tracks WHERE source = 'mediastore' OR source = 'saf'")
     suspend fun getLocalLibraryTracks(): List<LibraryTrackEntity>
 
+    @Query("""
+        SELECT id, source, albumKey, artistKey, genreKey, artist, album, albumArtist,
+               normalizedAlbum, normalizedAlbumArtist, normalizedArtist, relativePath,
+               artworkUri, metadataEditedAtEpochMs
+        FROM library_tracks WHERE source IN ('mediastore', 'saf')
+    """)
+    suspend fun getLocalLibraryRegroupRows(): List<LibraryAlbumRegroupRow>
+
     @Query("SELECT id, relativePath FROM library_tracks WHERE source = 'mediastore' OR source = 'saf'")
     suspend fun getLocalIdPaths(): List<TrackIdPathRow>
 
@@ -1521,8 +1497,11 @@ interface LibraryTrackDao {
     @Query("DELETE FROM library_genre_summaries WHERE genreKey IN (:keys)")
     suspend fun deleteGenreSummariesByKeys(keys: List<String>): Int
 
-    @Query(EchoLibraryDatabase.RebuildAlbumSummariesForKeysSql)
-    suspend fun insertAlbumSummariesForKeys(keys: List<String>)
+    @Query(EchoLibraryDatabase.RebuildAlbumSummariesForLocalKeysSql)
+    suspend fun insertAlbumSummariesForLocalKeys(keys: List<String>)
+
+    @Query(EchoLibraryDatabase.RebuildAlbumSummariesForRemoteKeysSql)
+    suspend fun insertAlbumSummariesForRemoteKeys(sources: List<String>, keys: List<String>)
 
     @Query(LibraryArtistIndexSql.RebuildForKeys)
     suspend fun insertArtistSummariesForKeys(keys: List<String>)
@@ -1554,7 +1533,23 @@ interface LibraryTrackDao {
     ) {
         albumKeys.distinct().chunked(SUMMARY_KEY_BATCH_SIZE).forEach { chunk ->
             deleteAlbumSummariesByKeys(chunk)
-            insertAlbumSummariesForKeys(chunk)
+            // Keys match the summary-key shapes from toSummaryKeySet: bare albumKey for
+            // local rows, "remote||<source>||<albumKey>" otherwise. Splitting keeps both
+            // rebuild statements on the (source, albumKey) index.
+            val localKeys = ArrayList<String>(chunk.size)
+            val remoteBySource = LinkedHashMap<String, MutableList<String>>()
+            chunk.forEach { key ->
+                val parts = key.takeIf { it.startsWith(EchoLibraryDatabase.RemoteSummaryKeyPrefix) }
+                    ?.split("||", limit = 3)
+                val source = parts?.getOrNull(1)
+                if (parts != null && parts.size == 3 && source != null && LibraryScanPolicy.isRemoteLibrarySource(source)) {
+                    remoteBySource.getOrPut(source) { ArrayList() }.add(parts[2])
+                } else {
+                    localKeys.add(key)
+                }
+            }
+            if (localKeys.isNotEmpty()) insertAlbumSummariesForLocalKeys(localKeys)
+            remoteBySource.forEach { (source, keys) -> insertAlbumSummariesForRemoteKeys(listOf(source), keys) }
         }
         artistKeys.distinct().chunked(SUMMARY_KEY_BATCH_SIZE).forEach { chunk ->
             deleteArtistSummariesByKeys(chunk)

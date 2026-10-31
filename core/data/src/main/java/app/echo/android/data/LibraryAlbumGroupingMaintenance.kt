@@ -31,7 +31,7 @@ internal class LibraryAlbumGroupingMaintenance(
 
     suspend fun reconcileFolders(folders: Set<String>): List<LibraryTrackEntity> = withContext(dispatcher) {
         if (folders.isEmpty()) return@withContext emptyList()
-        val tracks = if (LibraryScanPolicy.shouldRebuildLibrarySummariesIncrementally(
+        if (LibraryScanPolicy.shouldRebuildLibrarySummariesIncrementally(
                 changedKeyCount = folders.size,
                 existingAlbumSummaryCount = dao.countAlbumSummaries(),
             )) {
@@ -42,9 +42,12 @@ internal class LibraryAlbumGroupingMaintenance(
                 loaded += dao.getTracksByIds(chunk)
                 yield()
             }
-            loaded
-        } else dao.getLocalLibraryTracks()
-        reconcile(tracks)
+            reconcile(loaded)
+        } else {
+            // Full rebuilds keep only the grouping projection in memory; full rows are
+            // fetched per chunk once regrouping has decided which tracks actually changed.
+            reconcileRows(dao.getLocalLibraryRegroupRows())
+        }
     }
 
     private suspend fun reconcile(tracks: List<LibraryTrackEntity>): List<LibraryTrackEntity> {
@@ -56,12 +59,49 @@ internal class LibraryAlbumGroupingMaintenance(
             before[next.id]?.let { summaryKeys.add(it.toSummaryKeySet()) }
             summaryKeys.add(next.toSummaryKeySet())
         }
-        changed.chunked(batchSize).forEach { chunk ->
+        return persistRegrouped(changed, summaryKeys)
+    }
+
+    private suspend fun reconcileRows(rows: List<LibraryAlbumRegroupRow>): List<LibraryTrackEntity> {
+        val changed = LibraryAlbumGrouping.reconcileRows(rows)
+        if (changed.isEmpty()) return emptyList()
+        val before = rows.associateBy { it.id }
+        val summaryKeys = LibrarySummaryKeyAccumulator()
+        changed.forEach { row ->
+            before[row.id]?.let { summaryKeys.add(it.toSummaryKeyRow().toSummaryKeySet()) }
+            summaryKeys.add(row.toSummaryKeyRow().toSummaryKeySet())
+        }
+        val newKeys = changed.associate { it.id to it.albumKey }
+        val regrouped = ArrayList<LibraryTrackEntity>(changed.size)
+        changed.map { it.id }.chunked(batchSize).forEach { chunk ->
+            coroutineContext.ensureActive()
+            dao.getTracksByIds(chunk).forEach { entity ->
+                newKeys[entity.id]?.let { regrouped += entity.copy(albumKey = it) }
+            }
+            yield()
+        }
+        return persistRegrouped(regrouped, summaryKeys)
+    }
+
+    private suspend fun persistRegrouped(
+        regrouped: List<LibraryTrackEntity>,
+        summaryKeys: LibrarySummaryKeyAccumulator,
+    ): List<LibraryTrackEntity> {
+        regrouped.chunked(batchSize).forEach { chunk ->
             coroutineContext.ensureActive()
             dao.upsertBatchWithFts(chunk)
             yield()
         }
         rebuildSummaries(summaryKeys.build())
-        return changed
+        return regrouped
     }
+
+    private fun LibraryAlbumRegroupRow.toSummaryKeyRow() = TrackSummaryKeyRow(
+        albumKey = albumKey,
+        artistKey = artistKey,
+        relativePath = relativePath,
+        source = source,
+        genreKey = genreKey,
+        artist = artist,
+    )
 }

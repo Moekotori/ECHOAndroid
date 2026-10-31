@@ -46,4 +46,17 @@ class PendingTagWriteQueueTest {
         assertFalse(queue.enqueue(Request(2, "B")))
         assertEquals(first, queue.pending.value)
     }
+
+    @Test
+    fun restoredLaunchedIdWithoutPendingIsCleared() {
+        assertEquals(TagWriteConsentLaunchDecision.Idle, tagWriteConsentLaunchDecision(pendingRequestId = null, launchedRequestId = null))
+        assertEquals(TagWriteConsentLaunchDecision.ClearLaunchedId, tagWriteConsentLaunchDecision(pendingRequestId = null, launchedRequestId = 7L))
+    }
+
+    @Test
+    fun staleLaunchedIdNeverSuppressesTheNextDialog() {
+        assertEquals(TagWriteConsentLaunchDecision.DialogInFlight, tagWriteConsentLaunchDecision(pendingRequestId = 7L, launchedRequestId = 7L))
+        assertEquals(TagWriteConsentLaunchDecision.LaunchDialog, tagWriteConsentLaunchDecision(pendingRequestId = 7L, launchedRequestId = null))
+        assertEquals(TagWriteConsentLaunchDecision.LaunchDialog, tagWriteConsentLaunchDecision(pendingRequestId = 8L, launchedRequestId = 7L))
+    }
 }

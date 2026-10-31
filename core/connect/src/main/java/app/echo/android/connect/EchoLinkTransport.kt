@@ -20,6 +20,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
+import kotlin.jvm.Volatile
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Response
@@ -117,6 +118,9 @@ internal class EchoLinkHttpException(message: String, val statusCode: Int? = nul
 internal class OkHttpEchoLinkTransport(
     private val client: OkHttpClient = OkHttpClient.Builder()
         .retryOnConnectionFailure(true)
+        // OkHttp defaults to an infinite call timeout; a trickling server could pin the
+        // serial status-polling pipeline forever. The SSE client below opts back out.
+        .callTimeout(60, TimeUnit.SECONDS)
         .build(),
     private val responseDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : EchoLinkTransport {
@@ -138,7 +142,10 @@ internal class OkHttpEchoLinkTransport(
     }
 
     // The PC sends idle heartbeats every 15 s. Reuse pools, but allow missed heartbeats.
-    private val eventClient = client.newBuilder().readTimeout(45, TimeUnit.SECONDS).build()
+    private val eventClient = client.newBuilder()
+        .readTimeout(45, TimeUnit.SECONDS)
+        .callTimeout(0, TimeUnit.SECONDS)
+        .build()
     override suspend fun personalState(endpoint: EchoRemoteEndpoint) = withContext(responseDispatcher) {
         require(endpoint.token.isNotBlank())
         try {
@@ -502,6 +509,10 @@ internal class OkHttpEchoLinkTransport(
         return@withContext json.toStreamResponse(endpoint)
     }
 
+    // Older PCs only serve the legacy /lyrics/{id} route; remember which route answered so
+    // they are not asked twice per track forever.
+    @Volatile private var legacyLyricsRoutePreferred = false
+
     override suspend fun fetchLyrics(
         endpoint: EchoRemoteEndpoint,
         trackId: String,
@@ -519,11 +530,15 @@ internal class OkHttpEchoLinkTransport(
                 .get()
                 .build(),
         )
-        requests.forEach { request ->
+        val attempts = if (legacyLyricsRoutePreferred) requests.reversed() else requests
+        attempts.forEach { request ->
             runCatching { executeText(request).toRemoteLyrics() }
                 .getOrElse { if (it is CancellationException) throw it else null }
                 ?.takeIf { it.rawText.isNotBlank() }
-                ?.let { return@withContext it }
+                ?.let {
+                    legacyLyricsRoutePreferred = request.url.encodedPath.startsWith("/echo-link/lyrics/")
+                    return@withContext it
+                }
         }
         return@withContext null
     }
@@ -545,14 +560,18 @@ internal class OkHttpEchoLinkTransport(
                 val result = runCatching {
                     response.use {
                         val personal = request.url.encodedPath.endsWith("/personal-state")
-                        val limit = if (personal) app.echo.android.model.connect.EchoPersonalStateLimits.MaxBytes.toLong() else 512 * 1024L
-                        val body = if (personal || request.url.encodedPath.startsWith("/echo-link/peer/v1/")) {
-                            val source = it.body?.source()
-                            source?.request(limit + 1)
-                            if (source != null && source.buffer.size > limit)
-                                throw EchoLinkHttpException("peer_response_too_large", 413)
-                            source?.readUtf8().orEmpty()
-                        } else it.body?.string().orEmpty()
+                        val limit = when {
+                            personal -> app.echo.android.model.connect.EchoPersonalStateLimits.MaxBytes.toLong()
+                            request.url.encodedPath.startsWith("/echo-link/peer/v1/") -> PeerResponseLimitBytes
+                            else -> MaxResponseBytes
+                        }
+                        // Read every body through the cap: a mistyped or hostile endpoint must
+                        // not be able to OOM the app before the per-endpoint size checks run.
+                        val source = it.body?.source()
+                        source?.request(limit + 1)
+                        if (source != null && source.buffer.size > limit)
+                            throw EchoLinkHttpException("response_too_large", 413)
+                        val body = source?.readUtf8().orEmpty()
                         if (!it.isSuccessful) {
                             throw EchoLinkHttpException(echoLinkErrorUserMessage(it.code, body), it.code)
                         }
@@ -596,6 +615,10 @@ internal class OkHttpEchoLinkTransport(
 
     private companion object {
         val JsonMediaType = "application/json; charset=utf-8".toMediaType()
+
+        /** Peer (phone-served) JSON stays tight; general PC pages are 500 rows, so this leaves ample headroom. */
+        const val PeerResponseLimitBytes = 512L * 1024L
+        const val MaxResponseBytes = 32L * 1024L * 1024L
     }
 }
 

@@ -32,3 +32,20 @@ internal class PendingTagWriteQueue<T>(
         return head
     }
 }
+
+/** What the consent-dialog effect should do for the current tag-write queue state. */
+internal enum class TagWriteConsentLaunchDecision { Idle, DialogInFlight, ClearLaunchedId, LaunchDialog }
+
+/**
+ * A launched consent id is valid only while it names the pending head. The queue dies with
+ * the ViewModel, so an id restored across process death — or left behind by a request that
+ * was cancelled mid-dialog — must never suppress the next consent dialog, or every later
+ * tag write would hang on the authorization mutex.
+ */
+internal fun tagWriteConsentLaunchDecision(pendingRequestId: Long?, launchedRequestId: Long?): TagWriteConsentLaunchDecision =
+    when {
+        pendingRequestId == null && launchedRequestId == null -> TagWriteConsentLaunchDecision.Idle
+        pendingRequestId == null -> TagWriteConsentLaunchDecision.ClearLaunchedId
+        launchedRequestId == pendingRequestId -> TagWriteConsentLaunchDecision.DialogInFlight
+        else -> TagWriteConsentLaunchDecision.LaunchDialog
+    }
