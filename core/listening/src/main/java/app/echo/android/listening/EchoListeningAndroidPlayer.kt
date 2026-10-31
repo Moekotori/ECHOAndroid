@@ -13,6 +13,7 @@ import android.os.SystemClock
 import app.echo.android.model.listening.EchoListeningAudio
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -46,7 +47,7 @@ internal class EchoListeningAndroidPlayer(
 
     @Synchronized
     override fun startEpoch(epoch: Long) {
-        stopLocked()
+        val previousWorker = AtomicReference(stopLocked())
         jitter.reset(epoch)
         val id = ++session
         halt = Halt.None
@@ -55,7 +56,8 @@ internal class EchoListeningAndroidPlayer(
         phaseFlow.value = EchoListeningAudio.Buffering
         worker = Thread({
             try {
-                runLoop()
+                previousWorker.getAndSet(null)?.join(1_500)
+                runLoop(id)
             } finally {
                 finishSession(id)
             }
@@ -79,23 +81,26 @@ internal class EchoListeningAndroidPlayer(
         running = false
     }
 
-    private fun stopLocked() {
+    private fun stopLocked(): Thread? {
         session++
         running = false
         track?.pause()
         val current = worker
-        worker = null
-        if (current != null && Thread.currentThread() !== current) current.join(1_500)
+        val previous = current?.takeIf { it !== Thread.currentThread() }
+        previous?.interrupt()
+        return previous
     }
 
-    private fun runLoop() {
+    private fun runLoop(id: Int) {
         var codec: MediaCodec? = null
         var audioTrack: AudioTrack? = null
         try {
-            if (!requestFocus()) {
-                halt = Halt.Failure
+            if (!isActive(id)) return
+            if (!requestFocus(id)) {
+                fail(id)
                 return
             }
+            if (!isActive(id)) return
             codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_OPUS)
             codec.configure(opusFormat(), null, null, 0)
             codec.start()
@@ -103,9 +108,9 @@ internal class EchoListeningAndroidPlayer(
             track = audioTrack
             audioTrack.setVolume(gain)
             audioTrack.play()
-            pump(codec, audioTrack)
+            pump(codec, audioTrack, id)
         } catch (_: Exception) {
-            if (halt == Halt.None) halt = Halt.Failure
+            fail(id)
         } finally {
             track = null
             release(codec, audioTrack)
@@ -113,11 +118,23 @@ internal class EchoListeningAndroidPlayer(
         }
     }
 
-    private fun pump(codec: MediaCodec, audioTrack: AudioTrack) {
+    private fun isActive(id: Int): Boolean = running && session == id
+
+    private fun fail(id: Int) {
+        if (session != id) return
+        if (halt == Halt.None) halt = Halt.Failure
+        running = false
+    }
+
+    private fun pump(codec: MediaCodec, audioTrack: AudioTrack, id: Int) {
         var pending: EchoListeningOutput? = null
         var receiving = false
-        while (running) {
-            if (pending == null) pending = jitter.poll(SystemClock.elapsedRealtime())
+        val bufferInfo = MediaCodec.BufferInfo()
+        while (isActive(id)) {
+            if (pending == null) {
+                pending = jitter.poll(SystemClock.elapsedRealtime())
+                if (pending == null) jitter.awaitPacket(if (receiving) 5L else 10L)
+            }
             when (val frame = pending) {
                 is EchoListeningOutput.Packet -> {
                     val index = codec.dequeueInputBuffer(5_000)
@@ -137,23 +154,28 @@ internal class EchoListeningAndroidPlayer(
                     pending = null
                     if (!receiving) {
                         receiving = true
-                        phaseFlow.value = EchoListeningAudio.Receiving
+                        if (session == id) phaseFlow.value = EchoListeningAudio.Receiving
                     }
                 }
-                null -> Thread.sleep(if (receiving) 5 else 10)
+                null -> Unit
             }
-            drain(codec, audioTrack) {
+            drain(codec, audioTrack, bufferInfo, id) {
                 if (!receiving) {
                     receiving = true
-                    phaseFlow.value = EchoListeningAudio.Receiving
+                    if (session == id) phaseFlow.value = EchoListeningAudio.Receiving
                 }
             }
         }
     }
 
-    private fun drain(codec: MediaCodec, audioTrack: AudioTrack, onPcm: () -> Unit) {
-        val info = MediaCodec.BufferInfo()
-        while (running) {
+    private fun drain(
+        codec: MediaCodec,
+        audioTrack: AudioTrack,
+        info: MediaCodec.BufferInfo,
+        id: Int,
+        onPcm: () -> Unit,
+    ) {
+        while (isActive(id)) {
             when (val index = codec.dequeueOutputBuffer(info, 0)) {
                 MediaCodec.INFO_TRY_AGAIN_LATER -> return
                 MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
@@ -163,8 +185,7 @@ internal class EchoListeningAndroidPlayer(
                     floatOutput = format.containsKey(MediaFormat.KEY_PCM_ENCODING) &&
                         format.getInteger(MediaFormat.KEY_PCM_ENCODING) == AudioFormat.ENCODING_PCM_FLOAT
                     if (rate != SAMPLE_RATE || channels != CHANNELS) {
-                        halt = Halt.Failure
-                        running = false
+                        fail(id)
                         return
                     }
                 }
@@ -204,13 +225,14 @@ internal class EchoListeningAndroidPlayer(
         }
     }
 
-    private fun requestFocus(): Boolean {
+    private fun requestFocus(id: Int): Boolean {
         val manager = audioManager ?: return false
         val attributes = mediaAttributes()
         val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(attributes)
             .setOnAudioFocusChangeListener({ change ->
-                if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                if (session == id && (change == AudioManager.AUDIOFOCUS_LOSS ||
+                        change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)) {
                     if (halt == Halt.None) halt = Halt.Focus
                     running = false
                 }
