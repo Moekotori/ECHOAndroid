@@ -32,7 +32,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: "tools platform-tools platforms;android-37 ndk;27.2.12479018 cmake;3.22.1"
+          packages: "tools platform-tools platforms;android-37.0 ndk;27.2.12479018 cmake;3.22.1"
 
       - uses: gradle/actions/setup-gradle@v4
 
