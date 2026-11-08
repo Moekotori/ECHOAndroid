@@ -1,0 +1,8 @@
+<resources>
+    <string name="phone_library_port_label">Fester Freigabeport</string>
+    <string name="phone_library_port_save">Port speichern</string>
+    <string name="phone_library_port_hint">Auf diesem Gerät gespeichert und beim nächsten Start verwendet. Ein belegter fester Port führt zu einem Fehler.</string>
+    <string name="phone_library_port_invalid">Eine ganze Zahl von 1 bis 65535 eingeben.</string>
+    <string name="phone_library_port_failed">Freigabeport konnte nicht gespeichert werden.</string>
+    <string name="phone_library_port_unavailable">Dieser Port kann nicht geöffnet werden. Portbelegung und Berechtigungen prüfen.</string>
+</resources>

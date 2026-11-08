@@ -28,12 +28,15 @@ object EchoPairingParser {
         }
         val safeToken = token.trim()
         if (safeToken.isNotEmpty() && safeToken.length < 8) return null
-        val normalized = if (rawAddress.contains("://")) rawAddress else "http://$rawAddress"
+        val explicitScheme = rawAddress.contains("://")
+        val normalized = if (explicitScheme) rawAddress else "http://$rawAddress"
         val uri = runCatching { URI(normalized) }.getOrNull() ?: return null
         val scheme = uri.scheme?.lowercase(Locale.ROOT)?.takeIf { it == "http" || it == "https" } ?: return null
         val host = uri.host?.removeSurrounding("[", "]")?.takeIf { it.isNotBlank() } ?: return null
         if (uri.rawUserInfo != null || uri.port == 0 || uri.port > 65535) return null
-        val port = uri.port.takeIf { it > 0 } ?: DefaultPort
+        val port = uri.port.takeIf { it > 0 } ?: if (explicitScheme) {
+            if (scheme == "https") 443 else 80
+        } else DefaultPort
         return EchoRemoteEndpoint(
             id = "$host:$port",
             name = name,

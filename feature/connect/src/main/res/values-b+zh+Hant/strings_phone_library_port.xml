@@ -1,0 +1,8 @@
+<resources>
+    <string name="phone_library_port_label">固定分享連接埠</string>
+    <string name="phone_library_port_save">儲存連接埠</string>
+    <string name="phone_library_port_hint">儲存於本機，下次開啟分享時生效；固定連接埠被占用時直接報錯。</string>
+    <string name="phone_library_port_invalid">請輸入 1–65535 之間的整數。</string>
+    <string name="phone_library_port_failed">分享連接埠儲存失敗。</string>
+    <string name="phone_library_port_unavailable">無法監聽此分享連接埠，請檢查連接埠占用或權限。</string>
+</resources>

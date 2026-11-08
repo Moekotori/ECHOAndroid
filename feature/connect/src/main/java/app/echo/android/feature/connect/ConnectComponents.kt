@@ -45,6 +45,7 @@ internal fun ConnectInput(
     enabled: Boolean = true,
     url: Boolean = false,
     error: String? = null,
+    keyboardType: KeyboardType? = null,
     onDone: (() -> Unit)? = null,
 ) {
     var visible by rememberSaveable { mutableStateOf(false) }
@@ -54,7 +55,7 @@ internal fun ConnectInput(
         shape = ConnectControlShape, enabled = enabled, isError = error != null,
         supportingText = error?.let { { ConnectNote(it, error = true) } },
         visualTransformation = if (secret && !visible) PasswordVisualTransformation() else VisualTransformation.None,
-        keyboardOptions = KeyboardOptions(keyboardType = when { secret -> KeyboardType.Password; url -> KeyboardType.Uri; else -> KeyboardType.Text },
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType ?: when { secret -> KeyboardType.Password; url -> KeyboardType.Uri; else -> KeyboardType.Text },
             imeAction = if (onDone != null) ImeAction.Done else ImeAction.Next),
         keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
         trailingIcon = if (secret) { {

@@ -21,9 +21,12 @@ class EchoPhoneLibrarySession(
     private val application: Application,
     private val client: EchoRemoteClient,
     private val scope: CoroutineScope,
+    private val getPort: suspend () -> Int = { EchoLinkCastPolicy.PhoneLibraryPort },
 ) {
     private val state = MutableStateFlow("off")
     val status = state.asStateFlow()
+    private val listeningPortState = MutableStateFlow<Int?>(null)
+    val listeningPort = listeningPortState.asStateFlow()
     private var job: Job? = null
     private var server: EchoLinkCastServer? = null
     private var target: EchoRemoteEndpoint? = null
@@ -56,6 +59,7 @@ class EchoPhoneLibrarySession(
                 val host = withContext(Dispatchers.IO) { EchoLinkLanAddresses.ipv4ForPeer(endpoint.host, endpoint.port) }
                     ?: error("no_lan")
                 stage = "server"
+                val sharedPort = app.echo.android.model.connect.EchoLinkSharingPort.requireValid(getPort())
                 val token = EchoLinkCastPolicy.newToken()
                 val catalog = EchoSharedLocalLibrary(EchoLibraryDatabase.create(application))
                 val categories = EchoSharedLocalCatalog(EchoLibraryDatabase.create(application))
@@ -65,7 +69,9 @@ class EchoPhoneLibrarySession(
                 val created = EchoLinkCastServer(
                     openBody = EchoLinkCastMediaOpener(application.contentResolver),
                     allowedPeerHost = { endpoint.host },
-                    bindHost = host,
+                    bindHost = "0.0.0.0",
+                    bindPort = sharedPort,
+                    authenticatePeer = { path, headers -> readyRoutes.get()?.authenticatesPeer(path, headers) == true },
                     metadata = { path, headers -> readyRoutes.get()?.metadata(path, headers) },
                     resolvePublication = { path -> readyRoutes.get()?.publication(path) },
                     openArtwork = artwork::open,
@@ -75,6 +81,7 @@ class EchoPhoneLibrarySession(
                 server = created
                 val baseUrl = withContext(Dispatchers.IO) {
                     val port = created.start()
+                    if (current == generation) listeningPortState.value = port
                     val url = EchoLinkCastPolicy.advertisedBaseUrl(host, port)
                     readyRoutes.set(EchoPhoneLibraryRoutes(token, url,
                         page = { query, offset, size -> runBlocking(routeDbDispatcher) {
@@ -108,6 +115,7 @@ class EchoPhoneLibrarySession(
                 if (current == generation) {
                     val failure = when {
                         stage == "route" && error.message == "no_lan" -> "no_lan"
+                        stage == "server" && error is java.net.BindException -> "port_unavailable"
                         stage == "service" -> "service_error"
                         else -> client.phoneLibraryFailureStatus(error)
                     }
@@ -122,6 +130,7 @@ class EchoPhoneLibrarySession(
                     client.setBackgroundConnectionRequired(false)
                     publicationCache.clear()
                     server = null
+                    listeningPortState.value = null
                     EchoPhoneLibraryService.stop(application)
                 }
             }
@@ -149,6 +158,7 @@ class EchoPhoneLibrarySession(
         job = null
         server?.stop()
         server = null
+        listeningPortState.value = null
         publicationCache.clear()
         EchoPhoneLibraryService.stop(application)
         val oldTarget = target

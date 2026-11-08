@@ -145,6 +145,9 @@ fun ConnectScreen(
     onOpenWifiTransfer: () -> Unit = {},
     onOpenLinkSongTransfer: () -> Unit = {},
     phoneLibraryShareStatus: String = "off",
+    phoneLibraryPort: Int = app.echo.android.model.connect.EchoLinkSharingPort.DefaultPhone,
+    phoneLibraryListeningPort: Int? = null,
+    onPhoneLibraryPortChange: suspend (Int) -> Unit = {},
     onPhoneLibraryShareChange: (Boolean) -> Unit = {},
 ) {
     val pagerState = rememberPagerState { 3 }
@@ -269,6 +272,10 @@ fun ConnectScreen(
                                         if (!libraryOnly) ConnectCard {
                                             PhoneLibraryShareControl(
                                                 status = phoneLibraryShareStatus,
+                                                configuredPort = phoneLibraryPort,
+                                                listeningPort = phoneLibraryListeningPort,
+                                                onPortChange = onPhoneLibraryPortChange,
+                                                pcAddress = connectedLanAddress,
                                                 connectionState = remoteState,
                                                 active = remoteControlsActive && pagerState.settledPage == 0,
                                                 onConnectRequested = { openShareConnectionNonce++ },

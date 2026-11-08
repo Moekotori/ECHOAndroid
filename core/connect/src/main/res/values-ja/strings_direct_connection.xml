@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">PC が直接接続を拒否しました。Echo Link を有効にし、LAN 直接接続に対応した ECHOSteam を使用するか、新しい完全なペアリングリンクを貼り付けてください。</string>
+    <string name="connect_direct_unavailable">PC がペアリングなしの接続を拒否しました。Echo Link を有効にし、PC で生成した新しいペアリングリンクを貼り付けてください。frp/Tailscale では先に PC に到達可能な外部アドレスを設定してください。</string>
 </resources>

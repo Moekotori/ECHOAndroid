@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">El PC rechazó la conexión directa. Activa Echo Link y usa una versión de ECHOSteam compatible con conexión directa por LAN, o pega un nuevo enlace completo de emparejamiento.</string>
+    <string name="connect_direct_unavailable">El PC rechazó el acceso sin emparejar. Activa Echo Link y pega un nuevo enlace generado en el PC. Para frp/Tailscale, configura primero una dirección externa accesible en el PC.</string>
 </resources>

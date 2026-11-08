@@ -1,0 +1,8 @@
+<resources>
+    <string name="phone_library_port_label">Puerto fijo para compartir</string>
+    <string name="phone_library_port_save">Guardar puerto</string>
+    <string name="phone_library_port_hint">Se guarda en este dispositivo para el próximo inicio. Si el puerto fijo está ocupado, se muestra un error.</string>
+    <string name="phone_library_port_invalid">Introduce un entero entre 1 y 65535.</string>
+    <string name="phone_library_port_failed">No se pudo guardar el puerto.</string>
+    <string name="phone_library_port_unavailable">No se puede abrir este puerto. Comprueba su uso y los permisos.</string>
+</resources>

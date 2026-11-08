@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">Der PC hat die Direktverbindung abgelehnt. Aktivieren Sie Echo Link und verwenden Sie eine ECHOSteam-Version mit LAN-Direktverbindung oder fügen Sie einen neuen vollständigen Kopplungslink ein.</string>
+    <string name="connect_direct_unavailable">Der PC hat Zugriff ohne Kopplung abgelehnt. Echo Link aktivieren und einen neuen Kopplungslink vom PC einfügen. Für frp/Tailscale zuerst eine erreichbare externe Adresse am PC einrichten.</string>
 </resources>

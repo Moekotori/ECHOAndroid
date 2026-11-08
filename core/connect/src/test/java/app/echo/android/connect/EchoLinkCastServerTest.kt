@@ -10,6 +10,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoLinkCastServerTest {
+    @Test fun reusesTheSelectedFixedPortAndRejectsAnOccupiedPortWithoutFallback() {
+        val occupied = java.net.ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1"))
+        val selected = occupied.localPort
+        fun create() = EchoLinkCastServer(EchoLinkCastBodyFactory { _, _ -> null }, bindHost = "127.0.0.1", bindPort = selected)
+        val blocked = create()
+        try {
+            try { blocked.start(); org.junit.Assert.fail("Occupied fixed port accepted") }
+            catch (_: java.net.BindException) { }
+            assertFalse(blocked.isRunning)
+            assertEquals(0, blocked.localPort)
+            occupied.close()
+            repeat(2) {
+                val server = create()
+                try { assertEquals(selected, server.start()) }
+                finally { server.stop() }
+            }
+        } finally { occupied.close(); blocked.stop() }
+    }
+
     @Test
     fun candidateCanUseNewPeerWithoutOpeningOldQueueToIt() {
         val server = EchoLinkCastServer(openBody = EchoLinkCastBodyFactory { _, _ ->

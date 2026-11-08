@@ -1,0 +1,5 @@
+<resources>
+    <string name="link_connection_pc_address">已連線電腦：%1$s</string>
+    <string name="link_connection_frp_target">手機 frp 本機目標（TCP）：%1$s</string>
+    <string name="link_connection_copy_frp">複製 frp 本機設定</string>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="link_connection_pc_address">已连接电脑：%1$s</string>
+    <string name="link_connection_frp_target">手机 frp 本地目标（TCP）：%1$s</string>
+    <string name="link_connection_copy_frp">复制 frp 本地配置</string>
+</resources>

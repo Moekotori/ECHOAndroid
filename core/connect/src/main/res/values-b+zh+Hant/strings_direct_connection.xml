@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">電腦拒絕了直接連線。請開啟 Echo Link 並使用支援區域網路直接連線的 ECHOSteam 版本，或貼上新產生的完整配對連結。</string>
+    <string name="connect_direct_unavailable">電腦拒絕了免配對存取。請確認 Echo Link 已開啟，再貼上電腦產生的新配對連結；frp/Tailscale 還需先在電腦設定可存取的外部位址。</string>
 </resources>

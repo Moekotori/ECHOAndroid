@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">PC の ECHOSteam で Echo Link を有効にし、同じ LAN 上の近くの PC を選択するか IP アドレスを入力してください。直接接続に未対応の PC には完全なペアリングリンクを使用できます。</string>
-    <string name="echo_link_pairing_entry">PC アドレスまたはペアリングリンク</string>
+    <string name="echo_link_direct_address_hint">PC の IP またはドメインと任意のポートを入力するか、完全な HTTP(S) アドレスやペアリングリンクを貼り付けます。LAN 直接接続は PC の設定によります。frp/Tailscale での初回接続にはペアリングが必要です。</string>
+    <string name="echo_link_pairing_entry">IP・ドメイン・ペアリングリンクで接続</string>
     <string name="echo_link_steam_edition_requirement">ECHO Pro が必要です</string>
+    <string name="echo_link_pc_port">ポート（任意）</string>
+    <string name="echo_link_pc_port_invalid">1～65535 の整数を入力してください。</string>
 </resources>

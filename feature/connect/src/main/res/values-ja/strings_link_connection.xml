@@ -1,0 +1,5 @@
+<resources>
+    <string name="link_connection_pc_address">接続先のコンピューター：%1$s</string>
+    <string name="link_connection_frp_target">端末の frp ローカル接続先（TCP）：%1$s</string>
+    <string name="link_connection_copy_frp">frp のローカル設定をコピー</string>
+</resources>

@@ -70,6 +70,7 @@ class EchoLinkCastServer(
     private val resolvePublication: ((String) -> Pair<EchoLinkCastPublication, Boolean>?)? = null,
     private val openArtwork: ((EchoLinkCastPublication, Long) -> EchoLinkCastBody?)? = null,
     private val maxConnections: Int = EchoLinkCastPolicy.MaxConnections,
+    private val authenticatePeer: ((String, Map<String, String>) -> Boolean)? = null,
 ) {
     private val publications = ConcurrentHashMap<String, EchoLinkCastPublication>()
     private var preparedQueue: EchoLinkCastPreparedQueue? = null
@@ -96,7 +97,8 @@ class EchoLinkCastServer(
         val socket = ServerSocket()
         socket.reuseAddress = true
         socket.soTimeout = 0
-        socket.bind(InetSocketAddress(bindHost, bindPort))
+        try { socket.bind(InetSocketAddress(bindHost, bindPort)) }
+        catch (error: IOException) { socket.close(); throw error }
         serverSocket.set(socket)
         port.set(socket.localPort)
         lastActivityMs.set(nowMs())
@@ -245,7 +247,9 @@ class EchoLinkCastServer(
         // Candidate and committed queues can temporarily belong to different devices.
         val registered = locatePublication(request.path)
         val peerHost = registered?.first?.peerHost ?: allowedPeerHost()
-        if (!EchoLinkCastPolicy.peerMatches(peerHost, client.inetAddress?.hostAddress)) {
+        val peerAllowed = authenticatePeer?.invoke(request.path, request.headers)
+            ?: EchoLinkCastPolicy.peerMatches(peerHost, client.inetAddress?.hostAddress)
+        if (!peerAllowed) {
             reply(output, 403, "Forbidden", 0)
             return
         }

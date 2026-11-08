@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -53,7 +54,8 @@ class EchoLinkSession(private val application: Application) {
         },
     )
     val client = EchoRemoteClient(scope, application).apply { setForeground(false) }
-    val phoneLibrary = EchoPhoneLibrarySession(application, client, scope)
+    private val settings = EchoSettingsStore(application)
+    val phoneLibrary = EchoPhoneLibrarySession(application, client, scope) { settings.appSettings.first().echoLinkPhoneLibraryPort }
     val playbackRouter = EchoLinkPlaybackRouter(client)
     internal val phoneCastTransfer = EchoPhoneCastTransfer(EchoPhoneCastSession(this), scope)
     internal val systemCast by lazy { EchoSystemCastTransfer(application, this).also { externalCast = it } }
@@ -65,7 +67,6 @@ class EchoLinkSession(private val application: Application) {
     )
     private val dlnaClient = EchoDlnaClient()
     private val chromecastClient = EchoChromecastClient()
-    private val settings = EchoSettingsStore(application)
     private var persistedKey: Pair<String?, String>? = null
     private var attemptedKey: Pair<String?, String>? = null
     private val localNetworkAccess = MutableStateFlow(application.hasEchoLocalNetworkAccess())
@@ -74,6 +75,10 @@ class EchoLinkSession(private val application: Application) {
     fun setUiVisible(visible: Boolean) {
         client.setForeground(visible)
         uiVisible.value = visible
+    }
+
+    suspend fun setPhoneLibraryPort(port: Int) {
+        settings.setEchoLinkPhoneLibraryPort(port)
     }
 
     fun setPhoneLibrarySharingEnabled(enabled: Boolean) {

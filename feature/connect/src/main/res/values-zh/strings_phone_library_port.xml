@@ -1,0 +1,8 @@
+<resources>
+    <string name="phone_library_port_label">固定共享端口</string>
+    <string name="phone_library_port_save">保存端口</string>
+    <string name="phone_library_port_hint">保存到本机，下次开启共享生效；固定端口被占用时直接报错。</string>
+    <string name="phone_library_port_invalid">请输入 1–65535 之间的整数。</string>
+    <string name="phone_library_port_failed">共享端口保存失败。</string>
+    <string name="phone_library_port_unavailable">无法监听此共享端口，请检查端口占用或权限。</string>
+</resources>

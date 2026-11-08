@@ -1,0 +1,5 @@
+<resources>
+    <string name="link_connection_pc_address">PC conectado: %1$s</string>
+    <string name="link_connection_frp_target">Destino local de frp del teléfono (TCP): %1$s</string>
+    <string name="link_connection_copy_frp">Copiar configuración local de frp</string>
+</resources>

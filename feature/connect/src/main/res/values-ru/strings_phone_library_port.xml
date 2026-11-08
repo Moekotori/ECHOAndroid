@@ -1,0 +1,8 @@
+<resources>
+    <string name="phone_library_port_label">Фиксированный порт общего доступа</string>
+    <string name="phone_library_port_save">Сохранить порт</string>
+    <string name="phone_library_port_hint">Сохраняется на устройстве для следующего запуска. Если фиксированный порт занят, появится ошибка.</string>
+    <string name="phone_library_port_invalid">Введите целое число от 1 до 65535.</string>
+    <string name="phone_library_port_failed">Не удалось сохранить порт.</string>
+    <string name="phone_library_port_unavailable">Не удалось открыть порт. Проверьте занятость порта и разрешения.</string>
+</resources>

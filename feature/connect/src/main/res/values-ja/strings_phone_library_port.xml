@@ -1,0 +1,8 @@
+<resources>
+    <string name="phone_library_port_label">固定共有ポート</string>
+    <string name="phone_library_port_save">ポートを保存</string>
+    <string name="phone_library_port_hint">この端末に保存し、次回の共有開始時に適用します。使用中の固定ポートはエラーになります。</string>
+    <string name="phone_library_port_invalid">1～65535 の整数を入力してください。</string>
+    <string name="phone_library_port_failed">共有ポートを保存できませんでした。</string>
+    <string name="phone_library_port_unavailable">このポートで待ち受けできません。使用状況と権限を確認してください。</string>
+</resources>

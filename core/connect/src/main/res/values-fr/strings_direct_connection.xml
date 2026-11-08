@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">Le PC a refusé la connexion directe. Activez Echo Link et utilisez une version d’ECHOSteam compatible avec la connexion directe en réseau local, ou collez un nouveau lien complet d’appairage.</string>
+    <string name="connect_direct_unavailable">Le PC a refusé un accès sans jumelage. Activez Echo Link puis collez un nouveau lien généré sur le PC. Pour frp/Tailscale, configurez au préalable une adresse externe accessible sur le PC.</string>
 </resources>

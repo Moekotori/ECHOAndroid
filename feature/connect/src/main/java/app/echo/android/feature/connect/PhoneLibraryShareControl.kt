@@ -19,6 +19,10 @@ internal fun PhoneLibraryShareControl(
     active: Boolean,
     onConnectRequested: () -> Unit,
     onChange: (Boolean) -> Unit,
+    pcAddress: String? = null,
+    configuredPort: Int = app.echo.android.model.connect.EchoLinkSharingPort.DefaultPhone,
+    listeningPort: Int? = null,
+    onPortChange: suspend (Int) -> Unit = {},
 ) {
     val connected = connectionState == EchoRemoteConnectionState.Connected
     // This intent belongs to the visible page, never to a restored/background session.
@@ -65,6 +69,7 @@ internal fun PhoneLibraryShareControl(
             status == "network_error" -> R.string.phone_library_share_network_error
             status == "no_lan" -> R.string.phone_library_share_no_lan
             status == "service_error" -> R.string.phone_library_share_service_error
+            status == "port_unavailable" -> R.string.phone_library_port_unavailable
             status == "connection_required" -> R.string.phone_library_share_connection_required
             status == "connection_lost" -> R.string.phone_library_share_connection_lost
             status == "error" -> R.string.phone_library_share_error
@@ -73,6 +78,10 @@ internal fun PhoneLibraryShareControl(
             !connected -> R.string.phone_library_share_connect_first
             else -> R.string.phone_library_share_off
         }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        PhoneLibraryPortSetting(configuredPort, onPortChange)
+        if (connected || status == "sharing") PhoneLibraryConnectionInfo(
+            pcAddress = pcAddress.takeIf { connected }, listeningPort = listeningPort.takeIf { status == "sharing" },
+        )
         if (status == "sharing") {
             Text(
                 stringResource(R.string.phone_library_share_pc_hint),

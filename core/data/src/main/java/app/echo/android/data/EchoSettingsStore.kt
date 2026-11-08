@@ -156,6 +156,7 @@ data class EchoAppSettings(
     val echoLinkAutoReconnectEnabled: Boolean = true,
     val echoLinkPreferLinkedLibrary: Boolean = true,
     val echoLinkSharePhoneLibraryEnabled: Boolean = true,
+    val echoLinkPhoneLibraryPort: Int = app.echo.android.model.connect.EchoLinkSharingPort.DefaultPhone,
     val echoLinkSavedPcs: List<app.echo.android.model.connect.EchoSavedPcEndpoint> = emptyList(),
     val replayGainMode: String = EchoReplayGainMode.Auto.id,
     val replayGainEnabled: Boolean = false,
@@ -407,6 +408,7 @@ class EchoSettingsStore(
                 echoLinkAutoReconnectEnabled = preferences[Keys.EchoLinkAutoReconnectEnabled] ?: true,
                 echoLinkPreferLinkedLibrary = preferences[Keys.EchoLinkPreferLinkedLibrary] ?: true,
                 echoLinkSharePhoneLibraryEnabled = preferences[Keys.EchoLinkSharePhoneLibraryEnabled] ?: true,
+                echoLinkPhoneLibraryPort = readEchoPhoneLibraryPort(preferences),
                 echoLinkSavedPcs = echoLinkSavedPcsFromPreferences(
                     raw = preferences[Keys.EchoLinkSavedPcs],
                     currentAddress = preferences[Keys.EchoLinkPcAddress],
@@ -1343,6 +1345,10 @@ class EchoSettingsStore(
 
     suspend fun setEchoLinkPreferLinkedLibrary(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.EchoLinkPreferLinkedLibrary] = enabled }
+    }
+
+    suspend fun setEchoLinkPhoneLibraryPort(port: Int) {
+        context.echoSettings.edit { writeEchoPhoneLibraryPort(it, port) }
     }
 
     suspend fun setEchoLinkSharePhoneLibraryEnabled(enabled: Boolean) {

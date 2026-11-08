@@ -1,0 +1,8 @@
+<resources>
+    <string name="phone_library_port_label">Fixed sharing port</string>
+    <string name="phone_library_port_save">Save port</string>
+    <string name="phone_library_port_hint">Saved on this device for the next sharing start. An occupied custom port fails without switching ports.</string>
+    <string name="phone_library_port_invalid">Enter an integer from 1 to 65535.</string>
+    <string name="phone_library_port_failed">Could not save the sharing port.</string>
+    <string name="phone_library_port_unavailable">Cannot listen on this sharing port. Check port usage and permissions.</string>
+</resources>

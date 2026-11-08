@@ -1,0 +1,8 @@
+<resources>
+    <string name="phone_library_port_label">Port de partage fixe</string>
+    <string name="phone_library_port_save">Enregistrer le port</string>
+    <string name="phone_library_port_hint">Enregistré sur cet appareil pour le prochain démarrage du partage. Un port fixe occupé produit une erreur.</string>
+    <string name="phone_library_port_invalid">Saisissez un entier de 1 à 65535.</string>
+    <string name="phone_library_port_failed">Impossible d’enregistrer le port de partage.</string>
+    <string name="phone_library_port_unavailable">Impossible d’ouvrir ce port. Vérifiez son utilisation et les autorisations.</string>
+</resources>

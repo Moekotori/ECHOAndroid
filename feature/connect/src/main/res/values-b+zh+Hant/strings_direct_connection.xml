@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">在電腦 ECHOSteam 中開啟 Echo Link，在同一區域網路內選擇附近電腦或輸入 IP 即可連線。不支援直接連線的電腦仍可使用完整配對連結。</string>
-    <string name="echo_link_pairing_entry">輸入 PC 位址或配對連結</string>
+    <string name="echo_link_direct_address_hint">輸入電腦 IP 或網域，連接埠可單獨填寫；也可貼上完整 HTTP(S) 位址或配對連結。區域網路可在電腦允許時直連，首次 frp/Tailscale 跨網連線需配對授權。</string>
+    <string name="echo_link_pairing_entry">透過 IP、網域或配對連結連線</string>
     <string name="echo_link_steam_edition_requirement">需要 ECHO Pro</string>
+    <string name="echo_link_pc_port">連接埠（選填）</string>
+    <string name="echo_link_pc_port_invalid">請輸入 1–65535 之間的整數。</string>
 </resources>

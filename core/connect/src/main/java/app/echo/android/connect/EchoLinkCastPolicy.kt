@@ -54,6 +54,7 @@ object EchoLinkCastPolicy {
     const val MaxConnections = 4
     /** Phone-library streams stay open for a whole track; leave slots for paging and artwork. */
     const val PhoneLibraryMaxConnections = 8
+    const val PhoneLibraryPort = app.echo.android.model.connect.EchoLinkSharingPort.DefaultPhone
     const val TokenLength = 32
     const val IdleTimeoutMs = 20L * 60L * 1000L
     const val CopyBufferBytes = 128 * 1024

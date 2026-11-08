@@ -19,9 +19,25 @@ class EchoPhoneLibraryRoutes(
     private val catalog: ((EchoPhoneCatalogQuery) -> EchoPhoneCatalogPage)? = null,
     private val lyrics: ((String) -> EchoPhoneLyrics?)? = null,
 ) {
+    /** A tunnel's socket peer is unrelated to the PC; authenticate only this session's routes. */
+    fun authenticatesPeer(path: String, headers: Map<String, String>): Boolean {
+        if (headers.containsKey("origin")) return false
+        val route = path.substringBefore('?')
+        if (isMetadataRoute(route)) return headers["authorization"] == "Bearer $token"
+        val parts = route.split('/')
+        return path == route && parts.size == 5 && parts[1] == "echo-link" &&
+            parts[2] in listOf("phone-stream", "phone-art") && parts[3] == token &&
+            parts[4].length in 1..1400 && parts[4].all { it.isLetterOrDigit() || it == '_' || it == '-' }
+    }
+
+    private fun isMetadataRoute(route: String): Boolean = route in listOf(
+        "/echo-link/phone/v1/library/tracks", "/echo-link/phone/v1/library/track",
+        "/echo-link/phone/v1/library/catalog", "/echo-link/phone/v1/library/lyrics",
+    )
+
     fun metadata(path: String, headers: Map<String, String>): EchoLinkHttpReply? {
         val route = path.substringBefore('?')
-        if (route !in listOf("/echo-link/phone/v1/library/tracks", "/echo-link/phone/v1/library/track", "/echo-link/phone/v1/library/catalog", "/echo-link/phone/v1/library/lyrics")) return null
+        if (!isMetadataRoute(route)) return null
         if (headers["authorization"] != "Bearer $token" || headers.containsKey("origin")) {
             return EchoLinkHttpReply(401, "{\"error\":\"unauthorized\"}")
         }

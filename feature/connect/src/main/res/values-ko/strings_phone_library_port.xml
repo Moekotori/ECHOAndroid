@@ -1,0 +1,8 @@
+<resources>
+    <string name="phone_library_port_label">고정 공유 포트</string>
+    <string name="phone_library_port_save">포트 저장</string>
+    <string name="phone_library_port_hint">이 기기에 저장되며 다음 공유 시작 시 적용됩니다. 고정 포트가 사용 중이면 오류가 표시됩니다.</string>
+    <string name="phone_library_port_invalid">1~65535 사이의 정수를 입력하세요.</string>
+    <string name="phone_library_port_failed">공유 포트를 저장하지 못했습니다.</string>
+    <string name="phone_library_port_unavailable">이 포트에서 수신할 수 없습니다. 포트 사용 현황과 권한을 확인하세요.</string>
+</resources>

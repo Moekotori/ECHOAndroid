@@ -456,6 +456,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val castSetupError = localCastSetupError ?: phoneCastIssueMessage
     val effectiveSendingCastAddress = if (phoneCastTransferState.isBusy) phoneCastTransferState.targetAddress else sendingCastAddress
     val phoneLibraryShareStatus by echoLinkSession.phoneLibrary.status.collectAsStateWithLifecycle()
+    val phoneLibraryListeningPort by echoLinkSession.phoneLibrary.listeningPort.collectAsStateWithLifecycle()
     val castSessionActive by echoLinkSession.castActive.collectAsStateWithLifecycle()
     val castSessionName by echoLinkSession.castTargetName.collectAsStateWithLifecycle()
     val dlnaRenderer by echoLinkSession.dlnaRenderer.collectAsStateWithLifecycle()
@@ -1733,6 +1734,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onOpenWifiTransfer = app.echo.android.ui.connect.rememberWifiTransferAction(viewModel, appSettings.libraryScanOptions, localNetwork),
                                 onOpenLinkSongTransfer = app.echo.android.ui.connect.rememberEchoLinkSongTransferAction(viewModel, remoteClient, appSettings.libraryScanOptions),
                                 phoneLibraryShareStatus = phoneLibraryShareStatus,
+                                phoneLibraryPort = appSettings.echoLinkPhoneLibraryPort,
+                                phoneLibraryListeningPort = phoneLibraryListeningPort,
+                                onPhoneLibraryPortChange = echoLinkSession::setPhoneLibraryPort,
                                 onPhoneLibraryShareChange = { enabled ->
                                     if (enabled) localNetwork.run { echoLinkSession.setPhoneLibrarySharingEnabled(true) }
                                     else echoLinkSession.setPhoneLibrarySharingEnabled(false)

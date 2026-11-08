@@ -1,0 +1,5 @@
+<resources>
+    <string name="link_connection_pc_address">연결된 PC: %1$s</string>
+    <string name="link_connection_frp_target">휴대폰 frp 로컬 대상(TCP): %1$s</string>
+    <string name="link_connection_copy_frp">frp 로컬 설정 복사</string>
+</resources>

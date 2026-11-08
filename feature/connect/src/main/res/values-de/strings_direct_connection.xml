@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">Aktivieren Sie Echo Link in ECHOSteam und wählen Sie einen PC im selben LAN oder geben Sie seine IP-Adresse ein. PCs ohne Direktverbindung können weiterhin einen vollständigen Kopplungslink verwenden.</string>
-    <string name="echo_link_pairing_entry">PC-Adresse oder Kopplungslink</string>
+    <string name="echo_link_direct_address_hint">PC-IP oder Domain und optional einen Port eingeben oder eine vollständige HTTP(S)-Adresse bzw. einen Kopplungslink einfügen. LAN-Direktzugriff hängt von den PC-Einstellungen ab; der erste Fernzugriff über frp/Tailscale erfordert Kopplung.</string>
+    <string name="echo_link_pairing_entry">Per IP, Domain oder Kopplungslink verbinden</string>
     <string name="echo_link_steam_edition_requirement">ECHO Pro erforderlich</string>
+    <string name="echo_link_pc_port">Port (optional)</string>
+    <string name="echo_link_pc_port_invalid">Eine ganze Zahl von 1 bis 65535 eingeben.</string>
 </resources>

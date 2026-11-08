@@ -14,6 +14,32 @@ class EchoPhoneLibraryRoutesTest {
     private val token = "0123456789abcdef0123456789abcdef"
     private val row = EchoLinkCastPublication("unused-local-publication", "song/一", "content://private/1", title = "Song", artist = "Artist")
 
+    @Test fun authorizesTunnelRequestsBySessionCapabilityInsteadOfSourceIp() {
+        val routes = EchoPhoneLibraryRoutes(token, "http://192.168.1.5:26801",
+            { _, _, _ -> EchoPhoneLibraryPage(emptyList(), 0) }, { row })
+        val server = EchoLinkCastServer(EchoLinkCastBodyFactory { _, _ ->
+            EchoLinkCastBody(byteArrayOf(1, 2, 3).inputStream(), 3L, "audio/mpeg")
+        }, allowedPeerHost = { "203.0.113.8" }, bindHost = "127.0.0.1",
+            authenticatePeer = routes::authenticatesPeer, metadata = routes::metadata, resolvePublication = routes::publication)
+        val client = OkHttpClient()
+        try {
+            val base = "http://127.0.0.1:${server.start()}"
+            val path = "/echo-link/phone/v1/library/tracks"
+            fun status(route: String, bearer: String? = null): Int {
+                val request = Request.Builder().url(base + route)
+                if (bearer != null) request.header("Authorization", "Bearer $bearer")
+                return client.newCall(request.build()).execute().use { it.code }
+            }
+            assertEquals(403, status(path))
+            assertEquals(403, status(path, "wrong"))
+            assertEquals(200, status(path, token))
+            val id = Base64.getUrlEncoder().withoutPadding().encodeToString(row.trackId.toByteArray())
+            assertEquals(200, status("/echo-link/phone-stream/$token/$id"))
+            assertEquals(403, status("/echo-link/phone-stream/wrong/$id"))
+            assertEquals(403, status("/echo-link/cast/$token"))
+        } finally { server.stop() }
+    }
+
     @Test fun catalogsPhoneCategoriesWithBoundedPagesAndNoPrivateMediaUris() {
         val routes = EchoPhoneLibraryRoutes(token, "http://192.168.1.5:1000",
             { _, _, _ -> EchoPhoneLibraryPage(emptyList(), 0) }, { null }, catalog = { query ->

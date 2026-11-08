@@ -1,0 +1,5 @@
+<resources>
+    <string name="link_connection_pc_address">Подключённый ПК: %1$s</string>
+    <string name="link_connection_frp_target">Локальная цель frp телефона (TCP): %1$s</string>
+    <string name="link_connection_copy_frp">Копировать локальную конфигурацию frp</string>
+</resources>

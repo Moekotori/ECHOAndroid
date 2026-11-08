@@ -1,0 +1,5 @@
+<resources>
+    <string name="link_connection_pc_address">Ordinateur connecté : %1$s</string>
+    <string name="link_connection_frp_target">Cible locale frp du téléphone (TCP) : %1$s</string>
+    <string name="link_connection_copy_frp">Copier la configuration locale frp</string>
+</resources>
