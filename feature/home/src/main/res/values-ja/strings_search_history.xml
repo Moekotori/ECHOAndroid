@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_history_title">検索履歴</string>
+    <string name="search_history_clear">すべて削除</string>
+    <string name="search_history_remove">検索履歴から %1$s を削除</string>
+    <string name="search_playlist_already_added">追加済み</string>
+</resources>

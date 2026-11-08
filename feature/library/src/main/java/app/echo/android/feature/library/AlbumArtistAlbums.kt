@@ -5,11 +5,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -34,6 +40,7 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import app.echo.android.design.ArtworkTile
+import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.EchoModalSheet
 import app.echo.android.design.displayMetadataOrUnknown
@@ -41,35 +48,102 @@ import app.echo.android.design.echoClickable
 import app.echo.android.model.library.AlbumSummary
 import kotlinx.coroutines.flow.Flow
 
-/** Row under the tracks that opens [ArtistAlbumsSheet]; tinted by the cover accent. */
+private const val RailAlbumLimit = 20
+
+/**
+ * Horizontal cover strip of the artist's other albums, shown at the end of the page. It lives in a lazy item, so
+ * the paging flow is only built and collected once the page scrolls near it; the header opens [ArtistAlbumsSheet].
+ */
 @Composable
-internal fun ArtistAlbumsEntry(artistName: String, accent: Color, onClick: () -> Unit) {
-    Row(
+internal fun ArtistAlbumsRail(
+    artistName: String,
+    currentAlbumKey: String,
+    albums: () -> Flow<PagingData<AlbumSummary>>?,
+    accent: Color,
+    onOpenAlbum: (AlbumSummary) -> Unit,
+    onShowAll: () -> Unit,
+) {
+    val flow = remember(currentAlbumKey) { albums() } ?: return
+    val paged = flow.collectAsLazyPagingItems()
+    val loaded = paged.itemSnapshotList.items
+    val others = remember(loaded, currentAlbumKey) {
+        loaded.filter { it.albumKey != currentAlbumKey }.take(RailAlbumLimit)
+    }
+    if (others.isEmpty()) return
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(accent.copy(alpha = 0.10f))
-            .echoClickable(onClick = onClick)
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .widthIn(max = EchoContentMaxWidth)
+            .padding(top = 28.dp),
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .echoClickable(onClick = onShowAll)
+                .padding(horizontal = 24.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                stringResource(R.string.album_more_by_artist, artistName),
+                modifier = Modifier.weight(1f, fill = false),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            EchoIcon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            items(items = others, key = { it.albumKey }) { other ->
+                ArtistAlbumCard(other, accent) { onOpenAlbum(other) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistAlbumCard(album: AlbumSummary, accent: Color, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(128.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .echoClickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        ArtworkTile(
+            artworkUri = album.artworkUri,
+            modifier = Modifier.size(128.dp),
+            accent = accent,
+            showSignal = album.artworkUri == null,
+            cornerRadius = 14.dp,
+            elevation = 0.dp,
+        )
+        Spacer(Modifier.height(6.dp))
         Text(
-            stringResource(R.string.album_more_by_artist, artistName),
-            modifier = Modifier.weight(1f),
+            displayMetadataOrUnknown(album.title, unknownAlbumLabel()),
             color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        EchoIcon(
-            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(22.dp),
-        )
+        album.year?.takeIf { it > 0 }?.let { year ->
+            Text(
+                year.toString(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
 }
 

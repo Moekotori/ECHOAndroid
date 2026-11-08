@@ -11,6 +11,25 @@ class EchoLinkSessionCompatibilityTest {
         withTimeout(2_000) { while (!predicate()) delay(5) }
     }
 
+    @Test fun companionStatusPollingKeepsTheOrderProvidedByV2Events() = runBlocking {
+        var reads = 0
+        val transport = object : EchoLinkTransport by FakeEchoLinkTransport() {
+            override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse {
+                reads++
+                return EchoLinkStatusResponse("PC", EchoRemotePlaybackSnapshot(state = EchoRemotePlaybackState.Paused))
+            }
+        }
+        val client = EchoRemoteClient(this, transport, statusPollIntervalMs = 10)
+        try {
+            client.connect(endpoint.copy(supportsV2Events = true), false)
+            eventually { client.status.value.connectionState == EchoRemoteConnectionState.Connected }
+            client.ingest(parseEchoLinkEventData("""{"snapshot":{"state":"paused","playbackOrder":"shuffle"}}""", endpoint)!!)
+            val previousReads = reads
+            eventually { reads > previousReads }
+            assertEquals(EchoRemotePlaybackOrder.Shuffle, client.status.value.playback.playbackOrder)
+        } finally { client.disconnect() }
+    }
+
     @Test fun controlsUseTheExchangedTokenImmediatelyAfterPairing() = runBlocking {
         val credentials = mutableListOf<String>()
         var playback = EchoRemotePlaybackSnapshot(
@@ -78,6 +97,7 @@ class EchoLinkSessionCompatibilityTest {
         assertSame(previous.queue.items, merged.queue.items)
         assertEquals(9L, merged.queue.revision)
         assertEquals("item-2", merged.queue.currentQueueId)
+        assertEquals(4, merged.queue.totalCount)
         assertEquals(java.time.Instant.parse("2026-10-31T10:00:00Z").toEpochMilli(), merged.updatedAtEpochMs)
     }
 }

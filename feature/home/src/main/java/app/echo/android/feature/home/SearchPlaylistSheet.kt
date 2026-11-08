@@ -7,6 +7,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import app.echo.android.design.EchoIcon
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoModalSheet
@@ -15,7 +19,8 @@ import app.echo.android.model.library.EchoPlaylist
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchPlaylistSheet(playlists: List<EchoPlaylist>, busy: Boolean, failed: Boolean,
-    onSelect: (EchoPlaylist) -> Unit, onDismiss: () -> Unit) {
+    onSelect: (EchoPlaylist) -> Unit, onDismiss: () -> Unit,
+    containingPlaylistIds: Set<String> = emptySet()) {
     val editable = remember(playlists) { playlists.filter { it.canEdit } }
     EchoModalSheet(onDismissRequest = { if (!busy) onDismiss() },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), sheetGesturesEnabled = !busy) {
@@ -25,7 +30,18 @@ fun SearchPlaylistSheet(playlists: List<EchoPlaylist>, busy: Boolean, failed: Bo
             if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if (editable.isEmpty()) item { Text(stringResource(R.string.search_no_playlists)) }
             items(editable, key = { it.id }) { playlist ->
-                TextButton(onClick = { onSelect(playlist) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(playlist.name) }
+                val alreadyAdded = playlist.id in containingPlaylistIds
+                TextButton(onClick = { onSelect(playlist) }, enabled = !busy && !alreadyAdded,
+                    modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(playlist.name, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)
+                        if (alreadyAdded) {
+                            Text(stringResource(R.string.search_playlist_already_added), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            EchoIcon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
             }
         }
     }

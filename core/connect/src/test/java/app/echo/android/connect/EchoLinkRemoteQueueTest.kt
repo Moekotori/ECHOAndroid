@@ -8,6 +8,64 @@ import org.junit.Test
 
 class EchoLinkRemoteQueueTest {
     @Test
+    fun sparsePcQueuePagesAdvanceUsingThePageNumberInsteadOfTheSurvivingRowCount() = runBlocking {
+        val endpoint = EchoRemoteEndpoint("pc", "PC", "127.0.0.1", 26789, "token")
+        val pages = mutableListOf<Int>()
+        val transport = object : EchoLinkTransport by OkHttpEchoLinkTransport() {
+            override suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int): EchoRemoteQueueState {
+                pages += page
+                val offset = (page - 1) * 50
+                return EchoRemoteQueueState(items = listOf(EchoRemoteTrack("song-$page", "Song", "Artist", null, null, 1000,
+                    queueIndex = offset)), totalCount = 80, pageSize = 50, offset = offset, supportsEditing = false)
+            }
+        }
+        val browser = EchoLinkRemoteQueue(this, transport, { endpoint }, { EchoRemotePlaybackQueue() }, { it.message.orEmpty() })
+        try {
+            browser.refresh(); delay(5)
+            browser.loadMore(); delay(5)
+            browser.loadMore(); delay(5)
+            assertEquals(listOf(1, 2), pages)
+            assertEquals(listOf("song-1", "song-2"), browser.state.value.items.map { it.id })
+        } finally { browser.stopWatching() }
+    }
+
+    @Test
+    fun pcTwentyFourRowPagesStayAlignedThroughWindowEvictionAndRevisionRefresh() = runBlocking {
+        val endpoint = EchoRemoteEndpoint("pc", "PC", "127.0.0.1", 26789, "token")
+        val pages = mutableListOf<Int>()
+        val transport = object : EchoLinkTransport by OkHttpEchoLinkTransport() {
+            override suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int): EchoRemoteQueueState {
+                pages += page
+                val offset = (page - 1) * 24
+                return EchoRemoteQueueState(items = (offset until offset + 24).map { index ->
+                    EchoRemoteTrack("song-$index", "Song", "Artist", null, null, 1000,
+                        queueId = "occurrence-$index", queueIndex = index)
+                }, totalCount = 1500, revision = 1, pageSize = 24, offset = offset, supportsEditing = false)
+            }
+        }
+        val browser = EchoLinkRemoteQueue(this, transport, { endpoint }, { EchoRemotePlaybackQueue() }, { it.message.orEmpty() })
+        suspend fun awaitRequest(count: Int) {
+            kotlinx.coroutines.withTimeout(2_000) { while (pages.size < count || browser.state.value.isLoading || browser.state.value.isLoadingMore) delay(1) }
+        }
+        try {
+            browser.startWatching(); browser.refresh(); awaitRequest(1)
+            repeat(42) { browser.loadMore(); awaitRequest(it + 2) }
+            assertEquals((1..43).toList(), pages)
+            assertEquals(984, browser.state.value.items.size)
+            assertEquals(48, browser.state.value.offset)
+            browser.loadPrevious(); awaitRequest(44)
+            assertEquals(2, pages.last())
+            assertEquals(24, browser.state.value.offset)
+            browser.setVisibleAnchor(650)
+            browser.observe(2, "occurrence-650"); awaitRequest(45)
+            assertEquals(28, pages.last())
+            assertEquals(648, browser.state.value.offset)
+            browser.move("occurrence-648", 649)
+            assertFalse(browser.state.value.isMoving)
+        } finally { browser.stopWatching() }
+    }
+
+    @Test
     fun liveIdentityRefreshesTheVisiblePageButProgressAndClosedSheetsDoNotFetch() = runBlocking {
         val endpoint = EchoRemoteEndpoint("pc", "PC", "127.0.0.1", 26789, "token")
         var revision = 1L

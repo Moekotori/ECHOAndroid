@@ -66,6 +66,7 @@ class EchoRemoteClient internal constructor(
                     val code = (error as? EchoLinkHttpException)?.statusCode
                     if (code != null && code in 400..499 || code == 501) {
                         val message = error.userMessage()
+                        lastCommandError = message
                         _status.update { it.copy(error = message) }
                         notice("control-http:$code", message)
                     } else markReconnecting(target, error)
@@ -473,7 +474,8 @@ class EchoRemoteClient internal constructor(
             notice("relative:offline", text(R.string.remote_control_relative_offline))
             return
         }
-        scope.launch { dispatchCommand(target, command, onSuccess) }
+        val connection = connectGeneration
+        scope.launch { dispatchCommand(target, command, onSuccess, connection = connection) }
     }
 
     fun refreshLibrary(query: String = _library.value.query) {
@@ -983,12 +985,14 @@ class EchoRemoteClient internal constructor(
             onFailure(EchoLinkAtomicQueueRequiredException(pcLibrary = true))
             return null
         }
+        val connection = connectGeneration
         return scope.launch {
             dispatchCommand(
                 target = target,
                 command = EchoRemoteCommand.HandoffToPc(trackId, positionMs.coerceAtLeast(0L)),
                 onSuccess = onSuccess,
                 onFailure = onFailure,
+                connection = connection,
             )
         }
     }
@@ -1034,11 +1038,12 @@ class EchoRemoteClient internal constructor(
             track = startItem.toRemoteTrack(),
             audio = startItem.audio,
         )
+        val connection = connectGeneration
         return scope.launch {
             dispatchCommand(target, command, onSuccess = onSuccess, onFailure = { error ->
                 applyCastFailure(error)
                 onFailure(error)
-            })
+            }, connection = connection)
         }
     }
 
@@ -1193,7 +1198,10 @@ class EchoRemoteClient internal constructor(
         command: EchoRemoteCommand,
         onSuccess: () -> Unit = {},
         onFailure: (Throwable) -> Unit = {},
+        connection: Long,
     ): Boolean {
+        if (connection != connectGeneration || authRejected || target.libraryOnly ||
+            !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) return false
         when (command) {
             EchoRemoteCommand.Next, EchoRemoteCommand.Previous, EchoRemoteCommand.Stop,
             is EchoRemoteCommand.PlayQueueItem, is EchoRemoteCommand.PlayTrackOnPc,
@@ -1205,10 +1213,14 @@ class EchoRemoteClient internal constructor(
         val commandRequest = ++commandGeneration
         lastCommandError = null
         _status.update { it.copy(error = null) }
-        val connection = connectGeneration
         val result = runSuspendCatching {
             remoteCommandMutex.lock()
-            try { transport.sendCommand(target, command) } finally { remoteCommandMutex.unlock() }
+            try {
+                // Queued commands must still belong to the active connection when the lock opens.
+                if (connection != connectGeneration || authRejected ||
+                    !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) return false
+                transport.sendCommand(target, command)
+            } finally { remoteCommandMutex.unlock() }
         }
         result.onSuccess { response ->
             if (connection != connectGeneration || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
@@ -1360,7 +1372,19 @@ class EchoRemoteClient internal constructor(
     private fun applyStatus(target: EchoRemoteEndpoint, response: EchoLinkStatusResponse) {
         if (authRejected || !EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) return
         pollFailures = 0
-        val playback = response.playback?.let(controls::observe) ?: controls.projected()
+        val playback = response.playback?.let { snapshot ->
+            val previous = controls.confirmedSnapshot
+            val trackId = snapshot.track?.id
+            // The legacy Link queue and v2 session queue have different occurrence IDs.
+            // A v1 read of the same track must not invalidate a seek bound to the v2 ID.
+            val keepV2Queue = target.supportsV2Events && previous.queue.revision != null &&
+                snapshot.queue.revision == null && trackId != null && trackId == previous.track?.id
+            controls.observe(if (target.supportsV2Events) snapshot.copy(
+                playbackOrder = snapshot.playbackOrder ?: previous.playbackOrder,
+                queue = if (keepV2Queue) previous.queue else snapshot.queue,
+                queueIdentityAvailable = snapshot.queueIdentityAvailable || keepV2Queue,
+            ) else snapshot)
+        } ?: controls.projected()
         val capableEndpoint = target.copy(libraryOnly = response.libraryOnly,
             supportsV2Events = target.supportsV2Events && !response.libraryOnly)
         val namedEndpoint = response.deviceName

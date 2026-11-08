@@ -48,7 +48,9 @@ internal fun AfterglowStage(
     onControlsMenu: (Boolean) -> Unit = {},
     onStagePalette: (AfterglowPalette) -> Unit = {},
     artist: String = "",
+    outputDelayMs: Int = 0,
 ) {
+    val displayOffsetMs = lyrics.offsetMs - app.echo.android.model.lyrics.EchoLyricsOutputTiming.mediaDelayMs(outputDelayMs, speed)
     val budget = AfterglowBudget.forMode(LocalEchoEffectivePerformanceMode.current)
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     val renderActive = visible && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
@@ -79,12 +81,12 @@ internal fun AfterglowStage(
     var engineFailed by remember(lyrics, style) { mutableStateOf(false) }
     if (plan != null && budget.framesPerSecond > 0 && !engineFailed) {
         val controller = remember { AfterglowEngineController() }
-        val engineIndex by remember(plan, hostPosition, lyrics.offsetMs) {
-            derivedStateOf(structuralEqualityPolicy()) { plan.indexAt(hostPosition.value + lyrics.offsetMs) }
+        val engineIndex by remember(plan, hostPosition, displayOffsetMs) {
+            derivedStateOf(structuralEqualityPolicy()) { plan.indexAt(hostPosition.value + displayOffsetMs) }
         }
         Box(modifier) {
             AfterglowEngineStage(plan, AfterglowEngineProject.look(style), title, artist, durationMs,
-                (seed.toLong() and 0xFFFFFFFFL), hostPosition, lyrics.offsetMs, playing, speed, renderActive, budget, motion,
+                (seed.toLong() and 0xFFFFFFFFL), hostPosition, displayOffsetMs, playing, speed, renderActive, budget, motion,
                 wordHighlight, estimatedWordHighlight, palette.background, title, controller,
                 onFailed = { engineFailed = true }, onSeed = { seed = it.toInt() }, modifier = Modifier.fillMaxSize())
             val sceneControls: @Composable () -> Unit = {
@@ -100,8 +102,8 @@ internal fun AfterglowStage(
     }
     val clock =rememberAfterglowPosition(hostPosition, trackKey, playing, speed, renderActive && windowFocused,
         if (plan != null && textFits && (motion || wordHighlight && budget.glyphMotion && timedInk)) budget.framesPerSecond else 0)
-    val index by remember(plan, clock, lyrics.offsetMs) {
-        derivedStateOf(structuralEqualityPolicy()) { plan?.indexAt(clock.value + lyrics.offsetMs) ?: -1 }
+    val index by remember(plan, clock, displayOffsetMs) {
+        derivedStateOf(structuralEqualityPolicy()) { plan?.indexAt(clock.value + displayOffsetMs) ?: -1 }
     }
     val currentPlan = plan
     val line = currentPlan?.lines?.getOrNull(index)
@@ -132,9 +134,9 @@ internal fun AfterglowStage(
         timedInk = current?.glyphs?.any { it.source.startMs != null } == true
     }
     val animatedInk = wordHighlight && budget.glyphMotion && timedInk
-    val drawPosition by remember(clock, line, endMs, lyrics.offsetMs, motion, animatedInk) {
+    val drawPosition by remember(clock, line, endMs, displayOffsetMs, motion, animatedInk) {
         derivedStateOf(structuralEqualityPolicy()) {
-            val position = (clock.value + lyrics.offsetMs).coerceAtLeast(0L)
+            val position = (clock.value + displayOffsetMs).coerceAtLeast(0L)
             // A static / lightweight scene changes only at a lyric or gap boundary, not at every host tick.
             if (motion || animatedInk) position
             else if (line == null) 0L else if (position < endMs) line.startMs else endMs

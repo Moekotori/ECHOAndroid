@@ -79,6 +79,7 @@ private val anchorPages: Map<Pair<SettingsCategory, Int>, SettingsSubPage> = lis
         R.string.settings_lyrics_font, R.string.settings_import_font, R.string.settings_reselect_font),
     anchors(SettingsSubPage.AppearanceBackground,
         R.string.settings_section_background, R.string.settings_bg_source, R.string.settings_bg_style,
+        R.string.settings_background_position_title, R.string.settings_background_position_x, R.string.settings_background_position_y,
         R.string.settings_blur, R.string.settings_brightness, R.string.settings_glass, R.string.settings_scale,
         R.string.settings_startup_background, R.string.settings_section_background_adjustments),
 

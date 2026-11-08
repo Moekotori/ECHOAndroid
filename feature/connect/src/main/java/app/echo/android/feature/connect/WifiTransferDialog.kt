@@ -12,11 +12,6 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.model.connect.EchoWifiTransferState
 
 @Composable
-fun WifiTransferEntry(onClick: () -> Unit) {
-    TextButton(onClick = onClick) { Text(stringResource(R.string.wifi_transfer_title)) }
-}
-
-@Composable
 fun WifiTransferDialog(state: EchoWifiTransferState, onChoose: () -> Unit, onStart: () -> Unit,
     onStop: () -> Unit, onScan: () -> Unit, scanning: Boolean, onClose: () -> Unit) {
     val running = state.phase == "running"

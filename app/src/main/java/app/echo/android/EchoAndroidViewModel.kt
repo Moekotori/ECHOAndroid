@@ -29,6 +29,7 @@ import app.echo.android.data.EchoAppSettings
 import app.echo.android.data.EchoLibrarySelectedSource
 import app.echo.android.data.EchoBackupCodec
 import app.echo.android.data.EchoSettingsStore
+import app.echo.android.data.EchoSearchHistoryStore
 import app.echo.android.data.toBackupSettings
 import app.echo.android.model.backup.EchoBackupDocument
 import app.echo.android.model.backup.EchoBackupException
@@ -160,7 +161,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     internal val mediaInspection by lazy { MediaInspectionController(getApplication(), repository) }
     internal val libraryExperience = LibraryExperienceController(repository, application, remoteLibraryTools::setFavorite)
     internal val playlistTools = PlaylistManagementController(application, repository, viewModelScope, remoteLibraryTools::setFavorite)
-    internal val unifiedSearch = UnifiedSearchController(repository, viewModelScope)
+    internal val unifiedSearch = UnifiedSearchController(repository, viewModelScope, EchoSearchHistoryStore(application))
     internal val librarySync = LibrarySyncController(repository)
     internal val personalStateSync = PersonalStateSyncController(application, repository)
     internal fun resumePersonalTrack(track: EchoTrack, positionMs: Long) {
@@ -1908,6 +1909,14 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         updateSettings {
             setCustomBackgroundGlass(value)
         }
+    }
+
+    fun setCustomBackgroundPositionX(value: Float) {
+        updateSettings { setCustomBackgroundPositionX(value) }
+    }
+
+    fun setCustomBackgroundPositionY(value: Float) {
+        updateSettings { setCustomBackgroundPositionY(value) }
     }
 
     fun setCustomBackgroundScale(value: Float) {

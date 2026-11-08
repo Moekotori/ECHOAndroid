@@ -34,12 +34,15 @@ data class ArtistConcert(
     val source: String,
     val url: String,
     val ticketUrl: String? = null,
+    val timezone: String? = null,
+    val details: ArtistConcertDetails = ArtistConcertDetails(),
 )
 
 data class ArtistConcerts(
     val events: List<ArtistConcert>,
     val failedSources: List<String> = emptyList(),
     val stale: Boolean = false,
+    val fetchedAt: String? = null,
 )
 
 data class ArtistSetlistSong(
@@ -72,5 +75,7 @@ interface ArtistOnlineInfoLoader {
     /** Null means no unambiguous match. Network and parse failures throw. */
     suspend fun loadProfile(query: ArtistOnlineQuery, language: String, refresh: Boolean): ArtistOnlineInfo?
     suspend fun loadConcerts(query: ArtistOnlineQuery, refresh: Boolean): ArtistConcerts
+    suspend fun loadConcerts(query: ArtistOnlineQuery, refresh: Boolean, period: ArtistConcertPeriod): ArtistConcerts =
+        if (period == ArtistConcertPeriod.Upcoming) loadConcerts(query, refresh) else ArtistConcerts(emptyList())
     suspend fun loadSetlist(query: ArtistOnlineQuery, concert: ArtistConcert, refresh: Boolean): ArtistSetlist
 }

@@ -48,6 +48,7 @@ import app.echo.android.feature.player.R as L10nR
 
 @Composable
 internal fun LyricsSettingsPanel(
+    onOpenAppearance: () -> Unit,
     lyricsFontFamily: FontFamily?,
     lyricsPageStyle: EchoLyricsPageStyle,
     playerPageStyle: String,
@@ -165,11 +166,11 @@ internal fun LyricsSettingsPanel(
                                 colorSummary = lyricsColorLabel(lyricsColorMode),
                                 motionSummary = "${stringResource(L10nR.string.lyrics_setting_word_highlight)} · ${stringResource(L10nR.string.feature_player_immersive_d86793)}",
                                 wordStyleSummary = stringResource(lyricsWordStyleLabel(EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle))),
-                                onSelect = { category = it },
+                                onSelect = {
+                                    if (it == LyricsSettingsCategory.Appearance) onOpenAppearance()
+                                    else category = it
+                                },
                             )
-                            if (page == LyricsSettingsCategory.Appearance) {
-                                PlayerPageStyleSelector(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle), onLyricsPageStyleChange)
-                            }
                             if (page == LyricsSettingsCategory.Backdrop) {
                                 PlayerBackdropChoices(
                                     selected = EchoLyricsBackdrop.fromId(lyricsBackdrop),

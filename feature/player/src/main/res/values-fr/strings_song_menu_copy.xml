@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="song_menu_copy_info">Copier les informations du morceau</string>
+    <string name="song_menu_info_copied">Informations du morceau copiées</string>
+</resources>

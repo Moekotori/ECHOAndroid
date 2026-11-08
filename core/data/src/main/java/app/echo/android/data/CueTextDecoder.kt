@@ -55,7 +55,7 @@ internal object CueTextDecoder {
             val sheet = text?.let(CueSheetParser::parseText) ?: return -1 to 0
             val references = (listOfNotNull(sheet.fileName) + sheet.tracks.mapNotNull { it.fileName })
                 .distinct().filter { name -> name.any { it.code > 127 } }.take(32)
-            return references.count(referenceExists) to references.size
+            return references.count { referenceExists(resolveCueSource(it, referenceExists)) } to references.size
         }
         var best = primary
         val (initial, count) = score(primary)

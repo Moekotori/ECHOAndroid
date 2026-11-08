@@ -25,16 +25,15 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Shuffle
 
 import androidx.compose.material3.HorizontalDivider
@@ -50,7 +49,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -150,11 +148,7 @@ internal fun PlaybackSettingsDrawer(
     onOpenTrackTools: () -> Unit = {},
     songActions: NowPlayingSongActions,
     actionsEnabled: Boolean = true,
-    appearance: PlayerAppearance,
-    onAppearancePreview: (PlayerAppearance) -> Unit,
-    onAppearanceCommit: () -> Unit,
-    lyricsBackdrop: String,
-    onLyricsBackdropChange: (String) -> Unit,
+    onOpenAppearance: () -> Unit,
     visible: Boolean,
     status: EchoPlaybackStatus,
     onSetRepeatMode: (EchoRepeatMode) -> Unit,
@@ -193,11 +187,10 @@ internal fun PlaybackSettingsDrawer(
                 }
             },
             onOpenTrackTools = onOpenTrackTools,
-            appearance = appearance,
-            onAppearancePreview = onAppearancePreview,
-            onAppearanceCommit = onAppearanceCommit,
-            lyricsBackdrop = lyricsBackdrop,
-            onLyricsBackdropChange = onLyricsBackdropChange,
+            onOpenAppearance = {
+                onDismiss()
+                onOpenAppearance()
+            },
             status = status,
             onSetRepeatMode = onSetRepeatMode,
             onToggleShuffle = onToggleShuffle,
@@ -226,11 +219,7 @@ private fun PlaybackSettingsSheet(
     onSongAction: (() -> Unit) -> Unit,
     onOpenTrackTools: () -> Unit = {},
     songActions: NowPlayingSongActions,
-    appearance: PlayerAppearance,
-    onAppearancePreview: (PlayerAppearance) -> Unit,
-    onAppearanceCommit: () -> Unit,
-    lyricsBackdrop: String,
-    onLyricsBackdropChange: (String) -> Unit,
+    onOpenAppearance: () -> Unit,
     status: EchoPlaybackStatus,
     onSetRepeatMode: (EchoRepeatMode) -> Unit,
     onToggleShuffle: () -> Unit,
@@ -269,12 +258,13 @@ private fun PlaybackSettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = maxHeight * 0.88f)
+                // Keep the menu short; the body scrolls below the pinned track header.
+                .heightIn(max = minOf(maxHeight * 0.60f, 560.dp))
                 .settingsSheetSurface()
                 .navigationBarsPadding(),
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 20.dp),
+                modifier = Modifier.padding(horizontal = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 PlaybackSheetHandle(onDismiss = onDismiss)
@@ -286,11 +276,12 @@ private fun PlaybackSettingsSheet(
                     closeDescription = stringResource(L10nR.string.feature_player_close_playback_settings_289e1a),
                     onBack = { moreExpanded = false },
                     onClose = onDismiss,
+                    compact = true,
                 ) {
                     ArtworkTile(
                         artworkUri = status.track?.artworkUri,
-                        modifier = Modifier.size(52.dp),
-                        accent = accent, cornerRadius = 14.dp, elevation = 0.dp,
+                        modifier = Modifier.size(40.dp),
+                        accent = accent, cornerRadius = 10.dp, elevation = 0.dp,
                     )
                 }
             }
@@ -299,17 +290,12 @@ private fun PlaybackSettingsSheet(
                     .fillMaxWidth()
                     .weight(1f, fill = false)
                     .verticalScroll(contentScrollState)
-                    .padding(start = 20.dp, end = 20.dp, bottom = 18.dp),
+                    .padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
             ) {
                 SettingsPageSwitcher(state = moreExpanded, isDeeper = { it }) { more ->
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column {
                         if (more) {
                             PlaybackAdvancedSettings(
-                                appearance = appearance,
-                                onAppearancePreview = onAppearancePreview,
-                                onAppearanceCommit = onAppearanceCommit,
-                                lyricsBackdrop = lyricsBackdrop,
-                                onLyricsBackdropChange = onLyricsBackdropChange,
                                 status = status,
                                 onSetPlaybackSpeed = onSetPlaybackSpeed,
                                 onSetReplayGain = onSetReplayGain,
@@ -323,11 +309,18 @@ private fun PlaybackSettingsSheet(
                                 onDismiss = onDismiss,
                             )
                         } else {
-                            NowPlayingSongActionRows(songActions, onSongAction)
-                            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                            PlaybackActionRow(
+                                icon = Icons.Rounded.Palette,
+                                text = stringResource(L10nR.string.player_appearance_title),
+                                framed = false, compact = true, onClick = onOpenAppearance,
+                            )
+                            HorizontalDivider(Modifier.padding(vertical = 3.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            NowPlayingSongActionRows(songActions, onSongAction, onOpenQueue, status.track)
+                            HorizontalDivider(Modifier.padding(vertical = 3.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                             PlaybackSettingsSection(
                                 icon = Icons.Rounded.Repeat,
                                 framed = false,
+                                compact = true,
                                 showDivider = false,
                                 revealOrder = 1,
                                 title = stringResource(L10nR.string.feature_player_playback_mode),
@@ -353,20 +346,14 @@ private fun PlaybackSettingsSheet(
                                 title = stringResource(L10nR.string.feature_player_shuffle),
                                 checked = status.shuffleEnabled,
                                 framed = false,
+                                compact = true,
                                 revealOrder = 2,
                                 onCheckedChange = { onToggleShuffle() },
                             )
-                            PlaybackActionRow(
-                                icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                                text = stringResource(L10nR.string.feature_player_queue_37fa6a),
-                                framed = false,
-                                revealOrder = 2,
-                                onClick = onOpenQueue,
-                            )
-
                             PlaybackSettingsSection(
                                 icon = Icons.Rounded.Bedtime,
                                 framed = false,
+                                compact = true,
                                 showDivider = false,
                                 revealOrder = 3,
                                 title = stringResource(L10nR.string.feature_player_sleep_timer_108738),
@@ -476,6 +463,7 @@ private fun PlaybackSettingsSheet(
                                 icon = Icons.Rounded.Settings,
                                 text = stringResource(L10nR.string.playback_more_settings),
                                 framed = false,
+                                compact = true,
                                 revealOrder = 3,
                                 onClick = { moreExpanded = true },
                             )

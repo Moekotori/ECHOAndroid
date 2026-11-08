@@ -279,9 +279,9 @@ internal class OkHttpEchoLinkTransport(
                 }
 
                 override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
-                    val error = t ?: response?.let {
+                    val error = response?.takeUnless { it.isSuccessful }?.let {
                         EchoLinkHttpException("PC ECHO events failed (${it.code})", it.code)
-                    }
+                    } ?: t
                     onClosed(error)
                 }
             },
@@ -344,17 +344,35 @@ internal class OkHttpEchoLinkTransport(
 
     override suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int) = withContext(responseDispatcher) {
         if (endpoint.libraryOnly) throw EchoLinkHttpException("library_read_only", 405)
-        val json = executeJson(Request.Builder().url(endpoint.url("playback", "queue") {
-            addQueryParameter("page", page.toString()); addQueryParameter("pageSize", "100")
-        }).authorized(endpoint).get().build())
+        require(page > 0)
+        var supportsEditing = false
+        val json = try {
+            executeJson(Request.Builder().url(endpoint.versionedUrl(if (endpoint.supportsV2Events) 2 else 1, "queue") {
+                addQueryParameter("page", page.toString())
+            }).authorized(endpoint).get().build())
+        } catch (error: EchoLinkHttpException) {
+            // Some PC builds expose the editable companion queue instead. Never retry auth failures.
+            if (error.statusCode != 404) throw error
+            supportsEditing = true
+            executeJson(Request.Builder().url(endpoint.url("playback", "queue") {
+                addQueryParameter("page", page.toString()); addQueryParameter("pageSize", "100")
+            }).authorized(endpoint).get().build())
+        }
         val rows = json.optJSONArray("items") ?: JSONArray()
-        require(rows.length() <= 100) { "PC returned an oversized queue page" }
+        val pageSize = json.optInt("pageSize", if (supportsEditing) 100 else if (endpoint.supportsV2Events) 24 else 50)
+        require(pageSize in 1..100 && rows.length() <= pageSize && json.optInt("page", page) == page) {
+            "PC returned an invalid queue page"
+        }
+        val offset = Math.multiplyExact(page - 1, pageSize)
         val items = buildList {
-            for (index in 0 until rows.length()) rows.optJSONObject(index)?.toRemoteTrack(endpoint)?.let(::add)
+            for (index in 0 until rows.length()) rows.optJSONObject(index)?.toRemoteTrack(endpoint)?.let {
+                add(it.copy(queueIndex = it.queueIndex ?: offset + index))
+            }
         }
         app.echo.android.model.connect.EchoRemoteQueueState(items = items,
-            totalCount = json.optInt("totalCount", items.size).coerceAtLeast(items.size),
-            revision = json.optLong("revision", 0), currentQueueId = json.optText("currentQueueId"))
+            totalCount = json.optInt("totalCount", json.optInt("total", items.size)).coerceAtLeast(items.size),
+            revision = json.optLong("revision", -1).takeIf { it >= 0 }, currentQueueId = json.optText("currentQueueId"),
+            offset = offset, pageSize = pageSize, supportsEditing = supportsEditing)
     }
 
     override suspend fun fetchTracks(
@@ -649,7 +667,9 @@ internal fun echoLinkErrorUserMessage(statusCode: Int, body: String): String {
     val parsed = body.trim().takeIf { it.startsWith("{") }?.let { json ->
         runCatching { JSONObject(json) }.getOrNull()
     }
-    val message = parsed?.optText("message") ?: parsed?.optText("error")
+    val nestedError = parsed?.optJSONObject("error")
+    val message = nestedError?.optText("message") ?: nestedError?.optText("code")
+        ?: parsed?.optText("message") ?: parsed?.optText("error") ?: parsed?.optText("code")
     if (!message.isNullOrBlank()) return message
     return "PC ECHO request failed ($statusCode): ${body.take(180).ifBlank { "error" }}"
 }

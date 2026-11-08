@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_file_name">Dateiname</string>
+    <string name="track_info_copy">Alle Informationen kopieren</string>
+    <string name="track_info_copied">Songinformationen kopiert</string>
+</resources>

@@ -22,4 +22,5 @@
     <string name="player_appearance_contours">等高線</string>
     <string name="player_appearance_dither">ディザ</string>
     <string name="player_appearance_glyph_field">文字アート</string>
+    <string name="player_appearance_full_cover">フルカバー</string>
 </resources>

@@ -11,16 +11,13 @@ internal fun SettingsBackgroundSliders(
     blur: Float,
     brightness: Float,
     glass: Float,
-    scale: Float,
     maxBlur: Float,
     onBlurChange: (Float) -> Unit,
     onBrightnessChange: (Float) -> Unit,
     onGlassChange: (Float) -> Unit,
-    onScaleChange: (Float) -> Unit,
     onBlurPreview: (Float) -> Unit,
     onBrightnessPreview: (Float) -> Unit,
     onGlassPreview: (Float) -> Unit,
-    onScalePreview: (Float) -> Unit,
 ) {
     if (!isVideo) SettingsSliderRow(
         title = stringResource(R.string.settings_blur), valueLabel = { "${it.roundToInt()} dp" },
@@ -37,10 +34,5 @@ internal fun SettingsBackgroundSliders(
         title = stringResource(R.string.settings_glass), valueLabel = { "${(it * 100f).roundToInt()}%" },
         value = glass, valueRange = 0.08f..0.90f, steps = 13,
         onValueChange = onGlassChange, onPreviewValueChange = onGlassPreview, dense = true,
-    )
-    SettingsSliderRow(
-        title = stringResource(R.string.settings_scale), valueLabel = { "${(it * 100f).roundToInt()}%" },
-        value = scale, valueRange = 1f..1.4f, steps = 15,
-        onValueChange = onScaleChange, onPreviewValueChange = onScalePreview, dense = true,
     )
 }

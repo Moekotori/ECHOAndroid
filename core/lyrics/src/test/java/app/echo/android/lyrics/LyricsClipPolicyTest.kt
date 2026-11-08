@@ -55,7 +55,7 @@ class LyricsClipPolicyTest {
         assertNull(LyricsContentPolicy.readable(EchoLyrics(lines = listOf(EchoLyricLine(0, text = "")))))
         assertNull(LyricsClipPolicy.embedded(EchoLyricsParser.parse("[00:01.00]Previous"), 60_000, 120_000))
         val shifted = LyricsClipPolicy.embedded(EchoLyricsParser.parse("[01:01.00]Current\n[offset:250]"), 60_000, 120_000)!!.withUserOffset(100)
-        assertEquals(1_350L, shifted.lines.single().startMs)
+        assertEquals(850L, shifted.lines.single().startMs)
         assertNull(LyricsClipPolicy.embedded(shifted, 5_000, 4_000))
     }
 

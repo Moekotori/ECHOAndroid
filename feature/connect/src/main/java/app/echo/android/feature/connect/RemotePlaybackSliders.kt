@@ -37,7 +37,7 @@ internal fun RemoteSeekControl(
 ) {
     val duration = durationMs.coerceAtLeast(0L)
     var dragging by remember { mutableStateOf<Long?>(null) }
-    val anchor = remember(positionMs, isPlaying, active) { SystemClock.elapsedRealtime() }
+    val anchor = remember(positionMs, isPlaying, active, interpolate) { SystemClock.elapsedRealtime() }
     var now by remember { mutableLongStateOf(anchor) }
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     LaunchedEffect(anchor, active, isPlaying, lightweight, interpolate) {

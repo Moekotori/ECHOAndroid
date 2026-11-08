@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_background_position_x">По горизонтали</string>
+    <string name="settings_background_position_y">По вертикали</string>
+    <string name="settings_background_position_title">Положение и масштаб</string>
+    <string name="settings_background_position_center">По центру</string>
+    <string name="settings_background_position_drag_hint">Удерживайте предпросмотр, чтобы сдвинуть фон</string>
+    <string name="settings_background_position_dragging">Отпустите, чтобы сохранить положение</string>
+    <string name="settings_background_position_left">Влево %1$d%%</string>
+    <string name="settings_background_position_right">Вправо %1$d%%</string>
+    <string name="settings_background_position_up">Вверх %1$d%%</string>
+    <string name="settings_background_position_down">Вниз %1$d%%</string>
+    <string name="settings_background_position_detail">Увеличьте масштаб для большего диапазона перемещения.</string>
+</resources>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_concert_heading">公演情報</string>
+    <string name="artist_past_concerts">過去の公演</string>
+    <string name="artist_no_past_concerts">過去の公演情報はありません。</string>
+    <string name="artist_concert_hide_details">詳細を閉じる</string>
+    <string name="artist_concert_show_details">詳細を見る</string>
+    <string name="artist_concert_time_tbd">時間未定</string>
+    <string name="artist_concert_ongoing">公演中</string>
+    <string name="artist_concert_started">開演済み</string>
+    <string name="artist_concert_checked">最終確認：%1$s</string>
+    <string name="artist_concert_check_source">%1$s で確認</string>
+    <string name="artist_concert_history_note">公開情報には過去の公演がすべて含まれるとは限りません。</string>
+    <string name="artist_concert_opens">開場</string>
+    <string name="artist_concert_ends">終演</string>
+    <string name="artist_concert_lineup">出演者</string>
+    <string name="artist_concert_address">住所</string>
+    <string name="artist_concert_coordinates">緯度・経度</string>
+    <string name="artist_concert_admission">チケット</string>
+    <string name="artist_concert_ticketed">チケット制の公演</string>
+    <string name="artist_concert_free">チケット制の記載なし</string>
+    <string name="artist_concert_price">掲載料金</string>
+    <string name="artist_concert_sale_start">一般販売開始</string>
+    <string name="artist_concert_sale_end">一般販売終了</string>
+    <string name="artist_concert_notes">備考</string>
+    <string name="artist_concert_source_updated">情報更新：%1$s</string>
+</resources>

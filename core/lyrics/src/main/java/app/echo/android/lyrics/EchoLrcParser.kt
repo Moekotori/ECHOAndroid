@@ -9,10 +9,11 @@ object EchoLrcParser {
     fun parse(rawText: String, sourceLabel: String? = null): EchoLyrics {
         val metadata = linkedMapOf<String, String>()
         val parsedLines = mutableListOf<ParsedLine>()
-        val offsetMs = rawText.lineSequence().map(String::trim)
+        // LRC positive offsets advance the lyric, matching ECHOSteam.
+        val offsetMs = -(rawText.lineSequence().map { it.trim().trimStart('\uFEFF').trimStart() }
             .mapNotNull { MetadataRegex.matchEntire(it) }
             .filter { it.groupValues[1].equals("offset", ignoreCase = true) }
-            .mapNotNull { it.groupValues[2].trim().toLongOrNull() }.lastOrNull() ?: 0L
+            .mapNotNull { it.groupValues[2].trim().toLongOrNull() }.firstOrNull()?.coerceIn(-600_000L, 600_000L) ?: 0L)
 
         rawText
             .replace("\uFEFF", "")

@@ -41,6 +41,7 @@ internal fun parseEchoLinkEventData(
         volumeControlIncluded = playbackJson.has("volumeControlEnabled"),
         outputIncluded = playbackJson.has("outputMode") || playbackJson.has("output"),
         playbackOrderIncluded = playbackJson.has("playbackOrder"),
+        queueTotalIncluded = playbackJson.optJSONObject("queue")?.let { it.has("total") || it.has("totalCount") } == true,
     )
 }
 

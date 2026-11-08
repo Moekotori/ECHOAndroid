@@ -3,7 +3,6 @@ package app.echo.android.lyrics
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.LibraryLyricsInspectionTrack
@@ -149,66 +148,24 @@ internal class LibraryLyricsInspector(
             val names = LyricsSidecarNames.candidates(fileName, row.title, preferTitle = clipped)
             fun sidecar(uri: Uri, name: String? = null): EchoLyrics? =
                 LyricsClipPolicy.sidecar(parseUri(uri, name), fileName, row.clipStartMs, row.clipEndMs)
-            if (audioUri.scheme == ContentResolver.SCHEME_FILE) {
-                val parent = File(audioUri.path.orEmpty()).parentFile
-                if (parent == null || !parent.canRead()) failed = true
-                if (!clipped) names.forEach { name ->
-                    val file = parent?.let { File(it, name) }
-                    if (file?.isFile == true && attempt { sidecar(Uri.fromFile(file)) } != null) return Outcome.Found
+            try {
+                val directory = when {
+                    audioUri.scheme == ContentResolver.SCHEME_FILE -> "file:${File(audioUri.path.orEmpty()).parent}"
+                    audioUri.authority == MediaStore.AUTHORITY -> "media:$relativePath"
+                    else -> "saf:${DocumentSiblingFiles.directoryKey(audioUri) ?: audioUri}"
                 }
-                var complete = true
-                val files = try {
-                    if (parent == null) emptyList() else java.nio.file.Files.newDirectoryStream(parent.toPath()).use { paths ->
-                        val found = ArrayList<String>()
-                        var visited = 0
-                        for (path in paths) {
-                            jobContext.ensureActive()
-                            if (++visited > 4096) { failed = true; complete = false; break }
-                            val name = path.fileName.toString()
-                            if (java.nio.file.Files.isRegularFile(path) && EchoLyricsParser.fileExtensions.any { name.endsWith(it, true) }) found += name
-                        }
-                        found
-                    }
-                } catch (cancelled: CancellationException) { throw cancelled }
-                catch (_: Exception) { failed = true; complete = false; emptyList() }
-                (LyricsSidecarNames.matching(names, files, complete) + if (clipped) names else emptyList()).distinct().forEach { name ->
-                    val file = parent?.let { File(it, name) }
-                    if (file?.isFile == true && attempt { sidecar(Uri.fromFile(file)) } != null) return Outcome.Found
+                val folder = folders.getOrPut(directory) {
+                    val listing = LocalLyricsSidecarReader(context) { jobContext.ensureActive() }.list(audioUri, relativePath)
+                    FolderIndex(listing.files.entries.take(512).associate { it.key to it.value }, listing.complete && listing.files.size <= 512)
                 }
-            } else if (audioUri.authority == MediaStore.AUTHORITY && !relativePath.isNullOrBlank() &&
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                try {
-                    val location = LyricsSidecarLocation.fromLibraryFolder(relativePath)
-                        ?: throw IOException("Folder location is unknown")
-                    val folder = folderIndex(location.relativePath, location.volumeName)
-                    if (!folder.complete) failed = true
-                    LyricsSidecarNames.matching(names, folder.files.keys, folder.complete).forEach { name ->
-                        folder.files[name]?.let { uri ->
-                            if (attempt { sidecar(uri, name) } != null) return Outcome.Found
-                        }
-                    }
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) { failed = true }
-            } else {
-                try {
-                    val key = DocumentSiblingFiles.directoryKey(audioUri)
-                    val folder = key?.let {
-                        folders.getOrPut("saf:$it") {
-                            val listing = DocumentSiblingFiles.read(resolver, audioUri, EchoLyricsParser.fileExtensions) { jobContext.ensureActive() }
-                                ?: throw IOException("Folder is not readable")
-                            FolderIndex(listing.files.take(512).associate { it.name to it.uri }, listing.complete && listing.files.size <= 512)
-                        }
-                    }
-                    if (folder == null || !folder.complete) failed = true
-                    if (folder != null) {
-                        LyricsSidecarNames.matching(names, folder.files.keys, folder.complete).forEach { name ->
-                            if (attempt { sidecar(folder.files.getValue(name), name) } != null) return Outcome.Found
-                        }
-                    }
-                } catch (cancelled: CancellationException) { throw cancelled }
-                catch (_: Exception) { failed = true }
-            }
+                if (!folder.complete) failed = true
+                LyricsSidecarDiscovery.discover(names, folder.files.keys, folder.complete).forEach { candidate ->
+                    jobContext.ensureActive()
+                    val uri = folder.files.getValue(candidate.primary)
+                    if (attempt { sidecar(uri, candidate.primary) } != null) return Outcome.Found
+                }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { failed = true }
             if (attempt {
                     val input = resolver.openInputStream(audioUri) ?: throw IOException("Audio is not readable")
                     input.use {
@@ -231,23 +188,6 @@ internal class LibraryLyricsInspector(
             EchoLyricsTextDecoder.decodeResult(bytes)?.takeUnless { it.lossy }?.let { EchoLyricsParser.parse(it.text, sourceLabel = label) }
         } ?: throw IOException("Lyrics are not readable")
 
-        private fun folderIndex(path: String, volume: String): FolderIndex = folders.getOrPut("$volume:$path") {
-            val collection = MediaStore.Files.getContentUri(volume)
-            val files = LinkedHashMap<String, Uri>()
-            val extensions = EchoLyricsParser.fileExtensions
-            val selection = "${MediaStore.Files.FileColumns.RELATIVE_PATH} = ? AND (" +
-                extensions.joinToString(" OR ") { "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?" } + ")"
-            resolver.query(collection, arrayOf(MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DISPLAY_NAME),
-                selection, (listOf(path) + extensions.map { "%$it" }).toTypedArray(), null)?.use { cursor ->
-                var visited = 0
-                while (cursor.moveToNext()) {
-                    jobContext.ensureActive()
-                    if (++visited > 512) return@getOrPut FolderIndex(files, false)
-                    files.putIfAbsent(cursor.getString(1), Uri.withAppendedPath(collection, cursor.getLong(0).toString()))
-                }
-            } ?: throw IOException("Folder is not readable")
-            FolderIndex(files, true)
-        }
     }
 
     internal class BoundedInput(input: InputStream, private val jobContext: CoroutineContext) : FilterInputStream(input) {

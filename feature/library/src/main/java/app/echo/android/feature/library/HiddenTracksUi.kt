@@ -32,24 +32,34 @@ fun LibraryHiddenTracksProvider(actions: LibraryHiddenTrackActions, content: @Co
     val scope = rememberCoroutineScope()
     CompositionLocalProvider(LocalHiddenTracksUi provides HiddenTracksUiState(count,
         { pending = it; failed = false }, { open = true })) { content() }
-    pending?.let { track -> AlertDialog(
-        onDismissRequest = { if (!busy) pending = null },
-        title = { Text(stringResource(R.string.hidden_track_title)) },
-        text = { Column {
-            Text(stringResource(R.string.hidden_track_confirm, displayTrack(track.title)))
-            if (failed) Text(stringResource(R.string.hidden_track_failed), color = MaterialTheme.colorScheme.error)
-        } },
-        confirmButton = { TextButton(enabled = !busy, onClick = {
+    pending?.let { track -> LibraryHideTrackDialog(track, busy, failed,
+        onDismiss = { if (!busy) pending = null },
+        onConfirm = {
             busy = true
             scope.launch { try { actions.hide(listOf(track.id)); pending = null }
                 catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: Exception) { failed = true }
                 finally { busy = false } }
-        }) { Text(stringResource(R.string.hidden_track_hide)) } },
-        dismissButton = { TextButton(enabled = !busy, onClick = { pending = null }) {
-            Text(stringResource(R.string.hidden_track_cancel)) } },
+        },
     ) }
     if (open) HiddenTracksSheet(actions) { open = false }
+}
+
+/** Shared confirmation for library rows and the currently playing song. */
+@Composable
+fun LibraryHideTrackDialog(track: EchoTrack, busy: Boolean, failed: Boolean,
+    onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(stringResource(R.string.hidden_track_title)) },
+        text = { Column {
+            Text(stringResource(R.string.hidden_track_confirm, displayTrack(track.title)))
+            if (failed) Text(stringResource(R.string.hidden_track_failed), color = MaterialTheme.colorScheme.error)
+        } },
+        confirmButton = { TextButton(enabled = !busy, onClick = onConfirm) { Text(stringResource(R.string.hidden_track_hide)) } },
+        dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) {
+            Text(stringResource(R.string.hidden_track_cancel)) } },
+    )
 }
 
 @Composable

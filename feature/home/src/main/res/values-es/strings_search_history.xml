@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_history_title">Búsquedas recientes</string>
+    <string name="search_history_clear">Borrar todo</string>
+    <string name="search_history_remove">Quitar %1$s del historial de búsqueda</string>
+    <string name="search_playlist_already_added">Ya añadida</string>
+</resources>

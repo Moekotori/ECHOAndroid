@@ -30,18 +30,47 @@ internal fun LibraryTrackSortMode.label(): String = when (this) {
     LibraryTrackSortMode.Format -> stringResource(R.string.library_sort_format)
     LibraryTrackSortMode.ModifiedOldest -> stringResource(R.string.library_sort_modified_oldest)
     LibraryTrackSortMode.TrackNumber -> stringResource(R.string.library_sort_track_number)
+    LibraryTrackSortMode.AlbumArtist -> stringResource(R.string.library_sort_album_artist_asc)
+    LibraryTrackSortMode.AlbumArtistDescending -> stringResource(R.string.library_sort_album_artist_desc)
+    LibraryTrackSortMode.Genre -> stringResource(R.string.library_sort_genre_asc)
+    LibraryTrackSortMode.GenreDescending -> stringResource(R.string.library_sort_genre_desc)
+    LibraryTrackSortMode.Composer -> stringResource(R.string.library_sort_composer_asc)
+    LibraryTrackSortMode.ComposerDescending -> stringResource(R.string.library_sort_composer_desc)
+    LibraryTrackSortMode.FileNameDescending -> stringResource(R.string.library_sort_file_name_desc)
+    LibraryTrackSortMode.FolderDescending -> stringResource(R.string.library_sort_folder_desc)
+    LibraryTrackSortMode.FormatDescending -> stringResource(R.string.library_sort_format_desc)
+    LibraryTrackSortMode.TrackNumberDescending -> stringResource(R.string.library_sort_track_number_desc)
 }
 
-internal val LocalTrackSortOptions = listOf(
-    LibraryTrackSortMode.Title, LibraryTrackSortMode.TitleDescending, LibraryTrackSortMode.Artist, LibraryTrackSortMode.ArtistDescending, LibraryTrackSortMode.Album, LibraryTrackSortMode.AlbumDescending, LibraryTrackSortMode.TrackNumber, LibraryTrackSortMode.YearDescending, LibraryTrackSortMode.YearAscending,
-    LibraryTrackSortMode.RecentlyPlayed, LibraryTrackSortMode.FrequentlyPlayed, LibraryTrackSortMode.LeastPlayed, LibraryTrackSortMode.Random,
-    LibraryTrackSortMode.DurationAscending, LibraryTrackSortMode.Duration, LibraryTrackSortMode.SizeAscending, LibraryTrackSortMode.SizeDescending, LibraryTrackSortMode.SampleRateAscending, LibraryTrackSortMode.SampleRateDescending, LibraryTrackSortMode.Format,
-    LibraryTrackSortMode.FileName, LibraryTrackSortMode.Folder, LibraryTrackSortMode.RecentlyUpdated, LibraryTrackSortMode.ModifiedOldest,
+// Fixed priority: everyday browsing first, specialist and reverse orders last.
+private val TrackSortGroups = linkedMapOf(
+    R.string.library_sort_group_common to listOf(
+        LibraryTrackSortMode.Title, LibraryTrackSortMode.RecentlyUpdated,
+        LibraryTrackSortMode.Artist, LibraryTrackSortMode.Album,
+        LibraryTrackSortMode.FrequentlyPlayed, LibraryTrackSortMode.RecentlyPlayed,
+        LibraryTrackSortMode.Random, LibraryTrackSortMode.FileName,
+    ),
+    R.string.library_sort_group_more to listOf(
+        LibraryTrackSortMode.Folder, LibraryTrackSortMode.TrackNumber,
+        LibraryTrackSortMode.TitleDescending, LibraryTrackSortMode.ArtistDescending,
+        LibraryTrackSortMode.AlbumDescending, LibraryTrackSortMode.YearDescending,
+        LibraryTrackSortMode.YearAscending, LibraryTrackSortMode.AlbumArtist,
+        LibraryTrackSortMode.Genre, LibraryTrackSortMode.Composer,
+        LibraryTrackSortMode.DurationAscending, LibraryTrackSortMode.Duration,
+    ),
+    R.string.library_sort_group_rare to listOf(
+        LibraryTrackSortMode.LeastPlayed, LibraryTrackSortMode.ModifiedOldest,
+        LibraryTrackSortMode.FileNameDescending, LibraryTrackSortMode.FolderDescending,
+        LibraryTrackSortMode.AlbumArtistDescending, LibraryTrackSortMode.TrackNumberDescending,
+        LibraryTrackSortMode.GenreDescending, LibraryTrackSortMode.ComposerDescending,
+        LibraryTrackSortMode.SizeDescending, LibraryTrackSortMode.SizeAscending,
+        LibraryTrackSortMode.SampleRateDescending, LibraryTrackSortMode.SampleRateAscending,
+        LibraryTrackSortMode.Format, LibraryTrackSortMode.FormatDescending,
+    ),
 )
 
-internal fun trackSortSection(mode: LibraryTrackSortMode): Int = when (mode) {
-    LibraryTrackSortMode.Title, LibraryTrackSortMode.TitleDescending, LibraryTrackSortMode.Artist, LibraryTrackSortMode.ArtistDescending, LibraryTrackSortMode.Album, LibraryTrackSortMode.AlbumDescending, LibraryTrackSortMode.TrackNumber, LibraryTrackSortMode.YearDescending, LibraryTrackSortMode.YearAscending -> R.string.library_sort_group_browse
-    LibraryTrackSortMode.RecentlyPlayed, LibraryTrackSortMode.FrequentlyPlayed, LibraryTrackSortMode.LeastPlayed, LibraryTrackSortMode.Random -> R.string.library_sort_group_listening
-    LibraryTrackSortMode.DurationAscending, LibraryTrackSortMode.Duration, LibraryTrackSortMode.SizeAscending, LibraryTrackSortMode.SizeDescending, LibraryTrackSortMode.SampleRateAscending, LibraryTrackSortMode.SampleRateDescending, LibraryTrackSortMode.Format -> R.string.library_sort_group_audio
-    LibraryTrackSortMode.FileName, LibraryTrackSortMode.Folder, LibraryTrackSortMode.RecentlyUpdated, LibraryTrackSortMode.ModifiedOldest -> R.string.library_sort_group_files
-}
+internal val LocalTrackSortOptions = TrackSortGroups.values.flatten()
+
+private val TrackSortSections = TrackSortGroups.flatMap { (title, options) -> options.map { it to title } }.toMap()
+
+internal fun trackSortSection(mode: LibraryTrackSortMode): Int = TrackSortSections.getValue(mode)

@@ -61,6 +61,9 @@ internal fun PlayerCoverPage(
         } else if (appearance.style.isFullBleedStyle()) {
             FullBleedCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
                 castActive, modifier)
+        } else if (appearance.style == EchoPlayerPageStyle.FullCover.id) {
+            FullCoverCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
+                castActive, modifier)
         } else if (appearance.style == EchoPlayerPageStyle.MetroLine.id) {
             MetroCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
                 castActive, appearance.artworkScale, presentationExpanded, modifier)

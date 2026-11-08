@@ -5,6 +5,29 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EchoManualConnectionInputTest {
+    @Test fun ipTailscaleAndFrpReconnectKeepTheirPairedV2Capabilities() {
+        for (address in listOf("192.168.1.20:26789", "100.80.10.20:26789",
+            "echo-pc.tailnet.ts.net:26789", "http://frp.example:36789", "https://echo.example")) {
+            val request = EchoManualConnectionInput.resolve(address, "")!!
+            val saved = EchoSavedPcEndpoint(request.address, "PC", supportsV2Events = true, token = "paired-access-token")
+            val resolved = EchoManualConnectionInput.resolve(address, "", listOf(saved))!!
+            val endpoint = EchoManualConnectionInput.endpointForConnection(resolved.address, resolved.token, listOf(saved))!!
+            assertTrue(address, endpoint.supportsV2Events)
+            assertEquals("paired-access-token", endpoint.token)
+            assertEquals(request.address, "${endpoint.scheme}://${endpoint.host}:${endpoint.port}")
+        }
+    }
+
+    @Test fun v2CapabilitiesCannotTransferToAnotherOriginOrCredential() {
+        val saved = EchoSavedPcEndpoint("https://echo.example:9443", "PC", supportsV2Events = true, token = "paired-access-token")
+        for (address in listOf("http://echo.example:9443", "https://other.example:9443", "https://echo.example:9444")) {
+            assertFalse(EchoManualConnectionInput.endpointForConnection(address, "paired-access-token", listOf(saved))!!.supportsV2Events)
+        }
+        assertFalse(EchoManualConnectionInput.endpointForConnection(saved.address, "different-token", listOf(saved))!!.supportsV2Events)
+        assertFalse(EchoManualConnectionInput.endpointForConnection(saved.address, "", listOf(saved))!!.supportsV2Events)
+        assertTrue(EchoManualConnectionInput.endpointForConnection(saved.address, saved.token!!, currentPc = saved)!!.supportsV2Events)
+    }
+
     @Test fun ipAndMagicDnsUseTheEnteredPortAndKeepProtocolDefaults() {
         assertEquals("http://192.168.1.20:26789", EchoManualConnectionInput.resolve("192.168.1.20", "")!!.address)
         assertEquals("http://100.80.10.20:31555", EchoManualConnectionInput.resolve("100.80.10.20", "31555")!!.address)

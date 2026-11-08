@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="song_menu_hide">곡 숨기기</string>
+    <string name="song_menu_delete">곡 삭제</string>
+</resources>

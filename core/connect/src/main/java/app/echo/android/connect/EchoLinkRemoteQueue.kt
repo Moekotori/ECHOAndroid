@@ -28,6 +28,7 @@ internal class EchoLinkRemoteQueue(
     private var visibleAnchor = 0
     private var pendingIdentity: Pair<Long, String?>? = null
     private var lastRequestedRevision: Long? = null
+    private var lastLoadedPage = 0
 
     fun startWatching() { watching = true }
     fun stopWatching() { watching = false; visibleAnchor = 0; cancel(clear = true) }
@@ -56,13 +57,13 @@ internal class EchoLinkRemoteQueue(
     }
     private fun reloadWindow(keepError: String? = null) {
         cancel()
-        load(visibleAnchor / 100 + 1, replaceWindow = true, requestError = keepError)
+        load(visibleAnchor / state.value.pageSize + 1, replaceWindow = true, requestError = keepError)
     }
 
     fun cancel(clear: Boolean = false) {
         generation++
         pendingIdentity = null
-        if (clear) lastRequestedRevision = null
+        if (clear) { lastRequestedRevision = null; lastLoadedPage = 0 }
         job?.cancel(); job = null
         mutableState.value = if (clear) EchoRemoteQueueState() else mutableState.value.copy(
             isLoading = false, isLoadingMore = false, isMoving = false)
@@ -70,13 +71,13 @@ internal class EchoLinkRemoteQueue(
     fun refresh(keepError: String? = null) { cancel(); load(1, requestError = keepError) }
     fun loadMore() {
         val current = state.value
-        if (job?.isActive == true || current.unsupported || current.offset + current.items.size >= current.totalCount) return
-        load((current.offset + current.items.size) / 100 + 1)
+        if (job?.isActive == true || current.unsupported || lastLoadedPage.toLong() * current.pageSize >= current.totalCount) return
+        load(lastLoadedPage + 1)
     }
     fun loadPrevious() {
         val current = state.value
         if (job?.isActive == true || current.unsupported || current.offset == 0) return
-        load(current.offset / 100, prepend = true)
+        load(current.offset / current.pageSize, prepend = true)
     }
     private fun load(page: Int, prepend: Boolean = false, requestError: String? = null, replaceWindow: Boolean = false) {
         val target = endpoint() ?: return
@@ -88,12 +89,13 @@ internal class EchoLinkRemoteQueue(
                 val result = transport.fetchPlaybackQueue(target, page)
                 if (request != generation || !EchoLinkRequestPolicy.isSameEndpoint(endpoint(), target)) return@launch
                 val current = state.value
-                if (!replaceWindow && (page > 1 || prepend) && result.revision != current.revision) {
+                if (!replaceWindow && (page > 1 || prepend) &&
+                    (result.revision != current.revision || result.pageSize != current.pageSize)) {
                     reloadWindow(errorMessage(EchoLinkHttpException("playback_queue_session_conflict"))); return@launch
                 }
                 if (replaceWindow && result.items.isEmpty() && result.totalCount > 0 && page > 1) {
                     visibleAnchor = result.totalCount - 1
-                    load(visibleAnchor / 100 + 1, replaceWindow = true, requestError = requestError)
+                    load(visibleAnchor / result.pageSize + 1, replaceWindow = true, requestError = requestError)
                     return@launch
                 }
                 if (page > 1 && result.items.isEmpty() && current.items.size < result.totalCount) {
@@ -101,10 +103,16 @@ internal class EchoLinkRemoteQueue(
                 }
                 val extending = !replaceWindow && (page > 1 || prepend)
                 val combined = if (!extending) result.items else if (prepend) result.items + current.items else current.items + result.items
-                val dropped = (combined.size - 1000).coerceAtLeast(0)
+                // Keep whole pages so the next request stays aligned for 24/50-row PCs too.
+                val windowLimit = (1000 / result.pageSize) * result.pageSize
+                val dropped = (combined.size - windowLimit).coerceAtLeast(0)
+                val keptItems = if (prepend) combined.take(windowLimit) else combined.drop(dropped)
+                lastLoadedPage = if (!extending || !prepend) page else
+                    (keptItems.lastOrNull()?.queueIndex ?: (lastLoadedPage * result.pageSize - 1)) / result.pageSize + 1
                 mutableState.value = result.copy(
-                    items = if (prepend) combined.take(1000) else combined.drop(dropped),
-                    offset = if (replaceWindow || prepend) (page - 1) * 100 else if (extending) current.offset + dropped else 0,
+                    items = keptItems,
+                    offset = if (replaceWindow || prepend) (page - 1) * result.pageSize else if (extending)
+                        keptItems.firstOrNull()?.queueIndex ?: (current.offset + dropped) else 0,
                     error = requestError,
                 )
             } catch (cancelled: CancellationException) { throw cancelled }
@@ -124,7 +132,7 @@ internal class EchoLinkRemoteQueue(
         val target = endpoint() ?: return
         val current = state.value
         val revision = current.revision ?: return
-        if (current.unsupported || toIndex !in 0 until current.totalCount) return
+        if (current.unsupported || !current.supportsEditing || toIndex !in 0 until current.totalCount) return
         val request = ++generation
         mutableState.value = current.copy(isMoving = true, error = null)
         job = scope.launch {

@@ -140,17 +140,11 @@ class EchoLibraryRepository(
             val matchQuery = substringFtsQuery(trimmedQuery)
             val useFts = matchQuery != null && canUseFts(dao, matchQuery, trimmedQuery)
 
-            val statsSorted = sort == LibraryTrackSortMode.FrequentlyPlayed || sort == LibraryTrackSortMode.RecentlyPlayed || sort == LibraryTrackSortMode.LeastPlayed
             emitAll(
                 Pager(
                     config = defaultPagingConfig(enablePlaceholders = true),
                     pagingSourceFactory = {
-                        val request = trackPagingQuery(trimmedQuery, matchQuery, useFts, sort, filter)
-                        when {
-                            filter.lyrics != app.echo.android.model.library.LibraryPresenceFilter.Any -> dao.pageTracksSortedWithLyrics(request)
-                            statsSorted -> dao.pageTracksSorted(request)
-                            else -> dao.pageTracksSortedWithoutStats(request)
-                        }
+                        sortedLibraryTrackPagingSource(database, trimmedQuery, matchQuery.takeIf { useFts }, sort, filter)
                     },
                 ).flow,
             )
@@ -795,8 +789,9 @@ class EchoLibraryRepository(
             // Do not put an excluded or hidden stale UI item back into a filtered queue.
             val index = findLibraryTrackIndex(database, orderedIds, anchorTrackId)
                 ?: return@withTransaction emptyList()
-            dao.queryTracks(LibraryTrackQueryBuilder.boundQuery(
+            dao.queryOrderedTrackWindow(LibraryTrackQueryBuilder.boundQuery(
                 trimmed, match.takeIf { useFts }, sort, localSources = local, filter = activeFilter,
+                idsOnly = true,
                 limit = safeLimit, offset = LibraryPlaybackQueuePolicy.windowOffset(index, safeLimit),
             ))
         }

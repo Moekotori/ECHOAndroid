@@ -26,6 +26,7 @@ import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.design.rememberContentPagerNestedScroll
 import app.echo.android.model.library.ArtistOnlineQuery
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.LibraryTrackSortMode
 import kotlinx.coroutines.launch
 
 /** Paging owns no player state; each page retains its own vertical scroll position. */
@@ -39,6 +40,9 @@ internal fun ArtistDetailPager(
     onShuffle: () -> Unit,
     playbackEnabled: Boolean,
     onPlayOnPc: (() -> Unit)? = null,
+    /** Track sorting lives in the menu and applies to the music page only; null hides it. */
+    sort: LibraryTrackSortMode? = null,
+    onSortChange: ((LibraryTrackSortMode) -> Unit)? = null,
     music: @Composable () -> Unit,
 ) = key(artist.artistKey) {
     val pager = rememberPagerState { 3 }
@@ -80,6 +84,28 @@ internal fun ArtistDetailPager(
                         selected = false,
                         enabled = playbackEnabled,
                     )
+                    if (pager.currentPage == 0 && sort != null && onSortChange != null) {
+                        HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                        Text(
+                            stringResource(R.string.artist_sort_tracks),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        listOf(LibraryTrackSortMode.Album, LibraryTrackSortMode.Title, LibraryTrackSortMode.Duration).forEach { mode ->
+                            EchoDropdownMenuItem(
+                                text = {
+                                    Text(stringResource(when (mode) {
+                                        LibraryTrackSortMode.Title -> R.string.artist_sort_title
+                                        LibraryTrackSortMode.Duration -> R.string.artist_sort_duration
+                                        else -> R.string.artist_sort_album
+                                    }))
+                                },
+                                selected = mode == sort,
+                                onClick = { showActions = false; onSortChange(mode) },
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -60,7 +60,7 @@ fun EchoLinkRemoteQueueSheet(
     var destination by remember { mutableIntStateOf(-1) }
     val handleWidth = with(LocalDensity.current) { 48.dp.toPx() }
     val edgeStep = with(LocalDensity.current) { 10.dp.toPx() }
-    val canMove = connected && !queue.unsupported && !queue.isMoving && !queue.isLoading
+    val canMove = connected && queue.supportsEditing && !queue.unsupported && !queue.isMoving && !queue.isLoading
     LaunchedEffect(dragged?.queueId) {
         if (dragged == null) return@LaunchedEffect
         while (isActive) {
@@ -99,7 +99,7 @@ fun EchoLinkRemoteQueueSheet(
                 }
                 IconButton(onDismiss) { EchoIcon(Icons.Rounded.Close, stringResource(R.string.remote_close)) }
             }
-            Text(stringResource(if (queue.unsupported) R.string.remote_queue_update_pc else R.string.remote_queue_drag_hint),
+            if (queue.unsupported || queue.supportsEditing) Text(stringResource(if (queue.unsupported) R.string.remote_queue_update_pc else R.string.remote_queue_drag_hint),
                 Modifier.padding(horizontal = 24.dp, vertical = 12.dp), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (queue.isLoading || queue.isLoadingMore || queue.isMoving) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -148,10 +148,10 @@ fun EchoLinkRemoteQueueSheet(
                             .graphicsLayer { translationY = if (dragging) displacement else 0f }, verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.weight(1f)) {
                                 RemoteMusicRow(track, current = if (queue.currentQueueId != null) track.queueId == queue.currentQueueId
-                                    else track.id == currentTrackId, enabled = connected && !queue.isMoving && !queue.isLoading,
+                                    else track.id == currentTrackId, enabled = connected && queue.supportsEditing && !queue.isMoving && !queue.isLoading,
                                     onClick = { onPlayTrack(track) })
                             }
-                            if (!queue.unsupported && queueId != null && queueIndex != null) {
+                            if (queue.supportsEditing && !queue.unsupported && queueId != null && queueIndex != null) {
                                 Box {
                                     IconButton({ menu = true }, enabled = canMove) { EchoIcon(Icons.Rounded.MoreVert, stringResource(R.string.remote_queue_move)) }
                                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {

@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collect
 
-/** Keep disconnected PC controls and library selection out of the phone session. */
+/** Terminal connection loss returns to the phone; transient reconnects keep the chosen destination. */
 internal suspend fun observeEchoLinkLocalFallback(
     connectionStates: Flow<EchoRemoteConnectionState>,
     librarySources: Flow<String>,
@@ -17,7 +17,9 @@ internal suspend fun observeEchoLinkLocalFallback(
     combine(connectionStates.distinctUntilChanged(), librarySources.distinctUntilChanged()) { state, source ->
         state to source
     }.collect { (state, source) ->
-        if (state != EchoRemoteConnectionState.Connected) {
+        // A temporary status failure must not replace the Remote dock and resize Home.
+        // Connecting/pairing/reconnecting still belong to the selected PC session.
+        if (state == EchoRemoteConnectionState.Disconnected || state == EchoRemoteConnectionState.Error) {
             selectPhonePlayback()
             if (source == EchoLibrarySelectedSource.PcEcho) selectLocalLibrary()
         }

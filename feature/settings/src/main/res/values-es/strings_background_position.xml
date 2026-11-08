@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_background_position_x">Posición horizontal</string>
+    <string name="settings_background_position_y">Posición vertical</string>
+    <string name="settings_background_position_title">Posición y escala</string>
+    <string name="settings_background_position_center">Centrar</string>
+    <string name="settings_background_position_drag_hint">Mantén pulsada la vista previa para mover el fondo</string>
+    <string name="settings_background_position_dragging">Suelta para guardar la posición</string>
+    <string name="settings_background_position_left">Izquierda %1$d%%</string>
+    <string name="settings_background_position_right">Derecha %1$d%%</string>
+    <string name="settings_background_position_up">Arriba %1$d%%</string>
+    <string name="settings_background_position_down">Abajo %1$d%%</string>
+    <string name="settings_background_position_detail">Amplía el fondo para tener más margen.</string>
+</resources>

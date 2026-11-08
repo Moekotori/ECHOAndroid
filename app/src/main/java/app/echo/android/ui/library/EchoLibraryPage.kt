@@ -97,6 +97,7 @@ internal fun EchoLibraryPage(
         val tools = viewModel.playlistTools
         app.echo.android.feature.library.PlaylistManagementActions(
             order = tools::order, stats = tools::stats, sort = tools::sort, candidates = tools::candidates,
+            memberships = tools::memberships,
             add = tools::add, remove = tools::remove, move = tools::move, copy = tools::copy,
             moveTo = tools::moveTo, removeUndoable = tools::removeUndoable,
             pickArtwork = { id -> playlistCoverTarget = id; playlistCoverPicker.launch(arrayOf("image/*")) },

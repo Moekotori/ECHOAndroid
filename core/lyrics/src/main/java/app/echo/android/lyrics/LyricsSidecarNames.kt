@@ -5,14 +5,15 @@ import java.util.Locale
 /** Exact names win; separator-tolerant fallback must identify a single sibling. */
 object LyricsSidecarNames {
     fun candidates(fileName: String?, title: String, preferTitle: Boolean = false): List<String> =
-        listOfNotNull(fileName?.substringBeforeLast('.')?.takeIf(String::isNotBlank), title.takeIf(String::isNotBlank))
-            .let { if (preferTitle) it.reversed() else it }
-            .filter { '/' !in it && '\\' !in it && '\u0000' !in it && it != "." && it != ".." }
+        (if (preferTitle) listOfNotNull(title.takeIf(String::isNotBlank), fileName?.substringBeforeLast('.'), fileName)
+            else listOfNotNull(fileName?.substringBeforeLast('.'), fileName, title.takeIf(String::isNotBlank)))
+            .filter { it.isNotBlank() && '/' !in it && '\\' !in it && '\u0000' !in it && it != "." && it != ".." }
             .distinct().flatMap { base -> EchoLyricsParser.fileExtensions.map { "$base$it" } }
 
     fun isAudioSidecar(label: String?, audioFileName: String?): Boolean =
         label != null && audioFileName != null &&
-            key(label.substringAfterLast('/').substringBeforeLast('.')) == key(audioFileName.substringBeforeLast('.'))
+            key(LyricsSidecarDiscovery.untaggedStem(label.substringAfterLast('/').substringBeforeLast('.'))) in
+                setOf(key(audioFileName.substringBeforeLast('.')), key(audioFileName))
 
     fun matching(candidates: List<String>, files: Collection<String>, complete: Boolean = true): List<String> {
         val original = files.toSet()

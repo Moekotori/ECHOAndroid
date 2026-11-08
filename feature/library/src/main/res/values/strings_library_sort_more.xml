@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_sort_album_artist_asc">Album artist (A–Z)</string>
+    <string name="library_sort_album_artist_desc">Album artist (Z–A)</string>
+    <string name="library_sort_genre_asc">Genre (A–Z)</string>
+    <string name="library_sort_genre_desc">Genre (Z–A)</string>
+    <string name="library_sort_composer_asc">Composer (A–Z)</string>
+    <string name="library_sort_composer_desc">Composer (Z–A)</string>
+    <string name="library_sort_file_name_desc">File name (Z–A)</string>
+    <string name="library_sort_folder_desc">Folder (Z–A)</string>
+    <string name="library_sort_format_desc">File format (Z–A)</string>
+    <string name="library_sort_track_number_desc">Disc / track (descending)</string>
+    <string name="library_sort_group_common">Common sorts</string>
+    <string name="library_sort_group_more">More sorts</string>
+    <string name="library_sort_group_rare">Less common sorts</string>
+</resources>

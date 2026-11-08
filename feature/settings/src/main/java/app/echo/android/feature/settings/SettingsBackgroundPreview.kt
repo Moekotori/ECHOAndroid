@@ -9,7 +9,6 @@ import android.os.Build
 import android.util.Size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.*
@@ -17,10 +16,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import app.echo.android.design.backgroundImageAlignment
+import app.echo.android.design.backgroundImageTransform
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +47,10 @@ internal fun SettingsBackgroundPreview(
     glass: Float,
     scale: Float,
     appliedBlur: Float,
+    positionX: Float,
+    positionY: Float,
+    onPositionPreview: (Float, Float) -> Unit,
+    onPositionCommit: (Float, Float) -> Unit,
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -99,17 +102,29 @@ internal fun SettingsBackgroundPreview(
             }.build()
     }
     var imageFailed by remember(uri, isVideo) { mutableStateOf(false) }
+    var sourceRatio by remember(uri, isVideo) { mutableFloatStateOf(0f) }
     val unavailable = imageFailed || (isVideo && !poster.loading && poster.bitmap == null)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(Modifier.fillMaxWidth().height(168.dp).clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)) {
+        SettingsBackgroundViewfinder(
+            sourceKey = uri,
+            viewportRatio = viewportWidth.coerceAtLeast(1).toFloat() / viewportHeight.coerceAtLeast(1),
+            viewportWidthDp = viewportWidth,
+            sourceRatio = if (unavailable) 0f else sourceRatio,
+            scale = scale, positionX = positionX, positionY = positionY,
+            loading = !unavailable && sourceRatio == 0f,
+            onPreview = onPositionPreview, onCommit = onPositionCommit,
+        ) { dragging, previewScale ->
             if (!unavailable && (!isVideo || poster.bitmap != null)) {
                 AsyncImage(model = request,
                     contentDescription = stringResource(R.string.settings_appearance_preview),
+                    alignment = backgroundImageAlignment(positionX, positionY),
                     contentScale = ContentScale.Crop, onError = { imageFailed = true },
-                    modifier = Modifier.fillMaxSize().graphicsLayer {
-                        scaleX = scale; scaleY = scale
-                    }.then(if (renderBlur && !isVideo) Modifier.blur(blur.dp) else Modifier))
+                    onSuccess = { result ->
+                        val drawable = result.result.drawable
+                        sourceRatio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.coerceAtLeast(1)
+                    },
+                    modifier = Modifier.fillMaxSize().backgroundImageTransform(scale, positionX, positionY)
+                        .then(if (renderBlur && !isVideo) Modifier.blur((blur * previewScale).dp) else Modifier))
             }
             // Match the app wallpaper's brightness and readability overlays.
             val overlay = if (dark) {
@@ -130,13 +145,14 @@ internal fun SettingsBackgroundPreview(
                 Color.White.copy(alpha = 0.18f + glass * 0.86f),
             )
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(glassColors)))
-            Column(Modifier.align(Alignment.BottomStart).padding(16.dp),
+            if (!dragging) Column(Modifier.align(Alignment.BottomStart).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 EchoIcon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.onSurface)
                 Text(stringResource(if (unavailable) R.string.settings_background_preview_unavailable
                     else if (isVideo && poster.loading) R.string.settings_background_preview_loading
                     else R.string.settings_font_preview_ui),
-                    style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
         if (isVideo) Text(stringResource(R.string.settings_background_preview_still),

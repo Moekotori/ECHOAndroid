@@ -1,0 +1,94 @@
+
+> Configure project :core:playback
+WARNING: C/C++: The build staging directory you specified ('D:\ECHOAndroid\core\playback\build\native-staging')
+is a subdirectory of your project's temporary build directory (
+'D:\ECHOAndroid\core\playback\build'). Files in this directory do not persist through clean
+builds. It is recommended to either use the default build staging directory
+('D:\ECHOAndroid\core\playback\.cxx'), or specify a path outside the temporary build directory.
+C/C++: The build staging directory you specified ('D:\ECHOAndroid\core\playback\build\native-staging')
+is a subdirectory of your project's temporary build directory (
+'D:\ECHOAndroid\core\playback\build'). Files in this directory do not persist through clean
+builds. It is recommended to either use the default build staging directory
+('D:\ECHOAndroid\core\playback\.cxx'), or specify a path outside the temporary build directory.
+WARNING: C/C++: The build staging directory you specified ('D:\ECHOAndroid\core\playback\build\native-staging')
+is a subdirectory of your project's temporary build directory (
+'D:\ECHOAndroid\core\playback\build'). Files in this directory do not persist through clean
+builds. It is recommended to either use the default build staging directory
+('D:\ECHOAndroid\core\playback\.cxx'), or specify a path outside the temporary build directory.
+C/C++: The build staging directory you specified ('D:\ECHOAndroid\core\playback\build\native-staging')
+is a subdirectory of your project's temporary build directory (
+'D:\ECHOAndroid\core\playback\build'). Files in this directory do not persist through clean
+builds. It is recommended to either use the default build staging directory
+('D:\ECHOAndroid\core\playback\.cxx'), or specify a path outside the temporary build directory.
+
+> Task :core:data:preBuild UP-TO-DATE
+> Task :core:model:preBuild UP-TO-DATE
+> Task :core:i18n:preBuild UP-TO-DATE
+> Task :core:smb:preBuild UP-TO-DATE
+> Task :core:data:preDebugBuild UP-TO-DATE
+> Task :core:i18n:preDebugBuild UP-TO-DATE
+> Task :core:smb:preDebugBuild UP-TO-DATE
+> Task :core:model:preDebugBuild UP-TO-DATE
+> Task :core:data:generateDebugResources UP-TO-DATE
+> Task :core:i18n:generateDebugResources UP-TO-DATE
+> Task :core:smb:generateDebugResources UP-TO-DATE
+> Task :core:model:generateDebugResources UP-TO-DATE
+> Task :core:model:packageDebugResources UP-TO-DATE
+> Task :core:data:packageDebugResources UP-TO-DATE
+> Task :core:smb:packageDebugResources UP-TO-DATE
+> Task :core:i18n:packageDebugResources UP-TO-DATE
+> Task :core:i18n:processDebugNavigationResources UP-TO-DATE
+> Task :core:smb:processDebugNavigationResources UP-TO-DATE
+> Task :core:data:processDebugNavigationResources UP-TO-DATE
+> Task :core:model:processDebugNavigationResources UP-TO-DATE
+> Task :core:smb:parseDebugLocalResources UP-TO-DATE
+> Task :core:model:parseDebugLocalResources UP-TO-DATE
+> Task :core:i18n:parseDebugLocalResources UP-TO-DATE
+> Task :core:data:parseDebugLocalResources UP-TO-DATE
+> Task :core:smb:generateDebugRFile UP-TO-DATE
+> Task :core:model:generateDebugRFile UP-TO-DATE
+> Task :core:i18n:generateDebugRFile UP-TO-DATE
+> Task :core:data:generateDebugRFile UP-TO-DATE
+> Task :core:i18n:javaPreCompileDebug UP-TO-DATE
+> Task :core:data:javaPreCompileDebug UP-TO-DATE
+> Task :core:data:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:smb:compileDebugKotlin UP-TO-DATE
+> Task :core:smb:javaPreCompileDebug UP-TO-DATE
+> Task :core:smb:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:smb:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core:smb:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core:smb:processDebugJavaRes UP-TO-DATE
+> Task :core:data:generateDebugUnitTestStubRFile UP-TO-DATE
+> Task :core:data:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :core:model:javaPreCompileDebug UP-TO-DATE
+> Task :core:model:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:model:generateDebugUnitTestStubRFile UP-TO-DATE
+> Task :core:model:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :core:model:compileDebugKotlin
+> Task :core:model:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:model:processDebugJavaRes UP-TO-DATE
+> Task :core:model:bundleLibRuntimeToJarDebug
+> Task :core:model:bundleLibCompileToJarDebug
+> Task :core:i18n:compileDebugKotlin UP-TO-DATE
+> Task :core:i18n:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:i18n:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core:i18n:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core:i18n:processDebugJavaRes UP-TO-DATE
+> Task :core:model:compileDebugUnitTestKotlin
+> Task :core:model:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core:model:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :core:model:testDebugUnitTest
+> Task :core:data:kspDebugKotlin
+> Task :core:data:compileDebugKotlin
+> Task :core:data:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:data:processDebugJavaRes UP-TO-DATE
+> Task :core:data:bundleLibRuntimeToJarDebug
+> Task :core:data:bundleLibCompileToJarDebug
+> Task :core:data:kspDebugUnitTestKotlin
+> Task :core:data:compileDebugUnitTestKotlin
+> Task :core:data:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core:data:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :core:data:testDebugUnitTest
+
+BUILD SUCCESSFUL in 15s
+52 actionable tasks: 12 executed, 40 up-to-date

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_concert_heading">Conciertos</string>
+    <string name="artist_past_concerts">Conciertos anteriores</string>
+    <string name="artist_no_past_concerts">No se encontraron conciertos anteriores.</string>
+    <string name="artist_concert_hide_details">Ocultar detalles</string>
+    <string name="artist_concert_show_details">Ver detalles</string>
+    <string name="artist_concert_time_tbd">Hora por confirmar</string>
+    <string name="artist_concert_ongoing">En curso</string>
+    <string name="artist_concert_started">Ha comenzado</string>
+    <string name="artist_concert_checked">Última consulta: %1$s</string>
+    <string name="artist_concert_check_source">Consultar %1$s</string>
+    <string name="artist_concert_history_note">Las fuentes públicas pueden no incluir todo el historial de conciertos.</string>
+    <string name="artist_concert_opens">Apertura de puertas</string>
+    <string name="artist_concert_ends">Finalización</string>
+    <string name="artist_concert_lineup">Artistas</string>
+    <string name="artist_concert_address">Dirección</string>
+    <string name="artist_concert_coordinates">Coordenadas</string>
+    <string name="artist_concert_admission">Entrada</string>
+    <string name="artist_concert_ticketed">Evento con entrada</string>
+    <string name="artist_concert_free">Sin venta de entradas indicada</string>
+    <string name="artist_concert_price">Precio según la fuente</string>
+    <string name="artist_concert_sale_start">Inicio de venta general</string>
+    <string name="artist_concert_sale_end">Fin de venta general</string>
+    <string name="artist_concert_notes">Notas</string>
+    <string name="artist_concert_source_updated">Fuente actualizada: %1$s</string>
+</resources>

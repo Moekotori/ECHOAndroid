@@ -4,6 +4,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.model.lyrics.EchoLyricDisplaySnapshot
 import app.echo.android.model.lyrics.EchoLyrics
+import app.echo.android.model.lyrics.EchoLyricsOutputTiming
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -25,6 +26,18 @@ internal class EchoNotificationLyricController(
     private var lastText: String? = null
     private var lastSnapshotKey: String? = null
     private var lastPublishElapsedRealtime = 0L
+    private var outputDelayMs = 0
+
+    fun setOutputDelayMs(delayMs: Int) {
+        val normalized = delayMs.coerceIn(0, 2_000)
+        if (outputDelayMs == normalized) return
+        outputDelayMs = normalized
+        lastSnapshotKey = null
+        refresh()
+    }
+
+    private fun lyricPositionMs() = EchoLyricsOutputTiming.positionMs(
+        player.currentPosition, outputDelayMs, player.playbackParameters.speed)
 
     init {
         player.addListener(this)
@@ -71,7 +84,7 @@ internal class EchoNotificationLyricController(
         }
         job = scope.launch {
             while (isActive) {
-                val position = player.currentPosition.coerceAtLeast(0L)
+                val position = lyricPositionMs()
                 val text = EchoNotificationLyricPolicy.primaryText(lines, position)
                     ?.let(EchoNotificationLyricPolicy::clampText)
                 val elapsed = SystemClock.elapsedRealtime() - lastPublishElapsedRealtime
@@ -83,7 +96,7 @@ internal class EchoNotificationLyricController(
                         .coerceAtLeast(EchoNotificationLyricPolicy.MinScheduleDelayMs)
                     delay(wait)
                     if (!isActive) return@launch
-                    val later = EchoNotificationLyricPolicy.primaryText(lines, player.currentPosition.coerceAtLeast(0L))
+                    val later = EchoNotificationLyricPolicy.primaryText(lines, lyricPositionMs())
                         ?.let(EchoNotificationLyricPolicy::clampText)
                     publishCurrentSnapshot()
                     publish(later)
@@ -91,11 +104,11 @@ internal class EchoNotificationLyricController(
                     publishCurrentSnapshot()
                 }
                 if (!player.isPlaying) break
-                val nextStart = EchoNotificationLyricPolicy.nextStartMs(lines, player.currentPosition.coerceAtLeast(0L))
+                val nextStart = EchoNotificationLyricPolicy.nextStartMs(lines, lyricPositionMs())
                     ?: break
                 delay(
                     EchoNotificationLyricPolicy.delayMs(
-                        player.currentPosition.coerceAtLeast(0L),
+                        lyricPositionMs(),
                         nextStart,
                         player.playbackParameters.speed,
                     ),
@@ -117,7 +130,7 @@ internal class EchoNotificationLyricController(
             trackId = mediaId,
             lyrics = lyrics,
             lines = document?.takeIf { it.trackId == mediaId }?.lines.orEmpty(),
-            positionMs = player.currentPosition.coerceAtLeast(0L),
+            positionMs = lyricPositionMs(),
             isPlaying = player.isPlaying,
             speed = player.playbackParameters.speed,
             publishedAtElapsedRealtimeMs = SystemClock.elapsedRealtime(),

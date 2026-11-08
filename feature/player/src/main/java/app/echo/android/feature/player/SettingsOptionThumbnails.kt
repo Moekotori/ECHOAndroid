@@ -222,6 +222,16 @@ private fun pageStyleThumbnail(style: EchoPlayerPageStyle): DrawScope.(Color) ->
         }
         for (c in 0 until cols) drawRect(Color(0xFF8A7BFF).copy(alpha = 0.5f), Offset(c * stepX + stepX * 0.35f, size.height * 0.9f), Size(stepX * 0.3f, 2f))
     }
+    EchoPlayerPageStyle.FullCover -> { accent ->
+        val night = Color(0xFF05070D)
+        drawRect(Brush.verticalGradient(0f to Color(0xFF1B78C8), 0.45f to accent.copy(alpha = 0.55f), 0.78f to night, 1f to night))
+        drawCircle(Color.White.copy(alpha = 0.16f), size.height * 0.34f, Offset(size.width * 0.5f, size.height * 0.2f))
+        drawRect(Color.White.copy(alpha = 0.9f), Offset(size.width * 0.08f, size.height * 0.60f), Size(size.width * 0.34f, size.height * 0.07f))
+        drawRect(Color.White.copy(alpha = 0.45f), Offset(size.width * 0.08f, size.height * 0.71f), Size(size.width * 0.22f, size.height * 0.05f))
+        drawRect(Color.White.copy(alpha = 0.3f), Offset(size.width * 0.08f, size.height * 0.83f), Size(size.width * 0.84f, 2f))
+        drawRect(Color.White.copy(alpha = 0.85f), Offset(size.width * 0.08f, size.height * 0.83f), Size(size.width * 0.26f, 2f))
+        for (i in 0 until 5) drawCircle(Color.White.copy(alpha = if (i == 2) 0.95f else 0.55f), if (i == 2) 3.5f else 2.5f, Offset(size.width * (0.14f + i * 0.18f), size.height * 0.92f))
+    }
 }
 
 private fun backdropThumbnail(style: EchoLyricsBackdrop): DrawScope.(Color) -> Unit = when (style) {

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Sync
@@ -90,6 +91,7 @@ internal fun PcLinkPanel(
     onQueueRequestHandled: () -> Unit = {},
     openConnectionNonce: Int = 0,
     onConnectionRequestHandled: () -> Unit = {},
+    onOpenWifiTransfer: (() -> Unit)? = null,
 ) {
     var showLibrarySync by remember { mutableStateOf(false) }
     var legacySync by remember { mutableStateOf(false) }
@@ -192,7 +194,7 @@ internal fun PcLinkPanel(
     }
     val listenTitle = stringResource(L10nR.string.feature_connect_listen_together_title)
     val listenDetail = stringResource(L10nR.string.feature_connect_listen_together_detail)
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         PcLinkHero(
             title = if (connected || hasSaved) pcTitle else stringResource(L10nR.string.remote_connect_title),
             state = remoteState,
@@ -245,11 +247,11 @@ internal fun PcLinkPanel(
                     if (remoteMode && !libraryOnly && onHandoffPhoneToPc != null) {
                         add(ConnectAction(Icons.Rounded.SwapHoriz, handoffTitle, null, onHandoffPhoneToPc))
                     }
-                })
+                }, flat = true)
             }
             else -> {
                 if (savedPcs.isNotEmpty() && !manual) {
-                    ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91), list = true) {
+                    ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91), list = true, flat = true) {
                         savedPcs.asReversed().forEachIndexed { index, pc ->
                             if (index > 0) ConnectRowDivider()
                             PcDeviceRow(
@@ -262,7 +264,7 @@ internal fun PcLinkPanel(
                         }
                     }
                 }
-                ConnectSection(stringResource(L10nR.string.feature_connect_nearby_pcs_b9b12a), list = true,
+                ConnectSection(stringResource(L10nR.string.feature_connect_nearby_pcs_b9b12a), list = true, flat = true,
                     action = {
                         IconButton(onClick = onRefreshLanDevices) {
                             EchoIcon(Icons.Rounded.Refresh, stringResource(L10nR.string.feature_connect_refresh_828c69))
@@ -305,8 +307,24 @@ internal fun PcLinkPanel(
                 )
             }
         }
-        if (onOpenListening != null && !connected) {
-            ConnectActionList(listOf(ConnectAction(Icons.Rounded.Headphones, listenTitle, listenDetail, onOpenListening)))
+        val wifiTitle = stringResource(L10nR.string.wifi_transfer_title)
+        val wifiDetail = stringResource(L10nR.string.wifi_transfer_entry_detail)
+        val otherWays = buildList {
+            if (onOpenListening != null && !connected) {
+                add(ConnectAction(Icons.Rounded.Headphones, listenTitle, listenDetail, onOpenListening))
+            }
+            // Receiving songs from a computer browser is independent of PC remote control, so it never lives in the PC status header.
+            if (onOpenWifiTransfer != null) {
+                add(ConnectAction(Icons.Rounded.FileDownload, wifiTitle, wifiDetail, onOpenWifiTransfer))
+            }
+        }
+        if (otherWays.isNotEmpty()) {
+            ConnectSection(stringResource(L10nR.string.connect_other_ways_title), flat = true) {
+                otherWays.forEachIndexed { index, action ->
+                    if (index > 0) ConnectRowDivider()
+                    ConnectActionRow(action.icon, action.title, action.detail, action.onClick)
+                }
+            }
         }
         phoneLibraryShareContent()
         PcLinkPreferences(

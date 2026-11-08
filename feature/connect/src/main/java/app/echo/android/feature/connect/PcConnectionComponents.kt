@@ -1,6 +1,7 @@
 package app.echo.android.feature.connect
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkDiscoveryState
@@ -31,7 +33,10 @@ internal fun connectionTone(state: EchoRemoteConnectionState): ConnectTone = whe
     EchoRemoteConnectionState.Disconnected -> ConnectTone.Neutral
 }
 
-/** Connection summary card: who we are linked to, in what state, and the one action that matters now. */
+/**
+ * Connection summary: who we are linked to, in what state, and the one action that matters now.
+ * It only becomes a card once connected, so the idle page stays calm.
+ */
 @Composable
 internal fun PcLinkHero(
     title: String,
@@ -42,7 +47,7 @@ internal fun PcLinkHero(
 ) {
     val busy = state == EchoRemoteConnectionState.Pairing ||
         state == EchoRemoteConnectionState.Connecting || state == EchoRemoteConnectionState.Reconnecting
-    ConnectCard(highlighted = state == EchoRemoteConnectionState.Connected) {
+    val body: @Composable ColumnScope.() -> Unit = {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             ConnectIconTile(Icons.Rounded.Computer, size = 52.dp)
@@ -56,6 +61,8 @@ internal fun PcLinkHero(
         error?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
         content()
     }
+    if (state == EchoRemoteConnectionState.Connected) ConnectCard(highlighted = true, content = body)
+    else Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = body)
 }
 
 /** Device text yields space to actions even on narrow screens. */
@@ -104,20 +111,26 @@ internal fun PcDiscoveryEmptyState(
     searching: Int = R.string.echo_link_lan_searching,
     empty: Int = R.string.feature_connect_no_pc_found_use_the_same_wi_fi_ce621e,
 ) {
+    val scheme = MaterialTheme.colorScheme
     val failed = state == EchoLinkDiscoveryState.Failed
-    Column(Modifier.fillMaxWidth().padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            when {
-                state == EchoLinkDiscoveryState.Searching ->
-                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                failed -> EchoIcon(Icons.Rounded.ErrorOutline, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.error)
-                else -> EchoIcon(Icons.Rounded.Wifi, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(Modifier.fillMaxWidth().padding(vertical = 20.dp, horizontal = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Box(Modifier.size(88.dp).border(1.dp, scheme.outlineVariant.copy(alpha = 0.6f), CircleShape),
+            contentAlignment = Alignment.Center) {
+            Box(Modifier.size(56.dp).border(1.dp, scheme.outlineVariant, CircleShape), contentAlignment = Alignment.Center) {
+                when {
+                    state == EchoLinkDiscoveryState.Searching ->
+                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    failed -> EchoIcon(Icons.Rounded.ErrorOutline, null, Modifier.size(22.dp), tint = scheme.error)
+                    else -> EchoIcon(Icons.Rounded.Wifi, null, Modifier.size(22.dp), tint = scheme.onSurfaceVariant)
+                }
             }
-            ConnectNote(stringResource(when (state) {
-                EchoLinkDiscoveryState.Searching -> searching
-                EchoLinkDiscoveryState.Failed -> R.string.echo_link_lan_failed
-                else -> empty
-            }), error = failed)
         }
+        Text(stringResource(when (state) {
+            EchoLinkDiscoveryState.Searching -> searching
+            EchoLinkDiscoveryState.Failed -> R.string.echo_link_lan_failed
+            else -> empty
+        }), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
+            color = if (failed) scheme.error else scheme.onSurfaceVariant)
     }
 }

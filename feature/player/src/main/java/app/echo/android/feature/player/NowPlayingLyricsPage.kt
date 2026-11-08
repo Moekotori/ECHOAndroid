@@ -69,16 +69,18 @@ internal fun NowPlayingLyricsPage(
     pageReveal: () -> Float = { 1f },
     /** Only the lyric list: the host page supplies heading, transport and backdrop. */
     embedded: Boolean = false,
+    outputDelayMs: Int = 0,
 ) {
     LyricsPageTheme(lyricsPageStyle) {
         val paper = lyricsPageStyle == EchoLyricsPageStyle.Paper
         val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
         val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
         val syncedLyrics = remember(readyLyrics) { readyLyrics?.isSynced == true }
-        val displayPosition = rememberLyricsDisplayPosition(
+        val interpolatedPosition = rememberLyricsDisplayPosition(
             positionMsState, status.track?.id, status.isPlaying, status.playbackSpeed,
             animationsVisible && syncedLyrics && (!lyricsPageStyle.isAfterglow || lyricsAlignment == "vertical") && !lightweight,
         )
+        val displayPosition = rememberLyricsOutputPosition(interpolatedPosition, outputDelayMs, status.playbackSpeed)
         val lyricAccent = lyricsColorForMode(lyricsColorMode)
         val lyricsDimAlpha = animateFloatAsState(
             targetValue = lyricsBackgroundDim.coerceIn(0f, 0.78f),
@@ -171,6 +173,7 @@ internal fun NowPlayingLyricsPage(
                                             trackKey = status.track?.id,
                                             title = status.track?.title.orEmpty(),
                                             hostPosition = positionMsState,
+                                            outputDelayMs = outputDelayMs,
                                             durationMs = durationMsState.value,
                                             playing = status.isPlaying,
                                             speed = status.playbackSpeed,

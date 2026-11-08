@@ -214,7 +214,6 @@ fun ConnectScreen(
                 }
             }
             networkPermissionContent()
-            Box(Modifier.padding(horizontal = 16.dp)) { WifiTransferEntry(onOpenWifiTransfer) }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth().weight(1f).connectPagerEdgeSwipe(
@@ -337,6 +336,7 @@ fun ConnectScreen(
                                     onQueueRequestHandled = onPcQueueOpened,
                                     openConnectionNonce = openShareConnectionNonce,
                                     onConnectionRequestHandled = { openShareConnectionNonce = 0 },
+                                    onOpenWifiTransfer = onOpenWifiTransfer,
                                 )
                             }
                             else -> CastDevicesPanel(

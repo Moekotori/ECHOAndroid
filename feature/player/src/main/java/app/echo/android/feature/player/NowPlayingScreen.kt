@@ -150,6 +150,8 @@ import androidx.compose.ui.unit.sp
 import app.echo.android.design.ArtworkPalette
 import app.echo.android.design.echoSheetUnderlay
 import app.echo.android.design.EchoSheetOverlay
+import app.echo.android.design.EchoPageOverlay
+import app.echo.android.design.echoPageUnderlay
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.EchoArtworkImage
 import app.echo.android.design.EchoArtworkSize
@@ -229,6 +231,7 @@ fun NowPlayingScreen(
     onResetLyricsOffset: () -> Unit,
     modifier: Modifier = Modifier,
     positionState: State<PlaybackPositionState>? = null,
+    bluetoothLyricsDelayMs: Int = 0,
     smartTransitionState: State<app.echo.android.model.playback.EchoSmartTransitionVisual?>? = null,
     lyricsFontFamily: FontFamily? = null,
     lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
@@ -336,12 +339,18 @@ fun NowPlayingScreen(
         }
     }
     val readyLyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
+    val outputLyricsDelayMs = app.echo.android.model.lyrics.EchoLyricsOutputTiming.effectiveDelayMs(
+        if (castActive) 0 else bluetoothLyricsDelayMs, status.diagnostics.outputDeviceKind)
+    val lyricPositionMsState = remember(positionMsState, outputLyricsDelayMs, status.playbackSpeed) {
+        derivedStateOf { app.echo.android.model.lyrics.EchoLyricsOutputTiming.positionMs(
+            positionMsState.value, outputLyricsDelayMs, status.playbackSpeed) }
+    }
     // The backdrop reads these lazily; only a line change or play/pause reaches it, never a position tick.
     val backdropLink = if (backdropStyle.reactsToLyrics) {
         val timeline = remember(readyLyrics) { readyLyrics?.lines?.let(::LyricsTimeline) }
         val playing = rememberUpdatedState(status.isPlaying)
-        val lineIndex = remember(timeline, positionMsState) {
-            derivedStateOf { timeline?.lastStarted(positionMsState.value) ?: -1 }
+        val lineIndex = remember(timeline, lyricPositionMsState) {
+            derivedStateOf { timeline?.lastStarted(lyricPositionMsState.value) ?: -1 }
         }
         remember(playing, lineIndex) { BackdropLink(playing, lineIndex) }
     } else {
@@ -356,17 +365,19 @@ fun NowPlayingScreen(
     }
     var lyricsSettingsVisible by rememberSaveable { mutableStateOf(false) }
     var playbackSettingsVisible by rememberSaveable { mutableStateOf(false) }
+    var appearanceSettingsVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(presentationExpanded) {
         if (!presentationExpanded) {
             playbackSettingsVisible = false
             lyricsSettingsVisible = false
+            appearanceSettingsVisible = false
         }
     }
     var handledLyricsRequestId by rememberSaveable { mutableIntStateOf(openLyricsRequestId) }
-    // Opening the drawer can interrupt a horizontal fling. Settle the cover before
+    // Opening settings can interrupt a horizontal fling. Settle the cover before
     // a style changes its page width, so controls cannot remain partly off-screen.
-    LaunchedEffect(playbackSettingsVisible, appearance.style, splitNowPlaying, isRadio) {
-        if (playbackSettingsVisible) {
+    LaunchedEffect(playbackSettingsVisible, appearanceSettingsVisible, appearance.style, splitNowPlaying, isRadio) {
+        if (playbackSettingsVisible || appearanceSettingsVisible) {
             if (splitNowPlaying || isRadio) pagerState.requestScrollToPage(NowPlayingPage.Cover.ordinal)
             else pagerState.scrollToPage(NowPlayingPage.Cover.ordinal)
         }
@@ -405,7 +416,7 @@ fun NowPlayingScreen(
     val dismissFlingPx = remember(density) { with(density) { 1080.dp.toPx() } }
     var playerHeightPx by remember { mutableFloatStateOf(0f) }
     val suppressArtworkFlight = rememberUpdatedState(onSuppressArtworkFlight)
-    val overlayBlocking = lyricsSettingsVisible || playbackSettingsVisible
+    val overlayBlocking = lyricsSettingsVisible || playbackSettingsVisible || appearanceSettingsVisible
     val dismissEnabledState = rememberUpdatedState(presentationExpanded && !overlayBlocking)
     LaunchedEffect(overlayBlocking) {
         if (overlayBlocking && dismissDrag.offsetPx > 0f) {
@@ -475,11 +486,12 @@ fun NowPlayingScreen(
     val lyricsSurfaceVisible = !isRadio && pagerState.currentPage == NowPlayingPage.Lyrics.ordinal
     val immersiveAfterglow = lyricsAlignment != "vertical" && !isRadio && fold == null && !splitNowPlaying && lyricStyle.isAfterglow && lyricsSurfaceVisible && !pagerState.isScrollInProgress
     val sleeveTopBar = !isRadio && appearance.usesFlatSurface && !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
-    val drawLyricsBackdrop = !isRadio && (!appearance.usesFlatSurface || fullBleedPage)
+    val fullCoverPage = appearance.style == EchoPlayerPageStyle.FullCover.id
+    val drawLyricsBackdrop = !isRadio && (!appearance.usesFlatSurface || fullBleedPage || fullCoverPage)
     RecordSleeveSystemBars(
-        enabled = presentationExpanded && (!immersiveAfterglow || playbackSettingsVisible),
-        darkIcons = if (isRadio) !LocalEchoDarkTheme.current else sharedStyle.isLight,
-        navigationDarkIcons = if (playbackSettingsVisible || isRadio) {
+        enabled = presentationExpanded && (!immersiveAfterglow || playbackSettingsVisible || appearanceSettingsVisible),
+        darkIcons = if (appearanceSettingsVisible || isRadio) !LocalEchoDarkTheme.current else sharedStyle.isLight,
+        navigationDarkIcons = if (playbackSettingsVisible || appearanceSettingsVisible || isRadio) {
             !LocalEchoDarkTheme.current
         } else {
             sharedStyle.isLight
@@ -540,11 +552,14 @@ fun NowPlayingScreen(
                 .background(radioColors?.background ?: appearance.background),
             contentAlignment = Alignment.Center,
         ) {
-            Box(Modifier.fillMaxSize().echoSheetUnderlay(overlayBlocking), contentAlignment = Alignment.TopCenter) {
+            Box(Modifier.fillMaxSize()
+                .echoSheetUnderlay(lyricsSettingsVisible || playbackSettingsVisible)
+                .echoPageUnderlay(appearanceSettingsVisible), contentAlignment = Alignment.TopCenter) {
             if (immersiveAfterglow) {
                 app.echo.android.feature.player.afterglow.AfterglowImmersivePage(
                     status = status, lyricsState = lyricsState, style = lyricStyle,
                     position = positionMsState, duration = durationMsState,
+                    outputDelayMs = outputLyricsDelayMs,
                     fontFamily = styledLyricsFont, fontScale = lyricsFontScale, lineSpacing = lyricsLineSpacing,
                     motionMode = lyricsMotionMode, showTranslation = lyricsShowTranslation,
                     showRomanization = lyricsShowRomanization, wordHighlight = lyricsWordHighlightEnabled,
@@ -559,8 +574,13 @@ fun NowPlayingScreen(
             } else {
             if (drawLyricsBackdrop) {
                 val backdropModifier = Modifier.fillMaxSize()
-                LyricsPageBackdrop(palette, lyricsReveal,
-                    presentationExpanded && !overlayBlocking && track != null, backdropModifier, shownBackdrop, colorGrid, backdropLink)
+                if (fullCoverPage) {
+                    val coverTint = remember(palette) { lerp(palette.deep, Color.Black, 0.8f) }
+                    FullCoverBackdrop(track?.artworkUri, coverTint, lyricsReveal, backdropModifier)
+                } else {
+                    LyricsPageBackdrop(palette, lyricsReveal,
+                        presentationExpanded && !overlayBlocking && track != null, backdropModifier, shownBackdrop, colorGrid, backdropLink)
+                }
             }
             if (!isRadio) PageStyleDecor(sharedStyle, lyricsReveal, Modifier.fillMaxSize())
             Column(
@@ -655,6 +675,7 @@ fun NowPlayingScreen(
                             onOpenQueue = onOpenQueue,
                             positionMsState = positionMsState,
                             durationMsState = durationMsState,
+                            outputDelayMs = outputLyricsDelayMs,
                             onImportLyrics = onImportLyrics,
                             onAdjustLyricsOffset = onAdjustLyricsOffset,
                             onResetLyricsOffset = onResetLyricsOffset,
@@ -774,6 +795,10 @@ fun NowPlayingScreen(
             )
             LyricsSettingsDrawer(
                 visible = lyricsSettingsVisible,
+                onOpenAppearance = {
+                    lyricsSettingsVisible = false
+                    appearanceSettingsVisible = true
+                },
                 lyricsFontFamily = styledLyricsFont,
                 lyricsPageStyle = lyricStyle,
                 playerPageStyle = appearance.style,
@@ -847,17 +872,7 @@ fun NowPlayingScreen(
                         songActions = songActions,
                         actionsEnabled = presentationExpanded,
                         onOpenTrackTools = onOpenTrackTools,
-                        appearance = appearance,
-                        onAppearancePreview = { next ->
-                            appearanceDraft.current = next
-                            appearance = next
-                        },
-                        onAppearanceCommit = {
-                            val next = appearanceDraft.current
-                            onPlayerAppearanceChange(next.style, next.textScale, next.artworkScale)
-                        },
-                        lyricsBackdrop = backdropStyle.id,
-                        onLyricsBackdropChange = onLyricsBackdropChange,
+                        onOpenAppearance = { appearanceSettingsVisible = true },
                         visible = playbackSettingsVisible,
                         status = status,
                         onSetRepeatMode = onSetRepeatMode,
@@ -878,6 +893,22 @@ fun NowPlayingScreen(
                         onDismiss = { playbackSettingsVisible = false },
                         modifier = Modifier.fillMaxSize(),
                     )
+                    EchoPageOverlay(visible = appearanceSettingsVisible, modifier = Modifier.fillMaxSize()) {
+                        PlayerAppearanceScreen(
+                            appearance = appearance,
+                            onPreview = { next ->
+                                appearanceDraft.current = next
+                                appearance = next
+                            },
+                            onCommit = {
+                                val next = appearanceDraft.current
+                                onPlayerAppearanceChange(next.style, next.textScale, next.artworkScale)
+                            },
+                            lyricsBackdrop = backdropStyle.id,
+                            onLyricsBackdropChange = onLyricsBackdropChange,
+                            onBack = { appearanceSettingsVisible = false },
+                        )
+                    }
                 }
             }
         }
@@ -1024,6 +1055,7 @@ private fun NowPlayingTopBar(
 @Composable
 private fun LyricsSettingsDrawer(
     visible: Boolean,
+    onOpenAppearance: () -> Unit,
     lyricsFontFamily: FontFamily?,
     lyricsPageStyle: EchoLyricsPageStyle,
     playerPageStyle: String,
@@ -1075,6 +1107,7 @@ private fun LyricsSettingsDrawer(
     BackHandler(enabled = visible, onBack = onDismiss)
     EchoSheetOverlay(visible = visible, onDismiss = onDismiss, modifier = modifier) {
         LyricsSettingsPanel(
+            onOpenAppearance = onOpenAppearance,
             lyricsFontFamily = lyricsFontFamily,
             lyricsPageStyle = lyricsPageStyle,
             playerPageStyle = playerPageStyle,
@@ -1317,6 +1350,9 @@ private fun EchoLyricsFormat.label(): String = when (this) {
     EchoLyricsFormat.Sbv -> "SBV"
     EchoLyricsFormat.Sami -> "SAMI"
     EchoLyricsFormat.Json -> "JSON"
+    EchoLyricsFormat.Trc -> "TRC"
+    EchoLyricsFormat.Snc -> "SNC"
+    EchoLyricsFormat.Lrcx -> "LRCX"
 }
 
 internal fun formatLyricsOffset(offsetMs: Long): String {

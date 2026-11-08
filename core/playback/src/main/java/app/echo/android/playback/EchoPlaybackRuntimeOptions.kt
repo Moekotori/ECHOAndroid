@@ -214,6 +214,8 @@ object EchoPlaybackProcessRuntime {
     @Volatile
     var usbExclusiveSinkStatus: EchoUsbExclusiveSinkStatus? = null
         private set
+    private val _usbExclusiveSinkActive = MutableStateFlow(false)
+    val usbExclusiveSinkActive: StateFlow<Boolean> = _usbExclusiveSinkActive.asStateFlow()
 
     @Volatile
     var exclusiveMakeupGain: Float = 1f
@@ -333,6 +335,7 @@ object EchoPlaybackProcessRuntime {
         usbExclusiveEnabled = enabled
         if (!enabled) {
             usbExclusiveSinkStatus = null
+            _usbExclusiveSinkActive.value = false
             exclusiveMakeupGain = 1f
         }
     }
@@ -361,6 +364,7 @@ object EchoPlaybackProcessRuntime {
         }
         app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.UsbOpen, if (status?.streaming == true) 1 else 0, status?.sampleRateHz?.toLong() ?: 0)
         usbExclusiveSinkStatus = status
+        _usbExclusiveSinkActive.value = status != null
         if (status?.streaming != true) {
             exclusiveMakeupGain = 1f
         }

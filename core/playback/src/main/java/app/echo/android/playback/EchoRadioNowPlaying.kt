@@ -116,5 +116,7 @@ internal fun EchoTrackRef.withRadioNowPlaying(display: EchoRadioDisplay?): EchoT
 internal fun MediaItem.withRadioStreamTitle(title: String): MediaItem {
     val extras = Bundle(mediaMetadata.extras ?: Bundle.EMPTY)
     extras.putString(EchoRadioStreamTitleExtra, title)
-    return buildUpon().setMediaMetadata(mediaMetadata.buildUpon().setExtras(extras).build()).build()
+    return buildUpon().setMediaMetadata(
+        mediaMetadata.buildUpon().setExtras(extras).build().withSystemMediaDescription(),
+    ).build()
 }

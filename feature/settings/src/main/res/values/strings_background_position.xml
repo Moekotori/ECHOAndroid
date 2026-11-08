@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_background_position_x">Horizontal position</string>
+    <string name="settings_background_position_y">Vertical position</string>
+    <string name="settings_background_position_title">Position &amp; scale</string>
+    <string name="settings_background_position_center">Center</string>
+    <string name="settings_background_position_drag_hint">Hold the preview to move the background.</string>
+    <string name="settings_background_position_dragging">Release to save the position.</string>
+    <string name="settings_background_position_left">Left %1$d%%</string>
+    <string name="settings_background_position_right">Right %1$d%%</string>
+    <string name="settings_background_position_up">Up %1$d%%</string>
+    <string name="settings_background_position_down">Down %1$d%%</string>
+    <string name="settings_background_position_detail">Zoom in for more room to move.</string>
+</resources>

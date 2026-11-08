@@ -39,7 +39,11 @@ object EchoMotion {
     const val LocaleLightweightMs = 90
     const val PageLightweightMs = 90
     const val PageDepthScale = 0.94f
-    const val PageDepthAlpha = 0.86f
+    /** How far the page underneath trails the covering page, as a fraction of its width. */
+    const val PageParallax = 0.16f
+    /** Darkening on the page underneath at full depth; the dark theme needs less to read. */
+    const val PageScrimAlpha = 0.14f
+    const val PageScrimAlphaDark = 0.22f
     const val PageCornerDp = 22f
     const val PageBackScaleDrop = 0.10f
     const val PageBackCornerDp = 28f
@@ -200,9 +204,10 @@ object EchoMotion {
         enterMs: Int = PageMs,
         exitMs: Int = PageExitMs,
     ): ContentTransform {
-        val enter = slideInHorizontally(silkOffset(enterMs)) { it } +
-            fadeIn(silkFloat(220), initialAlpha = 0.92f)
-        val exit = fadeOut(silkFloat(exitMs), targetAlpha = PageDepthAlpha) +
+        // Depth comes from a drawn scrim (see echoPageDim), not an alpha fade: a fade washes the
+        // page out towards the background and forces an offscreen layer for the whole flight.
+        val enter = slideInHorizontally(silkOffset(enterMs)) { it }
+        val exit = slideOutHorizontally(silkOffset(exitMs)) { -(it * PageParallax).toInt() } +
             scaleOut(
                 targetScale = PageDepthScale,
                 animationSpec = silkFloat(exitMs),
@@ -219,7 +224,7 @@ object EchoMotion {
         enterMs: Int = PageMs,
         exitMs: Int = PageMs,
     ): ContentTransform {
-        val enter = fadeIn(silkFloat(240), initialAlpha = PageDepthAlpha) +
+        val enter = slideInHorizontally(silkOffset(enterMs)) { -(it * PageParallax).toInt() } +
             scaleIn(
                 initialScale = PageDepthScale,
                 animationSpec = silkFloat(enterMs),

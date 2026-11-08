@@ -62,9 +62,11 @@ internal fun AfterglowImmersivePage(
     onImport: () -> Unit, onAdjustOffset: (Long) -> Unit, onPlayPause: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit,
     onSeek: (Long) -> Unit, onQueue: () -> Unit, onCast: (() -> Unit)?, castActive: Boolean,
     modifier: Modifier = Modifier,
+    outputDelayMs: Int = 0,
 ) {
     val chrome = remember(status.track?.id, style) { AfterglowChrome() }
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val lyricPosition = app.echo.android.feature.player.rememberLyricsOutputPosition(position, outputDelayMs, status.playbackSpeed)
     val showLabel = stringResource(R.string.afterglow_show_controls)
     val hideLabel = stringResource(R.string.afterglow_hide_controls)
     var palette by remember(style) { mutableStateOf(AfterglowPalette.forStyle(style, 0)) }
@@ -96,7 +98,7 @@ internal fun AfterglowImmersivePage(
         val ordinaryLyrics: @Composable () -> Unit = {
             val lyrics = (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics
             if (lyrics != null) LyricsLineList(lyrics = lyrics, durationMs = duration.value,
-                onAdjustOffset = onAdjustOffset, positionMsState = position, onSeek = onSeek,
+                onAdjustOffset = onAdjustOffset, positionMsState = lyricPosition, onSeek = onSeek,
                 lyricsFontFamily = fontFamily, lyricsFontScale = fontScale,
                 lyricAccent = Color(palette.foreground), highlightColor = Color(palette.highlightInk),
                 paper = false, lyricsAlignment = "center", lyricsLineSpacing = lineSpacing,
@@ -121,7 +123,7 @@ internal fun AfterglowImmersivePage(
                 estimatedHighlight, highlightIntensity, onSeek, Modifier.fillMaxSize(), ordinaryLyrics,
                 controlsLayer = controls, onControlsInteraction = chrome::touch,
                 onControlsMenu = { chrome.menuOpen = it; chrome.touch() }, onStagePalette = { palette = it },
-                artist = app.echo.android.design.displayArtist(status.track?.artist))
+                artist = app.echo.android.design.displayArtist(status.track?.artist), outputDelayMs = outputDelayMs)
         } else ordinaryLyrics()
     }
 }

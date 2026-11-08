@@ -1,6 +1,12 @@
 package app.echo.android.feature.library
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -14,7 +20,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.echoClickable
-import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.libraryDisplayTitle
 import app.echo.android.feature.library.R as L10nR
@@ -25,9 +30,14 @@ fun TrackInfoDialog(
     onDismiss: () -> Unit,
     onOpenArtist: (() -> Unit)? = null,
     mediaTools: LibraryMediaTools? = LocalLibraryMediaTools.current,
+    audioFormat: TrackInfoAudioFormat? = null,
 ) {
     var tool by remember(track.id) { mutableStateOf<String?>(null) }
     val artistLabel = stringResource(L10nR.string.feature_library_go_to_artist)
+    val fields = trackInfoFields(track, audioFormat)
+    val context = LocalContext.current
+    val copyLabel = stringResource(R.string.track_info_copy)
+    val copiedLabel = stringResource(R.string.track_info_copied)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -43,57 +53,24 @@ fun TrackInfoDialog(
                     TextButton(onClick = { tool = "encoding" }) { Text(stringResource(L10nR.string.encoding_title)) }
                     TextButton(onClick = { tool = "images" }) { Text(stringResource(L10nR.string.album_images_title)) }
                 }
-                val notProvided = stringResource(L10nR.string.feature_library_not_available_7d3220)
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_artist_b6e7ad),
-                    displayMetadataOrUnknown(track.artist, unknownArtistLabel()),
-                    onClick = onOpenArtist?.takeIf { track.artist.isNotBlank() },
-                    onClickLabel = artistLabel,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_album_eb13be),
-                    displayMetadataOrUnknown(track.album, unknownAlbumLabel()),
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_album_artist_8a1c9e),
-                    track.albumArtist?.takeIf { it.isNotBlank() } ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.metadata_composer),
-                    track.composer?.takeIf { it.isNotBlank() } ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_track_000e4d),
-                    track.trackNumber?.toString() ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_disc_3128c0),
-                    track.discNumber?.toString() ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_year_fe373f),
-                    track.year?.toString() ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_format_a7775b),
-                    formatTrackMimeType(track.mimeType)
-                        ?: track.mimeType?.takeIf { it.isNotBlank() }
-                        ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_sample_rate_f6382c),
-                    track.sampleRateHz?.let(::formatTrackSampleRate) ?: notProvided,
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_duration_573e08),
-                    formatDuration(track.durationMs),
-                )
-                TrackInfoLine(
-                    stringResource(L10nR.string.feature_library_size_f63a75),
-                    formatTrackFileSize(track.sizeBytes),
-                )
-                TrackInfoLine(stringResource(L10nR.string.feature_library_source_4aff16), track.source.id)
+                fields.forEach { field ->
+                    TrackInfoLine(field.label, field.value,
+                        onClick = onOpenArtist?.takeIf { field.opensArtist && track.artist.isNotBlank() },
+                        onClickLabel = artistLabel,
+                    )
+                }
             }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                context.getSystemService(ClipboardManager::class.java)?.let { clipboard ->
+                    clipboard.setPrimaryClip(ClipData.newPlainText(copyLabel,
+                        fields.joinToString("\n") { "${it.label}: ${it.value}" }))
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                        Toast.makeText(context, copiedLabel, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }) { Text(copyLabel) }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
@@ -139,18 +116,19 @@ private fun TrackInfoLine(
             fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
-        Text(
-            value,
-            modifier = Modifier.weight(1f),
-            color = if (onClick != null) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        SelectionContainer(Modifier.weight(1f)) {
+            Text(
+                value,
+                color = if (onClick != null) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

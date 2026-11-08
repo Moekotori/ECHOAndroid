@@ -395,10 +395,10 @@ class DocumentTreeTrackScanner(
         var unmatched = 0
         val local = ArrayList<Pair<CueSheet, String>>(inherited)
         for (row in cueRows) {
-            val sheet = if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) null else readCueSheet(row.documentUri) { reference ->
-                val (folder, name) = cueReference(reference) ?: return@readCueSheet false
-                folder.isEmpty() && index.match(name) != null
-            }
+            val sheet = if (row.sizeBytes > CueSheetPolicy.MaxCueBytes) null else readCueSheet(row.documentUri, CueSourceLookup { reference ->
+                val (folder, name) = cueReference(reference) ?: return@CueSourceLookup null
+                if (folder.isEmpty()) index.exactMatch(name) else null
+            })
             val directories = sheet?.forLocalDirectories().orEmpty()
             if (directories.isEmpty()) { unmatched++; onReadFailure(); continue }
             if (directories.values.sumOf { it.tracks.size } != sheet?.tracks?.size) onReadFailure()

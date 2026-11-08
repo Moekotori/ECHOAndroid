@@ -20,6 +20,7 @@ class PlaylistManagementActions(
     val pickArtwork: (String) -> Unit,
     val moveTo: (suspend (String, String, String) -> Boolean)? = null,
     val removeUndoable: (suspend (String, String) -> (suspend () -> Boolean)?)? = null,
+    val memberships: (String) -> Flow<Set<String>> = { kotlinx.coroutines.flow.flowOf(emptySet()) },
 )
 
 enum class PlaylistImportFailure { Read, TooLarge, TooMany, Empty, NoMatches, Save, Export, Cover }

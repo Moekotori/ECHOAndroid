@@ -31,6 +31,7 @@ internal fun LibraryBrowserFrame(
     onQueryChange: (String) -> Unit,
     sourcePicker: @Composable () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
+    navigationActions: @Composable RowScope.() -> Unit = {},
     searchPlaceholder: String = stringResource(R.string.feature_library_search_songs_artists_albums_14dc2c),
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -68,6 +69,7 @@ internal fun LibraryBrowserFrame(
                             Spacer(Modifier.width(6.dp))
                             sourcePicker()
                         }
+                        navigationActions()
                         IconButton(onClick = { searchExpanded = true }) {
                             EchoIcon(Icons.Rounded.Search, stringResource(R.string.feature_library_search_library_80ef90),
                                 Modifier.size(22.dp))

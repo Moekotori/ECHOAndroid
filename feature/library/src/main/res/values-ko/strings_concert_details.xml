@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_concert_heading">공연 정보</string>
+    <string name="artist_past_concerts">지난 공연</string>
+    <string name="artist_no_past_concerts">지난 공연 정보가 없습니다.</string>
+    <string name="artist_concert_hide_details">상세 정보 접기</string>
+    <string name="artist_concert_show_details">상세 정보 보기</string>
+    <string name="artist_concert_time_tbd">시간 미정</string>
+    <string name="artist_concert_ongoing">공연 중</string>
+    <string name="artist_concert_started">시작됨</string>
+    <string name="artist_concert_checked">최근 확인: %1$s</string>
+    <string name="artist_concert_check_source">%1$s에서 확인</string>
+    <string name="artist_concert_history_note">공개 자료에 모든 과거 공연이 포함되지는 않을 수 있습니다.</string>
+    <string name="artist_concert_opens">입장 시간</string>
+    <string name="artist_concert_ends">종료 시간</string>
+    <string name="artist_concert_lineup">출연진</string>
+    <string name="artist_concert_address">주소</string>
+    <string name="artist_concert_coordinates">위도 및 경도</string>
+    <string name="artist_concert_admission">입장권</string>
+    <string name="artist_concert_ticketed">유료 티켓 공연</string>
+    <string name="artist_concert_free">티켓 판매 표시 없음</string>
+    <string name="artist_concert_price">출처에 표시된 가격</string>
+    <string name="artist_concert_sale_start">일반 판매 시작</string>
+    <string name="artist_concert_sale_end">일반 판매 종료</string>
+    <string name="artist_concert_notes">비고</string>
+    <string name="artist_concert_source_updated">출처 업데이트: %1$s</string>
+</resources>

@@ -21,15 +21,15 @@ import app.echo.android.design.echoTheme
 /** Drag only the header handle so scrolling settings never accidentally dismisses the sheet. */
 @Composable
 internal fun PlaybackSheetHandle(onDismiss: () -> Unit) {
-    PlayerSettingsDragHandle(stringResource(R.string.feature_player_collapse_playback_settings_79e2cd), onDismiss)
+    PlayerSettingsDragHandle(stringResource(R.string.feature_player_collapse_playback_settings_79e2cd), onDismiss, compact = true)
 }
 
 @Composable
-internal fun PlayerSettingsDragHandle(label: String, onDismiss: () -> Unit) {
+internal fun PlayerSettingsDragHandle(label: String, onDismiss: () -> Unit, compact: Boolean = false) {
     val dismiss by rememberUpdatedState(onDismiss)
     val threshold = with(LocalDensity.current) { 32.dp.toPx() }
     Box(
-        Modifier.fillMaxWidth().height(48.dp).semantics { contentDescription = label }
+        Modifier.fillMaxWidth().height(if (compact) 28.dp else 48.dp).semantics { contentDescription = label }
             .pointerInput(threshold) {
                 var distance = 0f
                 detectVerticalDragGestures(

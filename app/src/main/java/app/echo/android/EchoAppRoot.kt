@@ -150,6 +150,7 @@ import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Notifications
 import android.provider.Settings
 import android.net.Uri as AndroidUri
+import androidx.compose.runtime.snapshotFlow
 import app.echo.android.R
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.milliseconds
@@ -161,6 +162,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 private val LyricsDocumentMimeTypes = arrayOf("text/*", "application/xml", "application/octet-stream", "*/*")
@@ -601,7 +603,19 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         val libraryOnly = viewModel.echoLinkLanDevices.value.any {
             it.libraryOnly && EchoLinkDiscoveryPolicy.addressMatchesDevice(address, it)
         }
-        val endpoint = EchoPairingParser.parseManual(address, if (libraryOnly) "" else token)
+        val endpoint = app.echo.android.connect.EchoManualConnectionInput.endpointForConnection(
+            address = address,
+            token = if (libraryOnly) "" else token,
+            savedPcs = appSettings.echoLinkSavedPcs,
+            currentPc = appSettings.echoLinkPcAddress?.let { savedAddress ->
+                app.echo.android.model.connect.EchoSavedPcEndpoint(
+                    address = savedAddress,
+                    name = "PC ECHO",
+                    supportsV2Events = appSettings.echoLinkV2Events,
+                    token = appSettings.echoLinkPcToken,
+                )
+            },
+        )
             ?.copy(libraryOnly = libraryOnly)
         if (endpoint != null) {
             connectEchoLinkEndpoint(endpoint)
@@ -1131,6 +1145,23 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             }
         }
     }
+    // A dock tap retargets the pager and turns user scrolling off. A touch that lands in that
+    // window can end its drag with no fling and leave the pager at rest between two pages.
+    // Nothing else would settle it, so snap back to the nearest page.
+    LaunchedEffect(tabPagerState) {
+        snapshotFlow {
+            !tabPagerState.isScrollInProgress && tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
+        }.collectLatest { stranded ->
+            if (!stranded) return@collectLatest
+            // A fling takes over from the drag within a few frames; only act on a real rest.
+            delay(120)
+            val page = tabPagerState.currentPage
+            tabPagerState.animateScrollToPage(
+                page = page,
+                animationSpec = dockNavigationMotionSpec(page, page, effectivePerformanceMode),
+            )
+        }
+    }
 
     LaunchedEffect(remoteStatus.connectionState, appSettings.echoLinkPreferLinkedLibrary, remoteMode) {
         if (
@@ -1563,6 +1594,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 customBackgroundBrightness = appSettings.customBackgroundBrightness,
                                 customBackgroundGlass = appSettings.customBackgroundGlass,
                                 customBackgroundScale = appSettings.customBackgroundScale,
+                                customBackgroundPositionX = appSettings.customBackgroundPositionX,
+                                customBackgroundPositionY = appSettings.customBackgroundPositionY,
                                 uiFontFamily = appSettings.uiFontFamily,
                                 uiFontScale = appSettings.uiFontScale,
                                 uiDensityScale = appSettings.uiDensityScale,
@@ -1634,6 +1667,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onCustomBackgroundBrightnessChange = viewModel::setCustomBackgroundBrightness,
                                 onCustomBackgroundGlassChange = viewModel::setCustomBackgroundGlass,
                                 onCustomBackgroundScaleChange = viewModel::setCustomBackgroundScale,
+                                onCustomBackgroundPositionXChange = viewModel::setCustomBackgroundPositionX,
+                                onCustomBackgroundPositionYChange = viewModel::setCustomBackgroundPositionY,
                                 onCustomBackgroundStyleChange = viewModel::setCustomBackgroundStyle,
                                 onUiFontFamilyChange = viewModel::setUiFontFamily,
                                 onUiFontScaleChange = viewModel::setUiFontScale,

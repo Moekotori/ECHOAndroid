@@ -114,6 +114,8 @@ data class EchoAppSettings(
     val customBackgroundBrightness: Float = 0.88f,
     val customBackgroundGlass: Float = 0.42f,
     val customBackgroundScale: Float = 1.05f,
+    val customBackgroundPositionX: Float = 0f,
+    val customBackgroundPositionY: Float = 0f,
     val uiFontFamily: String = EchoFontFamilyMode.System,
     val uiFontScale: Float = 1f,
     val uiDensityScale: Float = 1f,
@@ -279,6 +281,7 @@ class EchoSettingsStore(
                     statusWidthDp = preferences[Keys.LyricsStatusWidthDp] ?: 180,
                     statusOffsetXDp = preferences[Keys.LyricsStatusOffsetXDp] ?: 80,
                     statusOffsetYDp = preferences[Keys.LyricsStatusOffsetYDp] ?: 0,
+                    bluetoothDelayMs = preferences[Keys.LyricsBluetoothDelayMs] ?: 0,
                 ).normalized,
                 floatingLyrics = app.echo.android.model.settings.EchoFloatingLyricsSettings(
                     enabled = preferences[Keys.FloatingLyricsEnabled] ?: false,
@@ -354,6 +357,8 @@ class EchoSettingsStore(
                 customBackgroundBrightness = (preferences[Keys.CustomBackgroundBrightness] ?: 0.88f).coerceIn(0.35f, 1.15f),
                 customBackgroundGlass = (preferences[Keys.CustomBackgroundGlass] ?: 0.42f).coerceIn(0.08f, 0.90f),
                 customBackgroundScale = (preferences[Keys.CustomBackgroundScale] ?: 1.05f).coerceIn(1.00f, 1.40f),
+                customBackgroundPositionX = (preferences[Keys.CustomBackgroundPositionX] ?: 0f).takeIf { it.isFinite() }?.coerceIn(-1f, 1f) ?: 0f,
+                customBackgroundPositionY = (preferences[Keys.CustomBackgroundPositionY] ?: 0f).takeIf { it.isFinite() }?.coerceIn(-1f, 1f) ?: 0f,
                 uiFontFamily = normalizeFontFamilyMode(preferences[Keys.UiFontFamily]),
                 uiFontScale = (preferences[Keys.UiFontScale] ?: 1f).coerceIn(0.88f, 1.18f),
                 uiDensityScale = (preferences[Keys.UiDensityScale] ?: 1f).coerceIn(0.90f, 1.12f),
@@ -549,6 +554,7 @@ class EchoSettingsStore(
             it[Keys.LyricsStatusWidthDp] = normalized.statusWidthDp
             it[Keys.LyricsStatusOffsetXDp] = normalized.statusOffsetXDp
             it[Keys.LyricsStatusOffsetYDp] = normalized.statusOffsetYDp
+            it[Keys.LyricsBluetoothDelayMs] = normalized.bluetoothDelayMs
         }
     }
 
@@ -922,6 +928,14 @@ class EchoSettingsStore(
 
     suspend fun setCustomBackgroundGlass(value: Float) {
         context.echoSettings.edit { it[Keys.CustomBackgroundGlass] = value.coerceIn(0.08f, 0.90f) }
+    }
+
+    suspend fun setCustomBackgroundPositionX(value: Float) {
+        context.echoSettings.edit { it[Keys.CustomBackgroundPositionX] = value.takeIf { it.isFinite() }?.coerceIn(-1f, 1f) ?: 0f }
+    }
+
+    suspend fun setCustomBackgroundPositionY(value: Float) {
+        context.echoSettings.edit { it[Keys.CustomBackgroundPositionY] = value.takeIf { it.isFinite() }?.coerceIn(-1f, 1f) ?: 0f }
     }
 
     suspend fun setCustomBackgroundScale(value: Float) {
@@ -1685,6 +1699,8 @@ class EchoSettingsStore(
             backup.backgroundBrightness?.let { prefs[Keys.CustomBackgroundBrightness] = it.coerceIn(.35f,1.15f) }
             backup.backgroundGlass?.let { prefs[Keys.CustomBackgroundGlass] = it.coerceIn(.08f,.9f) }
             backup.backgroundScale?.let { prefs[Keys.CustomBackgroundScale] = it.coerceIn(1f,1.4f) }
+            backup.backgroundPositionX?.let { prefs[Keys.CustomBackgroundPositionX] = it.takeIf { value -> value.isFinite() }?.coerceIn(-1f, 1f) ?: 0f }
+            backup.backgroundPositionY?.let { prefs[Keys.CustomBackgroundPositionY] = it.takeIf { value -> value.isFinite() }?.coerceIn(-1f, 1f) ?: 0f }
             backup.colorTheme?.let { prefs[Keys.ColorTheme] = EchoColorTheme.fromId(it).id }
             backup.customAccent?.let { prefs[Keys.CustomAccent] = it.toEchoOpaqueColor() }
             backup.customSecondary?.let { prefs[Keys.CustomSecondary] = it.toEchoOpaqueColor() }
@@ -1815,6 +1831,7 @@ class EchoSettingsStore(
         val LyricsStatusWidthDp = intPreferencesKey("lyrics_status_width_dp")
         val LyricsStatusOffsetXDp = intPreferencesKey("lyrics_status_offset_x_dp")
         val LyricsStatusOffsetYDp = intPreferencesKey("lyrics_status_offset_y_dp")
+        val LyricsBluetoothDelayMs = intPreferencesKey("lyrics_bluetooth_delay_ms")
         val FloatingLyricsEnabled = booleanPreferencesKey("floating_lyrics_enabled")
         val FloatingLyricsLocked = booleanPreferencesKey("floating_lyrics_locked")
         val FloatingLyricsFontScale = floatPreferencesKey("floating_lyrics_font_scale")
@@ -1874,6 +1891,8 @@ class EchoSettingsStore(
         val CustomBackgroundBrightness = floatPreferencesKey("custom_background_brightness")
         val CustomBackgroundGlass = floatPreferencesKey("custom_background_glass")
         val CustomBackgroundScale = floatPreferencesKey("custom_background_scale")
+        val CustomBackgroundPositionX = floatPreferencesKey("custom_background_position_x")
+        val CustomBackgroundPositionY = floatPreferencesKey("custom_background_position_y")
         val UiFontFamily = stringPreferencesKey("ui_font_family")
         val UiFontScale = floatPreferencesKey("ui_font_scale")
         val UiDensityScale = floatPreferencesKey("ui_density_scale")
@@ -2058,6 +2077,8 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         libraryLayout = libraryLayout, homeLayout = homeLayout, playerPageStyle = playerPageStyle, playerTextScale = playerTextScale, playerArtworkScale = playerArtworkScale,
         backgroundMode = customBackgroundMode, backgroundBlur = customBackgroundBlur, backgroundBrightness = customBackgroundBrightness,
         backgroundGlass = customBackgroundGlass, backgroundScale = customBackgroundScale,
+        backgroundPositionX = customBackgroundPositionX,
+        backgroundPositionY = customBackgroundPositionY,
         themeMode = themeMode,
         colorTheme = colorTheme,
         customAccent = customColors.accent,

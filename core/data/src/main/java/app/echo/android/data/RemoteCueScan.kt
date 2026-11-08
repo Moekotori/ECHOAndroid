@@ -54,10 +54,12 @@ internal class RemoteCueScan(private val refreshEmbedded: Boolean = true, privat
             coroutineContext.ensureActive()
             val root = folder(cue.relativePath)
             val sheet = try {
-                readCue(cue) { reference ->
-                    val (descendant, name) = cueReference(reference) ?: return@readCue false
-                    names[join(root, descendant)]?.match(name) != null
-                }
+                readCue(cue, CueSourceLookup { reference ->
+                    val (descendant, name) = cueReference(reference) ?: return@CueSourceLookup null
+                    names[join(root, descendant)]?.exactMatch(name)?.let { actual ->
+                        listOf(descendant, actual).filter(String::isNotEmpty).joinToString("/")
+                    }
+                })
             } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) {
                 uncertain += root; incomplete = true; continue
             }

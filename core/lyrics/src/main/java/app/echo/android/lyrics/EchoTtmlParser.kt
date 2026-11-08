@@ -21,16 +21,17 @@ internal object EchoTtmlParser {
             setEntityResolver { _, _ -> InputSource(StringReader("")) }
         }
         val document = builder.parse(InputSource(StringReader(text)))
+        val rich = EchoTtmlMetadata(document.documentElement)
         val metadata = linkedMapOf<String, String>()
         document.documentElement.descendants().filter { it.tag() == "meta" }.forEach {
             if (it.attr("key").isNotBlank()) metadata[it.attr("key")] = it.attr("value")
         }
         val lines = mutableListOf<EchoLyricLine>()
         document.documentElement.descendants().filter { it.tag() == "p" }.forEach { p ->
-            parseLine(p, inheritedStart = null, inheritedEnd = null, background = false)?.let(lines::add)
-            p.descendants().filter { it.attr("role") == "x-bg" }.forEach { bg ->
+            parseLine(p, inheritedStart = null, inheritedEnd = null, background = false)?.let { lines += rich.enrich(p, it) }
+            p.descendants().filter { "x-bg" in it.attr("role").split(' ') }.forEach { bg ->
                 parseLine(bg, clock(p.attr("begin")), end(p, clock(p.attr("begin")) ?: 0L), true,
-                    p.attr("agent").ifBlank { null })?.let(lines::add)
+                    p.attr("agent").ifBlank { null })?.let { lines += rich.enrich(bg, it) }
             }
         }
         val sorted = lines.sortedBy { it.startMs }
@@ -42,7 +43,7 @@ internal object EchoTtmlParser {
                     word.copy(endMs = word.endMs ?: line.words.getOrNull(i + 1)?.startMs ?: lineEnd)
                 })
             },
-            metadata = metadata,
+            metadata = metadata + rich.entries(),
             sourceLabel = sourceLabel,
             format = EchoLyricsFormat.Ttml,
         )
@@ -60,12 +61,20 @@ internal object EchoTtmlParser {
         val fullText = StringBuilder()
         var translation: String? = null
         var romanization: String? = null
+        val alternates = ArrayList<EchoLyricAlternateText>()
         fun visit(node: Node, wordStart: Long?, wordEnd: Long?) {
             if (node is Element) {
-                when (node.attr("role")) {
-                    "x-bg" -> if (node !== element) return
-                    "x-translation" -> { translation = node.textContent.trim(); return }
-                    "x-roman" -> { romanization = node.textContent.trim(); return }
+                val roles = node.attr("role").split(' ')
+                when {
+                    "x-bg" in roles -> if (node !== element) return
+                    "x-translation" in roles || "x-roman" in roles -> {
+                        val value = node.textContent.trim()
+                        val role = if ("x-translation" in roles) "translation" else "romanization"
+                        if (value.length in 1..2000 && alternates.size < 8) alternates += EchoLyricAlternateText(role, value, node.attr("lang").takeIf(String::isNotBlank))
+                        if (role == "translation" && translation == null) translation = value
+                        if (role == "romanization" && romanization == null) romanization = value
+                        return
+                    }
                 }
                 if (node.tag() == "br") { fullText.append('\n'); if (words.isNotEmpty()) {
                     val last = words.last(); words[words.lastIndex] = last.copy(text = last.text + "\n")
@@ -99,7 +108,8 @@ internal object EchoTtmlParser {
         // vocals are handled separately, and empty timed spans are not words.
         return EchoLyricLine(start, finish, fullText.toString(), translation, romanization,
             if (hasTimedWords) words else emptyList(),
-            speaker = element.attr("agent").ifBlank { inheritedSpeaker }, isBackground = background)
+            speaker = element.attr("agent").ifBlank { inheritedSpeaker }, isBackground = background,
+            alternateTexts = alternates)
     }
 
     private fun end(element: Element, start: Long): Long? =

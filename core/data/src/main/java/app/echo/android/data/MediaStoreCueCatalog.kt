@@ -167,12 +167,14 @@ internal object MediaStoreCueCatalog {
             coroutineContext.ensureActive()
             val sheet = try {
                 contentResolver.openInputStream(cue.uri)?.use { input ->
-                    readCueSheet(input) { reference ->
-                        val (descendant, name) = cueReference(reference) ?: return@readCueSheet false
+                    readCueSheet(input, CueSourceLookup { reference ->
+                        val (descendant, name) = cueReference(reference) ?: return@CueSourceLookup null
                         val folder = listOf(cue.folder, descendant)
                             .filter(String::isNotEmpty).joinToString("/")
-                        indices[folder]?.match(name) != null
-                    }
+                        indices[folder]?.exactMatch(name)?.let { actual ->
+                            listOf(descendant, actual).filter(String::isNotEmpty).joinToString("/")
+                        }
+                    })
                 }
             } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { null }
             if (sheet == null) { uncertainFolders += cue.folder; continue }

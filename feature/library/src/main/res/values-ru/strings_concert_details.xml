@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_concert_heading">Концерты</string>
+    <string name="artist_past_concerts">Прошедшие концерты</string>
+    <string name="artist_no_past_concerts">Прошедшие концерты не найдены.</string>
+    <string name="artist_concert_hide_details">Скрыть подробности</string>
+    <string name="artist_concert_show_details">Подробнее</string>
+    <string name="artist_concert_time_tbd">Время уточняется</string>
+    <string name="artist_concert_ongoing">Идёт сейчас</string>
+    <string name="artist_concert_started">Начался</string>
+    <string name="artist_concert_checked">Последняя проверка: %1$s</string>
+    <string name="artist_concert_check_source">Проверить на %1$s</string>
+    <string name="artist_concert_history_note">Открытые источники могут содержать неполную историю концертов.</string>
+    <string name="artist_concert_opens">Открытие дверей</string>
+    <string name="artist_concert_ends">Окончание</string>
+    <string name="artist_concert_lineup">Участники</string>
+    <string name="artist_concert_address">Адрес</string>
+    <string name="artist_concert_coordinates">Координаты</string>
+    <string name="artist_concert_admission">Билеты</string>
+    <string name="artist_concert_ticketed">Вход по билетам</string>
+    <string name="artist_concert_free">Продажа билетов не указана</string>
+    <string name="artist_concert_price">Цена по данным источника</string>
+    <string name="artist_concert_sale_start">Начало открытой продажи</string>
+    <string name="artist_concert_sale_end">Конец открытой продажи</string>
+    <string name="artist_concert_notes">Примечания</string>
+    <string name="artist_concert_source_updated">Источник обновлён: %1$s</string>
+</resources>

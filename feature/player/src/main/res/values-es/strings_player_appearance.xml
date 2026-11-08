@@ -22,4 +22,5 @@
     <string name="player_appearance_contours">Curvas de nivel</string>
     <string name="player_appearance_dither">Tramado</string>
     <string name="player_appearance_glyph_field">Arte de caracteres</string>
+    <string name="player_appearance_full_cover">Portada a pantalla completa</string>
 </resources>

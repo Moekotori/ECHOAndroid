@@ -41,6 +41,8 @@ internal fun SettingsBackgroundContent(
     brightness: Float,
     glass: Float,
     scale: Float,
+    positionX: Float,
+    positionY: Float,
     onPickImage: () -> Unit,
     onPickVideo: () -> Unit,
     onClear: () -> Unit,
@@ -50,6 +52,8 @@ internal fun SettingsBackgroundContent(
     onBrightnessChange: (Float) -> Unit,
     onGlassChange: (Float) -> Unit,
     onScaleChange: (Float) -> Unit,
+    onPositionXChange: (Float) -> Unit,
+    onPositionYChange: (Float) -> Unit,
     onStyleChange: (EchoBackgroundStyle) -> Unit,
     showHeader: Boolean = true,
 ) {
@@ -64,11 +68,31 @@ internal fun SettingsBackgroundContent(
     var draftBrightness by remember(uri, brightness) { mutableFloatStateOf(brightness) }
     var draftGlass by remember(uri, glass) { mutableFloatStateOf(glass) }
     var draftScale by remember(uri, scale) { mutableFloatStateOf(scale) }
+    var draftPositionX by remember(uri, positionX) { mutableFloatStateOf(positionX) }
+    var draftPositionY by remember(uri, positionY) { mutableFloatStateOf(positionY) }
 
     SettingsSectionCard(title = stringResource(R.string.settings_section_background), showHeader = showHeader) {
         Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (adjustable && uri != null) {
-                SettingsBackgroundPreview(uri, isVideo, draftBlur, draftBrightness, draftGlass, draftScale, appliedBlur = blur)
+                SettingsBackgroundPositionPanel(
+                    scale = draftScale, positionX = draftPositionX, positionY = draftPositionY,
+                    onScalePreview = { draftScale = it }, onScaleChange = onScaleChange,
+                    onPositionPreview = { x, y -> draftPositionX = x; draftPositionY = y },
+                    onPositionChange = { x, y ->
+                        if (x != positionX) onPositionXChange(x)
+                        if (y != positionY) onPositionYChange(y)
+                    },
+                ) {
+                    SettingsBackgroundPreview(
+                        uri, isVideo, draftBlur, draftBrightness, draftGlass, draftScale,
+                        appliedBlur = blur, positionX = draftPositionX, positionY = draftPositionY,
+                        onPositionPreview = { x, y -> draftPositionX = x; draftPositionY = y },
+                        onPositionCommit = { x, y ->
+                            if (x != positionX) onPositionXChange(x)
+                            if (y != positionY) onPositionYChange(y)
+                        },
+                    )
+                }
             } else {
                 BackgroundEmptyTile(
                     if (videoDisabled) stringResource(R.string.settings_bg_video_disabled) else backgroundDetail(mode, uri),
@@ -125,12 +149,11 @@ internal fun SettingsBackgroundContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 BackgroundAdjustments(
-                    isVideo, blur, brightness, glass, scale, maxBlur,
-                    onBlurChange, onBrightnessChange, onGlassChange, onScaleChange,
+                    isVideo, blur, brightness, glass, maxBlur,
+                    onBlurChange, onBrightnessChange, onGlassChange,
                     onBlurPreview = { draftBlur = it },
                     onBrightnessPreview = { draftBrightness = it },
                     onGlassPreview = { draftGlass = it },
-                    onScalePreview = { draftScale = it },
                 )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
@@ -146,16 +169,13 @@ private fun BackgroundAdjustments(
     blur: Float,
     brightness: Float,
     glass: Float,
-    scale: Float,
     maxBlur: Float,
     onBlurChange: (Float) -> Unit,
     onBrightnessChange: (Float) -> Unit,
     onGlassChange: (Float) -> Unit,
-    onScaleChange: (Float) -> Unit,
     onBlurPreview: (Float) -> Unit,
     onBrightnessPreview: (Float) -> Unit,
     onGlassPreview: (Float) -> Unit,
-    onScalePreview: (Float) -> Unit,
 ) {
     val adjustmentsTitle = stringResource(R.string.settings_section_background_adjustments)
     val sliderTitles = listOf(
@@ -163,7 +183,6 @@ private fun BackgroundAdjustments(
         stringResource(R.string.settings_blur),
         stringResource(R.string.settings_brightness),
         stringResource(R.string.settings_glass),
-        stringResource(R.string.settings_scale),
     )
     var expanded by rememberSaveable { mutableStateOf(false) }
     val searching = LocalSettingsSearchFocus.current?.title in sliderTitles
@@ -175,9 +194,9 @@ private fun BackgroundAdjustments(
             onExpandedChange = { expanded = it },
         )
         if (expanded || searching) SettingsBackgroundSliders(
-            isVideo, blur, brightness, glass, scale, maxBlur,
-            onBlurChange, onBrightnessChange, onGlassChange, onScaleChange,
-            onBlurPreview, onBrightnessPreview, onGlassPreview, onScalePreview,
+            isVideo, blur, brightness, glass, maxBlur,
+            onBlurChange, onBrightnessChange, onGlassChange,
+            onBlurPreview, onBrightnessPreview, onGlassPreview,
         )
     }
 }

@@ -26,6 +26,9 @@ enum class EchoLyricsFormat {
     Sbv,
     Sami,
     Json,
+    Trc,
+    Snc,
+    Lrcx,
 }
 
 data class EchoLyricLine(
@@ -37,6 +40,16 @@ data class EchoLyricLine(
     val words: List<EchoLyricWord> = emptyList(),
     val speaker: String? = null,
     val isBackground: Boolean = false,
+    val alternateTexts: List<EchoLyricAlternateText> = emptyList(),
+    val speakerId: String? = null,
+    val kana: String? = null,
+)
+
+/** Bounded by parsers to eight language-labelled translations/readings per line. */
+data class EchoLyricAlternateText(
+    val role: String,
+    val text: String,
+    val language: String? = null,
 )
 
 data class EchoLyricWord(

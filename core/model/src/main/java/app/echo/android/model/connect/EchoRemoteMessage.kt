@@ -8,6 +8,7 @@ sealed interface EchoRemoteMessage {
         val volumeControlIncluded: Boolean = true,
         val outputIncluded: Boolean = true,
         val playbackOrderIncluded: Boolean = true,
+        val queueTotalIncluded: Boolean = false,
     ) : EchoRemoteMessage
     data class Command(val payload: EchoRemoteCommand) : EchoRemoteMessage
     data class Error(val code: String, val message: String) : EchoRemoteMessage

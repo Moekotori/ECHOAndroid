@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.EchoAndroidViewModel
 import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.feature.home.*
@@ -45,6 +46,7 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
     var playlistFailed by remember { mutableStateOf(false) }
     var pendingPlay by remember { mutableStateOf<UnifiedSearchItem?>(null) }
     val playlists by viewModel.localPlaylists.collectAsState()
+    val recentQueries by viewModel.unifiedSearch.history.collectAsStateWithLifecycle()
     fun play(item: UnifiedSearchItem) {
         onClose()
         when (item) {
@@ -55,6 +57,7 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
         }
     }
     fun open(item: UnifiedSearchItem) {
+        viewModel.unifiedSearch.recordQuery(query)
         focus.clearFocus(); keyboard?.hide()
         when (item) {
             is UnifiedSearchItem.Track, is UnifiedSearchItem.PcTrack -> {
@@ -69,6 +72,7 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
         }
     }
     val trackAction: (EchoTrack, SearchTrackAction) -> Unit = { track, action ->
+        viewModel.unifiedSearch.recordQuery(query)
         focus.clearFocus(); keyboard?.hide()
         if (action == SearchTrackAction.AddToPlaylist) { playlistFailed = false; playlistTrack = track }
         else scope.launch {
@@ -83,6 +87,7 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
         }
     }
     val pcAction: (app.echo.android.model.connect.EchoRemoteTrack, SearchTrackAction) -> Unit = { track, action ->
+        viewModel.unifiedSearch.recordQuery(query)
         focus.clearFocus(); keyboard?.hide()
         scope.launch {
             try {
@@ -101,7 +106,12 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
         text = { Text(stringResource(HomeR.string.search_replace_queue_body)) },
         confirmButton = { TextButton(onClick = { pendingPlay = null; play(item) }) { Text(stringResource(HomeR.string.search_play_now)) } },
         dismissButton = { TextButton(onClick = { pendingPlay = null }) { Text(stringResource(HomeR.string.search_cancel)) } }) }
-    playlistTrack?.let { track -> SearchPlaylistSheet(playlists, playlistBusy, playlistFailed,
+    playlistTrack?.let { track ->
+        val memberships by remember(viewModel, track.id) {
+            viewModel.playlistTools.memberships(track.id)
+        }.collectAsStateWithLifecycle(initialValue = emptySet())
+        SearchPlaylistSheet(playlists, playlistBusy, playlistFailed,
+        containingPlaylistIds = memberships,
         onSelect = { playlist ->
             playlistBusy = true; playlistFailed = false
             scope.launch {
@@ -176,11 +186,19 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
     Box(Modifier.fillMaxSize()) {
     UnifiedSearchScreen(query, category, local, remote, onQuery, { category = it }, onClose,
         { momentsVisible = true }, onConnect, { localRetry++ }, { pcRetry++ },
-        onTrack = { open(UnifiedSearchItem.Track(it)) }, onAlbum, onArtist, onPlaylist,
+        onTrack = { open(UnifiedSearchItem.Track(it)) },
+        onAlbum = { open(UnifiedSearchItem.Album(it)) },
+        onArtist = { open(UnifiedSearchItem.Artist(it)) },
+        onPlaylist = { open(UnifiedSearchItem.Playlist(it)) },
         onMoment = { open(UnifiedSearchItem.Moment(it)) }, onPcTrack = { open(UnifiedSearchItem.PcTrack(it)) },
-        onViewAll = { focus.clearFocus(); keyboard?.hide(); section = it },
+        onViewAll = { viewModel.unifiedSearch.recordQuery(query); focus.clearFocus(); keyboard?.hide(); section = it },
         onTrackAction = trackAction, onPcAction = pcAction, requestFocus = active && !focusedOnce,
-        onFocusRequested = { focusedOnce = true })
+        onFocusRequested = { focusedOnce = true },
+        recentQueries = recentQueries,
+        onSearch = { viewModel.unifiedSearch.recordQuery(query) },
+        onHistorySelect = { term -> viewModel.unifiedSearch.recordQuery(term); onQuery(term) },
+        onHistoryRemove = viewModel.unifiedSearch::removeQuery,
+        onHistoryClear = viewModel.unifiedSearch::clearHistory)
     SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
     }
     }

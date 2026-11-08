@@ -7,6 +7,24 @@ data class EchoManualConnection(val address: String, val token: String)
 
 /** Builds the existing connect request without moving credentials to another origin. */
 object EchoManualConnectionInput {
+    /** Restore paired capabilities only for the same origin and the same access token. */
+    fun endpointForConnection(
+        address: String,
+        token: String,
+        savedPcs: List<EchoSavedPcEndpoint> = emptyList(),
+        currentPc: EchoSavedPcEndpoint? = null,
+    ): EchoRemoteEndpoint? {
+        val endpoint = EchoPairingParser.parseManual(address, token) ?: return null
+        if (endpoint.needsV2PairExchange || endpoint.token.isBlank()) return endpoint
+        val saved = sequenceOf(currentPc).filterNotNull().plus(savedPcs.asSequence()).firstOrNull { candidate ->
+            val known = EchoPairingParser.parseManual(candidate.address, candidate.token.orEmpty())
+            known != null && !known.needsV2PairExchange && known.token == endpoint.token &&
+                known.scheme.equals(endpoint.scheme, ignoreCase = true) &&
+                known.host.equals(endpoint.host, ignoreCase = true) && known.port == endpoint.port
+        }
+        return endpoint.copy(supportsV2Events = saved?.supportsV2Events == true)
+    }
+
     fun validPort(value: String): Boolean = value.isBlank() ||
         value.trim().toIntOrNull()?.let { it in 1..65535 } == true
 

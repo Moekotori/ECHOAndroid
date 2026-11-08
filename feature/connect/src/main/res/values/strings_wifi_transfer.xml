@@ -20,4 +20,6 @@
     <string name="wifi_transfer_start">Start receiving</string>
     <string name="wifi_transfer_close">Close</string>
     <string name="wifi_transfer_cleanup_error">Incomplete files could not be removed. Grant access to the original receiving folder and start again to retry cleanup.</string>
+    <string name="connect_other_ways_title">Other ways</string>
+    <string name="wifi_transfer_entry_detail">Send songs from a computer browser to this phone</string>
 </resources>

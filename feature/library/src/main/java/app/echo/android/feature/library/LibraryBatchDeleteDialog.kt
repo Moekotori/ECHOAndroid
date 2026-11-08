@@ -26,11 +26,12 @@ import androidx.compose.ui.unit.dp
 data class LibraryBatchDeleteResult(val removedIds: Set<String>, val cancelled: Boolean = false)
 
 @Composable
-internal fun LibraryBatchDeleteDialog(
+fun LibraryBatchDeleteDialog(
     count: Int,
     canDeleteOriginals: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (Boolean) -> Unit,
+    trackTitle: String? = null,
 ) {
     var deleteOriginals by remember { mutableStateOf(false) }
     AlertDialog(
@@ -38,6 +39,7 @@ internal fun LibraryBatchDeleteDialog(
         title = { Text(pluralStringResource(R.plurals.batch_delete_confirm, count, count)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!trackTitle.isNullOrBlank()) Text(app.echo.android.design.displayTrack(trackTitle))
                 Text(stringResource(R.string.batch_delete_index_hint))
                 Row(
                     Modifier.fillMaxWidth().toggleable(

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_background_position_x">가로 위치</string>
+    <string name="settings_background_position_y">세로 위치</string>
+    <string name="settings_background_position_title">위치 및 확대</string>
+    <string name="settings_background_position_center">중앙</string>
+    <string name="settings_background_position_drag_hint">미리보기를 길게 눌러 배경을 이동하세요</string>
+    <string name="settings_background_position_dragging">손을 떼면 위치가 저장됩니다</string>
+    <string name="settings_background_position_left">왼쪽 %1$d%%</string>
+    <string name="settings_background_position_right">오른쪽 %1$d%%</string>
+    <string name="settings_background_position_up">위 %1$d%%</string>
+    <string name="settings_background_position_down">아래 %1$d%%</string>
+    <string name="settings_background_position_detail">배경을 확대하면 더 넓게 이동할 수 있어요.</string>
+</resources>

@@ -11,4 +11,7 @@ data class EchoRemoteQueueState(
     val error: String? = null,
     val unsupported: Boolean = false,
     val offset: Int = 0,
+    val pageSize: Int = 100,
+    // Current PC /queue endpoints expose a read-only queue, without mutation commands.
+    val supportsEditing: Boolean = true,
 )

@@ -19,6 +19,8 @@ internal object BackupExperienceCodec {
         json.putOpt("playerPageStyle", value.playerPageStyle).putOpt("playerTextScale", value.playerTextScale)
             .putOpt("playerArtworkScale", value.playerArtworkScale).putOpt("backgroundMode", value.backgroundMode)
             .putOpt("backgroundStyle", value.backgroundStyle).putOpt("backgroundBlur", value.backgroundBlur)
+            .putOpt("backgroundPositionX", value.backgroundPositionX)
+            .putOpt("backgroundPositionY", value.backgroundPositionY)
             .putOpt("backgroundBrightness", value.backgroundBrightness).putOpt("backgroundGlass", value.backgroundGlass).putOpt("backgroundScale", value.backgroundScale)
     }
     fun home(json: JSONObject?): EchoHomeLayout? {

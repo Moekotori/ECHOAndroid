@@ -20,6 +20,7 @@ internal fun mergeEchoLinkSnapshot(
         val currentId = if (incoming.queueIdentityAvailable) incoming.queue.currentTrackId ?: incoming.track?.id
             else incoming.track?.id ?: previous.queue.currentTrackId
         previous.queue.copy(currentTrackId = currentId,
+            totalCount = if (message.queueTotalIncluded) incoming.queue.totalCount else previous.queue.totalCount,
             revision = if (incoming.queueIdentityAvailable) incoming.queue.revision else previous.queue.revision,
             currentQueueId = if (incoming.queueIdentityAvailable) incoming.queue.currentQueueId else previous.queue.currentQueueId)
     }

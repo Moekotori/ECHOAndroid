@@ -11,14 +11,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.library.ArtistOnlineInfo
 import app.echo.android.model.library.ArtistOnlineQuery
 
+private const val BiographyCollapsedLines = 8
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ArtistInformationPage(query: ArtistOnlineQuery, active: Boolean) {
     val loader = LocalArtistOnlineInfoLoader.current
@@ -28,8 +29,8 @@ internal fun ArtistInformationPage(query: ArtistOnlineQuery, active: Boolean) {
     }
     var expanded by remember(query, language) { mutableStateOf(false) }
     val info = state.value
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = AlbumDetailBottomPadding),
-        verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 12.dp, bottom = AlbumDetailBottomPadding),
+        verticalArrangement = Arrangement.spacedBy(18.dp)) {
         item("heading") { ArtistOnlineHeading(stringResource(R.string.artist_about), state.loading) { state.attempt++ } }
         when {
             info == null -> item("status") {
@@ -42,39 +43,55 @@ internal fun ArtistInformationPage(query: ArtistOnlineQuery, active: Boolean) {
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 item("biography") {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(info.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                        if (info.description != null || info.serverDescription == null) Text(info.description ?: stringResource(R.string.artist_no_biography),
-                            style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = if (expanded) Int.MAX_VALUE else 9, overflow = TextOverflow.Ellipsis)
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(info.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        if (info.description != null || info.serverDescription == null) {
+                            ExpandableDescription(
+                                text = info.description ?: stringResource(R.string.artist_no_biography),
+                                expanded = expanded,
+                                onToggle = { expanded = !expanded },
+                                collapsedLines = BiographyCollapsedLines,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
                         if (info.description != null) {
-                            TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
-                                Text(stringResource(if (expanded) R.string.album_online_less else R.string.album_online_more))
+                            OnlineSourceRow {
+                                info.wikipediaUrl?.let { ArtistSourceLink("Wikipedia · ${info.wikipediaLanguage}", it) }
+                                ArtistSourceLink("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0/")
                             }
-                            info.wikipediaUrl?.let { ArtistSourceLink("Wikipedia · ${info.wikipediaLanguage}", it) }
-                            ArtistSourceLink("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0/")
                         }
                     }
                 }
                 info.serverDescription?.let { description -> item("server-biography") {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Navidrome", style = MaterialTheme.typography.labelLarge)
+                        Text("Navidrome", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(description, style = MaterialTheme.typography.bodyLarge)
                         info.serverUrl?.let { ArtistSourceLink("Last.fm", it) }
                     }
                 } }
                 item("facts") {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .45f))
-                        info.area?.let { ArtistFact(stringResource(R.string.artist_fact_area), it) }
-                        info.kind?.let {
-                            val kind = when (it) { "Person" -> stringResource(R.string.artist_kind_person); "Group" -> stringResource(R.string.artist_kind_group); else -> it }
-                            ArtistFact(stringResource(R.string.artist_fact_type), kind)
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        val kindPerson = stringResource(R.string.artist_kind_person)
+                        val kindGroup = stringResource(R.string.artist_kind_group)
+                        val facts = listOfNotNull(
+                            info.area?.let { stringResource(R.string.artist_fact_area) to it },
+                            info.kind?.let { stringResource(R.string.artist_fact_type) to when (it) { "Person" -> kindPerson; "Group" -> kindGroup; else -> it } },
+                            info.begin?.let { stringResource(R.string.artist_fact_begin) to it },
+                            info.end?.let { stringResource(R.string.artist_fact_end) to it },
+                        )
+                        OnlineFactGrid(facts)
+                        if (info.genres.isNotEmpty()) {
+                            Text(stringResource(R.string.artist_fact_genres), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                info.genres.forEach { OnlineTag(it) }
+                            }
                         }
-                        info.begin?.let { ArtistFact(stringResource(R.string.artist_fact_begin), it) }
-                        info.end?.let { ArtistFact(stringResource(R.string.artist_fact_end), it) }
-                        if (info.genres.isNotEmpty()) ArtistFact(stringResource(R.string.artist_fact_genres), info.genres.joinToString(" · "))
-                        if (info.members.isNotEmpty()) ArtistFact(stringResource(R.string.artist_fact_members), info.members.joinToString(" / "))
+                        if (info.members.isNotEmpty()) {
+                            Text(stringResource(R.string.artist_fact_members), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                info.members.forEach { PersonChip(it) }
+                            }
+                        }
                         if (info.musicBrainzId.isNotBlank()) ArtistSourceLink("MusicBrainz", "https://musicbrainz.org/artist/${info.musicBrainzId}")
                     }
                 }
@@ -84,17 +101,9 @@ internal fun ArtistInformationPage(query: ArtistOnlineQuery, active: Boolean) {
 }
 
 @Composable
-private fun ArtistFact(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Normal)
-    }
-}
-
-@Composable
 internal fun ArtistOnlineHeading(title: String, loading: Boolean, onRefresh: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         if (loading) CircularProgressIndicator(Modifier.padding(12.dp).size(20.dp), strokeWidth = 2.dp)
         else IconButton(onClick = onRefresh) { EchoIcon(Icons.Rounded.Refresh, stringResource(R.string.album_online_refresh)) }
     }
@@ -102,17 +111,13 @@ internal fun ArtistOnlineHeading(title: String, loading: Boolean, onRefresh: () 
 
 @Composable
 internal fun ArtistOnlineNotice(loading: Boolean, failed: Boolean, empty: String, onRetry: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(if (loading) stringResource(R.string.artist_online_loading) else if (failed) stringResource(R.string.artist_online_error) else empty,
             style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (failed && !loading) TextButton(onClick = onRetry) { Text(stringResource(R.string.artist_retry)) }
     }
 }
 
+/** Source links share the album page's pill style. */
 @Composable
-internal fun ArtistSourceLink(label: String, url: String) {
-    val handler = LocalUriHandler.current
-    var failed by remember(url) { mutableStateOf(false) }
-    TextButton(onClick = { failed = runCatching { handler.openUri(url) }.isFailure }, contentPadding = PaddingValues(0.dp)) { Text(label) }
-    if (failed) Text(stringResource(R.string.album_online_link_error), style = MaterialTheme.typography.bodySmall)
-}
+internal fun ArtistSourceLink(label: String, url: String) = OnlineSourceLink(label, url)

@@ -6,6 +6,66 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class LibraryTrackFilterQueryTest {
+    @Test fun countingNeverSortsOrJoinsHistoryAndStillBindsEveryFilterAndSearchTerm() {
+        val filter = LibraryTrackFilter(genre = "Rock", played = LibraryPlayedFilter.Played, favoritesOnly = true)
+        for (sort in LibraryTrackSortMode.entries) {
+            val count = LibraryTrackQueryBuilder.boundQuery("needle", "needle*", sort, filter = filter, countOnly = true)
+            val values = Bindings().also(count::bindTo).values
+            assertTrue(count.sql.startsWith("SELECT COUNT(*)"))
+            assertFalse(count.sql.contains("ORDER BY"))
+            assertFalse(count.sql.contains("LEFT JOIN library_playback_stats"))
+            assertFalse(count.sql.contains("INDEXED BY"))
+            assertTrue(count.sql.contains("library_playback_stats WHERE playCount > 0"))
+            assertTrue(count.sql.contains("library_favorites"))
+            assertEquals(count.sql.count { it == '?' }, values.size)
+        }
+        // Optional input for the short desktop SQLite benchmark; CI needs no Python or device.
+        System.getenv("ECHO_SORT_SQL_DUMP")?.let { folder ->
+            val directory = java.io.File(folder).also { it.mkdirs() }
+            for (sort in LibraryTrackSortMode.entries) {
+                java.io.File(directory, "${sort.name}.full.sql").writeText(
+                    LibraryTrackQueryBuilder.boundQuery("", null, sort).sql)
+                java.io.File(directory, "${sort.name}.ids.sql").writeText(
+                    LibraryTrackQueryBuilder.boundQuery("", null, sort, idsOnly = true).sql)
+                java.io.File(directory, "${sort.name}.count.sql").writeText(
+                    LibraryTrackQueryBuilder.boundQuery("", null, sort, countOnly = true).sql)
+            }
+        }
+    }
+
+    @Test fun additionalTagSortsKeepUnknownValuesLastAndAlbumTracksTogether() {
+        val cases = listOf(
+            Triple(LibraryTrackSortMode.AlbumArtist, "albumArtist", "ASC"),
+            Triple(LibraryTrackSortMode.AlbumArtistDescending, "albumArtist", "DESC"),
+            Triple(LibraryTrackSortMode.Genre, "genre", "ASC"),
+            Triple(LibraryTrackSortMode.GenreDescending, "genre", "DESC"),
+            Triple(LibraryTrackSortMode.Composer, "composer", "ASC"),
+            Triple(LibraryTrackSortMode.ComposerDescending, "composer", "DESC"),
+        )
+        for ((sort, column, direction) in cases) {
+            val order = LibraryTrackQueryBuilder.buildTrackPagingSql("", false, sort).substringAfter(" ORDER BY ")
+            assertTrue(order.startsWith("CASE WHEN trim(COALESCE(library_tracks.$column, '')) = '' THEN 1 ELSE 0 END, library_tracks.$column COLLATE NOCASE $direction"))
+            if (column == "albumArtist") {
+                assertTrue(order.indexOf("library_tracks.album COLLATE NOCASE ASC") < order.indexOf("library_tracks.discNumber"))
+                assertTrue(order.indexOf("library_tracks.discNumber") < order.indexOf("library_tracks.trackNumber"))
+            }
+            assertTrue(order.endsWith("library_tracks.title COLLATE NOCASE ASC, library_tracks.id ASC"))
+        }
+    }
+
+    @Test fun descendingFileAndTrackOrdersKeepStableTieBreakers() {
+        val cases = listOf(
+            LibraryTrackSortMode.FileNameDescending to "COALESCE(NULLIF(library_tracks.fileName, ''), library_tracks.title) COLLATE NOCASE DESC",
+            LibraryTrackSortMode.FolderDescending to "COALESCE(library_tracks.relativePath, '') COLLATE NOCASE DESC",
+            LibraryTrackSortMode.FormatDescending to "$LibraryFileFormatSql DESC",
+            LibraryTrackSortMode.TrackNumberDescending to "CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END DESC, COALESCE(library_tracks.trackNumber, 0) DESC",
+        )
+        for ((sort, expected) in cases) {
+            val order = LibraryTrackQueryBuilder.buildTrackPagingSql("", false, sort).substringAfter(" ORDER BY ")
+            assertEquals("$expected, library_tracks.title COLLATE NOCASE ASC, library_tracks.id ASC", order)
+        }
+    }
+
     @Test fun lyricsFiltersUseVerifiedFreshEvidenceAndNeverTreatAnUnknownRowAsMissing() {
         val present = LibraryTrackFilter(lyrics = LibraryPresenceFilter.Present).toSql().clause
         val missing = LibraryTrackFilter(lyrics = LibraryPresenceFilter.Missing).toSql().clause

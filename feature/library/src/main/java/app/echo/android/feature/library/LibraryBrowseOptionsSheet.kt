@@ -84,7 +84,7 @@ private fun LibraryBrowseOptionsSheet(
     val applied = remember(draft) { draft.applied() }
     val filterCount = draft.conditionCount + draft.tagCount + draft.rangeCount + if (draft.filter.formats.isEmpty()) 0 else 1
     val tabStates = rememberSaveableStateHolder()
-    val maxHeight = minOf(360.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.65f })
+    val maxHeight = minOf(720.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.82f })
     EchoModalSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().heightIn(max = maxHeight)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {

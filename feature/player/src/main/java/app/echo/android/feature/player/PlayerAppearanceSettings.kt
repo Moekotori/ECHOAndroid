@@ -6,16 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -32,50 +27,50 @@ internal fun PlayerAppearanceSettings(
     onCommit: () -> Unit,
     lyricsBackdrop: String,
     onLyricsBackdropChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val pageStyle = EchoPlayerPageStyle.fromId(appearance.style)
     val backdrop = EchoLyricsBackdrop.fromId(lyricsBackdrop)
-    PlaybackSettingsSection(
-        icon = Icons.Rounded.Palette,
-        title = stringResource(R.string.player_appearance_title),
-        detail = stringResource(playerPageStyleLabel(pageStyle)) +
-            if (appearance.usesFlatSurface) "" else " · " + stringResource(lyricsBackdropLabel(backdrop)),
-        expanded = expanded,
-        onToggleExpanded = { expanded = !expanded },
-        framed = false,
-        trailing = {
-            if (expanded) TextButton(onClick = { onPreview(PlayerAppearance()); onCommit() }) {
-                Text(stringResource(R.string.player_appearance_reset))
-            }
-        },
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        PlayerPageStyleSelector(EchoPlayerPageStyle.fromId(appearance.style)) { id ->
-            onPreview(appearance.copy(style = id)); onCommit()
+        item(key = "styles") {
+            PlayerPageStyleSelector(EchoPlayerPageStyle.fromId(appearance.style)) { id ->
+                onPreview(appearance.copy(style = id)); onCommit()
+            }
         }
-        SettingsGroupLabel(stringResource(R.string.lyrics_backdrop_title))
-        PlayerBackdropChoices(
-            selected = backdrop,
-            flatSurface = appearance.usesFlatSurface,
-            onSelect = onLyricsBackdropChange,
-            onUseClassic = { onPreview(appearance.copy(style = EchoPlayerPageStyle.Classic.id)); onCommit() },
-        )
-        AppearanceScaleSlider(
-            label = stringResource(R.string.player_appearance_text_size),
-            value = appearance.textScale,
-            range = 0.8f..1.2f,
-            steps = 7,
-            onPreview = { onPreview(appearance.copy(textScale = it)) },
-            onCommit = onCommit,
-        )
-        AppearanceScaleSlider(
-            label = stringResource(R.string.player_appearance_cover_size),
-            value = appearance.artworkScale,
-            range = 0.7f..1f,
-            steps = 5,
-            onPreview = { onPreview(appearance.copy(artworkScale = it)) },
-            onCommit = onCommit,
-        )
+        item(key = "backdrop") {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SettingsGroupLabel(stringResource(R.string.lyrics_backdrop_title))
+                PlayerBackdropChoices(
+                    selected = backdrop,
+                    flatSurface = appearance.usesFlatSurface,
+                    onSelect = onLyricsBackdropChange,
+                    onUseClassic = { onPreview(appearance.copy(style = EchoPlayerPageStyle.Classic.id)); onCommit() },
+                )
+            }
+        }
+        item(key = "text-scale") {
+            AppearanceScaleSlider(
+                label = stringResource(R.string.player_appearance_text_size),
+                value = appearance.textScale,
+                range = 0.8f..1.2f,
+                steps = 7,
+                onPreview = { onPreview(appearance.copy(textScale = it)) },
+                onCommit = onCommit,
+            )
+        }
+        item(key = "artwork-scale") {
+            AppearanceScaleSlider(
+                label = stringResource(R.string.player_appearance_cover_size),
+                value = appearance.artworkScale,
+                range = 0.7f..1f,
+                steps = 5,
+                onPreview = { onPreview(appearance.copy(artworkScale = it)) },
+                onCommit = onCommit,
+            )
+        }
     }
 }
 
@@ -95,6 +90,7 @@ internal fun playerPageStyleLabel(style: EchoPlayerPageStyle): Int = when (style
     EchoPlayerPageStyle.Contours -> R.string.player_appearance_contours
     EchoPlayerPageStyle.Dither -> R.string.player_appearance_dither
     EchoPlayerPageStyle.GlyphField -> R.string.player_appearance_glyph_field
+    EchoPlayerPageStyle.FullCover -> R.string.player_appearance_full_cover
 }
 
 @Composable

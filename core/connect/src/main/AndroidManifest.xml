@@ -5,5 +5,8 @@
         <intent>
             <action android:name="com.android.settings.panel.action.MEDIA_OUTPUT" />
         </intent>
+        <intent>
+            <action android:name="android.settings.CAST_SETTINGS" />
+        </intent>
     </queries>
 </manifest>

@@ -8,9 +8,6 @@ import app.echo.android.model.library.ArtistOnlineQuery
 import app.echo.android.model.library.ArtistSetlist
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -22,9 +19,6 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONObject
 import java.io.File
-import java.io.IOException
-import java.time.LocalDate
-import java.time.ZoneId
 
 class ArtistOnlineInfoRepository(
     cacheDirectory: File,
@@ -66,78 +60,15 @@ class ArtistOnlineInfoRepository(
             }
         } }
 
+    private val concerts = ArtistConcertRepository(cacheDirectory, transport, cache, ::identity, ::musicBrainz)
+
     override suspend fun loadConcerts(query: ArtistOnlineQuery, refresh: Boolean): ArtistConcerts =
-        withContext(Dispatchers.IO) { gate.withLock {
-            val key = "concerts-v2:${queryKey(query)}"
-            val entry = cache.read(key)
-            val cached = entry?.value?.let { runCatching { ArtistConcertParser.decode(it) }.getOrNull() }
-            val today = LocalDate.now(ZoneId.of("Asia/Tokyo"))
-            fun current(result: ArtistConcerts) = result.copy(events = result.events.filter { it.date >= today.toString() })
-            val ttl = if (cached?.failedSources?.isNotEmpty() == true) 5 * 60_000L else 6 * 3600_000L
-            if (!refresh && cached != null && entry.age < ttl) return@withLock current(cached)
-            if (query.name.isBlank()) return@withLock ArtistConcerts(emptyList())
-            suspend fun source(name: String, work: suspend () -> List<ArtistConcert>): Pair<List<ArtistConcert>, String?> {
-                return try { withTimeout(24_000L) { work() } to null
-                } catch (_: TimeoutCancellationException) {
-                    currentCoroutineContext().ensureActive()
-                    emptyList<ArtistConcert>() to name
-                } catch (cancelled: CancellationException) { throw cancelled
-                } catch (_: Exception) { emptyList<ArtistConcert>() to name }
-            }
-            val knownArtist = cache.read("identity-v1:${queryKey(query)}")?.takeIf { it.age < 7 * 86400_000L }?.value
-            val names = (listOf(query.name) + listOfNotNull(knownArtist?.text("name")) +
-                knownArtist?.objects("aliases").orEmpty().mapNotNull { it.text("name") }).distinct().filter { it.isNotBlank() }.take(16)
-            // At most three sources at once. MusicBrainz still uses the application-wide serial gate.
-            val results = coroutineScope {
-                listOf(
-                    async {
-                        source("MusicBrainz") {
-                            val artist = identity(query, refresh)
-                            val id = artist?.text("id")
-                            val found = mutableListOf<ArtistConcert>()
-                            if (id != null) {
-                                val search = musicBrainz("event/", mapOf("query" to "aid:$id AND begin:[$today TO *]", "limit" to "12"))
-                                // Search may omit relations; verify performer and place in bounded lookups.
-                                search.objects("events").take(12).forEach { event ->
-                                    val eventId = event.text("id")?.takeIf { it.matches(Regex("[a-fA-F0-9-]{36}")) }
-                                    if (eventId != null) {
-                                        val detail = musicBrainz("event/$eventId", mapOf("inc" to "artist-rels+place-rels"))
-                                        found += ArtistConcertParser.musicBrainz(JSONObject().put("events", org.json.JSONArray().put(detail)), id, today)
-                                    }
-                                }
-                            }
-                            found
-                        }
-                    },
-                    async {
-                        source("Eventernote") {
-                            val search = transport.text(url("https://www.eventernote.com/actors/search", mapOf("keyword" to query.name)))
-                            ArtistConcertParser.actorPage(search, names)?.let { page ->
-                                ArtistConcertParser.eventernote(transport.text(page.toHttpUrl()), names, today)
-                            }.orEmpty()
-                        }
-                    },
-                    async {
-                        source("eplus") {
-                            ArtistConcertParser.eplus(transport.text(url("https://eplus.jp/sf/search", mapOf("keyword" to query.name))), names, today)
-                        }
-                    },
-                ).awaitAll()
-            }
-            val events = results.flatMap { it.first }
-            val failures = results.mapNotNull { it.second }
-            if (failures.size == 3 && events.isEmpty()) {
-                if (cached != null && entry.age < 7 * 86400_000L) return@withLock current(cached.copy(stale = true, failedSources = failures))
-                throw IOException("Artist concert services unavailable: ${failures.joinToString()}")
-            }
-            val result = ArtistConcerts(ArtistConcertParser.merge(events), failures)
-            // Partial outages must not replace a useful cache with a misleading empty result.
-            if (events.isEmpty() && failures.isNotEmpty() && cached?.events?.isNotEmpty() == true && entry.age < 7 * 86400_000L) {
-                return@withLock current(cached.copy(stale = true, failedSources = failures))
-            }
-            cache.write(key, ArtistConcertParser.encode(result))
-            result
-        } }
+        loadConcerts(query, refresh, app.echo.android.model.library.ArtistConcertPeriod.Upcoming)
+
+    override suspend fun loadConcerts(query: ArtistOnlineQuery, refresh: Boolean,
+        period: app.echo.android.model.library.ArtistConcertPeriod): ArtistConcerts = withContext(Dispatchers.IO) {
+        gate.withLock { concerts.load(query, queryKey(query), refresh, period) }
+    }
 
     override suspend fun loadSetlist(
         query: ArtistOnlineQuery,

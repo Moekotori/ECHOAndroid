@@ -1,8 +1,10 @@
 package app.echo.android.connect
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.net.Uri
+import android.provider.Settings
 import androidx.mediarouter.app.SystemOutputSwitcherDialogController
 import app.echo.android.model.connect.EchoLanRenderer
 import app.echo.android.model.connect.EchoLanRendererKind
@@ -28,8 +30,11 @@ class EchoSystemCastClient(context: Context) {
     private var initialized = false
     private var localTransferPending = false
     private var last: EchoSystemCastMediaState? = null
-    // SystemUI owns the picker; Google Cast initialization is a separate capability.
-    private val _available = MutableStateFlow(Build.VERSION.SDK_INT >= 30)
+    // The system picker/settings do not depend on Google Play services.
+    private val _available = MutableStateFlow(
+        Build.VERSION.SDK_INT >= 30 ||
+            Intent(Settings.ACTION_CAST_SETTINGS).resolveActivity(this.context.packageManager) != null,
+    )
     val available = _available.asStateFlow()
     var onReady: ((EchoLanRenderer, Boolean) -> Unit)? = null
     var onState: ((EchoSystemCastMediaState) -> Unit)? = null
@@ -96,9 +101,19 @@ class EchoSystemCastClient(context: Context) {
         } catch (_: Exception) { executor.shutdown() }
     }
 
-    fun showOutputSwitcher(): Boolean = _available.value && runCatching {
-        SystemOutputSwitcherDialogController.showDialog(context)
-    }.getOrDefault(false)
+    fun showOutputSwitcher(): Boolean {
+        if (!_available.value) return false
+        if (Build.VERSION.SDK_INT >= 30 && runCatching {
+                SystemOutputSwitcherDialogController.showDialog(context)
+            }.getOrDefault(false)) return true
+
+        // Some OEMs expose Cast settings but do not implement the media output dialog.
+        // Launch directly: a resolveActivity precheck can hide valid handlers on OEM ROMs.
+        return runCatching {
+            context.startActivity(Intent(Settings.ACTION_CAST_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        }.getOrDefault(false)
+    }
 
     private fun attach(session: CastSession, resumed: Boolean) {
         detach()

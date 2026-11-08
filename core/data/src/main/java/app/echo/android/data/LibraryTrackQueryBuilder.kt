@@ -33,7 +33,9 @@ internal object LibraryTrackQueryBuilder {
         limit: Int? = null,
         filter: LibraryTrackFilter = LibraryTrackFilter(),
         offset: Int = 0,
+        countOnly: Boolean = false,
     ): SimpleSQLiteQuery {
+        require(!countOnly || (!idsOnly && limit == null && offset == 0))
         val normalizedFilter = filter.normalized()
         val filterSql = normalizedFilter.toSql()
         val useFts = matchQuery != null
@@ -41,10 +43,10 @@ internal object LibraryTrackQueryBuilder {
         if (query.isNotBlank() && useFts) args += requireNotNull(matchQuery)
         librarySearchTerms(query).forEach { term -> repeat(SearchFields.size) { args += term } }
         args.addAll(filterSql.args)
-        if (query.isNotBlank() && sort == LibraryTrackSortMode.Title) {
+        if (!countOnly && query.isNotBlank() && sort == LibraryTrackSortMode.Title) {
             repeat(3) { args += query.trim().lowercase() }
         }
-        val sql = buildSql(query, useFts, sort, idsOnly, localSources, normalizedFilter, filterSql) +
+        val sql = buildSql(query, useFts, sort, idsOnly, localSources, normalizedFilter, filterSql, countOnly) +
             windowSql(limit, offset)
         return SimpleSQLiteQuery(sql, args.toTypedArray())
     }
@@ -72,8 +74,13 @@ internal object LibraryTrackQueryBuilder {
         localSources: Boolean,
         filter: LibraryTrackFilter,
         filterSql: LibraryTrackFilterSql = filter.toSql(),
+        countOnly: Boolean = false,
     ): String = buildString {
-        append(if (idsOnly) "SELECT library_tracks.id" else "SELECT library_tracks.*")
+        append(when {
+            countOnly -> "SELECT COUNT(*)"
+            idsOnly -> "SELECT library_tracks.id"
+            else -> "SELECT library_tracks.*"
+        })
         // CROSS JOIN keeps the inverted index as the outer loop. Otherwise SQLite may
         // prefer the source index and evaluate the FTS match once per library row.
         if (query.isNotBlank() && useFts) {
@@ -83,7 +90,7 @@ internal object LibraryTrackQueryBuilder {
             append(" FROM library_tracks")
         }
         // Walk matching order indexes for unfiltered pages, instead of sorting the entire library.
-        if (query.isBlank() && !filter.isActive) {
+        if (!countOnly && query.isBlank() && !filter.isActive) {
             val index = when (sort) {
                 LibraryTrackSortMode.Title, LibraryTrackSortMode.TitleDescending -> "index_library_tracks_title_id"
                 LibraryTrackSortMode.Duration, LibraryTrackSortMode.DurationAscending -> "index_library_tracks_durationMs_title_id"
@@ -92,7 +99,7 @@ internal object LibraryTrackQueryBuilder {
             }
             index?.let { append(" INDEXED BY $it") }
         }
-        if (sort == LibraryTrackSortMode.FrequentlyPlayed || sort == LibraryTrackSortMode.RecentlyPlayed || sort == LibraryTrackSortMode.LeastPlayed) {
+        if (!countOnly && (sort == LibraryTrackSortMode.FrequentlyPlayed || sort == LibraryTrackSortMode.RecentlyPlayed || sort == LibraryTrackSortMode.LeastPlayed)) {
             append(" LEFT JOIN library_playback_stats ON library_tracks.id = library_playback_stats.trackId")
         }
         append(" WHERE ")
@@ -105,6 +112,7 @@ internal object LibraryTrackQueryBuilder {
             append(SearchFields.joinToString(" OR ", "(", ")") { field -> "instr($field, ?) > 0" })
         }
         append(filterSql.clause)
+        if (countOnly) return@buildString
         append(" ORDER BY ")
         if (query.isNotBlank() && sort == LibraryTrackSortMode.Title) {
             append("CASE WHEN instr(${SearchFields[0]}, ?) > 0 THEN 0 ")
@@ -120,6 +128,16 @@ internal object LibraryTrackQueryBuilder {
 
     private fun trackSortOrder(sort: LibraryTrackSortMode): String =
         when (sort) {
+            LibraryTrackSortMode.AlbumArtist -> tagSortOrder("albumArtist", descending = false, albumOrder = true)
+            LibraryTrackSortMode.AlbumArtistDescending -> tagSortOrder("albumArtist", descending = true, albumOrder = true)
+            LibraryTrackSortMode.Genre -> tagSortOrder("genre", descending = false)
+            LibraryTrackSortMode.GenreDescending -> tagSortOrder("genre", descending = true)
+            LibraryTrackSortMode.Composer -> tagSortOrder("composer", descending = false)
+            LibraryTrackSortMode.ComposerDescending -> tagSortOrder("composer", descending = true)
+            LibraryTrackSortMode.FileNameDescending -> "COALESCE(NULLIF(library_tracks.fileName, ''), library_tracks.title) COLLATE NOCASE DESC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.FolderDescending -> "COALESCE(library_tracks.relativePath, '') COLLATE NOCASE DESC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.FormatDescending -> "$LibraryFileFormatSql DESC, library_tracks.title COLLATE NOCASE ASC"
+            LibraryTrackSortMode.TrackNumberDescending -> "CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END DESC, COALESCE(library_tracks.trackNumber, 0) DESC, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.TitleDescending -> "library_tracks.title COLLATE NOCASE DESC"
             LibraryTrackSortMode.ArtistDescending -> "library_tracks.artist COLLATE NOCASE DESC, library_tracks.album COLLATE NOCASE ASC, CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END, library_tracks.trackNumber, library_tracks.title COLLATE NOCASE ASC"
             LibraryTrackSortMode.AlbumDescending -> "library_tracks.album COLLATE NOCASE DESC, CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END, library_tracks.trackNumber, library_tracks.title COLLATE NOCASE ASC"
@@ -170,4 +188,17 @@ internal object LibraryTrackQueryBuilder {
                 library_tracks.title COLLATE NOCASE ASC
             """.trimIndent()
         }
+
+    // Only called with fixed column names above. Unknown tags stay last in both directions.
+    private fun tagSortOrder(column: String, descending: Boolean, albumOrder: Boolean = false): String = buildString {
+        append("CASE WHEN trim(COALESCE(library_tracks.$column, '')) = '' THEN 1 ELSE 0 END, ")
+        append("library_tracks.$column COLLATE NOCASE ")
+        append(if (descending) "DESC" else "ASC")
+        if (albumOrder) {
+            append(", library_tracks.album COLLATE NOCASE ASC")
+            append(", CASE WHEN library_tracks.discNumber > 0 THEN library_tracks.discNumber ELSE 1 END")
+            append(", COALESCE(library_tracks.trackNumber, 0)")
+        }
+        append(", library_tracks.title COLLATE NOCASE ASC")
+    }
 }

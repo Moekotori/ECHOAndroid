@@ -15,6 +15,7 @@ data class EchoLyricsOptions(
     val statusWidthDp: Int = 180,
     val statusOffsetXDp: Int = 80,
     val statusOffsetYDp: Int = 0,
+    val bluetoothDelayMs: Int = 0,
 ) {
     val normalized: EchoLyricsOptions
         get() = copy(
@@ -23,6 +24,7 @@ data class EchoLyricsOptions(
             statusWidthDp = statusWidthDp.coerceIn(80, 320),
             statusOffsetXDp = statusOffsetXDp.coerceIn(0, 320),
             statusOffsetYDp = statusOffsetYDp.coerceIn(0, 96),
+            bluetoothDelayMs = bluetoothDelayMs.coerceIn(0, 2_000),
         )
 
     companion object {

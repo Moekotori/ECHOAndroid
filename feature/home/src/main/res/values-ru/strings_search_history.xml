@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_history_title">Недавние запросы</string>
+    <string name="search_history_clear">Очистить всё</string>
+    <string name="search_history_remove">Удалить %1$s из истории поиска</string>
+    <string name="search_playlist_already_added">Уже добавлено</string>
+</resources>

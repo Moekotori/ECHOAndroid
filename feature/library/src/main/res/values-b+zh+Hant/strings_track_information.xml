@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_file_name">檔案名稱</string>
+    <string name="track_info_copy">複製全部資訊</string>
+    <string name="track_info_copied">已複製歌曲資訊</string>
+</resources>

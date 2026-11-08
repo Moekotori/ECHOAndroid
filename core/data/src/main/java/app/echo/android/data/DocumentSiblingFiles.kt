@@ -3,6 +3,7 @@ package app.echo.android.data
 import android.content.ContentResolver
 import android.net.Uri
 import android.provider.DocumentsContract
+import kotlinx.coroutines.CancellationException
 
 /** Bounded sibling lookup within an existing external-storage tree grant. Call on an I/O worker. */
 object DocumentSiblingFiles {
@@ -17,20 +18,40 @@ object DocumentSiblingFiles {
     }
 
     fun read(resolver: ContentResolver, audio: Uri, extensions: Collection<String>, checkActive: () -> Unit = {}): Listing? {
+        return readDirectory(resolver, audio, extensions, false, checkActive)
+    }
+
+    fun readLyrics(resolver: ContentResolver, audio: Uri, extensions: Collection<String>, checkActive: () -> Unit = {}): Listing? =
+        readDirectory(resolver, audio, extensions, true, checkActive)
+
+    private fun readDirectory(resolver: ContentResolver, audio: Uri, extensions: Collection<String>, includeLyrics: Boolean, checkActive: () -> Unit, directoryId: String? = null): Listing? {
         if (audio.authority != "com.android.externalstorage.documents" || !DocumentsContract.isTreeUri(audio)) return null
-        val parent = parentId(DocumentsContract.getTreeDocumentId(audio), DocumentsContract.getDocumentId(audio)) ?: return null
+        val parent = directoryId ?: parentId(DocumentsContract.getTreeDocumentId(audio), DocumentsContract.getDocumentId(audio)) ?: return null
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(audio, parent)
         val files = ArrayList<Entry>()
+        var lyricsDirectory: String? = null
         resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE), null, null, null)?.use { cursor ->
             var visited = 0
             while (cursor.moveToNext()) {
                 checkActive()
                 if (++visited > 4096) return Listing(files, false)
-                if (cursor.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR) continue
                 val name = cursor.getString(1) ?: continue
+                if (cursor.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR) {
+                    if (includeLyrics && name == "lyrics") lyricsDirectory = cursor.getString(0)
+                    continue
+                }
                 if (extensions.none { name.endsWith(it, ignoreCase = true) }) continue
                 files += Entry(name, DocumentsContract.buildDocumentUriUsingTree(audio, cursor.getString(0)))
+            }
+            val directory = lyricsDirectory
+            if (directory != null) {
+                val nested = try { readDirectory(resolver, audio, extensions, false, checkActive, directory) }
+                    catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { null }
+                    ?: return Listing(files, false)
+                files += nested.files.map { it.copy(name = "lyrics/${it.name}") }
+                return Listing(files, nested.complete)
             }
             return Listing(files, true)
         }

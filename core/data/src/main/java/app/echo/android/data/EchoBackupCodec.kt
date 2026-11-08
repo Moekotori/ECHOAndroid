@@ -235,6 +235,8 @@ object EchoBackupCodec {
             backgroundMode = json.optionalString("backgroundMode"), backgroundStyle = json.optionalString("backgroundStyle"),
             backgroundBlur = json.optionalFloat("backgroundBlur"), backgroundBrightness = json.optionalFloat("backgroundBrightness"),
             backgroundGlass = json.optionalFloat("backgroundGlass"), backgroundScale = json.optionalFloat("backgroundScale"),
+            backgroundPositionX = json.optionalFloat("backgroundPositionX"),
+            backgroundPositionY = json.optionalFloat("backgroundPositionY"),
             themeMode = json.optionalString("themeMode"),
             colorTheme = json.optionalString("colorTheme"),
             appLanguage = json.optionalString("appLanguage"),

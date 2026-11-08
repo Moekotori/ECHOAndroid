@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="song_menu_hide">Скрыть песню</string>
+    <string name="song_menu_delete">Удалить песню</string>
+</resources>

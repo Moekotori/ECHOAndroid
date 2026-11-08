@@ -9,6 +9,7 @@ import app.echo.android.model.lyrics.*
 internal object EchoAssParser {
     private val override = Regex("""\{([^}]*)\}""")
     private val karaoke = Regex("""\\(k[fo]?|K|kt)(\d+)""")
+    private val drawingMode = Regex("""\\p(\d+)""")
     private fun plain(text: String): String = decodeEntities(text.replace("\\N", "\n")
         .replace("\\n", "\n").replace("\\h", " "))
 
@@ -16,7 +17,8 @@ internal object EchoAssParser {
         val events = text.lineSequence().map(String::trim).dropWhile { !it.equals("[Events]", true) }
             .drop(1).takeWhile { !it.startsWith('[') }.toList()
         val fields = events.firstOrNull { it.startsWith("Format:", true) }?.substringAfter(':')
-            ?.split(',')?.map { it.trim().lowercase() }.orEmpty()
+            ?.split(',')?.map { it.trim().lowercase() }
+            ?: listOf("layer", "start", "end", "style", "name", "marginl", "marginr", "marginv", "effect", "text")
         val startIndex = fields.indexOf("start")
         val endIndex = fields.indexOf("end")
         val textIndex = fields.indexOf("text")
@@ -28,7 +30,7 @@ internal object EchoAssParser {
                 val start = parseClockMs(values[startIndex])
                 val end = parseClockMs(values[endIndex])
                 if (end <= start) return@mapNotNull null
-                val raw = values[textIndex]
+                val raw = withoutDrawings(values[textIndex])
                 val body = plain(override.replace(raw, "")).trim()
                 if (body.isBlank()) return@mapNotNull null
                 val words = words(raw, start, end).takeIf { it.joinToString("") { word -> word.text }.trim() == body }.orEmpty()
@@ -36,6 +38,20 @@ internal object EchoAssParser {
                     speaker = values.getOrNull(nameIndex)?.takeIf(String::isNotBlank))
             }.withLineEnds()
         return EchoLyrics(lines, sourceLabel = source, format = EchoLyricsFormat.Ass)
+    }
+
+    private fun withoutDrawings(raw: String): String {
+        var drawing = false
+        var cursor = 0
+        return buildString {
+            for (tag in override.findAll(raw)) {
+                if (!drawing) append(raw, cursor, tag.range.first)
+                drawingMode.findAll(tag.groupValues[1]).lastOrNull()?.let { drawing = it.groupValues[1].any { digit -> digit != '0' } }
+                append(tag.value)
+                cursor = tag.range.last + 1
+            }
+            if (!drawing) append(raw, cursor, raw.length)
+        }
     }
 
     private fun words(raw: String, start: Long, end: Long): List<EchoLyricWord> {

@@ -17,7 +17,6 @@ class EchoLinkLocalFallbackTest {
     fun lossOfConnectionRestoresPhoneControlsAndLocalLibrary() = runBlocking {
         for (lostState in listOf(
             EchoRemoteConnectionState.Disconnected,
-            EchoRemoteConnectionState.Reconnecting,
             EchoRemoteConnectionState.Error,
         )) {
             val state = MutableStateFlow(EchoRemoteConnectionState.Connected)
@@ -45,6 +44,45 @@ class EchoLinkLocalFallbackTest {
             assertEquals(EchoLibrarySelectedSource.Local, source.value)
             observer.cancelAndJoin()
         }
+    }
+
+    @Test
+    fun reconnectingDuringASkipKeepsRemoteControlsAndThePcLibraryUntilTerminalLoss() = runBlocking {
+        val state = MutableStateFlow(EchoRemoteConnectionState.Connected)
+        val source = MutableStateFlow(EchoLibrarySelectedSource.PcEcho)
+        var remoteMode = true
+        var writes = 0
+        var phoneSelections = 0
+        val observer = launch {
+            observeEchoLinkLocalFallback(state, source, {
+                remoteMode = false
+                phoneSelections++
+            }) {
+                writes++
+                source.value = EchoLibrarySelectedSource.Local
+            }
+        }
+        try {
+            repeat(10) { yield() }
+            for (transient in listOf(EchoRemoteConnectionState.Reconnecting,
+                EchoRemoteConnectionState.Connecting, EchoRemoteConnectionState.Pairing)) {
+                state.value = transient
+                repeat(10) { yield() }
+                assertTrue(remoteMode)
+                assertEquals(EchoLibrarySelectedSource.PcEcho, source.value)
+                assertEquals(0, phoneSelections)
+                assertEquals(0, writes)
+                state.value = EchoRemoteConnectionState.Connected
+                repeat(10) { yield() }
+                assertTrue(remoteMode)
+                assertEquals(0, writes)
+            }
+            state.value = EchoRemoteConnectionState.Disconnected
+            repeat(10) { yield() }
+            assertFalse(remoteMode)
+            assertEquals(EchoLibrarySelectedSource.Local, source.value)
+            assertEquals(1, writes)
+        } finally { observer.cancelAndJoin() }
     }
 
     @Test

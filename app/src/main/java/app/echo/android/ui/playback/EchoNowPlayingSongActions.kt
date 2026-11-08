@@ -14,6 +14,8 @@ import app.echo.android.EchoAndroidViewModel
 import app.echo.android.EchoApplication
 import app.echo.android.feature.library.AddToPlaylistDialog
 import app.echo.android.feature.library.TrackInfoDialog
+import app.echo.android.feature.library.TrackInfoAudioFormat
+import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.feature.player.NowPlayingSongActions
 import app.echo.android.feature.player.OnlineSongAssetsSheet
 import app.echo.android.model.library.*
@@ -30,10 +32,12 @@ internal fun rememberNowPlayingSongActions(
     onOpenFolder: (FolderSummary) -> Unit,
     onOpenEqualizer: () -> Unit,
     onSearchLyrics: () -> Unit,
+    removal: PlayerSongRemovalActions,
+    diagnostics: EchoPlaybackDiagnostics,
 ): NowPlayingSongActions {
     val context = LocalContext.current
     val application = context.applicationContext as EchoApplication
-    val shareOriginal = rememberOriginalAudioShare()
+    val shareOriginal = rememberOriginalAudioShare(showOptions = false)
     var reload by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(true) }
     var loadFailed by remember { mutableStateOf(false) }
@@ -43,7 +47,7 @@ internal fun rememberNowPlayingSongActions(
     var showPlaylist by remember(ref?.id) { mutableStateOf(false) }
     var showInfo by remember(ref?.id) { mutableStateOf(false) }
     var showOnline by remember(ref?.id) { mutableStateOf(false) }
-    LaunchedEffect(ref?.id, ref?.artworkUri, reload) {
+    LaunchedEffect(ref?.id, ref?.artworkUri, reload, removal.revision) {
         val id = ref?.id
         if (id == null) { loading = false; return@LaunchedEffect }
         if (EchoRadioStation.isRadio(id)) { loading = false; return@LaunchedEffect }
@@ -63,6 +67,9 @@ internal fun rememberNowPlayingSongActions(
     }
     if (showPlaylist && track != null) {
         val playlists by viewModel.localPlaylists.collectAsStateWithLifecycle()
+        val memberships by remember(viewModel, track.id) {
+            viewModel.playlistTools.memberships(track.id)
+        }.collectAsStateWithLifecycle(initialValue = emptySet())
         val scope = rememberCoroutineScope()
         var busy by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
@@ -81,11 +88,17 @@ internal fun rememberNowPlayingSongActions(
             }
         }
         AddToPlaylistDialog(playlists = playlists, onDismiss = { showPlaylist = false },
+            containingPlaylistIds = memberships,
             busy = busy, error = error, awaitResult = true,
             onSelectPlaylist = { playlist -> submit { viewModel.addPlayerSongToPlaylist(playlist.id, track.id) } },
             onCreatePlaylist = { name -> submit { viewModel.createPlayerPlaylist(name, track.id) } })
     }
-    if (showInfo && track != null) TrackInfoDialog(track, onDismiss = { showInfo = false }, mediaTools = app.echo.android.ui.library.rememberLibraryMediaTools(viewModel))
+    if (showInfo && track != null) TrackInfoDialog(
+        track, onDismiss = { showInfo = false },
+        mediaTools = app.echo.android.ui.library.rememberLibraryMediaTools(viewModel),
+        audioFormat = TrackInfoAudioFormat(diagnostics.codec, diagnostics.sampleRateHz,
+            diagnostics.bitDepth, diagnostics.channelCount, diagnostics.bitrate),
+    )
     if (showOnline && track != null) OnlineSongAssetsSheet(
         track = track,
         searchCover = { application.onlineTrackArtwork.search(track) },
@@ -103,6 +116,7 @@ internal fun rememberNowPlayingSongActions(
         onDismiss = { showOnline = false },
     )
     val song = track?.takeUnless { EchoRadioStation.isRadio(it.id) }
+    val removable = indexedTrack?.takeUnless { it.source == LibrarySource.EchoLink || EchoRadioStation.isRadio(it.id) }
     return NowPlayingSongActions(
         loading = loading,
         loadFailed = loadFailed,
@@ -114,5 +128,7 @@ internal fun rememberNowPlayingSongActions(
         info = track?.let { { showInfo = true } },
         onlineAssets = if (song != null && indexedTrack != null) ({ showOnline = true }) else null,
         folder = folder?.let { target -> { onOpenFolder(target) } },
+        hide = removable?.let { selected -> { removal.hide(selected) } },
+        delete = removable?.let { selected -> { removal.delete(selected) } },
     )
 }

@@ -50,18 +50,33 @@ internal fun ConnectSection(
     subtitle: String? = null,
     action: (@Composable () -> Unit)? = null,
     list: Boolean = false,
+    flat: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (flat) 0.dp else 8.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium,
+                    color = if (flat) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                 if (!subtitle.isNullOrBlank()) ConnectNote(subtitle)
             }
             action?.invoke()
         }
-        if (list) ConnectCard(contentPadding = ListCardPadding, spacing = 0.dp, content = content)
-        else ConnectCard(content = content)
+        when {
+            flat -> ConnectFlatGroup(content)
+            list -> ConnectCard(contentPadding = ListCardPadding, spacing = 0.dp, content = content)
+            else -> ConnectCard(content = content)
+        }
+    }
+}
+
+/** Card-less group: rows sit directly on the page and are separated by hairlines. */
+@Composable
+internal fun ConnectFlatGroup(content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        ConnectRowDivider()
+        content()
+        ConnectRowDivider()
     }
 }
 
@@ -120,12 +135,14 @@ internal fun ConnectActionRow(icon: ImageVector, title: String, detail: String?,
 internal class ConnectAction(val icon: ImageVector, val title: String, val detail: String?, val onClick: () -> Unit)
 
 @Composable
-internal fun ConnectActionList(actions: List<ConnectAction>) {
+internal fun ConnectActionList(actions: List<ConnectAction>, flat: Boolean = false) {
     if (actions.isEmpty()) return
-    ConnectCard(contentPadding = ListCardPadding, spacing = 0.dp) {
+    val rows: @Composable ColumnScope.() -> Unit = {
         actions.forEachIndexed { index, action ->
             if (index > 0) ConnectRowDivider()
             ConnectActionRow(action.icon, action.title, action.detail, action.onClick)
         }
     }
+    if (flat) ConnectFlatGroup(rows)
+    else ConnectCard(contentPadding = ListCardPadding, spacing = 0.dp, content = rows)
 }

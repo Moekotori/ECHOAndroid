@@ -18,13 +18,37 @@ PC 对应仓库为 https://github.com/moekotori/echosteam。两端均更新到�
 
 Android 本地 HTTP 回归覆盖无凭据访问被拒绝、v2 链接换取 token、v1 状态读取及凭据重连。既有直连请求头与旧 token 测试保留。这些测试不替代真实 PC 与手机联调。
 
+## IP、Tailscale 与 FRP
+
+Android 的「通过 IP、域名或配对链接连接」接受以下地址，端口也可在独立输入框填写：
+
+| 场景 | 地址示例 |
+| --- | --- |
+| 局域网 IP | `192.168.1.20:26789` |
+| Tailscale IPv4 | `100.80.10.20:26789` |
+| Tailscale MagicDNS | `echo-pc.tailnet.ts.net:26789` |
+| FRP TCP 映射 | `http://frp.example:36789` |
+| HTTPS 代理／Tailscale Serve | `https://echo.example` |
+
+裸 IP／域名默认端口为 26789；完整 HTTP(S) 地址省略端口时分别为 80／443。端口以 PC 实际监听值或隧道外部端口为准，Tailscale 两端需已加入可互通的组网。跨网不依赖附近设备发现。
+
+首次跨网连接：在 PC 的「ECHO Link → 网络 → 内网穿透与组网」保存手机可访问的完整 HTTP(S) 地址，然后重新生成并粘贴配对链接。FRP 将外部端口映射到 PC 实际监听端口；HTTP(S) 代理转发整个根路径，保留 Authorization、Range 和请求体，关闭 SSE 缓冲。PC 当前监听 IPv4；不支持子路径代理。Android 沿用系统 DNS 和证书验证。
+
+配对后可输入相同 IP／域名或选择已保存电脑重连，复用该 origin 的 token 和 v2 实时事件能力。更换协议、主机、端口或 token 不会继承其他地址的凭据和能力。PC 配置外部地址后禁用免配对直连，不能只填写公网 IP 跳过首次配对。
+
+这里只适配 Android 客户端，不安装或配置 Tailscale、frpc/frps。手机反向共享需要单独可达的手机地址／隧道，见 [手机曲库共享](echo-link-phone-library.md)。
+
 ### 配对与实时状态兼容
 
 - 配对换取 access token 后，遥控会话立即绑定正式凭据，播放/暂停、进度和音量操作不会继续使用配对 secret。
 - 同步会话绑定本次连接的代数；断开后重连，即使地址和 token 相同，旧预览与在途读取结果也不能继续用于同步写入。
 - PC v2 的 `queue` 可能只有 `revision`、`currentQueueId`、`currentTrackId`、`total` 摘要。摘要更新队列身份，只有明确的 `items` / `tracks` 数组替换队列条目。
 - v1 的 `updatedAtEpochMs` 与 v2 的 `observedAt` 都使用 PC 时钟判定新旧，不混用手机接收时间。
-- 队列分页沿用 `/echo-link/v1/playback/queue?page=…&pageSize=100`，新 PC 将其接入真实播放队列；旧 PC 缺少接口时保留原兼容处理。
+- 已配对 v2 客户端使用 `/echo-link/v2/queue?page=…`（当前每页 24 行）；直连或 legacy token 使用 `/echo-link/v1/queue?page=…`（当前每页 50 行）。读取响应中的 `pageSize`、`total` / `totalCount`，按实际页宽翻页；缓存最多 1000 行并保持整页边界。
+- 仅在上述队列路径返回 404 时兼容 `/echo-link/v1/playback/queue?page=…&pageSize=100`；鉴权失败不回退。当前 PC 的 `/queue` 只提供浏览，Android 不显示尚未提供的队列拖动和条目点播控件。
+- v2 队列摘要更新总数并保留已加载条目；v1 状态轮询保留 v2 事件提供的播放顺序。v2 嵌套错误对象提取 `message` / `code`，SSE 握手失败保留 HTTP 状态以处理凭据撤销。
+
+2026-11-08 对照 PC 仓库提交 `a8f1bd0091db9fd103144909ff36257d6de54b2f` 的 `EchoLinkService.ts`、`EchoLinkV2Service.ts` 与 `playbackQueuePage.ts` 核对。短时本地 HTTP 回归覆盖配对后凭据、两种队列响应、兼容路径、曲库与流解析；这不等同于真实手机、PC 和跨网络联调验收。
 
 ## 固定音量反馈
 

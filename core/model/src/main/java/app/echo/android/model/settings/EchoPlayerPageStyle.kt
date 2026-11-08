@@ -16,7 +16,8 @@ enum class EchoPlayerPageStyle(val id: String, val lyricsPreset: EchoLyricsPageS
     PixelMosaic("pixel_mosaic", EchoLyricsPageStyle.Mist),
     Contours("contours", EchoLyricsPageStyle.Mist),
     Dither("dither", EchoLyricsPageStyle.Mist),
-    GlyphField("glyph_field", EchoLyricsPageStyle.Mist);
+    GlyphField("glyph_field", EchoLyricsPageStyle.Mist),
+    FullCover("full_cover", EchoLyricsPageStyle.Mist);
 
     val isLight: Boolean
         get() = when (this) {

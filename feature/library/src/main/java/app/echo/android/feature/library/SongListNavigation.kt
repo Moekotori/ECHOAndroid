@@ -1,22 +1,14 @@
 package app.echo.android.feature.library
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
@@ -28,7 +20,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -52,6 +43,7 @@ internal fun SongListNavigation(
     playingTrackId: String?,
     queryKey: Any,
     findIndex: (suspend (String) -> Int?)?,
+    snackbar: SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -87,15 +79,13 @@ internal fun SongListNavigation(
     }
     var jumpJob by remember { mutableStateOf<Job?>(null) }
     var locating by remember { mutableStateOf(false) }
-    val snackbar = remember { SnackbarHostState() }
     val notFound = stringResource(R.string.library_playing_song_not_found)
     val failed = stringResource(R.string.library_locate_song_failed)
     DisposableEffect(queryKey, playingTrackId, refresh) {
         onDispose { jumpJob?.cancel() }
     }
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(0.dp), horizontalAlignment = Alignment.End) {
-        SnackbarHost(snackbar)
+    Row(modifier) {
         if (!selecting && currentIndex != null && !currentVisible) {
             SongNavigationButton(
                 label = stringResource(R.string.library_locate_playing_song),
@@ -157,19 +147,8 @@ private fun SongNavigationButton(
     enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    // Keep a full touch target while the visible control stays clear of the song metadata.
     IconButton(onClick, enabled = enabled, modifier = Modifier.size(48.dp)
         .semantics { contentDescription = label }) {
-        Surface(
-            modifier = Modifier.size(32.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.72f),
-            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
-        ) {
-            CompositionLocalProvider(LocalContentColor provides
-                MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 0.56f else 0.3f)) {
-                Box(contentAlignment = Alignment.Center) { content() }
-            }
-        }
+        content()
     }
 }

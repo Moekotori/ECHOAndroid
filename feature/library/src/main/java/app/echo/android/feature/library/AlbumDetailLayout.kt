@@ -55,6 +55,8 @@ internal fun AlbumDetailLayout(
     onBack: () -> Unit,
     onOpenArtist: (() -> Unit)? = null,
     onWriteNfc: (() -> Unit)? = null,
+    /** Items after the album information, e.g. more albums by the artist. */
+    footerContent: LazyListScope.() -> Unit = {},
     trackContent: LazyListScope.() -> Unit,
 ) = key(album.albumKey) {
     val listState = rememberLazyListState()
@@ -101,6 +103,7 @@ internal fun AlbumDetailLayout(
                     AlbumInformation(album, tracks, onOpenArtist = onOpenArtist)
                 }
             }
+            footerContent()
         }
         Box(Modifier.align(Alignment.TopStart).fillMaxWidth()) {
             Box(

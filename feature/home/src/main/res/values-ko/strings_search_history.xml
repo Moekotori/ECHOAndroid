@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_history_title">최근 검색</string>
+    <string name="search_history_clear">모두 지우기</string>
+    <string name="search_history_remove">검색 기록에서 %1$s 삭제</string>
+    <string name="search_playlist_already_added">추가됨</string>
+</resources>

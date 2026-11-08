@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_background_position_x">水平位置</string>
+    <string name="settings_background_position_y">垂直位置</string>
+    <string name="settings_background_position_title">位置と拡大率</string>
+    <string name="settings_background_position_center">中央</string>
+    <string name="settings_background_position_drag_hint">プレビューを長押しして背景を移動</string>
+    <string name="settings_background_position_dragging">指を離すと位置を保存</string>
+    <string name="settings_background_position_left">左 %1$d%%</string>
+    <string name="settings_background_position_right">右 %1$d%%</string>
+    <string name="settings_background_position_up">上 %1$d%%</string>
+    <string name="settings_background_position_down">下 %1$d%%</string>
+    <string name="settings_background_position_detail">背景を拡大すると、移動できる範囲が広がります。</string>
+</resources>

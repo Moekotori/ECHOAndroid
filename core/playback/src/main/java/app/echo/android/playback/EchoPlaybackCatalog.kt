@@ -108,6 +108,7 @@ interface EchoPlaybackCatalog {
 fun EchoPlaybackBrowseItem.toMediaItem(): MediaItem {
     val metadata = MediaMetadata.Builder()
         .setTitle(title)
+        .setDisplayTitle(title)
         .setSubtitle(subtitle)
         .setArtist(subtitle)
         .setIsBrowsable(browsable)

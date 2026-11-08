@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_sort_album_artist_asc">专辑艺人（A→Z）</string>
+    <string name="library_sort_album_artist_desc">专辑艺人（Z→A）</string>
+    <string name="library_sort_genre_asc">流派（A→Z）</string>
+    <string name="library_sort_genre_desc">流派（Z→A）</string>
+    <string name="library_sort_composer_asc">作曲家（A→Z）</string>
+    <string name="library_sort_composer_desc">作曲家（Z→A）</string>
+    <string name="library_sort_file_name_desc">文件名（Z→A）</string>
+    <string name="library_sort_folder_desc">文件夹（Z→A）</string>
+    <string name="library_sort_format_desc">文件格式（Z→A）</string>
+    <string name="library_sort_track_number_desc">碟号 / 曲号（降序）</string>
+    <string name="library_sort_group_common">常用排序</string>
+    <string name="library_sort_group_more">更多排序</string>
+    <string name="library_sort_group_rare">较少使用</string>
+</resources>

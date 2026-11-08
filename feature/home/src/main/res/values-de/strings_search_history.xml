@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_history_title">Letzte Suchanfragen</string>
+    <string name="search_history_clear">Alle löschen</string>
+    <string name="search_history_remove">%1$s aus dem Suchverlauf entfernen</string>
+    <string name="search_playlist_already_added">Bereits hinzugefügt</string>
+</resources>

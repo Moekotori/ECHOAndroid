@@ -22,4 +22,5 @@
     <string name="player_appearance_contours">Горизонтали</string>
     <string name="player_appearance_dither">Дизеринг</string>
     <string name="player_appearance_glyph_field">Символьная графика</string>
+    <string name="player_appearance_full_cover">Обложка на весь экран</string>
 </resources>

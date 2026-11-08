@@ -22,6 +22,7 @@
     <string name="player_appearance_contours">等高線</string>
     <string name="player_appearance_dither">抖動點陣</string>
     <string name="player_appearance_glyph_field">字元畫</string>
+    <string name="player_appearance_full_cover">全螢幕封面</string>
     <string name="player_style_metro_line">ECHO 路線 · 04</string>
     <string name="player_style_metro_now">本次列車</string>
     <string name="player_style_metro_route">播放路線圖</string>

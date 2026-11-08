@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_concert_heading">Live events</string>
+    <string name="artist_past_concerts">Past events</string>
+    <string name="artist_no_past_concerts">No past events found.</string>
+    <string name="artist_concert_hide_details">Hide details</string>
+    <string name="artist_concert_show_details">Show details</string>
+    <string name="artist_concert_time_tbd">Time to be announced</string>
+    <string name="artist_concert_ongoing">In progress</string>
+    <string name="artist_concert_started">Started</string>
+    <string name="artist_concert_checked">Last checked: %1$s</string>
+    <string name="artist_concert_check_source">Check %1$s</string>
+    <string name="artist_concert_history_note">Public sources may not include a complete concert history.</string>
+    <string name="artist_concert_opens">Doors open</string>
+    <string name="artist_concert_ends">Ends</string>
+    <string name="artist_concert_lineup">Lineup</string>
+    <string name="artist_concert_address">Address</string>
+    <string name="artist_concert_coordinates">Coordinates</string>
+    <string name="artist_concert_admission">Admission</string>
+    <string name="artist_concert_ticketed">Ticketed event</string>
+    <string name="artist_concert_free">Not marked as ticketed</string>
+    <string name="artist_concert_price">Price listed by source</string>
+    <string name="artist_concert_sale_start">Public sale starts</string>
+    <string name="artist_concert_sale_end">Public sale ends</string>
+    <string name="artist_concert_notes">Notes</string>
+    <string name="artist_concert_source_updated">Source updated: %1$s</string>
+</resources>

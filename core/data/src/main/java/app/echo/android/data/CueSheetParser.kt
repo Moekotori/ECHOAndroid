@@ -9,14 +9,22 @@ import java.util.Locale
 object CueSheetParser {
     private val TrackHeader = Regex("""^(\d+)\s+(\S+)$""")
     private val Index = Regex("""^0*([01])\s+(\d+)(?::(\d+):(\d+))?$""")
-    private val DataMode = Regex("""^(?:MODE[12]/\d+|CDI/\d+)$""", RegexOption.IGNORE_CASE)
+    private val DataMode = Regex("""^(?:MODE[12]/\d+|CDI/\d+|MODEx/2xxx)$""", RegexOption.IGNORE_CASE)
     private val FileValue = Regex("""^(?:"((?:[^"\\]|\\.)+)"|'((?:[^'\\]|\\.)+)'|(.+?))(?:\s+\S+)?$""")
 
     fun parse(bytes: ByteArray, referenceExists: ((String) -> Boolean)? = null): CueSheet? =
         if (bytes.isEmpty() || bytes.size > CueSheetPolicy.MaxCueBytes) null else
-            CueTextDecoder.decode(bytes, referenceExists)?.let(::parseText)
+            CueTextDecoder.decode(bytes, referenceExists)?.let { text ->
+                parseText(text) { reference -> when (referenceExists) {
+                    null -> reference
+                    is CueSourceLookup -> referenceExists.resolve(reference)
+                    else -> resolveCueSource(reference, referenceExists)
+                } }
+            }
 
-    fun parseText(text: String): CueSheet? {
+    fun parseText(text: String): CueSheet? = parseText(text) { it }
+
+    private fun parseText(text: String, resolveSource: (String) -> String): CueSheet? {
         if (text.isEmpty() || text.length > CueSheetPolicy.MaxCueBytes || text.any {
             it == '\u0000' || it == '\uFFFD' || (it.isISOControl() && it !in "\r\n\t")
         }) return null
@@ -48,8 +56,8 @@ object CueSheetParser {
             val n = number
             val offset = start
             if (n != null && data) {
-                // A truncated final data track must not leave the preceding audio open-ended.
-                if (offset == null || pregap?.let { it > offset } == true) failed = true
+                // INDEX 00 alone is a valid data boundary; no boundary is still a read failure.
+                if (offset == null && pregap == null || offset != null && pregap?.let { it > offset } == true) failed = true
             } else if (n != null) {
                 if (offset == null || pregap?.let { it > offset } == true) failed = true
                 else {
@@ -67,8 +75,9 @@ object CueSheetParser {
             when (command) {
                 "FILE" -> {
                     val match = FileValue.matchEntire(argument) ?: return null
-                    val next = match.groups[1]?.value?.replace("\\\"", "\"")
+                    val declared = match.groups[1]?.value?.replace("\\\"", "\"")
                         ?: match.groups[2]?.value?.replace("\\'", "'") ?: match.groupValues[3].trim()
+                    val next = resolveSource(declared)
                     if (next.isBlank() || next.length > 4096) return null
                     // FILE may appear inside TRACK before INDEX 01 (e.g. pregap in another file).
                     if (number != null && start == null) {
@@ -81,7 +90,7 @@ object CueSheetParser {
                     commit()
                     val match = TrackHeader.matchEntire(argument) ?: return null
                     val n = match.groupValues[1].toIntOrNull() ?: return null
-                    if (n <= 0 || !numbers.add(n) || numbers.size > CueSheetPolicy.MaxTracks) return null
+                    if (n < 0 || !numbers.add(n) || numbers.size > CueSheetPolicy.MaxTracks) return null
                     val mode = match.groupValues[2]
                     data = !mode.equals("AUDIO", true)
                     if (data && !DataMode.matches(mode)) return null

@@ -43,6 +43,11 @@ fun UnifiedSearchScreen(
     onPcAction: (EchoRemoteTrack, SearchTrackAction) -> Unit,
     requestFocus: Boolean = true,
     onFocusRequested: () -> Unit = {},
+    recentQueries: List<String> = emptyList(),
+    onSearch: () -> Unit = {},
+    onHistorySelect: (String) -> Unit = {},
+    onHistoryRemove: (String) -> Unit = {},
+    onHistoryClear: () -> Unit = {},
 ) {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -69,7 +74,7 @@ fun UnifiedSearchScreen(
                     EchoIcon(Icons.Rounded.Close, stringResource(R.string.search_clear))
                 } },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { finishInput {} }))
+                keyboardActions = KeyboardActions(onSearch = { finishInput(onSearch) }))
         }
         FlowRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             UnifiedSearchCategory.entries.forEach { item ->
@@ -84,6 +89,9 @@ fun UnifiedSearchScreen(
             TextButton(onClick = { finishInput(onMoments) }) { Text(stringResource(R.string.moments_title)) }
         }
         LazyColumn(Modifier.fillMaxWidth().weight(1f), state = listState, contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (!searching) searchHistory(recentQueries,
+                onSelect = { term -> finishInput { onHistorySelect(term) } },
+                onRemove = onHistoryRemove, onClear = onHistoryClear)
             if (category == UnifiedSearchCategory.Pc && pc.phase == UnifiedSearchPhase.Disconnected) item("pc-disconnected") {
                 SearchSourceNotice(stringResource(R.string.search_pc_disconnected), stringResource(R.string.search_connect_pc)) {
                     finishInput(onConnect)

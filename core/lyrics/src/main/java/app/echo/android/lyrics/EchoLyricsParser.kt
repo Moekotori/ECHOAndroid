@@ -9,20 +9,25 @@ object EchoLyricsParser {
     val fileExtensions: List<String> = listOf(
         ".spl", ".lrc", ".elrc", ".lrcx", ".yrc", ".ttml", ".dfxp", ".xml",
         ".srt", ".vtt", ".webvtt", ".ass", ".ssa", ".sbv", ".smi", ".sami",
-        ".json", ".qrc", ".krc", ".txt",
+        ".json", ".qrc", ".krc", ".trc", ".snc", ".txt",
     )
 
     fun parse(rawText: String, sourceLabel: String? = null): EchoLyrics {
+        require(rawText.length <= 2 * 1024 * 1024) { "Lyrics exceed 2 MB of text" }
         val normalized = rawText.replace("\uFEFF", "").trim()
         if (sourceLabel?.endsWith(".json", true) == true ||
             normalized.startsWith('{') && JsonLyricsKeyRegex.containsMatchIn(normalized)) {
             return EchoJsonLyricsParser.parse(normalized, sourceLabel)
         }
-        val text = LyricContentRegex.find(normalized)?.groupValues?.get(1)?.let(::decodeEntities) ?: normalized
+        val text = LyricContentRegex.find(normalized)?.groupValues?.get(2)?.let(::decodeEntities) ?: normalized
         if (text.isBlank()) return EchoLyrics(sourceLabel = sourceLabel, format = EchoLyricsFormat.PlainText)
+        EchoAwlrcParser.parse(text, sourceLabel)?.let { return it }
 
         return when {
             sourceLabel?.endsWith(".spl", true) == true -> EchoSplParser.parse(text, sourceLabel)
+            sourceLabel?.endsWith(".lrcx", true) == true || EchoLrcxParser.looksLike(text) -> EchoLrcxParser.parse(text, sourceLabel)
+            sourceLabel?.endsWith(".snc", true) == true || sourceLabel?.endsWith(".trc", true) == true ||
+                EchoLegacyTimedLyricsParser.looksLike(text) -> EchoLegacyTimedLyricsParser.parse(text, sourceLabel)
             sourceLabel?.endsWith(".smi", true) == true || sourceLabel?.endsWith(".sami", true) == true ||
                 text.contains("<SAMI", true) -> EchoSamiParser.parse(text, sourceLabel)
             sourceLabel?.endsWith(".sbv", true) == true || EchoSbvParser.looksLike(text) -> EchoSbvParser.parse(text, sourceLabel)
@@ -46,6 +51,10 @@ object EchoLyricsParser {
             .mapNotNull { match ->
                 val startMs = parseClockMs(match.groupValues[1])
                 val endMs = parseClockMs(match.groupValues[2])
+                if (endMs <= startMs || listOf(match.groupValues[1], match.groupValues[2]).any { clock ->
+                    val fields = clock.replace(',', '.').split(':', '.')
+                    fields[fields.lastIndex - 2].toInt() > 59 || fields[fields.lastIndex - 1].toInt() > 59
+                }) return@mapNotNull null
                 val body = match.groupValues[3]
                     .lineSequence()
                     .map { stripTags(it).trim() }
@@ -74,6 +83,9 @@ object EchoLyricsParser {
             val body = LineDurationRegex.matchEntire(raw.trim())?.groupValues?.get(3) ?: return@any false
             QrcTimeRegex.containsMatchIn(body) && DurationWordRegex.find(body)?.range?.first != 0
         }
+        val krc = sourceLabel?.endsWith(".krc", true) == true || text.lineSequence().any { raw ->
+            LineDurationRegex.matchEntire(raw.trim())?.groupValues?.get(3)?.trimStart()?.startsWith('<') == true
+        }
         val lines = text.lineSequence()
             .map(String::trim)
             .filter(String::isNotBlank)
@@ -89,7 +101,7 @@ object EchoLyricsParser {
                 val durationMs = lineMatch.groupValues[2].toLongOrNull() ?: 0L
                 val body = lineMatch.groupValues[3]
                 val words = if (qrc) {
-                    parseQrcWords(body)
+                    parseQrcWords(body, startMs, durationMs)
                 } else parseDurationWords(body, lineStartMs = startMs,
                     relative = sourceLabel?.endsWith(".krc", true) == true || body.contains(KrcWordRegex))
                 val textValue = if (words.isNotEmpty()) {
@@ -110,18 +122,18 @@ object EchoLyricsParser {
             .withLineEnds()
 
         return EchoLyrics(
-            lines = lines,
+            lines = if (krc) EchoKrcSecondaryTracks.attach(text, lines) else lines,
             metadata = metadata,
             sourceLabel = sourceLabel,
             format = when {
                 qrc -> EchoLyricsFormat.Qrc
-                sourceLabel?.endsWith(".krc", ignoreCase = true) == true -> EchoLyricsFormat.Krc
+                krc -> EchoLyricsFormat.Krc
                 else -> EchoLyricsFormat.Yrc
             },
         )
     }
 
-    private fun parseQrcWords(body: String): List<EchoLyricWord> {
+    private fun parseQrcWords(body: String, lineStartMs: Long, durationMs: Long): List<EchoLyricWord> {
         var cursor = 0
         val words = QrcTimeRegex.findAll(body).map { match ->
             val word = body.substring(cursor, match.range.first)
@@ -132,7 +144,11 @@ object EchoLyricsParser {
         if (cursor < body.length && words.isNotEmpty()) {
             val last = words.last(); words[words.lastIndex] = last.copy(text = last.text + body.substring(cursor))
         }
-        return words
+        // QRC writers use both source-absolute and line-relative word clocks.
+        val relative = words.all { it.startMs >= 0 && (it.endMs ?: 0) <= durationMs + 50 } &&
+            !words.all { it.startMs >= (lineStartMs - 50).coerceAtLeast(0) && (it.endMs ?: 0) <= lineStartMs + durationMs + 50 }
+        return if (!relative) words else words.map { it.copy(startMs = it.startMs + lineStartMs,
+            endMs = it.endMs?.plus(lineStartMs)) }
     }
 
     private fun parseDurationWords(body: String, lineStartMs: Long, relative: Boolean): List<EchoLyricWord> {
@@ -257,17 +273,17 @@ object EchoLyricsParser {
 
     private val LrcTimeRegex = Regex("""\[\d{1,3}:\d{1,2}(?:[\.:]\d{1,3})?\]""")
     private val JsonLyricsKeyRegex = Regex(""""(?:lines|lyrics|lrc|yrc|syncedLyrics|plainLyrics)"\s*:""")
-    private val LyricContentRegex = Regex("""LyricContent\s*=\s*"([^"]*)""", RegexOption.IGNORE_CASE)
+    private val LyricContentRegex = Regex("""LyricContent\s*=\s*(["'])(.*?)\1""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
     private val EntityRegex = Regex("""&(#x[0-9a-fA-F]+|#\d+|[A-Za-z]+);""")
     private val LrcMetadataRegex = Regex("""^\[([A-Za-z][\w-]*):(.*)\]$""")
     private val LineDurationRegex = Regex("""^\[(\d{1,8}),(\d{1,8})\](.*)$""")
     private val KrcWordRegex = Regex("""<\d+,\d+(?:,\d+)?>""")
-    private val QrcTimeRegex = Regex("""\((\d{1,8}),(\d{1,8})\)""")
+    private val QrcTimeRegex = Regex("""\((\d{1,8}),(\d{1,8})(?:,\d+)?\)""")
     private val DurationWordRegex = Regex("""(?:\((\d{1,8}),(\d{1,8})(?:,\d+)?\)|<(\d{1,8}),(\d{1,8})(?:,\d+)?>)""")
     private val ClockRegex = Regex("""(?:(\d{1,3}):)?(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?""")
     private val CompactWhitespaceRegex = Regex("[ \\t\\u000B\\f\\r]+")
     private val SrtBlockRegex = Regex(
-        """(?ms)(?:^\s*\d+\s*\n)?\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})(?:[^\n]*)\n(.*?)(?=\n\s*\n|\z)""",
+        """(?ms)(?:^\s*\d+\s*\n)?\s*((?:\d{1,3}:)?\d{1,2}:\d{2}[,.]\d{1,3})\s*-->\s*((?:\d{1,3}:)?\d{1,2}:\d{2}[,.]\d{1,3})(?:[^\n]*)\n(.*?)(?=\n\s*\n|\z)""",
     )
     private val TagRegex = Regex("""<[^>]+>""")
 }

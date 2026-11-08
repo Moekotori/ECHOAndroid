@@ -13,14 +13,22 @@ import com.google.common.collect.ImmutableList
 
 @UnstableApi
 internal class EchoMediaNotificationProvider(context: Context) : MediaNotification.Provider {
+    private var currentMediaId: String? = null
+
     private val delegate = object : DefaultMediaNotificationProvider(context) {
         override fun getNotificationContentTitle(metadata: MediaMetadata): CharSequence? =
-            metadata.radioNowPlayingOrNull()?.title ?: metadata.title
+            metadata.radioNowPlayingOrNull()?.title ?: metadata.displayTitle ?: metadata.title
 
-        override fun getNotificationContentText(metadata: MediaMetadata): CharSequence? =
-            EchoPlaybackProcessRuntime.notificationLyricLine.value
-                .takeIf { EchoPlaybackProcessRuntime.lyricsOptions.value.notificationEnabled }
-                ?: metadata.radioNowPlayingOrNull()?.artist ?: metadata.artist
+        override fun getNotificationContentText(metadata: MediaMetadata): CharSequence? {
+            val snapshot = EchoPlaybackProcessRuntime.lyricDisplaySnapshot.value
+            return EchoSystemMediaPresentation.notificationText(
+                artist = metadata.radioNowPlayingOrNull()?.artist ?: metadata.artist,
+                lyric = snapshot.current?.text?.let(EchoNotificationLyricPolicy::clampText),
+                lyricsEnabled = EchoPlaybackProcessRuntime.lyricsOptions.value.notificationEnabled,
+                currentMediaId = currentMediaId,
+                lyricMediaId = snapshot.trackId,
+            )
+        }
     }
 
     override fun createNotification(
@@ -28,17 +36,22 @@ internal class EchoMediaNotificationProvider(context: Context) : MediaNotificati
         mediaButtonPreferences: ImmutableList<CommandButton>,
         actionFactory: MediaNotification.ActionFactory,
         onNotificationChangedCallback: MediaNotification.Provider.Callback,
-    ): MediaNotification = decorate(delegate.createNotification(
-        mediaSession, mediaButtonPreferences, actionFactory,
-        { onNotificationChangedCallback.onNotificationChanged(decorate(it)) },
-    ))
+    ): MediaNotification {
+        currentMediaId = mediaSession.player.currentMediaItem?.mediaId
+        return decorate(delegate.createNotification(
+            mediaSession, mediaButtonPreferences, actionFactory,
+            { onNotificationChangedCallback.onNotificationChanged(decorate(it, mediaSession)) },
+        ), mediaSession)
+    }
 
     /** Also decorates asynchronous cover updates; keep all Media3 actions and session metadata. */
-    private fun decorate(result: MediaNotification): MediaNotification {
+    private fun decorate(result: MediaNotification, session: MediaSession): MediaNotification {
         val options = EchoPlaybackProcessRuntime.lyricsOptions.value
+        val snapshot = EchoPlaybackProcessRuntime.lyricDisplaySnapshot.value
         val text = if (options.systemStatusBarEnabled &&
+            snapshot.trackId == session.player.currentMediaItem?.mediaId &&
             EchoStatusLyricPolicy.supportsSystemStatusBar(Build.MANUFACTURER)) {
-            EchoStatusLyricPolicy.text(EchoPlaybackProcessRuntime.lyricDisplaySnapshot.value, options.statusHideTranslation)
+            EchoStatusLyricPolicy.text(snapshot, options.statusHideTranslation)
         } else null
         result.notification.apply {
             tickerText = text

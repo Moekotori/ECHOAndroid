@@ -2,6 +2,8 @@ package app.echo.android.data
 
 import app.echo.android.model.library.ArtistConcert
 import app.echo.android.model.library.ArtistConcerts
+import app.echo.android.model.library.ArtistConcertDetails
+import app.echo.android.model.library.ConcertPerformer
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
@@ -48,14 +50,14 @@ internal object ArtistConcertParser {
             }.distinct().toList().singleOrNull()
     }
 
-    fun eventernote(html: String, names: List<String>, today: LocalDate): List<ArtistConcert> {
-        if (html.contains("gb_listevent")) return eventernoteMobile(html, names, today)
+    fun eventernote(html: String, names: List<String>, today: LocalDate, includePast: Boolean = false): List<ArtistConcert> {
+        if (html.contains("gb_listevent")) return eventernoteMobile(html, names, today, includePast)
         if (!html.contains("gb_event_list") && !html.contains("イベントがありません")) throw IOException("Unrecognized Eventernote event page")
         val blocks = Regex("<li\\b[^>]*class=[\"']clearfix[^\"']*[\"'][^>]*>(.*?)(?=<li\\b[^>]*class=[\"']clearfix|</ul>)", htmlOptions)
         return blocks.findAll(html).mapNotNull { match ->
             val block = match.groupValues[1]
             val date = date(Regex("class=[\"']day[0-9]*[\"']>([0-9-]{10})").find(block)?.groupValues?.get(1)) ?: return@mapNotNull null
-            if (date < today.toString()) return@mapNotNull null
+            if (!includePast && date < today.toString()) return@mapNotNull null
             val links = anchors.findAll(block).toList()
             val event = links.firstOrNull { it.groupValues[1].matches(Regex("/events/[0-9]+")) } ?: return@mapNotNull null
             val title = text(event.groupValues[2])
@@ -64,11 +66,12 @@ internal object ArtistConcertParser {
             val venue = links.firstOrNull { it.groupValues[1].startsWith("/places/") }?.groupValues?.get(2)?.let(::text)
             ArtistConcert("eventernote:${event.groupValues[1].substringAfterLast('/')}", title, date,
                 time(Regex("開演\\s*([0-9]{1,2}:[0-9]{2})").find(text(block))?.groupValues?.get(1)?.padStart(5, '0')),
-                venue, null, "Eventernote", "https://www.eventernote.com${event.groupValues[1]}")
-        }.distinctBy { it.id }.sortedBy { it.date + it.time.orEmpty() }.take(40).toList()
+                venue, null, "Eventernote", "https://www.eventernote.com${event.groupValues[1]}",
+                timezone = "Asia/Tokyo", details = eventernoteDetails(block, date))
+        }.distinctBy { it.id }.sortedBy { it.date + it.time.orEmpty() }.take(100).toList()
     }
 
-    private fun eventernoteMobile(html: String, names: List<String>, today: LocalDate): List<ArtistConcert> {
+    private fun eventernoteMobile(html: String, names: List<String>, today: LocalDate, includePast: Boolean): List<ArtistConcert> {
         val blocks = Regex("<li\\b[^>]*class=[\"']\\s*day[0-9]+[^\"']*[\"'][^>]*>(.*?)</li>", htmlOptions)
         return blocks.findAll(html).mapNotNull { match ->
             val block = match.groupValues[1]
@@ -78,12 +81,13 @@ internal object ArtistConcertParser {
             // A member's solo show tagged with the band must not become a band performance.
             if (!containsName(title, names) && !sameName(field("actor").orEmpty(), names)) return@mapNotNull null
             val date = date(field("date")?.take(10)) ?: return@mapNotNull null
-            if (date < today.toString()) return@mapNotNull null
+            if (!includePast && date < today.toString()) return@mapNotNull null
             val id = Regex("href=[\"']/events/([0-9]+)[\"']").find(block)?.groupValues?.get(1) ?: return@mapNotNull null
             ArtistConcert("eventernote:$id", title, date,
                 time(Regex("開演\\s*([0-9]{1,2}:[0-9]{2})").find(field("time").orEmpty())?.groupValues?.get(1)?.padStart(5, '0')),
-                field("place"), null, "Eventernote", "https://www.eventernote.com/events/$id")
-        }.distinctBy { it.id }.sortedBy { it.date + it.time.orEmpty() }.take(40).toList()
+                field("place"), null, "Eventernote", "https://www.eventernote.com/events/$id", timezone = "Asia/Tokyo",
+                details = eventernoteDetails(block, date))
+        }.distinctBy { it.id }.sortedBy { it.date + it.time.orEmpty() }.take(100).toList()
     }
 
     fun eplus(html: String, names: List<String>, today: LocalDate): List<ArtistConcert> {
@@ -104,38 +108,59 @@ internal object ArtistConcertParser {
             val rawTime = row.text("kaien_time")
             ArtistConcert("eplus:${url.encodedPath}", title, date,
                 rawTime?.takeIf { it.length == 4 }?.let { time(it.take(2) + ":" + it.takeLast(2)) },
-                venue?.text("venue_name"), venue?.text("todofuken_name"), "eplus", url.toString(), url.toString())
+                venue?.text("venue_name"), venue?.text("todofuken_name"), "eplus", url.toString(), url.toString(), "Asia/Tokyo")
         }.distinctBy { it.id }.sortedBy { it.date + it.time.orEmpty() }.take(40)
     }
 
-    fun musicBrainz(json: JSONObject, artistId: String, today: LocalDate): List<ArtistConcert> = json.objects("events").mapNotNull { row ->
+    fun musicBrainz(json: JSONObject, artistId: String, today: LocalDate, includePast: Boolean = false): List<ArtistConcert> = json.objects("events").mapNotNull { row ->
         if (row.optBoolean("cancelled")) return@mapNotNull null
         val relations = row.objects("relations")
         if (relations.none { it.optJSONObject("artist")?.text("id") == artistId }) return@mapNotNull null
         val date = date(row.optJSONObject("life-span")?.text("begin")) ?: return@mapNotNull null
-        if (date < today.toString()) return@mapNotNull null
+        val end = ConcertMetadataCodec.date(row.optJSONObject("life-span")?.text("end"))
+        if (!includePast && (end?.take(10) ?: date) < today.toString()) return@mapNotNull null
         val id = row.text("id")?.takeIf { it.matches(Regex("[a-fA-F0-9-]{36}")) } ?: return@mapNotNull null
         val place = relations.firstNotNullOfOrNull { it.optJSONObject("place") }
         ArtistConcert("musicbrainz:$id", row.text("name") ?: return@mapNotNull null, date,
             time(row.text("time")), place?.text("name"), place?.optJSONObject("area")?.text("name"),
-            "MusicBrainz", "https://musicbrainz.org/event/$id")
+            "MusicBrainz", "https://musicbrainz.org/event/$id", details = ArtistConcertDetails(endsAt = end,
+                address = ConcertMetadataCodec.text(place?.text("address"), 512),
+                lineup = ConcertMetadataCodec.lineup(relations.mapNotNull {
+                    val artist = it.optJSONObject("artist") ?: return@mapNotNull null
+                    artist.text("name")?.let { name -> ConcertPerformer(name, it.text("type")) }
+                })))
     }
 
-    fun merge(events: List<ArtistConcert>): List<ArtistConcert> = events.sortedBy { if (it.ticketUrl != null) 0 else 1 }
-        .distinctBy { listOf(it.date, it.time.orEmpty(), ArtistOnlineInfoParser.normalize(it.title)).joinToString("|") }
-        .distinctBy {
-            if (it.time != null && !it.venue.isNullOrBlank()) listOf(it.date, it.time, ArtistOnlineInfoParser.normalize(it.venue.orEmpty())).joinToString("|")
-            else it.id
-        }
-        .sortedWith(compareBy({ it.date }, { it.time.orEmpty() }, { it.title })).take(60)
+    private fun eventernoteDetails(block: String, date: String): ArtistConcertDetails {
+        fun stamp(label: String) = time(Regex("$label\\s*([0-9]{1,2}:[0-9]{2})").find(text(block))
+            ?.groupValues?.get(1)?.padStart(5, '0'))?.let { "${date}T$it:00" }
+        return ArtistConcertDetails(opensAt = stamp("開場"), endsAt = stamp("終演"),
+            lineup = ConcertMetadataCodec.lineup(anchors.findAll(block).filter { it.groupValues[1].startsWith("/actors/") }
+                .map { ConcertPerformer(text(it.groupValues[2])) }.toList()))
+    }
 
-    fun encode(result: ArtistConcerts): JSONObject = JSONObject().put("failed", JSONArray(result.failedSources))
+    fun merge(events: List<ArtistConcert>): List<ArtistConcert> {
+        val merged = LinkedHashMap<String, ArtistConcert>()
+        events.sortedBy { if (it.ticketUrl != null) 0 else 1 }.forEach { event ->
+            val key = if (event.time != null && !event.venue.isNullOrBlank())
+                listOf(event.date, event.time, ArtistOnlineInfoParser.normalize(event.venue.orEmpty()),
+                    ArtistOnlineInfoParser.normalize(event.city.orEmpty())).joinToString("|") else event.id
+            val first = merged[key]
+            merged[key] = if (first == null) event else first.copy(
+                timezone = first.timezone ?: event.timezone, details = ConcertMetadataCodec.merge(first.details, event.details))
+        }
+        return merged.values.sortedWith(compareBy({ it.date }, { it.time.orEmpty() }, { it.title }))
+    }
+
+    fun encode(result: ArtistConcerts): JSONObject = JSONObject().put("failed", JSONArray(result.failedSources)).put("fetched", result.fetchedAt)
         .put("events", JSONArray(result.events.map {
             JSONObject().put("id", it.id).put("title", it.title).put("date", it.date).put("time", it.time)
                 .put("venue", it.venue).put("city", it.city).put("source", it.source).put("url", it.url).put("ticket", it.ticketUrl)
+                .put("zone", it.timezone).put("details", ConcertMetadataCodec.encode(it.details))
         }))
     fun decode(json: JSONObject): ArtistConcerts = ArtistConcerts(json.objects("events").map {
         ArtistConcert(it.getString("id"), it.getString("title"), it.getString("date"), it.text("time"),
-            it.text("venue"), it.text("city"), it.getString("source"), it.getString("url"), it.text("ticket"))
-    }, json.optJSONArray("failed")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty())
+            it.text("venue"), it.text("city"), it.getString("source"), it.getString("url"), it.text("ticket"),
+            it.text("zone"), ConcertMetadataCodec.decode(it.optJSONObject("details") ?: JSONObject()))
+    }, json.optJSONArray("failed")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty(), fetchedAt = json.text("fetched"))
 }

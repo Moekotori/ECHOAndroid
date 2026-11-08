@@ -34,6 +34,8 @@ data class EchoBackupSettings(
     val backgroundBrightness: Float? = null,
     val backgroundGlass: Float? = null,
     val backgroundScale: Float? = null,
+    val backgroundPositionX: Float? = null,
+    val backgroundPositionY: Float? = null,
     val themeMode: String? = null,
     val colorTheme: String? = null,
     val appLanguage: String? = null,

@@ -149,6 +149,7 @@ internal fun SettingsPlaybackContent(
                 onClick = onOpenLyricsInterface,
             )
             SettingsLyricsSourceRow(lyricsOptions, onLyricsOptionsChange)
+            SettingsBluetoothLyricsDelay(lyricsOptions, onLyricsOptionsChange)
             SettingsSwitchRow(
                 title = stringResource(R.string.settings_online_lyrics),
                 detail = stringResource(R.string.settings_online_lyrics_detail),

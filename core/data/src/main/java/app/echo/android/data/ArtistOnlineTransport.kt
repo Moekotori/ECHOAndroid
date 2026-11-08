@@ -23,7 +23,7 @@ internal class ArtistOnlineTransport(appVersion: String) {
         if (it.has("error") && !it.isNull("error")) throw IOException("Artist information service error")
     }
 
-    suspend fun text(url: HttpUrl, redirects: Int = 0): String {
+    suspend fun text(url: HttpUrl, redirects: Int = 0, maxBytes: Long = 2_000_000L): String {
         val response = suspendCancellableCoroutine<Pair<String?, String?>> { continuation ->
             val call = client.newCall(Request.Builder().url(url).header("User-Agent", userAgent)
                 .header("Api-User-Agent", userAgent).build())
@@ -38,8 +38,8 @@ internal class ArtistOnlineTransport(appVersion: String) {
                             if (it.isRedirect) return@use null to it.header("Location")
                             if (!it.isSuccessful) throw IOException("${url.host}: HTTP ${it.code}")
                             val source = it.body?.source() ?: throw IOException("Empty artist response")
-                            source.request(2_000_001L)
-                            if (source.buffer.size > 2_000_000L) throw IOException("Artist response too large")
+                            source.request(maxBytes + 1)
+                            if (source.buffer.size > maxBytes) throw IOException("Artist response too large")
                             source.readUtf8() to null
                         }
                     }
@@ -50,6 +50,6 @@ internal class ArtistOnlineTransport(appVersion: String) {
         response.first?.let { return it }
         val next = response.second?.let(url::resolve)
         if (redirects >= 2 || next == null || !next.isHttps || next.host != url.host) throw IOException("Unsupported artist service redirect")
-        return text(next, redirects + 1)
+        return text(next, redirects + 1, maxBytes)
     }
 }

@@ -18,6 +18,20 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoBackupCodecTest {
+    @Test fun backgroundPositionRoundTripsAndOldBackupsRemainReadable() {
+        val settings = EchoAppSettings(
+            customBackgroundPositionX = -0.5f, customBackgroundPositionY = 0.75f,
+        ).toBackupSettings()
+        val decoded = EchoBackupCodec.decode(EchoBackupCodec.encode(EchoBackupDocument(settings = settings))).settings
+        assertEquals(settings.backgroundPositionX, decoded.backgroundPositionX)
+        assertEquals(settings.backgroundPositionY, decoded.backgroundPositionY)
+        val old = EchoBackupCodec.decode("{\"version\":1,\"settings\":{}}").settings
+        assertEquals(null, old.backgroundPositionX)
+        assertEquals(null, old.backgroundPositionY)
+        assertEquals(0f, EchoAppSettings().customBackgroundPositionX)
+        assertEquals(0f, EchoAppSettings().customBackgroundPositionY)
+    }
+
     @Test fun audioFocusSettingsRoundTripAndOldBackupsLeaveThemUnspecified() {
         val settings = EchoAppSettings(audioFocusEnabled = false, audioInterruptionPolicy = "pause").toBackupSettings()
         val decoded = EchoBackupCodec.decode(EchoBackupCodec.encode(EchoBackupDocument(settings = settings))).settings

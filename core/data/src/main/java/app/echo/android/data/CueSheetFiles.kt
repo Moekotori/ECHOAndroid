@@ -14,11 +14,39 @@ internal class CueAudioNameIndex(audioNames: Collection<String>) {
 
     fun match(reference: String?): String? {
         val wanted = CueSheetPolicy.localAudioName(reference) ?: return null
-        exact[wanted.lowercase(java.util.Locale.ROOT)]?.let { hits ->
-            return hits.firstOrNull { it == wanted } ?: hits.singleOrNull()
-        }
+        if (exact.containsKey(wanted.lowercase(java.util.Locale.ROOT))) return exactMatch(wanted)
         if (wanted.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) !in setOf("wav", "wave", "cue")) return null
         return replacements[wanted.substringBeforeLast('.').lowercase(java.util.Locale.ROOT)]?.singleOrNull()
+    }
+
+    fun exactMatch(reference: String?): String? {
+        val wanted = CueSheetPolicy.localAudioName(reference) ?: return null
+        val hits = exact[wanted.lowercase(java.util.Locale.ROOT)] ?: return null
+        return hits.firstOrNull { it == wanted } ?: hits.singleOrNull()
+    }
+}
+
+/** Canonicalize only a unique, existing lossless replacement within the same directory. */
+internal fun resolveCueSource(reference: String, exists: (String) -> Boolean): String {
+    val (folder, name) = cueReference(reference) ?: return reference
+    val normalized = listOf(folder, name).filter(String::isNotEmpty).joinToString("/")
+    if (exists(normalized)) return normalized
+    if (name.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) !in setOf("wav", "wave", "cue")) return normalized
+    val stem = normalized.substringBeforeLast('.')
+    return listOf("flac", "fla", "ape", "wv").map { "$stem.$it" }.filter(exists).singleOrNull() ?: normalized
+}
+
+/** Keeps the provider's actual spelling so aliases share a timeline without folding distinct files. */
+internal class CueSourceLookup(private val exact: (String) -> String?) : (String) -> Boolean {
+    override fun invoke(reference: String): Boolean = exact(reference) != null
+
+    fun resolve(reference: String): String {
+        val (folder, name) = cueReference(reference) ?: return reference
+        val normalized = listOf(folder, name).filter(String::isNotEmpty).joinToString("/")
+        exact(normalized)?.let { return it }
+        if (name.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) !in setOf("wav", "wave", "cue")) return normalized
+        val stem = normalized.substringBeforeLast('.')
+        return listOf("flac", "fla", "ape", "wv").mapNotNull { exact("$stem.$it") }.distinct().singleOrNull() ?: normalized
     }
 }
 

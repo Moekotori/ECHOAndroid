@@ -117,6 +117,8 @@ fun <T> EchoPageContent(
                     shape = RoundedCornerShape((EchoMotion.PageCornerDp * cornerProgress).dp)
                     clip = cornerProgress > 0.001f
                 }
+                // The page being covered (or uncovered) darkens; the one that slides catches light.
+                .echoPageDim({ if (slides) 0f else corners.value }, dark)
                 .echoPageEdgeLight(
                     light = {
                         val progress = corners.value.coerceIn(0f, 1f)
@@ -208,14 +210,15 @@ fun Modifier.echoPageUnderlay(obscured: Boolean, backProgress: () -> Float = { 0
         animationSpec = if (lightweight) tween(0) else EchoMotion.silkFloat(EchoMotion.PageMs),
         label = "echo-page-underlay",
     )
+    val dark = LocalEchoDarkTheme.current
+    fun progress() = depth.value.coerceIn(0f, 1f) * (1f - backProgress().coerceIn(0f, 1f))
     return graphicsLayer {
-        val progress = depth.value.coerceIn(0f, 1f) * (1f - backProgress().coerceIn(0f, 1f))
+        val progress = progress()
         transformOrigin = TransformOrigin(0.5f, 0.12f)
         scaleX = 1f - (1f - EchoMotion.PageDepthScale) * progress
         scaleY = scaleX
         translationY = 8.dp.toPx() * progress
-        alpha = 1f - (1f - EchoMotion.PageDepthAlpha) * progress
         shape = RoundedCornerShape((EchoMotion.PageCornerDp * progress).dp)
         clip = progress > 0.001f
-    }
+    }.echoPageDim(::progress, dark)
 }

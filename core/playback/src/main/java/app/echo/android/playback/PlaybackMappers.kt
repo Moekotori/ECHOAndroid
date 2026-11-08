@@ -83,7 +83,7 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                         clipEndMs = clipEndMs,
                     ),
                 )
-                .build(),
+                .build().withSystemMediaDescription(),
         )
         .build().let { item -> queueContext?.let(item::withQueueContext) ?: item }
 
@@ -134,7 +134,7 @@ fun EchoTrack.toMediaItem(): MediaItem {
                         clipEndMs = clipEndMs,
                     ),
                 )
-                .build(),
+                .build().withSystemMediaDescription(),
         )
         .build()
 }

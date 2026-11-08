@@ -67,6 +67,7 @@ internal fun SettingsSheetHeader(
     closeDescription: String,
     onBack: () -> Unit,
     onClose: () -> Unit,
+    compact: Boolean = false,
     leading: @Composable () -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
@@ -77,10 +78,10 @@ internal fun SettingsSheetHeader(
         modifier = Modifier
             .echoPageSection(0)
             .fillMaxWidth()
-            .padding(bottom = 10.dp)
+            .padding(bottom = if (compact) 4.dp else 10.dp)
             .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
     ) {
         EchoStateContent(deeper) { more ->
             if (more) {
@@ -115,7 +116,7 @@ internal fun SettingsSheetHeader(
         GlyphButton(
             icon = Icons.Rounded.Close,
             description = closeDescription,
-            touchSize = 40.dp,
+            touchSize = if (compact) 48.dp else 40.dp,
             iconSize = 20.dp,
             tint = titleColor,
             background = plate,

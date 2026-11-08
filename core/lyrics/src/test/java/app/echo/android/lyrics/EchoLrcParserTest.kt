@@ -47,7 +47,7 @@ class EchoLrcParserTest {
         )
 
         assertTrue(lyrics.isSynced)
-        assertEquals(1_250L, lyrics.lines.single().startMs)
+        assertEquals(750L, lyrics.lines.single().startMs)
     }
 
     @Test

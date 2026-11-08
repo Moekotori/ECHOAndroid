@@ -15,6 +15,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LibraryPlaylistDao {
+    @Query("""
+        SELECT playlistId FROM library_playlist_tracks WHERE trackId = :trackId
+        UNION SELECT 'local:liked' WHERE EXISTS (
+            SELECT 1 FROM library_favorites WHERE trackId = :trackId
+        )
+    """)
+    fun observeContainingPlaylistIds(trackId: String): Flow<List<String>>
+
     @RawQuery(observedEntities = [LibraryTrackEntity::class, LibraryPlaylistTrackEntity::class,
         LibraryFavoriteEntity::class, LibraryPlaybackStatsEntity::class, LibrarySmartRuleEntity::class, LibraryHiddenTrackEntity::class])
     fun observeStats(query: SupportSQLiteQuery): Flow<app.echo.android.model.library.PlaylistStats>

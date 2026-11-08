@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -65,7 +66,7 @@ internal fun <T> LibrarySortMenu(
     }
     if (!expanded) return
 
-    val maxContentHeight = minOf(360.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.65f })
+    val maxContentHeight = minOf(720.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.82f })
     EchoModalSheet(
         onDismissRequest = { expanded = false },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -163,6 +164,7 @@ private fun LibrarySortOption(
 ) {
     Row(
         modifier.clip(RoundedCornerShape(16.dp))
+            .then(if (selected) Modifier.background(MaterialTheme.colorScheme.surfaceContainerHighest) else Modifier)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),

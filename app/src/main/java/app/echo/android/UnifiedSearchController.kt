@@ -8,9 +8,33 @@ import app.echo.android.feature.home.UnifiedSearchItem
 import app.echo.android.feature.home.UnifiedSearchSection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import app.echo.android.connect.EchoRemoteClient
 
-internal class UnifiedSearchController(private val repository: EchoLibraryRepository, private val scope: CoroutineScope) {
+internal class UnifiedSearchController(
+    private val repository: EchoLibraryRepository,
+    private val scope: CoroutineScope,
+    private val historyStore: EchoSearchHistoryStore,
+) {
+    val history = historyStore.queries.stateIn(scope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    fun recordQuery(query: String) = updateHistory { historyStore.record(query) }
+    fun removeQuery(query: String) = updateHistory { historyStore.remove(query) }
+    fun clearHistory() = updateHistory { historyStore.clear() }
+
+    private fun updateHistory(update: suspend () -> Unit) {
+        scope.launch {
+            try { update() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: java.io.IOException) {
+                app.echo.android.model.error.EchoErrorLog.record(
+                    app.echo.android.model.error.EchoErrorSource.Library,
+                    "Could not update search history.", detail = error.javaClass.simpleName,
+                )
+            }
+        }
+    }
+
     private var preview: Pair<String, EchoUnifiedSearch>? = null
     private var pcPreview: Triple<String, String, EchoUnifiedSearch>? = null
     fun cachedPreview(query: String): EchoUnifiedSearch? = preview?.takeIf { it.first == query.trim() }?.second

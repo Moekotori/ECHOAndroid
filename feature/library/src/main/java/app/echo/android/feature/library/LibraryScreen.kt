@@ -51,6 +51,8 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -388,6 +390,11 @@ fun LibraryScreen(
     var selectedLinkedArtist by remember { mutableStateOf<ArtistSummary?>(null) }
     var selectedLinkedPlaylist by remember { mutableStateOf<EchoRemotePlaylist?>(null) }
     val songListState = rememberLazyListState()
+    // Share the active song page with the title-row navigation controls.
+    val songTrackItems = if (selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Songs) {
+        tracks.collectAsLazyPagingItems()
+    } else null
+    val songNavigationSnackbar = remember { SnackbarHostState() }
     // A different browse order starts at the top; filter-only changes retain the current list.
     val songNavigation = remember(libraryQuery, trackSortMode, selectedLibrarySourceId) {
         listOf(libraryQuery, trackSortMode.name, selectedLibrarySourceId)
@@ -548,7 +555,7 @@ fun LibraryScreen(
                                 )
                             }
                             LibraryViewMode.Songs -> {
-                                val trackItems = tracks.collectAsLazyPagingItems()
+                                val trackItems = songTrackItems ?: tracks.collectAsLazyPagingItems()
                                 val showInitialTrackLoading =
                                     trackItems.itemCount == 0 &&
                                         trackItems.loadState.refresh is LoadState.Loading
@@ -611,16 +618,6 @@ fun LibraryScreen(
                                                 modifier = Modifier.align(Alignment.CenterEnd),
                                             )
                                         }
-                                        SongListNavigation(
-                                            tracks = trackItems,
-                                            listState = songListState,
-                                            playingTrackId = playingTrackId,
-                                            queryKey = Triple(libraryQuery, trackSortMode, trackFilter),
-                                            findIndex = onFindPlayingSongIndex,
-                                            modifier = Modifier.align(Alignment.BottomEnd)
-                                                .padding(end = if (showAlphabetIndex) LibraryAlphabetIndexWidth + 4.dp else 8.dp,
-                                                    bottom = LibraryBottomControlsPadding),
-                                        )
                                     }
                                 }
                                 }
@@ -692,7 +689,9 @@ fun LibraryScreen(
                                 query = libraryQuery,
                                 onOpenPlaylist = onOpenPlaylist,
                                 onPlayPlaylist = onPlayPlaylist,
+                                onShufflePlaylist = onShufflePlaylist,
                                 onCreatePlaylist = onCreatePlaylist,
+                                management = playlistManagement,
                                 experienceActions = experienceActions,
                                 remoteManagement = remotePlaylistManagement,
                                 onRenamePlaylist = onRenamePlaylist,
@@ -735,6 +734,18 @@ fun LibraryScreen(
                     },
                     onSelectPodcasts = onOpenPodcasts,
                 )
+            },
+            navigationActions = {
+                if (songTrackItems != null && songTrackItems.itemCount > 0) {
+                    SongListNavigation(
+                        tracks = songTrackItems,
+                        listState = songListState,
+                        playingTrackId = playingTrackId,
+                        queryKey = Triple(libraryQuery, trackSortMode, trackFilter),
+                        findIndex = onFindPlayingSongIndex,
+                        snackbar = songNavigationSnackbar,
+                    )
+                }
             },
             actions = {
                 if (selectedSource == LibrarySourceMode.Local) LibraryHiddenTracksAccess()
@@ -833,6 +844,10 @@ fun LibraryScreen(
                     )
                     else -> LocalLibraryBody(displayedSource)
                 }
+                SnackbarHost(
+                    songNavigationSnackbar,
+                    Modifier.align(Alignment.BottomCenter).padding(end = 24.dp, bottom = LibraryBottomControlsPadding),
+                )
                 }
             }
         }
@@ -1146,8 +1161,12 @@ fun LibraryScreen(
     }
 
     addToPlaylistTrack?.let { track ->
+        val memberships = remember(track.id, playlistManagement) {
+            playlistManagement?.memberships?.invoke(track.id) ?: kotlinx.coroutines.flow.flowOf(emptySet<String>())
+        }.collectAsState(initial = emptySet()).value
         AddToPlaylistDialog(
             playlists = playlists,
+            containingPlaylistIds = memberships,
             onDismiss = { addToPlaylistTrack = null },
             onSelectPlaylist = { playlist ->
                 onAddTrackToPlaylist(playlist, track)

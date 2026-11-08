@@ -148,26 +148,13 @@ internal fun SettingsNavigation(
                 back = if (selected != null) EchoPageBack(SettingsPage(selected.takeIf { activeSub != null }, null)) { detailBack.value } else null,
                 transitionSpec = {
                     val backward = targetState.depth < initialState.depth
-                    // Each page paints its own opaque background. Both pages can now move
-                    // together, without overlapping text or an empty fade-out/fade-in gap.
-                    if (lightweight) EchoMotion.pageFade(lightweight = true) else ContentTransform(
-                        targetContentEnter = when {
-                            backward -> scaleIn(
-                                initialScale = EchoMotion.PageDepthScale,
-                                animationSpec = EchoMotion.silkFloat(EchoMotion.PageMs),
-                            )
-                            else -> slideInHorizontally(EchoMotion.silkOffset(EchoMotion.PageMs)) { it }
-                        },
-                        initialContentExit = when {
-                            backward -> slideOutHorizontally(EchoMotion.silkOffset(EchoMotion.PageMs)) { it }
-                            else -> scaleOut(
-                                targetScale = EchoMotion.PageDepthScale,
-                                animationSpec = EchoMotion.silkFloat(EchoMotion.PageExitMs),
-                            )
-                        },
-                        targetContentZIndex = if (backward) 0f else 1f,
-                        sizeTransform = null,
-                    )
+                    // Each page paints its own opaque background. Both pages move together,
+                    // with the same parallax and depth scrim as every other page.
+                    when {
+                        lightweight -> EchoMotion.pageFade(lightweight = true)
+                        backward -> EchoMotion.pagePop()
+                        else -> EchoMotion.pagePush()
+                    }
                 },
             ) { page ->
                 val category = page.category

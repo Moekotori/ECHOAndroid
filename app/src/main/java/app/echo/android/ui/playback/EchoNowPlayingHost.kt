@@ -121,10 +121,13 @@ internal fun EchoNowPlayingHost(
             onEdit = { showLyricsManager = false; showLyricsEditor = true },
         )
     }
+    val songRemoval = rememberPlayerSongRemoval(viewModel)
     val songActions = if (presentationExpanded) key(playbackStatus.track?.id) {
         rememberNowPlayingSongActions(
             viewModel, playbackStatus.track, onOpenAlbum, onOpenFolder, onOpenEqualizer = { showEqualizer = true },
             onSearchLyrics = { lyricsSearchRequested = true; showLyricsManager = true; viewModel.searchLyrics() },
+            removal = songRemoval,
+            diagnostics = playbackStatus.diagnostics,
         )
     } else app.echo.android.feature.player.NowPlayingSongActions()
     LaunchedEffect(presentationExpanded) {
@@ -141,6 +144,7 @@ internal fun EchoNowPlayingHost(
         positionState = playbackPosition,
         smartTransitionState = smartTransition,
         lyricsState = lyricsState,
+        bluetoothLyricsDelayMs = if (castActive) 0 else appSettings.lyricsOptions.bluetoothDelayMs,
         showLyricsControlDeck = appSettings.showLyricsControlDeck,
         playerPageStyle = appSettings.playerPageStyle,
         playerTextScale = appSettings.playerTextScale,

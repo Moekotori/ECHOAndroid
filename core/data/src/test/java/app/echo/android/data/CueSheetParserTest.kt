@@ -10,7 +10,7 @@ class CueSheetParserTest {
     fun truncatedDataTracksCannotLeaveAudioPlayingIntoTheDataRegion() {
         val audio = "FILE \"album.bin\" BINARY\nTRACK 01 AUDIO\nINDEX 01 00:00:00\nTRACK 02 MODE1/2352\n"
         assertNull(CueSheetParser.parseText(audio))
-        assertNull(CueSheetParser.parseText(audio + "INDEX 00 01:00:00"))
+        assertEquals(60_000L, CueSheetParser.parseText(audio + "INDEX 00 01:00:00")!!.tracks.single().endMs)
         assertNull(CueSheetParser.parseText(audio + "INDEX 01 01:00:00\nINDEX 01 01:01:00"))
         val valid = CueSheetParser.parseText(audio + "INDEX 00 01:00:00\nINDEX 01 01:02:00")!!
         assertEquals(60_000L, valid.tracks.single().endMs)

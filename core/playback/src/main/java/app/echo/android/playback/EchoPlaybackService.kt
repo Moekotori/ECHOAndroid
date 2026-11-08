@@ -215,6 +215,7 @@ class EchoPlaybackService : MediaLibraryService() {
         val buttons = callback.currentButtons(exoPlayer)
         mediaSession = MediaLibrarySession.Builder(this, manualPlayer, callback)
             .setId("echo-mobile-main-session")
+            .setSessionExtras(echoSystemMediaSessionExtras())
             .setBitmapLoader(
                 EchoNotificationBitmapLoader(
                     context = this,
@@ -257,6 +258,15 @@ class EchoPlaybackService : MediaLibraryService() {
                 .map { Triple(it.notificationEnabled, it.systemStatusBarEnabled, it.statusHideTranslation) }
                 .distinctUntilChanged()
                 .collect { mediaSession?.let { onUpdateNotification(it, false) } }
+        }
+        serviceScope.launch {
+            combine(
+                EchoPlaybackProcessRuntime.lyricsOptions.map { it.bluetoothDelayMs }.distinctUntilChanged(),
+                EchoPlaybackProcessRuntime.outputRouteMonitor(this@EchoPlaybackService).route.map { it.kind }.distinctUntilChanged(),
+                EchoPlaybackProcessRuntime.usbExclusiveSinkActive,
+            ) { delayMs, kind, usbActive ->
+                if (usbActive) 0 else app.echo.android.model.lyrics.EchoLyricsOutputTiming.effectiveDelayMs(delayMs, kind)
+            }.distinctUntilChanged().collect { notificationLyrics?.setOutputDelayMs(it) }
         }
         serviceScope.launch {
             combine(

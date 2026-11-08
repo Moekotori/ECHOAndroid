@@ -22,4 +22,5 @@
     <string name="player_appearance_contours">Höhenlinien</string>
     <string name="player_appearance_dither">Dithering</string>
     <string name="player_appearance_glyph_field">Zeichenbild</string>
+    <string name="player_appearance_full_cover">Vollbild-Cover</string>
 </resources>

@@ -40,11 +40,27 @@
 
 | 系统 | 做法 | 状态 |
 | --- | --- | --- |
-| Android 16 Live Updates | 只接受标准/BigText/Call/Progress 样式，不接受 MediaStyle | 音乐通知不适用，不做 |
-| 三星 One UI Now Bar、vivo 原子岛音乐卡、ColorOS/HyperOS 锁屏媒体卡 | 系统读取 `MediaSession` 与媒体通知渲染 | 沿用 Media3 会话，无需厂商接口 |
+| Android Live Updates | 支持的样式不含 MediaStyle | 保持标准媒体通知，不伪装为进度/导航活动 |
+| 三星 One UI Now Bar、vivo/iQOO 原子岛、OPPO/一加/realme 流体云、小米/Redmi/POCO 超级岛、荣耀媒体胶囊 | 向系统提供 Media3 会话、媒体通知和媒体展示字段，是否展示由设备、ROM 和系统设置决定 | 已实现公共媒体接入路径；尚未逐品牌真机验收，不保证所有 ROM 都开放第三方音乐入口 |
 | 小米 HyperOS 超级岛/焦点通知 | 通知 extras 写 `miui.focus.param`，需向小米申请焦点通知权限，文档为公测 | 未实现：无权限、无真机，字段表未核对 |
 | OPPO 流体云、vivo 原子通知 | 走厂商 Push 通道并申请凭据 | 未实现 |
 | 魅族 Flyme | 通知 ticker 状态栏歌词 | 已有 |
+
+### 系统音乐岛兼容补齐（2026-11-08）
+
+- 普通曲目同时提供标准 `title/artist/albumTitle` 和 `displayTitle/subtitle/description`。设置展示标题时也显式设置歌手，避免旧版媒体描述不再自动补出歌手；封面、时长、会话 token、打开应用与控制动作沿用 Media3。
+- 电台 ICY 曲名变化时同步更新会话的展示标题，展示副标题为电台名；原始电台名和主机字段保留，避免影响电台身份、保存队列和曲名解析。只更新同 URI 的媒体项，不为上岛重开音频流。
+- 会话预留上一首/下一首槽位，向遵循标准布局的系统表达位置偏好；队列边界仍按实际可用命令显示，不能操作的按钮不会伪装可用。系统可以忽略该布局偏好。
+- 通知歌词必须属于当前曲目，空白或不匹配时回退歌手；Flyme ticker 也检查曲目身份。切歌后不会把上一首歌词带到新曲通知。
+- 不新增悬浮窗、无障碍服务、通知读取权限、云推送 SDK、第二条通知或进度轮询。仅在现有媒体项/通知更新时处理展示信息，不修改音频处理与 Echo Link。
+
+这里的“媒体接入”不等于厂商专有卡片授权。小米焦点通知仍需申请；OPPO/vivo 的业务实况通知也不能由标准媒体会话替代。未接入未经核实的私有 extras，也未获得任何厂商白名单或授权。
+
+参考：[Android 系统媒体控件与元数据](https://developer.android.com/media/implement/surfaces/mobile)、[Live Updates 支持条件](https://developer.android.com/develop/ui/views/notifications/live-update)、[小米焦点通知申请及客户端接入说明](https://dev.mi.com/xiaomihyperos/documentation/detail?pId=2146)、[三星 Now Bar 设置](https://www.samsung.com/us/support/answer/ANS10000753/)、[vivo 原子岛功能说明](https://www.vivo.com.cn/service/questions/all?categoryId=158&questionId=1744)。
+
+真机验收应覆盖：后台/锁屏播放，播放与暂停，队列首尾的切歌，拖动进度，异步封面完成，切歌时歌词清理，以及电台曲名更新。关闭系统音乐岛入口时，应继续提供正常媒体通知。当前未连接各品牌真机，代码与单测不能代替这些设备验收。
+
+本轮验证：`:core:playback:testDebugUnitTest` 定向运行 `EchoSystemMediaPresentationTest`、`EchoRadioNowPlayingTest`、`EchoMediaSessionControllerGateTest`，共 21 个用例通过；播放模块 Kotlin 编译和 `checkModules --no-configuration-cache` 通过。模块 `lintDebug` 检查无错误，保留 15 条现有警告；没有跑完整 App 打包或长时间测试。
 
 ### 验证范围
 

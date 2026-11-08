@@ -14,8 +14,8 @@ class LyricsRegressionTest {
     }
     @Test fun trailingOffsetAndEmptyInstrumentalLineArePreserved() {
         val lyrics = EchoLrcParser.parse("[00:01.00]Hello\n[00:02.00]\n[offset:250]")
-        assertEquals(listOf(1250L, 2250L), lyrics.lines.map { it.startMs })
-        assertEquals(2250L, lyrics.lines.first().endMs)
+        assertEquals(listOf(750L, 1750L), lyrics.lines.map { it.startMs })
+        assertEquals(1750L, lyrics.lines.first().endMs)
         assertTrue(lyrics.lines.last().text.isEmpty())
     }
     @Test fun repeatedEnhancedLinesMoveWordsToo() {

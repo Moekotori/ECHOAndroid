@@ -65,7 +65,10 @@ class EchoLinkPairingConnectionTest {
             assertEquals("test-paired-access-token", paired.token)
             assertEquals("Paired PC", transport.fetchStatus(paired).deviceName)
 
-            val restored = EchoPairingParser.parseManual(address, paired.token)!!
+            val saved = app.echo.android.model.connect.EchoSavedPcEndpoint("http://$address", "PC",
+                supportsV2Events = paired.supportsV2Events, token = paired.token)
+            val restored = EchoManualConnectionInput.endpointForConnection(address, paired.token, listOf(saved))!!
+            assertTrue(restored.supportsV2Events)
             assertEquals("Paired PC", transport.fetchStatus(transport.completePairing(restored)).deviceName)
             assertTrue("Reconnect must reuse the access token", requests.isEmpty())
         } finally {

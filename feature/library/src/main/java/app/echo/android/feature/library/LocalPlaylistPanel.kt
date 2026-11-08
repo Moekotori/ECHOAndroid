@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +26,8 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -42,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -61,9 +63,11 @@ internal fun LocalPlaylistPanel(
     query: String,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onPlayPlaylist: (EchoPlaylist) -> Unit,
+    onShufflePlaylist: (EchoPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     experienceActions: LibraryExperienceActions? = null,
     remoteManagement: RemoteLibraryWritebackActions? = null,
+    management: PlaylistManagementActions? = null,
     onRenamePlaylist: (EchoPlaylist, String) -> Unit,
     onDeletePlaylist: (EchoPlaylist) -> Unit,
     onImportM3uPlaylist: () -> Unit = {},
@@ -75,67 +79,121 @@ internal fun LocalPlaylistPanel(
     var smartEditorVisible by remember { mutableStateOf(false) }
     var editingSmart by remember { mutableStateOf<EchoPlaylist?>(null) }
     val toolsScope = rememberCoroutineScope()
-    var toolsError by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val actionError = stringResource(L10nR.string.playlist_action_error)
+    val pinError = stringResource(L10nR.string.smart_pin_error)
+    val resources = LocalResources.current
+    var menuPlaylistId by rememberSaveable { mutableStateOf<String?>(null) }
+    val menuPlaylist = remember(playlists, menuPlaylistId) { playlists.firstOrNull { it.id == menuPlaylistId } }
+    var adding by remember { mutableStateOf<EchoPlaylist?>(null) }
+    var copying by remember { mutableStateOf<EchoPlaylist?>(null) }
+    var copyBusy by remember { mutableStateOf(false) }
+    var copyFailed by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<EchoPlaylist?>(null) }
     var deleting by remember { mutableStateOf<EchoPlaylist?>(null) }
     var sortName by rememberSaveable { mutableStateOf(PlaylistCatalogSort.Updated.name) }
     val sort = PlaylistCatalogSort.entries.firstOrNull { it.name == sortName } ?: PlaylistCatalogSort.Updated
     val sections by rememberPlaylistCatalog(playlists, query, sort)
 
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-        contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
-    ) {
-        item {
-            LocalPlaylistHeader(
-                playlistCount = playlists.size,
-                sort = sort,
-                onSort = { sortName = it.name },
-                onCreatePlaylist = { createVisible = true },
-                onImportM3uPlaylist = onImportM3uPlaylist,
-                onCreateSmartPlaylist = experienceActions?.let { { editingSmart = null; smartEditorVisible = true } },
-            )
-            if (remoteManagement != null) TextButton(onClick = { remoteVisible = true }) {
-                Text(stringResource(L10nR.string.nav_manage))
-            }
-            if (toolsError) Text(stringResource(L10nR.string.smart_pin_error), color = MaterialTheme.colorScheme.error)
-        }
-        if (sections.isEmpty() && query.isNotBlank()) {
+    Box(modifier.fillMaxWidth()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+            contentPadding = PaddingValues(bottom = LibraryBottomControlsPadding),
+        ) {
             item {
-                EmptyState(stringResource(L10nR.string.playlist_no_search_results))
-            }
-        } else {
-            sections.forEach { section ->
-            section.label?.let { label -> item(key = "section-${section.key}", contentType = "section") {
-                Text(stringResource(label), modifier = Modifier.padding(top = 16.dp, bottom = 6.dp),
-                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } }
-            if (section.playlists.isEmpty()) item(key = "empty-${section.key}") {
-                EmptyState(stringResource(L10nR.string.feature_library_no_local_playlists_yet_create_one_from_the_e13a98))
-            }
-            items(
-                items = section.playlists,
-                key = { it.id },
-                contentType = { "playlist" },
-            ) { playlist ->
-                val exportName = playlistDisplayName(playlist)
-                LocalPlaylistRow(
-                    playlist = playlist,
-                    onOpen = { onOpenPlaylist(playlist) },
-                    onPlay = { onPlayPlaylist(playlist) },
-                    onRename = { if (playlist.isCustomSmartPlaylist) { editingSmart = playlist; smartEditorVisible = true }
-                        else if (playlist.canEdit) renaming = playlist },
-                    onDelete = { if (playlist.canEdit || playlist.isCustomSmartPlaylist) deleting = playlist },
-                    onExportM3u = { onExportM3uPlaylist(playlist.copy(name = exportName)) },
-                    onPinToHome = { experienceActions?.let { actions -> toolsScope.launch {
-                        try { toolsError = !actions.pin(playlist.id, !playlist.pinnedToHome) }
-                        catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { toolsError = true }
-                    } } },
+                LocalPlaylistHeader(
+                    playlistCount = playlists.size,
+                    sort = sort,
+                    onSort = { sortName = it.name },
+                    onCreatePlaylist = { createVisible = true },
+                    onImportM3uPlaylist = onImportM3uPlaylist,
+                    onCreateSmartPlaylist = experienceActions?.let { { editingSmart = null; smartEditorVisible = true } },
                 )
+                if (remoteManagement != null) TextButton(onClick = { remoteVisible = true }) {
+                    Text(stringResource(L10nR.string.nav_manage))
+                }
             }
+            if (sections.isEmpty() && query.isNotBlank()) {
+                item { EmptyState(stringResource(L10nR.string.playlist_no_search_results)) }
+            } else {
+                sections.forEach { section ->
+                    section.label?.let { label -> item(key = "section-${section.key}", contentType = "section") {
+                        Text(stringResource(label), modifier = Modifier.padding(top = 16.dp, bottom = 6.dp),
+                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } }
+                    if (section.playlists.isEmpty()) item(key = "empty-${section.key}") {
+                        EmptyState(stringResource(L10nR.string.feature_library_no_local_playlists_yet_create_one_from_the_e13a98))
+                    }
+                    items(items = section.playlists, key = { it.id }, contentType = { "playlist" }) { playlist ->
+                        LocalPlaylistRow(
+                            playlist = playlist,
+                            onOpen = { onOpenPlaylist(playlist) },
+                            onPlay = { onPlayPlaylist(playlist) },
+                            onMore = { menuPlaylistId = playlist.id },
+                        )
+                    }
+                }
             }
         }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = LibraryBottomControlsPadding))
+    }
+
+    menuPlaylist?.let { playlist ->
+        val exportName = playlistDisplayName(playlist)
+        fun dismissThen(action: () -> Unit): () -> Unit = { menuPlaylistId = null; action() }
+        PlaylistActionsSheet(
+            playlist = playlist,
+            onDismiss = { menuPlaylistId = null },
+            onOpen = dismissThen { onOpenPlaylist(playlist) },
+            onPlay = dismissThen { onPlayPlaylist(playlist) },
+            onShuffle = dismissThen { onShufflePlaylist(playlist) },
+            onExport = dismissThen { onExportM3uPlaylist(playlist.copy(name = exportName)) },
+            onAdd = management?.takeIf { playlist.canEdit }?.let { dismissThen { adding = playlist } },
+            onCopy = management?.let { dismissThen { copyFailed = false; copying = playlist } },
+            onArtwork = management?.takeIf { playlist.canEdit }?.let { actions -> dismissThen { actions.pickArtwork(playlist.id) } },
+            onRename = if (playlist.canEdit) dismissThen { renaming = playlist } else null,
+            onEditRules = experienceActions?.takeIf { playlist.isCustomSmartPlaylist }?.let {
+                dismissThen { editingSmart = playlist; smartEditorVisible = true }
+            },
+            onPin = experienceActions?.takeIf { playlist.isCustomSmartPlaylist }?.let { actions -> dismissThen {
+                toolsScope.launch {
+                    try { if (!actions.pin(playlist.id, !playlist.pinnedToHome)) snackbar.showSnackbar(pinError) }
+                    catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                    catch (_: Exception) { snackbar.showSnackbar(pinError) }
+                }
+            } },
+            onDelete = if (playlist.canEdit || playlist.isCustomSmartPlaylist) dismissThen { deleting = playlist } else null,
+        )
+    }
+    adding?.let { playlist ->
+        if (management != null) PlaylistAddTracksSheet(playlist.id, management,
+            onAdded = { count -> toolsScope.launch {
+                snackbar.showSnackbar(resources.getQuantityString(L10nR.plurals.playlist_added, count, count))
+            } }, onDismiss = { adding = null })
+    }
+    copying?.let { playlist ->
+        if (management != null) PlaylistNameDialog(
+            title = stringResource(L10nR.string.playlist_copy),
+            confirmLabel = stringResource(L10nR.string.feature_library_create_7b4bc9),
+            initialName = stringResource(L10nR.string.playlist_copy_name, playlistDisplayName(playlist)).take(80),
+            supportingText = stringResource(L10nR.string.playlist_copy_hint),
+            busy = copyBusy,
+            error = if (copyFailed) actionError else null,
+            onDismiss = { if (!copyBusy) copying = null },
+            onConfirm = { name ->
+                copyBusy = true; copyFailed = false
+                toolsScope.launch {
+                    try {
+                        val created = checkNotNull(management.copy(playlist.id, name))
+                        copying = null
+                        onOpenPlaylist(created)
+                    } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                    catch (_: Exception) { copyFailed = true }
+                    finally { copyBusy = false }
+                }
+            },
+        )
     }
 
     if (remoteVisible && remoteManagement != null) NavidromeLibraryManager(remoteManagement) { remoteVisible = false }
@@ -190,77 +248,6 @@ internal fun LocalPlaylistPanel(
             },
         )
     }
-}
-
-@Composable
-fun AddToPlaylistDialog(
-    playlists: List<EchoPlaylist>,
-    onDismiss: () -> Unit,
-    onSelectPlaylist: (EchoPlaylist) -> Unit,
-    onCreatePlaylist: (String) -> Unit,
-    busy: Boolean = false,
-    error: String? = null,
-    awaitResult: Boolean = false,
-) {
-    var creating by rememberSaveable { mutableStateOf(false) }
-    var draftName by rememberSaveable { mutableStateOf("") }
-    val editablePlaylists = remember(playlists) { playlists.filter { it.canEdit || it.isLikedSongs } }
-    if (creating) {
-        PlaylistNameDialog(
-            title = stringResource(L10nR.string.feature_library_new_playlist_and_add_314ff2),
-            confirmLabel = stringResource(L10nR.string.feature_library_create_7b4bc9),
-            initialName = draftName,
-            onNameChange = { draftName = it },
-            busy = busy,
-            error = error,
-            onDismiss = { if (busy) onDismiss() else creating = false },
-            onConfirm = { name ->
-                onCreatePlaylist(name)
-                if (!awaitResult) creating = false
-            },
-        )
-        return
-    }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(L10nR.string.feature_library_add_to_playlist_0f8338)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (busy) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
-                if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
-                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item(key = "create") {
-                        TextButton(onClick = { creating = true }, enabled = !busy) {
-                            Text(stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
-                        }
-                    }
-                    if (editablePlaylists.isEmpty()) item(key = "empty") {
-                        Text(
-                            stringResource(L10nR.string.feature_library_no_playlists_yet_create_one_first_6af586),
-                        )
-                    }
-                    items(editablePlaylists, key = { "playlist:${it.id}" }) { playlist ->
-                        Text(
-                            stringResource(L10nR.string.feature_library_playlistdisplayname_playlist_playlist_trackcount_tracks_2afcb8, (playlistDisplayName(playlist)).toString(), (playlist.trackCount).toString()),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .echoClickable(enabled = !busy) { onSelectPlaylist(playlist) }
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
-            }
-        },
-    )
 }
 
 @Composable
@@ -353,12 +340,8 @@ private fun LocalPlaylistRow(
     playlist: EchoPlaylist,
     onOpen: () -> Unit,
     onPlay: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit,
-    onExportM3u: () -> Unit,
-    onPinToHome: () -> Unit = {},
+    onMore: () -> Unit,
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().echoClickable(onClick = onOpen).padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         ArtworkTile(playlist.artworkUri, Modifier.size(56.dp), accent = rememberLibraryArtworkAccent(), cornerRadius = 4.dp)
@@ -368,28 +351,11 @@ private fun LocalPlaylistRow(
             Text(playlistCaption(playlist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        androidx.compose.material3.IconButton(onClick = onPlay) {
+        androidx.compose.material3.IconButton(onClick = onPlay, enabled = playlist.trackCount > 0) {
             EchoIcon(Icons.Rounded.PlayArrow, contentDescription = stringResource(L10nR.string.feature_library_play_38419a))
         }
-        Box {
-            androidx.compose.material3.IconButton(onClick = { menuOpen = true }) {
-                EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_playlist_actions))
-            }
-            androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                if (playlist.isCustomSmartPlaylist) androidx.compose.material3.DropdownMenuItem(
-                    text = { Text(stringResource(if (playlist.pinnedToHome) L10nR.string.smart_unpin_home else L10nR.string.smart_pin_home)) },
-                    onClick = { menuOpen = false; onPinToHome() })
-                if (playlist.canEdit || playlist.isCustomSmartPlaylist) {
-                    androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(if (playlist.isCustomSmartPlaylist) L10nR.string.smart_edit_rules else L10nR.string.feature_library_rename_playlist_757bb7)) },
-                        onClick = { menuOpen = false; onRename() })
-                }
-                androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_export_m3u_6f18a4)) },
-                    onClick = { menuOpen = false; onExportM3u() })
-                if (playlist.canEdit || playlist.isCustomSmartPlaylist) {
-                    androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_delete_playlist_4d9753)) },
-                        onClick = { menuOpen = false; onDelete() })
-                }
-            }
+        androidx.compose.material3.IconButton(onClick = onMore) {
+            EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_playlist_actions))
         }
     }
 }

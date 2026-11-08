@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_concert_heading">演出信息</string>
+    <string name="artist_past_concerts">历史演出</string>
+    <string name="artist_no_past_concerts">暂无历史演出信息。</string>
+    <string name="artist_concert_hide_details">收起详情</string>
+    <string name="artist_concert_show_details">查看详情</string>
+    <string name="artist_concert_time_tbd">时间待公布</string>
+    <string name="artist_concert_ongoing">进行中</string>
+    <string name="artist_concert_started">已开始</string>
+    <string name="artist_concert_checked">最近查询：%1$s</string>
+    <string name="artist_concert_check_source">前往 %1$s 查询</string>
+    <string name="artist_concert_history_note">公开数据源不一定包含完整的历史演出记录。</string>
+    <string name="artist_concert_opens">入场时间</string>
+    <string name="artist_concert_ends">结束时间</string>
+    <string name="artist_concert_lineup">演出阵容</string>
+    <string name="artist_concert_address">详细地址</string>
+    <string name="artist_concert_coordinates">经纬度</string>
+    <string name="artist_concert_admission">票务</string>
+    <string name="artist_concert_ticketed">售票活动</string>
+    <string name="artist_concert_free">来源未标为售票活动</string>
+    <string name="artist_concert_price">来源票价</string>
+    <string name="artist_concert_sale_start">公开售票开始</string>
+    <string name="artist_concert_sale_end">公开售票结束</string>
+    <string name="artist_concert_notes">演出备注</string>
+    <string name="artist_concert_source_updated">来源更新：%1$s</string>
+</resources>

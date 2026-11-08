@@ -43,7 +43,7 @@ internal fun playerPageTokens(style: EchoPlayerPageStyle): EchoThemeTokens {
         EchoPlayerPageStyle.MetroLine -> MetroStyle.Paper
         EchoPlayerPageStyle.ChatThread -> ChatStyle.Paper
         EchoPlayerPageStyle.Halftone, EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
-        EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField -> FullBleedStyle.Screen
+        EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField, EchoPlayerPageStyle.FullCover -> FullBleedStyle.Screen
         else -> Color(afterglow.background)
     }
     val ink = when (style) {
@@ -55,7 +55,7 @@ internal fun playerPageTokens(style: EchoPlayerPageStyle): EchoThemeTokens {
         EchoPlayerPageStyle.MetroLine -> MetroStyle.Ink
         EchoPlayerPageStyle.ChatThread -> ChatStyle.Ink
         EchoPlayerPageStyle.Halftone, EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
-        EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField -> Color.White
+        EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField, EchoPlayerPageStyle.FullCover -> Color.White
         else -> Color(afterglow.foreground)
     }
     val accent = when (style) {
@@ -66,7 +66,7 @@ internal fun playerPageTokens(style: EchoPlayerPageStyle): EchoThemeTokens {
         EchoPlayerPageStyle.MetroLine -> MetroStyle.Line
         EchoPlayerPageStyle.ChatThread -> ChatStyle.Accent
         EchoPlayerPageStyle.Halftone, EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
-        EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField -> Color.White
+        EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField, EchoPlayerPageStyle.FullCover -> Color.White
         else -> Color(afterglow.accent)
     }
     val muted = ink.copy(alpha = 0.62f)

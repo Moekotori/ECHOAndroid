@@ -50,6 +50,7 @@ internal fun LibraryTextTabs(
     val labelStyle = if (compact) MaterialTheme.typography.labelLarge
         else MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp, lineHeight = 18.sp)
     val indicatorWidth = if (compact) 16.dp else 18.dp
+    val indicatorTop = 6.dp + with(density) { labelStyle.lineHeight.toDp() } + 6.dp
     val spacingPx = with(density) { spacing.toPx() }
     val scroll = rememberScrollState()
     LaunchedEffect(selectedIndex, labels, density, compact, lightweight) {
@@ -91,7 +92,8 @@ internal fun LibraryTextTabs(
                             style = labelStyle,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
                     }
-                    Spacer(Modifier.height(6.dp))
+                    // Leave room for the indicator, also when the system font size is enlarged.
+                    Spacer(Modifier.height(13.dp))
                 }
             }
         }
@@ -103,7 +105,8 @@ internal fun LibraryTextTabs(
             val position = if (pager == null) animateDpAsState(target,
                 animationSpec = if (lightweight) snap() else tween(160, easing = EchoMotion.Silk),
                 label = "library-tab-indicator") else null
-            Box(Modifier.align(Alignment.BottomStart).padding(bottom = 4.dp)
+            // Anchor to the label line instead of the 48dp minimum touch target's bottom.
+            Box(Modifier.align(Alignment.TopStart).padding(top = indicatorTop)
                 .offset {
                     val x = if (pager == null) position!!.value.roundToPx() else {
                         val center = libraryTabInterpolatedCenterPx(

@@ -20,4 +20,6 @@
     <string name="wifi_transfer_start">開啟接收</string>
     <string name="wifi_transfer_close">關閉</string>
     <string name="wifi_transfer_cleanup_error">未完成檔案暫時無法刪除，請重新授權原接收目錄，再開啟傳歌以重試清理。</string>
+    <string name="connect_other_ways_title">其他方式</string>
+    <string name="wifi_transfer_entry_detail">在電腦瀏覽器把歌曲傳到手機</string>
 </resources>

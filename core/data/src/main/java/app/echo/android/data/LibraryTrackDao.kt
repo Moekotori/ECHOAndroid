@@ -213,6 +213,12 @@ interface LibraryTrackDao {
     @RawQuery
     suspend fun queryTracks(query: SupportSQLiteQuery): List<LibraryTrackEntity>
 
+    @RawQuery
+    suspend fun queryTrackIds(query: SupportSQLiteQuery): List<String>
+
+    @RawQuery
+    suspend fun queryTrackCount(query: SupportSQLiteQuery): Int
+
     @Query(
         """
         SELECT * FROM visible_library_tracks AS library_tracks

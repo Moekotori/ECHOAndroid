@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_background_position_x">水平位置</string>
+    <string name="settings_background_position_y">垂直位置</string>
+    <string name="settings_background_position_title">位置与缩放</string>
+    <string name="settings_background_position_center">居中</string>
+    <string name="settings_background_position_drag_hint">长按预览拖动背景</string>
+    <string name="settings_background_position_dragging">松手即可保存位置</string>
+    <string name="settings_background_position_left">左 %1$d%%</string>
+    <string name="settings_background_position_right">右 %1$d%%</string>
+    <string name="settings_background_position_up">上 %1$d%%</string>
+    <string name="settings_background_position_down">下 %1$d%%</string>
+    <string name="settings_background_position_detail">想移动更多？先放大背景。</string>
+</resources>

@@ -18,7 +18,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.scale
+import app.echo.android.design.EchoBackgroundViewport
+import app.echo.android.design.backgroundImageAlignment
+import app.echo.android.design.backgroundImageTransform
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.media3.common.VideoSize
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -84,6 +89,8 @@ fun EchoCustomBackground(
                     uri = uri,
                     brightness = brightness,
                     backgroundScale = backgroundScale,
+                    positionX = settings.customBackgroundPositionX,
+                    positionY = settings.customBackgroundPositionY,
                     onError = { failed = true },
                 )
 
@@ -92,6 +99,8 @@ fun EchoCustomBackground(
                     blur = blur,
                     brightness = brightness,
                     backgroundScale = backgroundScale,
+                    positionX = settings.customBackgroundPositionX,
+                    positionY = settings.customBackgroundPositionY,
                     maxPixelSize = imageMaxPixelSize,
                     highQuality = highPerformance,
                     onError = { failed = true },
@@ -110,6 +119,8 @@ private fun EchoImageWallpaper(
     blur: Dp,
     brightness: Float,
     backgroundScale: Float,
+    positionX: Float,
+    positionY: Float,
     maxPixelSize: Int,
     highQuality: Boolean,
     onError: () -> Unit,
@@ -137,15 +148,16 @@ private fun EchoImageWallpaper(
             }
             .build()
     }
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().clipToBounds()) {
         AsyncImage(
             model = imageRequest,
             contentDescription = null,
             onError = { onError() },
             contentScale = ContentScale.Crop,
+            alignment = backgroundImageAlignment(positionX, positionY),
             modifier = Modifier
                 .fillMaxSize()
-                .scale(backgroundScale)
+                .backgroundImageTransform(backgroundScale, positionX, positionY)
                 .then(if (renderEffectBlur && blur > 0.dp) Modifier.blur(blur) else Modifier),
         )
         EchoBrightnessOverlay(brightness)
@@ -158,11 +170,14 @@ private fun EchoVideoWallpaper(
     uri: String,
     brightness: Float,
     backgroundScale: Float,
+    positionX: Float,
+    positionY: Float,
     onError: () -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
+    var videoAspectRatio by remember(uri) { mutableFloatStateOf(0f) }
     val currentOnError by androidx.compose.runtime.rememberUpdatedState(onError)
     DisposableEffect(uri, lifecycleOwner) {
         fun createPlayer(): ExoPlayer =
@@ -192,6 +207,10 @@ private fun EchoVideoWallpaper(
                 }
 
         val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                videoAspectRatio = videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height.coerceAtLeast(1)
+            }
+
             override fun onPlayerError(error: PlaybackException) {
                 currentOnError()
             }
@@ -224,21 +243,22 @@ private fun EchoVideoWallpaper(
         }
     }
     Box(Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { viewContext ->
-                PlayerView(viewContext).apply {
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    this.player = player
-                }
-            },
-            update = { view ->
-                if (view.player !== player) view.player = player
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .scale(backgroundScale),
-        )
+        EchoBackgroundViewport(videoAspectRatio, backgroundScale, positionX, positionY, Modifier.fillMaxSize()) {
+            AndroidView(
+                factory = { viewContext ->
+                    PlayerView(viewContext).apply {
+                        useController = false
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                        this.player = player
+                    }
+                },
+                update = { view ->
+                    if (view.player !== player) view.player = player
+                },
+                modifier = Modifier
+                    .fillMaxSize(),
+            )
+        }
         EchoBrightnessOverlay(brightness)
     }
 }

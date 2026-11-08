@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_file_name">Имя файла</string>
+    <string name="track_info_copy">Копировать всю информацию</string>
+    <string name="track_info_copied">Информация о песне скопирована</string>
+</resources>

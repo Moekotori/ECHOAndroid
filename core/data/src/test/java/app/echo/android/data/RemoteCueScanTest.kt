@@ -60,7 +60,12 @@ class RemoteCueScanTest {
         val seen = mutableSetOf(source.id)
         val aliases = ArrayList<Pair<String, String>>()
         scan.apply(mapOf(source.id to fingerprint(source)), seen,
-            readCue = { _, reference -> assertTrue(reference("album.wav")); sheet },
+            readCue = { _, reference ->
+                // Source evidence is exact; the parser resolves a unique WAV → lossless alias.
+                assertFalse(reference("album.wav"))
+                assertTrue(reference("album.flac"))
+                CueSheetParser.parse("FILE 'album.wav' WAVE\nTRACK 01 AUDIO\nTITLE 'One'\nINDEX 01 0\nTRACK 02 AUDIO\nTITLE 'Two'\nINDEX 01 4500".toByteArray(), reference)!!
+            },
             readEmbedded = { error("Sidecar must win") },
             load = { ids -> ids.mapNotNull(store::get) },
             write = { rows -> rows.forEach { store[it.id] = it } },

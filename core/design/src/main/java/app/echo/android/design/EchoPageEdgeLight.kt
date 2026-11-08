@@ -2,6 +2,7 @@ package app.echo.android.design
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -40,6 +41,21 @@ internal fun Modifier.echoPageEdgeLight(
         }
     }
 }
+
+/**
+ * Darkens the page that another page is covering. Drawn over the content inside the page's own
+ * layer, so it follows the page's scale and clip and needs no alpha layer. [dim] is read in the
+ * draw phase only.
+ */
+fun Modifier.echoPageDim(dim: () -> Float, dark: Boolean): Modifier =
+    drawWithContent {
+        drawContent()
+        val strength = dim().coerceIn(0f, 1f)
+        if (strength > 0.002f) {
+            val peak = if (dark) EchoMotion.PageScrimAlphaDark else EchoMotion.PageScrimAlpha
+            drawRect(Color.Black, alpha = peak * strength)
+        }
+    }
 
 /** A thin rim around a page being dragged away; it grows with the back gesture. */
 internal fun Modifier.echoPageRimLight(

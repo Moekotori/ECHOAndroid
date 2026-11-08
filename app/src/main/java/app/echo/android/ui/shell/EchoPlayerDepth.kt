@@ -9,7 +9,9 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoMotion
+import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.echoPageDim
 
 /** Read animation and predictive-back progress in the layer, not the page composition. */
 @Composable
@@ -23,15 +25,16 @@ internal fun Modifier.echoPlayerDepth(
         animationSpec = if (lightweight) tween(0) else EchoMotion.silkFloat(520),
         label = "player-background-depth",
     )
+    val dark = LocalEchoDarkTheme.current
+    fun progress() = depth.value.coerceIn(0f, 1f) * (1f - backProgress().coerceIn(0f, 1f))
     return graphicsLayer {
-        val progress = depth.value.coerceIn(0f, 1f) * (1f - backProgress().coerceIn(0f, 1f))
+        val progress = progress()
         transformOrigin = TransformOrigin(0.5f, 0.12f)
         scaleX = 1f - 0.035f * progress
         scaleY = scaleX
         translationY = 8.dp.toPx() * progress
-        // Keep the resting page out of an offscreen alpha layer.
-        alpha = 1f - 0.12f * progress
         shape = RoundedCornerShape((24f * progress).dp)
         clip = progress > 0f
-    }
+        // Depth is a scrim drawn inside the layer, so no alpha layer is needed.
+    }.echoPageDim(::progress, dark)
 }
