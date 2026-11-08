@@ -2,7 +2,7 @@ package app.echo.android.playback
 
 import android.content.Context
 import android.net.Uri
-import android.util.Base64
+import java.util.Base64
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
@@ -43,6 +43,7 @@ data class EchoSubsonicPlaybackCredential(
     val baseUrl: String,
     val username: String,
     val password: String,
+    val sourceId: String? = null,
 ) {
     val normalizedBaseUrl: String =
         baseUrl.trim().trimEnd('/')
@@ -78,7 +79,7 @@ object EchoRemotePlaybackAuthRegistry {
         subsonicCredentials.set(
             credentials
                 .filter { it.normalizedBaseUrl.isNotBlank() && it.username.isNotBlank() && it.password.isNotBlank() }
-                .distinctBy { it.normalizedBaseUrl },
+                .distinctBy { it.normalizedBaseUrl to it.username.trim() },
         )
     }
 
@@ -103,10 +104,7 @@ object EchoRemotePlaybackAuthRegistry {
     fun hasJellyfinCredentials(): Boolean = jellyfinCredentials.get().isNotEmpty()
 
     fun isSubsonicAuthReadyForUris(uris: Iterable<String>): Boolean =
-        subsonicAuthReadyForQueue(
-            uris = uris,
-            credentialBaseUrls = subsonicCredentials.get().map { it.normalizedBaseUrl },
-        )
+        uris.filter(::subsonicPlaybackUriRequiresCredential).all { matchingSubsonicCredential(it) != null }
 
     fun isJellyfinAuthReadyForUris(uris: Iterable<String>): Boolean =
         jellyfinAuthReadyForQueue(
@@ -124,6 +122,8 @@ object EchoRemotePlaybackAuthRegistry {
                 .setUri(Uri.parse(signedJellyfinUrl))
                 .build()
         }
+
+        if (isSubsonicRestUrl(uri.toString()) || isJellyfinMediaUrl(uri.toString())) return dataSpec
 
         val userInfo = uri.userInfoDecoded()
         val matchedCredential = matchingWebDavCredential(uri)
@@ -153,7 +153,9 @@ object EchoRemotePlaybackAuthRegistry {
     }
 
     fun playbackRequest(url: String): EchoRemotePlaybackRequest {
-        val signed = resolveJellyfinUrl(resolveSubsonicUrl(url.trim()))
+        val original = url.trim()
+        val signed = resolveJellyfinUrl(resolveSubsonicUrl(original))
+        if (isSubsonicRestUrl(original) || isJellyfinMediaUrl(original)) return EchoRemotePlaybackRequest(url = signed)
         val webDav = matchingWebDavCredentialForUrl(signed)
         if (webDav != null) {
             return EchoRemotePlaybackRequest(
@@ -237,10 +239,11 @@ object EchoRemotePlaybackAuthRegistry {
     private fun matchingSubsonicCredential(url: String): EchoSubsonicPlaybackCredential? {
         if (!isSubsonicRestUrl(url)) return null
         val cleanUrl = stripUserInfo(url)
+        val source = parseQueryParameters(url).firstOrNull { it.first == "echoSource" }?.second
         return subsonicCredentials.get()
             .firstOrNull { credential ->
-                cleanUrl == credential.normalizedBaseUrl ||
-                    cleanUrl.startsWith("${credential.normalizedBaseUrl}/")
+                (source == null || credential.sourceId == source) &&
+                    (cleanUrl == credential.normalizedBaseUrl || cleanUrl.startsWith("${credential.normalizedBaseUrl}/"))
             }
     }
 
@@ -489,6 +492,14 @@ private fun stripHttpUserInfo(uri: String): String {
     return uri.substring(0, schemeEnd + 3) + afterScheme.substring(at + 1)
 }
 
+/** Old saved playback sessions predate account-scoped resource URLs. Derive their owner from the media ID. */
+internal fun accountScopedSubsonicUri(url: String, mediaId: String): String {
+    if (!mediaId.startsWith("subsonic:") || !mediaId.contains(":song:") || !isSubsonicRestUrl(url)) return url
+    val params = parseQueryParameters(url)
+    if (params.any { it.first == "echoSource" }) return url
+    return replaceQuery(url, params + ("echoSource" to mediaId.substringBefore(":song:")))
+}
+
 internal fun subsonicUnsupportedFormatFallbackUrl(url: String): String? {
     if (!isSubsonicStreamUrl(url)) return null
     val params = parseQueryParameters(url)
@@ -624,7 +635,7 @@ private fun md5Hex(value: String): String {
 
 private fun basicAuthorization(username: String, password: String): String {
     val raw = "$username:$password"
-    val encoded = Base64.encodeToString(raw.toByteArray(StandardCharsets.UTF_8), Base64.NO_WRAP)
+    val encoded = Base64.getEncoder().encodeToString(raw.toByteArray(StandardCharsets.UTF_8))
     return "Basic $encoded"
 }
 
@@ -725,7 +736,7 @@ private val SubsonicTokenSaltRandom = SecureRandom()
 private const val SubsonicPlaybackApiVersion = "1.16.1"
 private const val SubsonicPlaybackClientId = "ECHOAndroid"
 
-private val subsonicAuthQueryNames = setOf("u", "t", "s", "p", "v", "c", "f")
+private val subsonicAuthQueryNames = setOf("u", "t", "s", "p", "v", "c", "f", "echosource")
 
 private val subsonicStreamVariantQueryNames = setOf("format", "maxbitrate", "timeoffset")
 

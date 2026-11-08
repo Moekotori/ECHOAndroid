@@ -1,0 +1,33 @@
+{
+  "repository": "https://github.com/airwindows/airwindows",
+  "revision": "7fd5f5cae262a41e6dd7d9a83d60c46e84d3092a",
+  "license": "MIT",
+  "upstreamFiles": {
+    "DeRez3": {
+      "DeRez3.h": "4f704b3d441a5a90f7271228122fe14bbe7078b6a4c019e34dd726b6cc76526a",
+      "DeRez3.cpp": "11cf0f5141af009f7578a7e908da93d7cdcc85c0efab437f336d557979d0342c",
+      "DeRez3Proc.cpp": "0ec41d1693df44784b3479b7af2245933831de858e57fab041c985a6ba3b41ee"
+    },
+    "RingModulator": {
+      "RingModulator.h": "162cc75200aae4854504e155f4aa2a8bdc636f2bfc155f70b12e61b5c5f507c6",
+      "RingModulator.cpp": "08e4debd1470f7896cf19da4fd1fd4c794f45f634c52842cb3553c1c58f255df",
+      "RingModulatorProc.cpp": "e7062aa09e33c9b3e467d89d060ae785a95c8589a972d53950f12f5fdc108ad5"
+    }
+  },
+  "adaptations": [
+    "Retain double processing/private histories only; omit VST SDK, UI and float path.",
+    "Typed noexcept native processing; deterministic histories/reset and RNG seeds; LF line endings.",
+    "Omit denormal-noise injection; retain upstream disabled double-path audio dither.",
+    "DeRez3 A=.72 B=.55 C=.75; normalize summed dry/wet by 1.5; start smoothing at fixed controls.",
+    "DeRez3 caps its internal rate increment at 1 so admitted low sample rates cannot overrun its reconstruction phase.",
+    "RingModulator A=B=.52 C=.5 D=.65; start phase at pi/2 and smoothing at fixed increments."
+  ],
+  "files": {
+    ".gitattributes": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9",
+    "AirwindowsDeRez3.cpp": "b0ca8bd51ff887096b3958bf30b4d8c1580aea8658e742d6ef5b2b82d152efa7",
+    "AirwindowsDeRez3.h": "762d9153a63b6cddac85b4bf567aae9cb48dacdc0da8f7017d33d6cd8d836d36",
+    "AirwindowsRingModulator.cpp": "937dbdf99dc59f9c3f1c1a8624caab3d7715968b10fd1ed1c0cf0cfe06057dee",
+    "AirwindowsRingModulator.h": "bbc4c84bf885ff7dd712eb4f561c2b0fac8dd11e72ed05c1d59f5472e62cf315",
+    "LICENSE.txt": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b"
+  }
+}

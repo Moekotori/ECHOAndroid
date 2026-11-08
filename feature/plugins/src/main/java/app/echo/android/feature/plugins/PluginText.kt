@@ -43,6 +43,7 @@ internal fun PluginCapability.title(): String = stringResource(
         PluginCapability.Network -> R.string.plugins_perm_network
         PluginCapability.Storage -> R.string.plugins_perm_storage
         PluginCapability.UiPage -> R.string.plugins_perm_page
+        PluginCapability.LyricsProvider -> R.string.plugins_perm_lyrics
     },
 )
 
@@ -55,5 +56,6 @@ internal fun PluginCapability.detail(): String = stringResource(
         PluginCapability.Network -> R.string.plugins_perm_network_detail
         PluginCapability.Storage -> R.string.plugins_perm_storage_detail
         PluginCapability.UiPage -> R.string.plugins_perm_page_detail
+        PluginCapability.LyricsProvider -> R.string.plugins_perm_lyrics_detail
     },
 )

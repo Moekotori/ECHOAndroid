@@ -87,8 +87,6 @@ import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Lyrics
-import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Star
@@ -238,6 +236,8 @@ fun NowPlayingScreen(
     lyricsRomanizationScale: Float = 1f,
     onLyricsTranslationScaleChange: (Float) -> Unit = {},
     onLyricsRomanizationScaleChange: (Float) -> Unit = {},
+    translationCurrentOnly: Boolean = false,
+    onTranslationCurrentOnlyChange: (Boolean) -> Unit = {},
     smartTransitionState: State<app.echo.android.model.playback.EchoSmartTransitionVisual?>? = null,
     lyricsFontFamily: FontFamily? = null,
     lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
@@ -289,6 +289,7 @@ fun NowPlayingScreen(
     playerTextScale: Float = 1f,
     playerArtworkScale: Float = 1f,
     onPlayerAppearanceChange: (String, Float, Float) -> Unit = { _, _, _ -> },
+    appearancePacks: @Composable () -> Unit = {},
 ) {
     val lyricsMotionMode = DefaultLyricsMotionMode
     val persistedAppearance = remember(playerPageStyle, playerTextScale, playerArtworkScale) {
@@ -513,6 +514,7 @@ fun NowPlayingScreen(
     val settingsColorScheme = MaterialTheme.colorScheme
     val settingsTypography = MaterialTheme.typography
     CompositionLocalProvider(
+        LocalTranslationCurrentOnly provides translationCurrentOnly,
         LocalLyricsSecondaryText provides LyricsSecondaryText(secondaryLyricScale(lyricsTranslationScale), secondaryLyricScale(lyricsRomanizationScale)),
         LocalPlayerPageStyle provides sharedStyle,
         LocalLyricsWordHighlightStyle provides EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle),
@@ -593,6 +595,10 @@ fun NowPlayingScreen(
                 }
             }
             if (!isRadio) PageStyleDecor(sharedStyle, lyricsReveal, Modifier.fillMaxSize())
+            val openPlaybackSettings = {
+                if (lyricsSurfaceVisible && !splitNowPlaying) lyricsSettingsVisible = true
+                else playbackSettingsVisible = true
+            }
             Column(
                 modifier = Modifier
                     .safeDrawingPadding()
@@ -627,15 +633,12 @@ fun NowPlayingScreen(
                     appearance = appearance,
                     radioColors = radioColors,
                     isFavorite = isCurrentTrackFavorite,
+                    favoriteAvailable = track.supportsMusicFavorite(),
                     onToggleFavorite = { if (track != null) onToggleFavorite() },
                     lyricsPage = lyricsSurfaceVisible && !splitNowPlaying,
                     lyricsReveal = lyricsReveal,
                     onCast = onCast,
                     castActive = castActive,
-                    onOpenPlaybackSettings = {
-                        if (lyricsSurfaceVisible && !splitNowPlaying) lyricsSettingsVisible = true
-                        else playbackSettingsVisible = true
-                    },
                 )
                 status.diagnostics.lastError?.let { playbackError ->
                     NowPlayingErrorBanner(
@@ -714,7 +717,7 @@ fun NowPlayingScreen(
                             onSeek = onSeek,
                             onOpenQueue = onOpenQueue,
                             onCast = onCast,
-                            castActive = castActive,
+                            onMore = openPlaybackSettings,
                             onToggleShuffle = onToggleShuffle,
                             onCycleRepeatMode = onCycleRepeatMode,
                             isCurrentTrackFavorite = isCurrentTrackFavorite,
@@ -751,8 +754,7 @@ fun NowPlayingScreen(
                         onNext = onNext,
                         onPrevious = onPrevious,
                         onOpenQueue = onOpenQueue,
-                        onCast = onCast,
-                        castActive = castActive,
+                        onMore = openPlaybackSettings,
                         onSetSleepTimer = onSetSleepTimer,
                         onCancelSleepTimer = onCancelSleepTimer,
                         modifier = Modifier.fillMaxSize(),
@@ -871,6 +873,7 @@ fun NowPlayingScreen(
                 onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
                 onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
                 lyricsTranslationScale = lyricsTranslationScale, lyricsRomanizationScale = lyricsRomanizationScale,
+                translationCurrentOnly = translationCurrentOnly, onTranslationCurrentOnlyChange = onTranslationCurrentOnlyChange,
                 onLyricsTranslationScaleChange = onLyricsTranslationScaleChange, onLyricsRomanizationScaleChange = onLyricsRomanizationScaleChange,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -928,6 +931,7 @@ fun NowPlayingScreen(
                             lyricsBackdrop = backdropStyle.id,
                             onLyricsBackdropChange = onLyricsBackdropChange,
                             onBack = { appearanceSettingsVisible = false },
+                            appearancePacks = appearancePacks,
                         )
                     }
                 }
@@ -950,10 +954,10 @@ private fun NowPlayingTopBar(
     appearance: PlayerAppearance,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
+    favoriteAvailable: Boolean = true,
     lyricsPage: Boolean = false,
     lyricsReveal: () -> Float = { 0f },
     radioColors: RadioPlayerColors? = null,
-    onOpenPlaybackSettings: () -> Unit,
     onCast: (() -> Unit)?,
     castActive: Boolean,
 ) {
@@ -1008,7 +1012,7 @@ private fun NowPlayingTopBar(
                     }
                 }
             }
-            if (editorial && appearance.style == "type_poster") {
+            if (editorial && appearance.style == "type_poster" && favoriteAvailable) {
                 GlyphButton(
                     icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                     description = stringResource(if (isFavorite) L10nR.string.feature_player_unfavorite_3a27e4 else L10nR.string.feature_player_favorite_b5d1f5),
@@ -1017,22 +1021,15 @@ private fun NowPlayingTopBar(
                     modifier = Modifier.align(Alignment.CenterEnd).padding(end = 48.dp),
                 )
             }
-            if (lyricsPage) LyricsPageActions(
-                onOpenSettings = onOpenPlaybackSettings,
-                onCast = onCast,
-                castActive = castActive,
-                tint = headerInk,
-                modifier = Modifier.align(Alignment.CenterEnd),
-            ) else GlyphButton(
-                icon = if (radioColors != null) Icons.Rounded.MoreVert
-                    else if (editorial && appearance.style == "pixel_handheld") PixelPlayerIcons.More else Icons.Rounded.MoreHoriz,
-                description = stringResource(L10nR.string.feature_player_expand_playback_settings_cf64a0),
+            if (onCast != null) GlyphButton(
+                icon = if (editorial && appearance.style == "pixel_handheld") PixelPlayerIcons.Cast else PlayerControlIcons.Cast,
+                description = stringResource(if (castActive) L10nR.string.feature_player_cast_active else L10nR.string.feature_player_cast),
                 touchSize = 48.dp,
                 iconSize = 26.dp,
-                tint = headerInk,
+                tint = if (castActive) radioColors?.accent ?: MaterialTheme.colorScheme.primary else headerInk,
                 background = Color.Transparent,
-                onClick = onOpenPlaybackSettings,
-                modifier = Modifier.align(Alignment.CenterEnd),
+                onClick = onCast,
+                modifier = Modifier.align(Alignment.CenterEnd).castSemantics(castActive),
             )
         }
         // Reserve the indicator strip on both classic pages. Removing it at the
@@ -1124,6 +1121,7 @@ private fun LyricsSettingsDrawer(
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     lyricsTranslationScale: Float, lyricsRomanizationScale: Float,
+    translationCurrentOnly: Boolean, onTranslationCurrentOnlyChange: (Boolean) -> Unit,
     onLyricsTranslationScaleChange: (Float) -> Unit, onLyricsRomanizationScaleChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1178,6 +1176,7 @@ private fun LyricsSettingsDrawer(
             onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
             onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
             translationScale = lyricsTranslationScale, romanizationScale = lyricsRomanizationScale,
+            translationCurrentOnly = translationCurrentOnly, onTranslationCurrentOnlyChange = onTranslationCurrentOnlyChange,
             onTranslationScaleChange = onLyricsTranslationScaleChange, onRomanizationScaleChange = onLyricsRomanizationScaleChange,
         )
     }

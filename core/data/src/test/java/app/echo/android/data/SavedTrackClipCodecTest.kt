@@ -25,11 +25,12 @@ class SavedTrackClipCodecTest {
     }
     @Test fun hiddenMenuActionsSurvivePreferencesAndUnknownIdsAreIgnored() {
         val preferences = mutablePreferencesOf()
-        val layout = EchoLibraryLayout(hiddenTrackActions = setOf(EchoTrackMenuAction.Delete, EchoTrackMenuAction.EditTags))
+        val layout = EchoLibraryLayout(hiddenTrackActions = setOf(EchoTrackMenuAction.Delete, EchoTrackMenuAction.EditTags),
+            trackActionOrder = EchoTrackMenuAction.entries.reversed())
         LibraryLayoutPreferences.write(preferences, layout)
-        assertEquals(layout.hiddenTrackActions, LibraryLayoutPreferences.read(preferences).hiddenTrackActions)
+        assertEquals(layout, LibraryLayoutPreferences.read(preferences))
         val backup = app.echo.android.model.backup.EchoBackupDocument(settings = EchoAppSettings(libraryLayout = layout).toBackupSettings())
-        assertEquals(layout.hiddenTrackActions, EchoBackupCodec.decode(EchoBackupCodec.encode(backup)).settings.libraryLayout!!.hiddenTrackActions)
+        assertEquals(layout, EchoBackupCodec.decode(EchoBackupCodec.encode(backup)).settings.libraryLayout)
         assertNull(EchoTrackMenuAction.fromId("future-action"))
     }
 }

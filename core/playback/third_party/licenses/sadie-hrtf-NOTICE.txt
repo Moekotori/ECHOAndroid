@@ -1,0 +1,11 @@
+SADIE II derived HRTF data, University of York.
+https://www.york.ac.uk/sadie-project/database.html
+OpenAL Soft Default HRTF.mhr, revision b7463649fd73188146e3b1467a91e7f0926a6d04
+https://raw.githubusercontent.com/kcat/openal-soft/b7463649fd73188146e3b1467a91e7f0926a6d04/hrtf/Default%20HRTF.mhr
+Source SHA-256: 40ed10f203488fdeca5f873bfd64f6fae232f4f7412ba07ae5e501ad882adf8c
+Apache License 2.0; see sadie-hrtf-LICENSE.txt.
+ECHO Android modifications: extract horizontal +/-20, 30, 45 degree speaker
+responses at 1.2 m; reconstruct fractional delays, add a common 16-sample
+guard, normalize summing headroom, and retain four 128-tap FIRs per profile.
+No OpenAL playback engine is included. These are generic measured responses,
+not individual ear measurements or guaranteed externalization.

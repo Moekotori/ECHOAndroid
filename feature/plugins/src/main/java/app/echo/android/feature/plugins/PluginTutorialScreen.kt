@@ -20,6 +20,7 @@ import app.echo.android.plugin.SamplePlugin
 internal fun PluginTutorialScreen(
     onBack: () -> Unit,
     onInstallSample: () -> Unit,
+    onInstallLyricsSample: () -> Unit,
 ) {
     PluginChrome(title = stringResource(R.string.plugins_tutorial_title), onBack = onBack) {
         Text(stringResource(R.string.plugins_tutorial_intro), style = MaterialTheme.typography.bodyMedium)
@@ -32,6 +33,9 @@ internal fun PluginTutorialScreen(
         SectionLabel(stringResource(R.string.plugins_tutorial_script))
         CodeBlock(SamplePlugin.Script.trimIndent())
         Button(onClick = onInstallSample) { Text(stringResource(R.string.plugins_tutorial_install)) }
+        SectionLabel(stringResource(R.string.plugins_lyrics_sample_title))
+        Text(stringResource(R.string.plugins_lyrics_sample_detail), style = MaterialTheme.typography.bodyMedium)
+        Button(onClick = onInstallLyricsSample) { Text(stringResource(R.string.plugins_lyrics_sample_install)) }
     }
 }
 

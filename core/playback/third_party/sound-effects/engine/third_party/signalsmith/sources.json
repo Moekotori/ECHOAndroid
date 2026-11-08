@@ -1,0 +1,57 @@
+[
+  {
+    "repository": "https://github.com/Signalsmith-Audio/basics",
+    "revision": "369e906e03760ec219d07b06fa06dc4fd099f377",
+    "license": "MIT",
+    "files": {
+      "LICENSE.txt": "b81eab3abab58e20eb74c74e70b8f3cbf7160ae3b3f1951b8f5e6692b52d10b5",
+      "SUPPORT.txt": "effc0e9edc9cf0fa6e40e21477cef7021c841e215e364aa6da8874ffaacaecb6",
+      "include/signalsmith-basics/chorus.h": "a3760fcdae3f5e5304aef4c867a219310fe4936c0de3e1458e2f52c9a3155ac7",
+      "include/signalsmith-basics/crunch.h": "e569e2cfe65edd6936c32caa80b90140ae996cefa2bfb8445f52423aa013648c",
+      "include/signalsmith-basics/dynamics.h": "7eb0fc25a79cc29b16166531c69b3ca6e45c30f50de84c4085f1a09d8cc4ee81",
+      "include/signalsmith-basics/reverb.h": "f84e342bb0b55e65732b544fe7b69b0922a08dfa7acaef0a8a4d425e5ac75f07",
+      "include/stfx/stfx-library.h": "55f615730a0f90d0880f1c5ec51375509e3bc17291267c306b2eccfc3bff03ba"
+    },
+    "patches": [
+      {
+        "file": "include/signalsmith-basics/chorus.h",
+        "description": "Read the dry signal from the actual input channel, avoiding the six-voice array overrun for 7.1 audio.",
+        "sha256": "9c1a8b12f2c2a1dc6c2dc557c17cfa7cb48b6dda18d7e086b63be0d354de4c92"
+      },
+      {
+        "file": "include/signalsmith-basics/reverb.h",
+        "description": "Reset the omitted fourth diffusion delay in ReverbSTFX::reset.",
+        "sha256": "bb8cb42ff59d2a96a31567c0470b8d9d4c68b9b44c6ca5d078bed17cb02dfa86"
+      }
+    ]
+  },
+  {
+    "repository": "https://github.com/Signalsmith-Audio/dsp",
+    "revision": "2d20161915e733f117545c6be8cd3275a739a1e3",
+    "license": "MIT",
+    "files": {
+      "LICENSE.txt": "8b7cb3437bcbe89c4bd5c51da3c1a67f71fa7e9026a89670e9e499189225aff8",
+      "common.h": "d0a9055695090c4a217f684cadea8cc2c5343e93cdfd180125f941318b2f9366",
+      "curves.h": "762c64abf1fe4d94debfe439627d2075b74ce56816edcd6aba7088ec63495a1c",
+      "delay.h": "8404c2f3ece11314933d560a8fc6fd9c3220e2308492912b02ac6d1e834af24c",
+      "envelopes.h": "168403fcc3c94e6655e84f9e9d2e374e627f7283e2c9cdf62361833322268e11",
+      "fft.h": "01c193813c0b3bd7da30b227a1d55fa54b137bef78560fc7a12e84df81c0fd52",
+      "filters.h": "752215646c6d78701b3727023ca0dec2426f16725f88e3f56484ce4183ca98d0",
+      "include/signalsmith-dsp/curves.h": "663a5095126da354896a00f178600bea0f21ef461f5d88e84e46e75ff43925aa",
+      "include/signalsmith-dsp/delay.h": "cc86e9804e50ca2b004c1023987cc5b8c9810fc6e2bc131cdc02f4ed874a4fdf",
+      "include/signalsmith-dsp/envelopes.h": "0dec696807a2504b01f0c2d20cd2e50393010c9a4b8107f396b2455700f7e340",
+      "include/signalsmith-dsp/fft.h": "98e7e64093b6fc8ccbba31f710370d5548243bad35beb489e8282de4dc25d76d",
+      "include/signalsmith-dsp/filters.h": "bdd3dc5ad39524d2984ead6b9955c628ca1a3ce41c03c79ec18b567bd21b679d",
+      "include/signalsmith-dsp/mix.h": "7387cb5794c15c7b6720e4a6fbc7b65fbb7b9f619259dfd39e5d54945ae757a2",
+      "include/signalsmith-dsp/perf.h": "627bfa6eb4f050be429629db0a08324334979bde2428206f0400648f0df47365",
+      "include/signalsmith-dsp/rates.h": "a9149d5c6a4952d3c1a43e6f77c830b9a6ce70e0d49efad874c62b661e3dee5d",
+      "include/signalsmith-dsp/spectral.h": "c880288ed072ec5daa23911261e0ba62aa99edf338b9c377d0fe2caa17061ae4",
+      "include/signalsmith-dsp/windows.h": "773760bd60f1cbd7b3d2045b6ec9b9372721101673d351060f409ed6cd399789",
+      "mix.h": "3bb1f307e5f79fd3aafd91fac41d33c29cf0b0c2a6a2a0b5041981e050ec5834",
+      "perf.h": "8d8dcad667c4955da42468f55d13a854a14541bc68121a4ebd09a08cdb6e3814",
+      "rates.h": "17c70c9d2c123b2ec1823309ea4317aa711098aef874090c0c97901267dc8a1a",
+      "spectral.h": "9353dc555dc74f6a2913bb439e3d2e2c1432d316bbb3bfd33c7f1a5d0af6d0eb",
+      "windows.h": "e1ef72403301aed069f3d523cfde058e155f9c4054e4d19cbcefb38223ecbf3c"
+    }
+  }
+]

@@ -130,6 +130,33 @@ class PluginEngine(
         timerExecutor.shutdownNow()
     }
 
+    /** One bounded, explicitly requested lookup; cancellation prevents subsequent providers. */
+    fun searchLyrics(request: PluginLyricsRequest, onResult: (List<PluginLyricsCandidate>) -> Unit): java.util.concurrent.Future<*> = executor.submit {
+        val results = ArrayList<PluginLyricsCandidate>()
+        val deadline = System.nanoTime() + 12_000_000_000L
+        for ((id, plugin) in plugins.toMap().entries.filter {
+            it.value.enabled && PluginCapability.LyricsProvider in it.value.grants
+        }.take(4)) {
+            if (Thread.currentThread().isInterrupted) return@submit
+            val session = sessions[id] ?: continue
+            var texts = emptyList<String>()
+            val remainingMs = (deadline - System.nanoTime()) / 1_000_000
+            if (remainingMs <= 0) break
+            val fault = session.searchLyrics(request, minOf(8_000, remainingMs)) { texts = it }
+            if (Thread.currentThread().isInterrupted) return@submit
+            if (fault != null) { fail(id, fault); continue }
+            if (PluginCapability.LyricsProvider !in plugins[id]?.grants.orEmpty()) continue
+            texts.distinct().forEach { text ->
+                val digest = java.security.MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
+                    .joinToString("") { "%02x".format(it.toInt() and 255) }
+                results += PluginLyricsCandidate("plugin:$id:$digest", plugin.manifest.name.take(100),
+                    request.title.take(200), request.artist.take(200), request.album.take(200),
+                    request.durationMs.coerceIn(0, 86_400_000), text)
+            }
+        }
+        onResult(results)
+    }
+
     internal fun flushForTest() {
         val latch = CountDownLatch(1)
         executor.execute { latch.countDown() }

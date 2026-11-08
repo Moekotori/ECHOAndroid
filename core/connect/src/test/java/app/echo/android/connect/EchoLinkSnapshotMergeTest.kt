@@ -14,6 +14,22 @@ import org.junit.Test
 class EchoLinkSnapshotMergeTest {
     private val endpoint = EchoRemoteEndpoint("pc", "PC", "127.0.0.1", 26789, "token")
     @Test
+    fun everySupportedArtworkFieldReplacesThePreviousCoverIncludingExplicitNull() {
+        val previous = EchoRemotePlaybackSnapshot(track = EchoRemoteTrack("song", "Song", "Artist", null,
+            "http://127.0.0.1:26789/old", 1000))
+        for (field in listOf("imageUrl", "thumbnailUrl", "artwork")) {
+            val value = if (field == "artwork") """{"url":"/new"}""" else """"/new""""
+            fun event(raw: String) = parseEchoLinkEventData(
+                """{"snapshot":{"track":{"id":"song","title":"Song","$field":$raw}}}""", endpoint)!!
+            assertEquals(field, "http://127.0.0.1:26789/new", mergeEchoLinkSnapshot(previous, event(value)).track?.artworkUrl)
+            assertNull(field, mergeEchoLinkSnapshot(previous, event("null")).track?.artworkUrl)
+        }
+        val nestedCover = parseEchoLinkEventData(
+            """{"snapshot":{"track":{"id":"song","title":"Song","cover":{"url":"/new"}}}}""", endpoint)!!
+        assertEquals("http://127.0.0.1:26789/new", mergeEchoLinkSnapshot(previous, nestedCover).track?.artworkUrl)
+    }
+
+    @Test
     fun v2IdentityAndCapabilitiesMergeWithoutErasingQueueRows() {
         val track = EchoRemoteTrack("same", "Song", "Artist", null, null, 1000, queueId = "occurrence-1")
         val previous = EchoRemotePlaybackSnapshot(queue = EchoRemotePlaybackQueue(items = listOf(track), revision = 1, currentQueueId = "occurrence-1"))

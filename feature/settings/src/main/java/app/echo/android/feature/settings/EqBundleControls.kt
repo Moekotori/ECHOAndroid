@@ -21,6 +21,7 @@ internal fun EqBundleControls(presets: List<EchoEqualizerUserPreset>, enabled: B
     val scope = rememberCoroutineScope()
     var imported by remember { mutableStateOf<List<EchoEqualizerUserPreset>?>(null) }
     var exportSelection by remember { mutableStateOf<Set<String>?>(null) }
+    var pcJson by remember { mutableStateOf(false) }
     var exportText by remember { mutableStateOf<String?>(null) }
     var conflict by remember { mutableStateOf(EchoEqImportConflict.Add) }
     var busy by remember { mutableStateOf(false) }
@@ -60,7 +61,7 @@ internal fun EqBundleControls(presets: List<EchoEqualizerUserPreset>, enabled: B
     }
     Column {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(enabled = enabled && !busy, onClick = { pick.launch(arrayOf("text/*", "application/octet-stream")) }) {
+            TextButton(enabled = enabled && !busy, onClick = { pick.launch(arrayOf("text/*", "application/json", "application/octet-stream")) }) {
                 Text(stringResource(R.string.eq_bundle_import)) }
             TextButton(enabled = enabled && !busy && exportText == null && presets.isNotEmpty(), onClick = { exportSelection = presets.map { it.id }.toSet() }) {
                 Text(stringResource(R.string.eq_bundle_export)) }
@@ -72,6 +73,8 @@ internal fun EqBundleControls(presets: List<EchoEqualizerUserPreset>, enabled: B
     exportSelection?.let { selection ->
         AlertDialog(onDismissRequest = { exportSelection = null }, title = { Text(stringResource(R.string.eq_bundle_export)) },
             text = { Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                Row { Checkbox(checked = pcJson, onCheckedChange = { pcJson = it }); Text(stringResource(R.string.eq_pc_export_json), Modifier.padding(top = 12.dp)) }
+                Text(stringResource(R.string.eq_pc_json_detail), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { exportSelection = if (selection.size == presets.size) emptySet() else presets.map { it.id }.toSet() }) {
                     Text(stringResource(R.string.eq_bundle_select_all)) }
                 presets.forEach { preset -> Row {
@@ -81,9 +84,9 @@ internal fun EqBundleControls(presets: List<EchoEqualizerUserPreset>, enabled: B
                 } }
             } }, confirmButton = { TextButton(enabled = selection.isNotEmpty(), onClick = {
                 perform {
-                    exportText = withContext(Dispatchers.Default) { EchoEqBundleCodec.encode(presets.filter { it.id in selection }) }
+                    exportText = withContext(Dispatchers.Default) { if (pcJson) EchoEqPcJsonCodec.encode(presets.filter { it.id in selection }) else EchoEqBundleCodec.encode(presets.filter { it.id in selection }) }
                     exportSelection = null
-                    export.launch("ECHO-presets.echoeq")
+                    export.launch(if (pcJson) "ECHO-presets.json" else "ECHO-presets.echoeq")
                 }
             }) { Text(stringResource(R.string.eq_bundle_export)) } })
     }

@@ -56,19 +56,19 @@ class SubsonicSyncPolicyTest {
     }
 
     @Test
-    fun fallbackPlanTreatsWholeAlbumKeyGroupAtomically() {
-        // 同一 albumKey 下两张服务器专辑:本地数量等于两张之和才可跳过
+    fun fallbackPlanKeepsDistinctServerReleasesSeparate() {
+        // 同名同艺人的两个服务器版本仍有不同身份。
         val discOne = album("d1", "Live", "Band", songCount = 5)
         val discTwo = album("d2", "Live", "Band", songCount = 5)
         val key = SubsonicSyncPolicy.albumCandidateKey(discOne)
-        assertEquals(key, SubsonicSyncPolicy.albumCandidateKey(discTwo))
+        assertFalse(key == SubsonicSyncPolicy.albumCandidateKey(discTwo))
 
         val mismatchPlan = SubsonicSyncPolicy.planAlbumFallbackSync(
             albums = listOf(discOne, discTwo),
             localTrackIdsByAlbumKey = mapOf(key to List(5) { "t$it" }),
             refreshSalt = 0L,
         )
-        // 本地只有 5 首,与 10 首不符 → 两张都拉取
+        // 第一张进入轮换刷新，第二张尚未入库，两张都拉取。
         assertEquals(2, mismatchPlan.albumsToFetch.size)
         assertEquals(0, mismatchPlan.skippedAlbumCount)
     }
@@ -166,6 +166,15 @@ class SubsonicSyncPolicyTest {
                 existingRemoteCount = 120,
             ),
         )
+    }
+
+    @Test
+    fun exhaustedValidatedSearchAllowsTheLibraryToShrink() {
+        assertTrue(SubsonicSyncPolicy.shouldAuthorizeMissingRowDeletion(true, 40, 40, 400, bulkExhausted = true))
+        assertTrue(SubsonicSyncPolicy.shouldAuthorizeMissingRowDeletion(true, 0, 0, 400, bulkExhausted = true))
+        assertFalse(SubsonicSyncPolicy.shouldAuthorizeMissingRowDeletion(true, 40, 12, 400, bulkExhausted = true))
+        assertFalse(SubsonicSyncPolicy.shouldAuthorizeMissingRowDeletion(true, 40, 40, 400,
+            hitVisitCap = true, bulkExhausted = true))
     }
 
     @Test

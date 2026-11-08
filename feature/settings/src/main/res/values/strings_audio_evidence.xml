@@ -2,11 +2,11 @@
 <resources>
     <string name="effects_panel_title">System audio effects</string>
     <string name="effects_panel_open">Open system audio effects</string>
-    <string name="effects_panel_ready">Uses the current AudioTrack session. Effects and device support depend on Android and the installed effects app.</string>
-    <string name="effects_panel_usb">Dedicated USB output bypasses the system effects session. Return to system output to use this panel.</string>
-    <string name="effects_panel_offloaded">System effects support is unconfirmed for the current offloaded output.</string>
-    <string name="effects_panel_no_session">Start local playback to establish an audio session.</string>
-    <string name="effects_panel_no_output">Waiting for an actual system AudioTrack output.</string>
+    <string name="effects_panel_ready">Open system audio effects for this output.</string>
+    <string name="effects_panel_usb">Switch to system output to use effects.</string>
+    <string name="effects_panel_offloaded">System effects are unverified for hardware offload.</string>
+    <string name="effects_panel_no_session">Start local playback first.</string>
+    <string name="effects_panel_no_output">Waiting for system audio output.</string>
     <string name="decoder_runtime_title">Decoder runtime</string>
     <string name="decoder_runtime_note">Reported by Media3 runtime events. Counts cover the current audio renderer lifecycle, not each song. Platform decoding may use a hardware or software codec.</string>
     <string name="decoder_runtime_name">Reported decoder name</string>
@@ -53,7 +53,7 @@
     <string name="conversion_depth_requested">PCM representation follows the explicitly requested output bit depth.</string>
     <string name="conversion_depth_compatible">PCM representation was selected for endpoint compatibility.</string>
     <string name="conversion_channels">Channel count changed to the requested output layout.</string>
-    <string name="effects_panel_remote">This panel controls the local audio session, not remote playback.</string>
+    <string name="effects_panel_remote">Available for local playback only.</string>
     <string name="decoder_failure_unspecified">Codec error; phase was not identified</string>
     <string name="conversion_channels_compatible">Channel count changed for the compatible USB output layout.</string>
 </resources>

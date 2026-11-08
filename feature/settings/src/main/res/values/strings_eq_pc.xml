@@ -1,0 +1,35 @@
+<resources>
+    <string name="eq_pc_independent_correction">Independent headphone correction</string>
+    <string name="eq_pc_correction_detail">Calibration has its own processing node and switch. Personal EQ presets, strength and tilt stay independent.</string>
+    <string name="eq_pc_duplicate_correction">The same curve is present in personal EQ and headphone correction. Check whether you intend to apply both.</string>
+    <string name="eq_pc_correction_saved">Headphone correction saved: %1$s. Personal EQ is retained.</string>
+    <string name="eq_pc_correction_saved_bypassed">Headphone correction saved; USB bit-perfect currently bypasses it.</string>
+    <string name="eq_pc_correction_invalid">This correction exceeds the supported parameter or filter limits.</string>
+    <string name="eq_pc_strength">EQ strength</string>
+    <string name="eq_pc_tilt">Tonal tilt</string>
+    <string name="eq_pc_band_enabled">Enable this band</string>
+    <string name="eq_pc_scope">Channel scope</string>
+    <string name="eq_pc_combined">Combined</string>
+    <string name="eq_pc_stereo">Stereo</string>
+    <string name="eq_pc_left">Left</string>
+    <string name="eq_pc_right">Right</string>
+    <string name="eq_pc_mid">Mid</string>
+    <string name="eq_pc_side">Side</string>
+    <string name="eq_pc_dynamic">Dynamic EQ</string>
+    <string name="eq_pc_dynamic_off">Off</string>
+    <string name="eq_pc_dynamic_down">Downward</string>
+    <string name="eq_pc_dynamic_up">Upward</string>
+    <string name="eq_pc_dynamic_limit">Up to four enabled dynamic bands. Disable another band first.</string>
+    <string name="eq_pc_threshold">Threshold</string>
+    <string name="eq_pc_ratio">Ratio</string>
+    <string name="eq_pc_attack">Attack</string>
+    <string name="eq_pc_release">Release</string>
+    <string name="eq_pc_audition_hold">Hold to audition this frequency band</string>
+    <string name="eq_pc_audition_active">Auditioning · release to restore playback</string>
+    <string name="eq_pc_native_failed">EQ unavailable · original signal</string>
+    <string name="eq_pc_compat_processing">Static EQ compatibility path</string>
+    <string name="eq_pc_compat_note">Uses the ECHO PC EQ engine. Legacy five-band, slope and headphone-correction parameters remain compatible. Output peak protection stays active; USB bit-perfect bypasses processing.</string>
+    <string name="eq_pc_catalogue">31 fixed bands · %1$d PC presets. Preference curves are not model-specific headphone correction.</string>
+    <string name="eq_pc_export_json">Export PC JSON</string>
+    <string name="eq_pc_json_detail">PC JSON and ECHO bundles retain channel scopes and dynamic EQ. APO exports static settings; use the full formats for dynamic bands.</string>
+</resources>

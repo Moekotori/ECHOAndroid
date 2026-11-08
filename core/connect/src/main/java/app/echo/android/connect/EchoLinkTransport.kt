@@ -145,6 +145,7 @@ internal class OkHttpEchoLinkTransport(
     private val eventClient = client.newBuilder()
         .readTimeout(45, TimeUnit.SECONDS)
         .callTimeout(0, TimeUnit.SECONDS)
+        .followRedirects(false)
         .build()
     override suspend fun personalState(endpoint: EchoRemoteEndpoint) = withContext(responseDispatcher) {
         require(endpoint.token.isNotBlank())
@@ -243,10 +244,12 @@ internal class OkHttpEchoLinkTransport(
         )
         val ticket = json.optText("ticket")
             ?: throw EchoLinkHttpException("PC ECHO did not return an event ticket")
-        val eventsUrl = endpoint.resolveEventsUrl(json.optText("eventsUrl"))
-            ?: endpoint.versionedUrl(2, "events") {
-                addQueryParameter("ticket", ticket)
-            }
+        val rawUrl = json.optText("eventsUrl")
+        val eventsUrl = if (rawUrl != null) {
+            endpoint.resolveEventsUrl(rawUrl) ?: throw EchoLinkHttpException("Invalid PC ECHO event origin", 400)
+        } else endpoint.versionedUrl(2, "events") {
+            addQueryParameter("ticket", ticket)
+        }
         return@withContext EchoLinkEventTicket(ticket = ticket, eventsUrl = eventsUrl)
     }
 
@@ -256,6 +259,7 @@ internal class OkHttpEchoLinkTransport(
         onEvent: (EchoRemoteMessage) -> Unit,
         onClosed: (Throwable?) -> Unit,
     ): EchoLinkEventSubscription {
+        require(endpoint.resolveEventsUrl(ticket.eventsUrl.toString()) != null) { "Invalid PC ECHO event origin" }
         val request = Request.Builder()
             .url(ticket.eventsUrl)
             .header("Accept", "text/event-stream")
@@ -529,7 +533,7 @@ internal class OkHttpEchoLinkTransport(
 
     // Older PCs only serve the legacy /lyrics/{id} route; remember which route answered so
     // they are not asked twice per track forever.
-    @Volatile private var legacyLyricsRoutePreferred = false
+    @Volatile private var legacyLyricsEndpoint: String? = null
 
     override suspend fun fetchLyrics(
         endpoint: EchoRemoteEndpoint,
@@ -548,13 +552,14 @@ internal class OkHttpEchoLinkTransport(
                 .get()
                 .build(),
         )
-        val attempts = if (legacyLyricsRoutePreferred) requests.reversed() else requests
+        val identity = EchoLinkRequestPolicy.endpointIdentity(endpoint)
+        val attempts = if (legacyLyricsEndpoint == identity) requests.reversed() else requests
         attempts.forEach { request ->
             runCatching { executeText(request).toRemoteLyrics() }
                 .getOrElse { if (it is CancellationException) throw it else null }
                 ?.takeIf { it.rawText.isNotBlank() }
                 ?.let {
-                    legacyLyricsRoutePreferred = request.url.encodedPath.startsWith("/echo-link/lyrics/")
+                    legacyLyricsEndpoint = if (request === requests[1]) identity else null
                     return@withContext it
                 }
         }
@@ -811,18 +816,6 @@ private fun JSONObject.toTrackPage(endpoint: EchoRemoteEndpoint): EchoLinkTrackP
     val totalCount = optInt("totalCount", optInt("total", tracks.size))
     return EchoLinkTrackPage(tracks = tracks, totalCount = totalCount)
 }
-
-private fun JSONObject.optArtworkUrl(): String? =
-    optText("artworkUrl")
-        ?: optText("coverUrl")
-        ?: optText("coverThumb")
-        ?: optText("cover")
-        ?: optText("albumArtUrl")
-        ?: optText("albumArt")
-        ?: optText("imageUrl")
-        ?: optText("thumbnailUrl")
-        ?: optJSONObject("artwork")?.optText("url")
-        ?: optJSONObject("cover")?.optText("url")
 
 internal fun echoLinkLyricsRawText(json: JSONObject): String? {
     val synced = json.optText("syncedLyrics")

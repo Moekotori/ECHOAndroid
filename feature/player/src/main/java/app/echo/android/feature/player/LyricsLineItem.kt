@@ -57,6 +57,7 @@ internal fun LyricsLineItem(
     railTravel: MetroRailTravel? = null,
     onClick: (() -> Unit)?,
     onLongClick: () -> Unit,
+    translationVisible: Boolean = true,
 ) {
     val contextMotion = if (animateFocus) spring<Float>(dampingRatio = 1f,
         stiffness = motion.focusStiffness, visibilityThreshold = 0.001f)
@@ -231,7 +232,7 @@ internal fun LyricsLineItem(
         line.translation?.takeIf { showTranslation && it.isNotBlank() }?.let { translation ->
             Text(
                 text = translation,
-                modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = animatedSecondaryAlpha.value },
+                modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = animatedSecondaryAlpha.value }.lyricTranslationVisibility(translationVisible),
                 color = lineColor,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.SansSerif,

@@ -27,4 +27,7 @@
     <string name="update_retry">再試行</string>
     <string name="update_done">完了</string>
     <string name="update_hide_download">ダウンロードを閉じる</string>
+    <string name="update_route">更新の接続先</string>
+    <string name="update_route_direct">GitHub に直接接続</string>
+    <string name="update_route_hint">中国本土から GitHub に接続できない場合は、高速化経路をお試しください。確認とダウンロードに適用され、切り替えると再確認します。</string>
 </resources>

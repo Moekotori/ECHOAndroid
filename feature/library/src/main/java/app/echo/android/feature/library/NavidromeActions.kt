@@ -18,4 +18,5 @@ class NavidromeActions(
     val playQueue: (List<NavidromeEntry>, Int) -> Unit,
     val receipts: suspend () -> List<NavidromeReceipt>,
     val resolveReceipt: suspend (String, NavidromeReceiptResolution) -> Unit,
+    val invalidateBrowse: () -> Unit = {},
 )

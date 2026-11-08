@@ -87,6 +87,13 @@ internal fun PageStyleDecor(style: EchoPlayerPageStyle, lyricsReveal: () -> Floa
                 }
             }
         })
+        EchoPlayerPageStyle.GrooveSpiral -> Spacer(modifier.fillMaxSize().drawWithCache {
+            val glow = Brush.radialGradient(
+                listOf(Color(0xFF1A2236), Color.Transparent),
+                Offset(size.width / 2f, size.height * 0.32f), maxOf(size.width, size.height) * 0.7f,
+            )
+            onDrawBehind { drawRect(glow) }
+        })
         else -> Unit
     }
 }

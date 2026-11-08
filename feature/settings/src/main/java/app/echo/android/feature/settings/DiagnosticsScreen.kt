@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 private const val DiagnosticsPanel = 6
+private const val UsbOutputPanel = 7
 
 @Composable
 fun DiagnosticsScreen(
@@ -85,20 +86,26 @@ fun DiagnosticsScreen(
     msebPersonal: MsebPresetActions = MsebPresetActions(),
     onParametricPreview: ((List<OpraEqBand>) -> Unit)? = null,
     onMsebPreview: ((EchoMsebState) -> Unit)? = null,
+    onEqualizerOptionsChange: (EchoEqOptions) -> Unit = {},
+    onEqualizerOptionsPreview: (EchoEqOptions) -> Unit = onEqualizerOptionsChange,
+    onEqualizerAudition: (Boolean, Float, Float) -> Unit = { _, _, _ -> },
+    onHeadphoneCorrectionEnabledChange: (Boolean) -> Unit = {},
     volumeSettings: EchoVolumeSettings = EchoVolumeSettings(),
     onVolumeSettings: (EchoVolumeSettings) -> Unit = {},
     audioSettingsRequested: Boolean = false,
     audioSettingsAnchor: String? = null,
-    audioSettingsContent: @Composable () -> Unit,
+    audioSettingsContent: @Composable (onOpenUsbOutput: () -> Unit) -> Unit,
+    usbOutputContent: @Composable (onOpenSound: () -> Unit) -> Unit,
 ) {
     val pagerState = rememberPagerState { 3 }
     // -1 is the tabbed page; sound editors and diagnostics open as child pages.
     var soundPanel by rememberSaveable { mutableIntStateOf(-1) }
     var handledSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
     var audioSettingsFocus by rememberSaveable { mutableStateOf<String?>(null) }
+    val usbAnchors = usbAudioSettingsSearchAnchors.map { stringResource(it) }
     LaunchedEffect(soundRequestId) {
         if (soundRequestId != 0 && soundRequestId != handledSoundRequestId) {
-            soundPanel = -1
+            soundPanel = if (audioSettingsRequested && audioSettingsAnchor in usbAnchors) UsbOutputPanel else -1
             audioSettingsFocus = audioSettingsAnchor.takeIf { audioSettingsRequested }
             pagerState.scrollToPage(if (audioSettingsRequested) 2 else 1)
             handledSoundRequestId = soundRequestId
@@ -146,7 +153,8 @@ fun DiagnosticsScreen(
     CompositionLocalProvider(LocalContentColor provides scheme.onBackground) {
         SignalSoundNavigation(
             selectedPanel = soundPanel,
-            labels = soundLabels + stringResource(L10nR.string.feature_settings_diagnostics_b6e487),
+            labels = soundLabels + listOf(stringResource(L10nR.string.feature_settings_diagnostics_b6e487),
+                stringResource(L10nR.string.settings_section_usb)),
             isActive = isActive,
             onBack = { soundPanel = -1 },
             scrollingTool = 1,
@@ -154,7 +162,13 @@ fun DiagnosticsScreen(
                 { onOpraBrandSelected(null) }
             } else null,
             tool = { panel ->
-                if (panel == DiagnosticsPanel) {
+                if (panel == UsbOutputPanel) {
+                    CompositionLocalProvider(LocalSettingsSearchFocus provides audioSettingsFocus?.let {
+                        SettingsSearchFocus(it, handledSoundRequestId)
+                    }) {
+                        usbOutputContent { selectTab(1) }
+                    }
+                } else if (panel == DiagnosticsPanel) {
                     SignalDiagnosticDetails(status, positionFlow, bluetoothCodecNeedsPermission,
                         onRequestBluetoothCodecPermission)
                 } else {
@@ -172,6 +186,7 @@ fun DiagnosticsScreen(
                         onReset = onEqualizerReset,
                         onParametricChange = onParametricChange,
                         onParametricPreview = onParametricPreview,
+                        onOptionsChange = onEqualizerOptionsChange, onOptionsPreview = onEqualizerOptionsPreview, onAudition = onEqualizerAudition,
                         onSaveUserPreset = onSaveUserPreset,
                         onUpdateUserPreset = onUpdateUserPreset,
                         onApplyUserPreset = onApplyUserPreset,
@@ -197,6 +212,7 @@ fun DiagnosticsScreen(
                         onRefresh = onOpraRefresh,
                         onPresetSelected = onOpraPresetSelected,
                         onApplySelected = onOpraApplySelected,
+                        onEnabledChange = onHeadphoneCorrectionEnabledChange,
                         onToggleFavorite = onToggleOpraFavorite,
                         onApplyUserPreset = onApplyUserPreset,
                     )
@@ -272,7 +288,7 @@ fun DiagnosticsScreen(
                                     CompositionLocalProvider(LocalSettingsSearchFocus provides audioSettingsFocus?.let {
                                         SettingsSearchFocus(it, handledSoundRequestId)
                                     }) {
-                                        audioSettingsContent()
+                                        audioSettingsContent { soundPanel = UsbOutputPanel }
                                     }
                                 }
                             }

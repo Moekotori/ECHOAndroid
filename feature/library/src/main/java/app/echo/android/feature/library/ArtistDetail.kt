@@ -56,7 +56,7 @@ internal fun ArtistDetailPage(
     modifier: Modifier = Modifier,
 ) {
     val rangeSource = rememberLibraryRangeSource(tracks)
-    val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
+    val palette = rememberArtworkPalette(app.echo.android.design.artistArtwork(artist.name, artist.artworkUri), seedKey = artist.artistKey)
     val onlineQuery = ArtistOnlineQuery(artist.name, albums?.itemSnapshotList?.items?.take(3)?.map { it.title }.orEmpty())
     val serverArtwork = rememberServerArtistArtwork(onlineQuery)
     var albumsExpanded by rememberSaveable(artist.artistKey) { mutableStateOf(false) }
@@ -72,6 +72,7 @@ internal fun ArtistDetailPage(
         ) {
             item(key = "hero") {
                 ArtistHero(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist, palette.vibrant)
+                ArtistArtworkControls(artist)
             }
             if (albums != null) {
                 artistAlbumsSection(albums, artist.albumCount, palette, albumsExpanded, { albumsExpanded = !albumsExpanded }, onOpenAlbum)
@@ -153,7 +154,7 @@ internal fun ArtistDetailListPage(
     modifier: Modifier = Modifier,
 ) {
     val rangeSource = rememberLibraryRangeSource(tracks)
-    val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
+    val palette = rememberArtworkPalette(app.echo.android.design.artistArtwork(artist.name, artist.artworkUri), seedKey = artist.artistKey)
     val onlineQuery = remember(artist.artistKey, artist.name, tracks) {
         ArtistOnlineQuery(artist.name, tracks.take(24).mapNotNull { it.album }.distinct().take(3))
     }
@@ -169,6 +170,7 @@ internal fun ArtistDetailListPage(
         ) {
             item(key = "hero") {
                 ArtistHero(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist, palette.vibrant)
+                ArtistArtworkControls(artist)
             }
             item(key = "sections") {
                 Column(

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="audio_settings_title">音訊設定</string>
+    <string name="signal_usb_settings_summary">直通、格式、緩衝與驅動檢測</string>
 </resources>

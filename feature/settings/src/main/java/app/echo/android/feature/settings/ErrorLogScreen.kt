@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.design.echoAnimateContentSize
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -280,6 +281,7 @@ private fun ErrorLogRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
+            .echoAnimateContentSize()
             .clip(RoundedCornerShape(16.dp))
             .background(
                 if (crash) scheme.errorContainer.copy(alpha = 0.72f)

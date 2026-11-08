@@ -12,8 +12,8 @@ internal fun openPluginHttp(uri: URI): PluginHttpExchange {
     val connection = uri.toURL().openConnection() as? HttpURLConnection ?: throw IOException("blocked")
     return try {
         connection.instanceFollowRedirects = false
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 10_000
+        connection.connectTimeout = PluginExecutionBudget.remainingMillis()
+        connection.readTimeout = PluginExecutionBudget.remainingMillis()
         connection.setRequestProperty("User-Agent", "ECHOPlugin/1")
         val status = connection.responseCode
         val location = connection.getHeaderField("Location")
@@ -29,6 +29,7 @@ private fun InputStream.readAtMost(max: Int): ByteArray {
     val buffer = ByteArray(8 * 1024)
     var total = 0
     while (total < max) {
+        PluginExecutionBudget.remainingMillis()
         val read = read(buffer, 0, minOf(buffer.size, max - total))
         if (read < 0) break
         output.write(buffer, 0, read)

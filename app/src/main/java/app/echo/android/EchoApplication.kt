@@ -72,6 +72,7 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
         EchoScrobbleSession(this, EchoPlaybackProcessRuntime.scope, EchoPlaybackProcessRuntime.surface)
     }
     val listeningHistory by lazy { ListeningHistoryRepository(EchoLibraryDatabase.create(this)) }
+    val artistArtwork by lazy { app.echo.android.data.ArtistArtworkStore(this, EchoLibraryDatabase.create(this)) }
     private val listeningHistoryRecorder by lazy {
         ListeningHistoryRecorder(EchoPlaybackProcessRuntime.scope, listeningHistory)
     }
@@ -142,6 +143,7 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
             var lastAudioRoutePolicy: Pair<Boolean, Boolean>? = null
             var lastRemoteCredentials: RemotePlaybackCredentialSnapshot? = null
             settingsStore.appSettings.collect { settings ->
+                EchoPlaybackRuntimeOptionsStore.setPauseOnMute(settings.pauseOnMute)
                 if (settings.lyricsOptions != lastLyricsOptions) {
                     lastLyricsOptions = settings.lyricsOptions
                     EchoPlaybackProcessRuntime.setLyricsOptions(settings.lyricsOptions)

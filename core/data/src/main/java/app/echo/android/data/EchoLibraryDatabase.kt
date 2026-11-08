@@ -29,12 +29,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LibraryLyricsIndexEntity::class,
         LibraryDuplicateMember::class,
         LibraryDuplicateControl::class,
+        FilePlaylistEntryEntity::class,
     ],
     views = [VisibleLibraryTrackView::class],
-    version = 28,
+    version = 30,
     exportSchema = true,
 )
 abstract class EchoLibraryDatabase : RoomDatabase() {
+    abstract fun lastFmDao(): LastFmLibraryDao
     abstract fun hiddenTrackDao(): LibraryHiddenTrackDao
     abstract fun trackDao(): LibraryTrackDao
     abstract fun playlistDao(): LibraryPlaylistDao
@@ -84,6 +86,8 @@ abstract class EchoLibraryDatabase : RoomDatabase() {
                         LibraryMusicRelationMigration,
                         LibraryLyricsIndexMigration,
                         LibraryDuplicateMigration,
+                        LibrarySubsonicCompatibilityMigration,
+                        LibraryUserMetadataMigration,
                     )
                     .build()
                     .also { instance = it }

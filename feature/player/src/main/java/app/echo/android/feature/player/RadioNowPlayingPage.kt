@@ -33,8 +33,7 @@ internal fun RadioNowPlayingPage(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onOpenQueue: () -> Unit,
-    onCast: (() -> Unit)?,
-    castActive: Boolean,
+    onMore: () -> Unit,
     onSetSleepTimer: (Int) -> Unit,
     onCancelSleepTimer: () -> Unit,
     modifier: Modifier = Modifier,
@@ -47,7 +46,7 @@ internal fun RadioNowPlayingPage(
         if (maxWidth >= 540.dp * fontScale &&
             ((maxWidth > maxHeight && maxHeight < 600.dp) || maxWidth >= 720.dp * fontScale)) {
             RadioLandscapePage(status, presentation, bitrateKbps, onPlayPause, onNext, onPrevious,
-                onOpenQueue, onCast, castActive, onSetSleepTimer, onCancelSleepTimer)
+                onOpenQueue, onMore, onSetSleepTimer, onCancelSleepTimer)
             return@BoxWithConstraints
         }
         val frequencyWidth = maxOf(80.dp, maxWidth - 105.dp * fontScale)
@@ -95,7 +94,7 @@ internal fun RadioNowPlayingPage(
             Spacer(Modifier.weight(0.4f))
             RadioTransport(colors, status.isPlaying, onPrevious, onPlayPause, onNext)
             Spacer(Modifier.weight(0.4f))
-            RadioUtilities(colors, onOpenQueue, onCast, castActive)
+            RadioUtilities(colors, onOpenQueue, onMore)
         }
     }
 }

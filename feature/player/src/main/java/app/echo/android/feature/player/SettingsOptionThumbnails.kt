@@ -232,6 +232,15 @@ private fun pageStyleThumbnail(style: EchoPlayerPageStyle): DrawScope.(Color) ->
         drawRect(Color.White.copy(alpha = 0.85f), Offset(size.width * 0.08f, size.height * 0.83f), Size(size.width * 0.26f, 2f))
         for (i in 0 until 5) drawCircle(Color.White.copy(alpha = if (i == 2) 0.95f else 0.55f), if (i == 2) 3.5f else 2.5f, Offset(size.width * (0.14f + i * 0.18f), size.height * 0.92f))
     }
+    EchoPlayerPageStyle.GrooveSpiral -> { _ ->
+        drawRect(GrooveSpiralStyle.Ink)
+        val disc = Offset(size.width * 0.5f, size.height * 0.52f)
+        val radius = size.height * 0.4f
+        drawCircle(GrooveSpiralStyle.Record, radius, disc)
+        for (i in 1..5) drawCircle(Color.White.copy(alpha = 0.08f), radius * (0.38f + i * 0.11f), disc, style = Stroke(1f))
+        drawCircle(GrooveSpiralStyle.Dim.copy(alpha = 0.7f), radius * 0.2f, disc)
+        drawLine(GrooveSpiralStyle.Accent, Offset(size.width * 0.84f, size.height * 0.1f), Offset(size.width * 0.57f, size.height * 0.28f), 3f, StrokeCap.Round)
+    }
 }
 
 private fun backdropThumbnail(style: EchoLyricsBackdrop): DrawScope.(Color) -> Unit = when (style) {

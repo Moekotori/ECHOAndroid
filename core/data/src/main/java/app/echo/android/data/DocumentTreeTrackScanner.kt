@@ -31,6 +31,7 @@ class DocumentTreeTrackScanner(
         onDuplicate: suspend (oldId: String, targetId: String) -> Unit = { _, _ -> },
         rejectedFiles: LocalScanFilterCache? = null,
         onSkipped: suspend () -> Unit = {},
+        onSkippedDetail: suspend (app.echo.android.model.library.LibraryScanSkippedItem) -> Unit = {},
         onUnchangedIds: suspend (List<String>) -> Unit = {},
         onRetryIds: suspend (List<String>) -> Unit = {},
         cueCache: CueScanCache? = null,
@@ -63,6 +64,8 @@ class DocumentTreeTrackScanner(
             val directory = pendingDirectories.removeFirst()
             if (!options.includesDirectory(combineRelativePath(relativePathPrefix, directory.relativePath))) {
                 excludedDirectories++
+                onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(app.echo.android.model.library.LibraryScanSkipReason.Directory,
+                    directory.relativePath.substringAfterLast('/') + "/", combineRelativePath(relativePathPrefix, directory.relativePath)))
                 continue
             }
             val isTreeRoot = directory.relativePath.isEmpty()
@@ -96,6 +99,8 @@ class DocumentTreeTrackScanner(
                     val childRelativePath = appendRelativePath(directory.relativePath, child.name)
                     if (!options.includesDirectory(combineRelativePath(relativePathPrefix, childRelativePath))) {
                         excludedDirectories++
+                        onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(app.echo.android.model.library.LibraryScanSkipReason.Directory,
+                            child.name + "/", combineRelativePath(relativePathPrefix, childRelativePath)))
                         continue
                     }
                     pendingDirectories.add(
@@ -164,6 +169,12 @@ class DocumentTreeTrackScanner(
             }
             for (row in audioRows) {
                 coroutineContext.ensureActive()
+                if (!options.includesFileName(row.displayName)) {
+                    scannedCount++; onSkipped()
+                    onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(app.echo.android.model.library.LibraryScanSkipReason.Name, row.displayName, row.documentUri.toString()))
+                    onProgress(scannedCount, null)
+                    continue
+                }
                 val cueSheet = cueByAudioName[row.displayName]
                 val duplicate = mediaStoreDuplicateKeys.find(
                     relativePath = row.relativePath,
@@ -266,6 +277,7 @@ class DocumentTreeTrackScanner(
                 if (!options.acceptsFileFormat(row.displayName, existingTrack != null)) {
                     scannedCount++
                     onSkipped()
+                    onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(app.echo.android.model.library.LibraryScanSkipReason.Format, row.displayName, row.documentUri.toString()))
                     onProgress(scannedCount, null)
                     continue
                 }
@@ -275,6 +287,7 @@ class DocumentTreeTrackScanner(
                     )) {
                     scannedCount++
                     onSkipped()
+                    onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(if (row.sizeBytes > 0 && row.sizeBytes < options.minSizeBytes) app.echo.android.model.library.LibraryScanSkipReason.Size else app.echo.android.model.library.LibraryScanSkipReason.Duration, row.displayName, row.documentUri.toString()))
                     onProgress(scannedCount, null)
                     continue
                 }
@@ -311,6 +324,7 @@ class DocumentTreeTrackScanner(
                         rejectedFiles?.remember(track.contentUri, track.sizeBytes, track.dateModifiedSeconds, track.durationMs)
                         scannedCount++
                         onSkipped()
+                        onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(options.rejectionReason(track.durationMs, track.sizeBytes, null, row.displayName) ?: app.echo.android.model.library.LibraryScanSkipReason.Duration, row.displayName, row.documentUri.toString()))
                         onProgress(scannedCount, null)
                         return@onSuccess
                     }
@@ -514,6 +528,7 @@ class DocumentTreeTrackScanner(
             trackNumber = metadata.trackNumber,
             discNumber = metadata.discNumber,
             year = metadata.year,
+            embeddedRating = metadata.rating ?: 0.takeIf { metadata.readSucceeded }, rating = metadata.rating ?: 0,
             genre = metadata.genre,
             composer = metadata.composer,
             musicRelationsJson = metadata.musicRelations.encoded(),
@@ -555,6 +570,7 @@ class DocumentTreeTrackScanner(
                     trackNumber = dsd.tags?.trackNumber ?: fileTags?.trackNumber,
                     discNumber = dsd.tags?.discNumber ?: fileTags?.discNumber,
                     year = dsd.tags?.year ?: fileTags?.year,
+                    rating = dsd.tags?.rating ?: fileTags?.rating,
                     genre = dsd.tags?.genre ?: fileTags?.genre,
                     composer = dsd.tags?.composer ?: fileTags?.composer,
                     musicRelations = (dsd.tags?.musicRelations ?: app.echo.android.model.library.EchoMusicRelationMetadata())
@@ -594,6 +610,7 @@ class DocumentTreeTrackScanner(
                         ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_GENRE),
                     composer = fileTags?.composer?.takeIf { it.isNotBlank() }
                         ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
+                    rating = fileTags?.rating,
                     musicRelations = fileTags?.musicRelations ?: app.echo.android.model.library.EchoMusicRelationMetadata(),
                     durationMs = container?.durationMs?.takeIf { it > 0 } ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                         ?.toLongOrNull()
@@ -636,6 +653,7 @@ class DocumentTreeTrackScanner(
             trackNumber = this?.trackNumber,
             discNumber = this?.discNumber,
             year = this?.year,
+            rating = this?.rating ?: 0.takeIf { readSucceeded },
             genre = this?.genre,
             composer = this?.composer,
             musicRelations = this?.musicRelations ?: app.echo.android.model.library.EchoMusicRelationMetadata(),
@@ -678,6 +696,7 @@ class DocumentTreeTrackScanner(
 
     private data class DocumentAudioMetadata(
         val readSucceeded: Boolean = true,
+        val rating: Int? = null,
         val title: String? = null,
         val artist: String? = null,
         val album: String? = null,

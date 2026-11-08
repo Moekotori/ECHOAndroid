@@ -168,6 +168,59 @@ class PluginEngineTest {
         }
     }
 
+    @Test fun lyricProviderNeedsItsOwnGrantAndReceivesOnlyBoundedMetadata() {
+        withEngine(FakeServices()) { engine ->
+            val id = install(engine, pagePlugin("""
+                function onLyricsSearch(track) {
+                    return [track.title + "|" + track.artist + "|" + String(track.id) + "|" + echo.playback.now().error];
+                }
+            """, listOf("lyrics.provider")))
+            engine.setEnabled(id, true); engine.flushForTest()
+            var result = emptyList<PluginLyricsCandidate>()
+            val request = PluginLyricsRequest("Song", "Artist", "Album", 123000)
+            engine.searchLyrics(request) { result = it }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            assertTrue(result.isEmpty())
+            engine.setGrant(id, PluginCapability.LyricsProvider, true)
+            engine.searchLyrics(request) { result = it }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            assertEquals("Song|Artist|undefined|not_granted", result.single().text)
+            assertTrue(result.single().id.startsWith("plugin:"))
+            engine.setGrant(id, PluginCapability.LyricsProvider, false)
+            engine.searchLyrics(request) { result = it }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            assertTrue(result.isEmpty())
+        }
+    }
+
+    @Test fun oversizedLyricResultsAreRejectedWithoutPartialCandidates() {
+        withEngine(FakeServices()) { engine ->
+            val id = install(engine, pagePlugin("function onLyricsSearch(track) { return ['valid', new Array(65538).join('x')]; }", listOf("lyrics.provider")))
+            engine.setGrant(id, PluginCapability.LyricsProvider, true); engine.setEnabled(id, true)
+            var result = emptyList<PluginLyricsCandidate>()
+            engine.searchLyrics(PluginLyricsRequest("Song", "Artist", "Album", 0)) { result = it }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            assertTrue(result.isEmpty())
+            assertFalse(engine.snapshot.plugins.single().enabled)
+        }
+    }
+
+    @Test fun lrclibExampleWaitsForAnExplicitSearchAndSeparateNetworkGrant() {
+        val services = FakeServices().apply {
+            response = PluginHttpResponse(true, 200, """{"syncedLyrics":"[00:01.00]Song line","plainLyrics":"Plain"}""", null)
+        }
+        withEngine(services) { engine ->
+            val id = install(engine, SampleLyricsPlugin.zipBytes())
+            engine.setGrant(id, PluginCapability.LyricsProvider, true)
+            engine.setEnabled(id, true); engine.flushForTest()
+            assertEquals(0, services.requests)
+            var result = emptyList<PluginLyricsCandidate>()
+            val request = PluginLyricsRequest("Song", "Artist", "Album", 123000)
+            engine.searchLyrics(request) { result = it }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            assertTrue(result.isEmpty()); assertEquals(0, services.requests)
+            engine.setGrant(id, PluginCapability.Network, true)
+            engine.searchLyrics(request) { result = it }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            assertEquals(1, services.requests)
+            assertEquals("[00:01.00]Song line", result.single().text)
+        }
+    }
+
     private fun withEngine(services: FakeServices, block: (PluginEngine) -> Unit) {
         val engine = PluginEngine(folder.newFolder("plugins"), services)
         try {
@@ -218,10 +271,12 @@ class PluginEngineTest {
 }
 
 private class FakeServices : PluginServices {
+    var response = PluginHttpResponse(ok = false, status = 0, body = "", error = "failed")
+    var requests = 0
     val commands = CopyOnWriteArrayList<TransportCommand>()
     var hits: List<LibraryTrackHit> = emptyList()
     override fun playbackSnapshot() = PlaybackSnapshot(title = "Song", artist = "Artist", album = "Album", playing = true)
     override fun transport(command: TransportCommand) { commands += command }
     override fun searchLibrary(query: String) = hits
-    override fun fetch(url: String) = PluginHttpResponse(ok = false, status = 0, body = "", error = "failed")
+    override fun fetch(url: String): PluginHttpResponse { requests++; return response }
 }

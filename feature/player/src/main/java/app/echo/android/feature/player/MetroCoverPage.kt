@@ -54,7 +54,6 @@ internal fun MetroCoverPage(
     duration: State<Long>,
     actions: ExpressivePlayerActions,
     isFavorite: Boolean,
-    castActive: Boolean,
     artworkScale: Float,
     animate: Boolean,
     modifier: Modifier = Modifier,
@@ -103,14 +102,12 @@ internal fun MetroCoverPage(
                     status.repeatMode != EchoRepeatMode.Off, actions.repeat,
                 )
                 MetroUtilityButton(PlayerControlIcons.Queue, stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
-                MetroUtilityButton(
+                if (status.track.supportsMusicFavorite()) MetroUtilityButton(
                     if (isFavorite) Icons.Sharp.Favorite else Icons.Sharp.FavoriteBorder,
                     stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                     isFavorite, actions.favorite,
                 )
-                actions.cast?.let {
-                    MetroUtilityButton(PlayerControlIcons.Cast, stringResource(if (castActive) R.string.feature_player_cast_active else R.string.feature_player_cast), castActive, it)
-                }
+                MetroUtilityButton(PlayerControlIcons.More, stringResource(R.string.feature_player_expand_playback_settings_cf64a0), false, actions.more)
             }
         },
     )

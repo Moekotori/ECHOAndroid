@@ -33,6 +33,7 @@ internal fun PlayerAppearanceScreen(
     lyricsBackdrop: String,
     onLyricsBackdropChange: (String) -> Unit,
     onBack: () -> Unit,
+    appearancePacks: @Composable () -> Unit = {},
 ) {
     EchoPageBackHandler(onBack = onBack)
     Column(
@@ -60,6 +61,7 @@ internal fun PlayerAppearanceScreen(
         PlayerAppearanceSettings(
             appearance, onPreview, onCommit, lyricsBackdrop, onLyricsBackdropChange,
             modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth().weight(1f),
+            appearancePacks = appearancePacks,
         )
     }
 }

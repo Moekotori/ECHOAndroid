@@ -63,9 +63,7 @@ internal fun SettingsNavigation(
     searchAvailability: SettingsSearchAvailability,
     onOpenPlugins: () -> Unit,
     onScanMusic: () -> Unit,
-    onOpenSound: () -> Unit,
     onOpenAudioSettings: (String) -> Unit,
-    soundSummary: String,
     content: @Composable (SettingsCategory, SettingsSubNav) -> Unit,
 ) {
     var selected by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
@@ -107,7 +105,6 @@ internal fun SettingsNavigation(
             query = searchQuery, selectedCategory = selected.takeIf { wide }, compactMode = compactMode, summaries = summaries, availability = searchAvailability,
             onQueryChange = { searchQuery = it }, onOpenPlugins = onOpenPlugins,
             onScanMusic = onScanMusic,
-            onOpenSound = onOpenSound, soundSummary = soundSummary,
             onOpenCategory = { searchFocus = null; subPage = null; selected = it },
             onSearchSelect = { result ->
                 focusManager.clearFocus(); keyboardController?.hide()

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lastfm_now_playing_title">Now playing</string>
+    <string name="lastfm_now_playing_detail">Show the current track on your Last.fm profile</string>
+    <string name="lastfm_scrobble_title">Scrobble listening history</string>
+    <string name="lastfm_scrobble_detail">Submit after half the track or four minutes of actual listening. Tracks of 30 seconds or less are excluded.</string>
+    <string name="lastfm_love_title">Sync likes to Last.fm</string>
+    <string name="lastfm_love_detail">Sync existing and new local likes. Only track and artist names are sent. Removing a local like keeps the Last.fm love. Turn off to stop uploads.</string>
+    <string name="lastfm_connect_first">Connect and enable Last.fm first</string>
+    <string name="lastfm_capacity">Sync record limit reached</string>
+    <string name="lastfm_love_failed">Sync incomplete; pending tracks are saved</string>
+    <string name="lastfm_love_scanning">Reading local likes…</string>
+    <string name="lastfm_love_progress">%1$d synced · %2$d pending</string>
+    <string name="lastfm_import_title">Import from Last.fm</string>
+    <string name="lastfm_import_detail">Import loved tracks and all-time play counts into matching local songs. Unmatched or ambiguous versions are skipped. Repeating an import never adds the same play counts again.</string>
+    <string name="lastfm_import_cancel">Cancel import</string>
+    <string name="lastfm_import_running">Processed %1$d tracks</string>
+    <string name="lastfm_import_completed">Import completed</string>
+    <string name="lastfm_import_cancelled">Import cancelled</string>
+    <string name="lastfm_import_failed">Import failed. You can retry; completed pages are kept.</string>
+    <string name="lastfm_import_result">%1$d likes added · %2$d play counts updated · %3$d unmatched · %4$d ambiguous</string>
+    <string name="lastfm_last_now_playing">Last now playing update</string>
+    <string name="lastfm_last_scrobble">Last scrobble</string>
+    <string name="lastfm_active_track">Current track</string>
+    <string name="lastfm_no_active_track">No active track</string>
+    <string name="lastfm_active_progress">%1$s — %2$s · %3$d / %4$d s</string>
+    <string name="lastfm_pending_title">Pending scrobbles</string>
+    <string name="lastfm_pending_detail">%1$d listens saved for retry</string>
+    <string name="lastfm_refresh">Refresh status</string>
+    <string name="lastfm_refresh_detail">Retry pending uploads and finish any approved authorization</string>
+    <string name="lastfm_never">Never</string>
+    <string name="lastfm_connecting">Connecting…</string>
+</resources>

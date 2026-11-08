@@ -99,7 +99,7 @@ internal fun RecordSleeveTransport(
 }
 
 @Composable
-internal fun RecordSleeveUtilities(onOpenQueue: () -> Unit, onCast: (() -> Unit)?, castActive: Boolean) {
+internal fun RecordSleeveUtilities(onOpenQueue: () -> Unit, onMore: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().height(56.dp),
         horizontalArrangement = Arrangement.SpaceAround,
@@ -109,13 +109,11 @@ internal fun RecordSleeveUtilities(onOpenQueue: () -> Unit, onCast: (() -> Unit)
             Icons.AutoMirrored.Outlined.QueueMusic, stringResource(R.string.feature_player_queue_37fa6a),
             onClick = onOpenQueue, iconSize = 20.dp,
         )
-        if (onCast != null) {
-            RecordSleeveIconButton(
-                PlayerControlIcons.Cast,
-                stringResource(if (castActive) R.string.feature_player_cast_active else R.string.feature_player_cast),
-                onClick = onCast, selected = castActive, iconSize = 22.dp,
-            )
-        }
+        RecordSleeveIconButton(
+            PlayerControlIcons.More,
+            stringResource(R.string.feature_player_expand_playback_settings_cf64a0),
+            onClick = onMore, iconSize = 22.dp,
+        )
     }
 }
 

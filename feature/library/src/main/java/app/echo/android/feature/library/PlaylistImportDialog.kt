@@ -25,11 +25,18 @@ fun PlaylistImportDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
     onOpen: (EchoPlaylist) -> Unit,
+    searchCandidates: suspend (String) -> List<app.echo.android.model.library.PlaylistImportCandidate> = { emptyList() },
+    onCorrect: (Int, app.echo.android.model.library.PlaylistImportCandidate?) -> Unit = { _, _ -> },
 ) {
     if (state == null) return
     val preview = state as? PlaylistImportUiState.Preview
-    var name by remember(preview?.result) { mutableStateOf(preview?.name.orEmpty()) }
+    var name by remember(preview?.name) { mutableStateOf(preview?.name.orEmpty()) }
     val saving = preview?.saving == true
+    var reviewing by remember { mutableStateOf(false) }
+    if (reviewing && preview != null) {
+        PlaylistImportCorrections(preview.result, searchCandidates, onCorrect) { reviewing = false }
+        return
+    }
     val title = when {
         state is PlaylistImportUiState.Failed && state.reason == PlaylistImportFailure.Cover -> R.string.playlist_change_cover
         state == PlaylistImportUiState.Exported || (state is PlaylistImportUiState.Failed && state.reason == PlaylistImportFailure.Export) -> R.string.feature_library_export_m3u_6f18a4
@@ -60,6 +67,7 @@ fun PlaylistImportDialog(
                                 overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         if (result.trackIds.isEmpty()) Text(stringResource(R.string.playlist_import_no_matches))
+                        if (result.entries.isNotEmpty()) TextButton(onClick = { reviewing = true }, enabled = !saving) { Text(stringResource(R.string.playlist_import_review)) }
                         OutlinedTextField(value = name, onValueChange = { name = it.take(80) }, enabled = !saving,
                             label = { Text(stringResource(R.string.playlist_import_name)) }, singleLine = true)
                     }

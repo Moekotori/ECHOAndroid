@@ -1,6 +1,15 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import app.echo.android.design.EchoExpand
+import app.echo.android.design.EchoMotion
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -84,23 +93,41 @@ internal fun SettingsAppearanceContent(
     val showHeader = onOpen == null
     if (page == null || page == SettingsSubPage.AppearanceTheme) {
         SettingsSectionCard(title = stringResource(R.string.settings_section_theme), showHeader = showHeader) {
+            val customSelected = palette.colorTheme == EchoColorTheme.Custom.id
+            val editorVisible = customSelected || palette.savedColorThemes.isNotEmpty()
+            // Keep the colour controls on screen until the section has folded away.
+            var editingShown by remember { mutableStateOf(customSelected) }
+            LaunchedEffect(customSelected) {
+                if (customSelected) {
+                    editingShown = true
+                } else {
+                    delay(EchoMotion.CollapseMs + 80L)
+                    editingShown = false
+                }
+            }
             Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 ThemeModeSelector(selectedMode = themeMode, onSelect = onThemeModeChange)
-                ThemePaletteSelector(
-                    selectedId = palette.colorTheme,
-                    customColors = palette.customColors,
-                    onSelect = paletteActions.onColorThemeChange,
-                )
-                ThemeCustomEditor(
-                    selected = palette.colorTheme == EchoColorTheme.Custom.id,
-                    colors = palette.customColors,
-                    savedThemes = palette.savedColorThemes,
-                    appliedId = palette.appliedSavedColorThemeId,
-                    onColorsChange = paletteActions.onCustomColorsChange,
-                    onSave = paletteActions.onSaveCustomColorTheme,
-                    onApply = paletteActions.onApplySavedColorTheme,
-                    onDelete = paletteActions.onDeleteSavedColorTheme,
-                )
+                Column {
+                    ThemePaletteSelector(
+                        selectedId = palette.colorTheme,
+                        customColors = palette.customColors,
+                        onSelect = paletteActions.onColorThemeChange,
+                    )
+                    EchoExpand(editorVisible) {
+                        Box(Modifier.padding(top = 6.dp)) {
+                            ThemeCustomEditor(
+                                selected = customSelected || editingShown,
+                                colors = palette.customColors,
+                                savedThemes = palette.savedColorThemes,
+                                appliedId = palette.appliedSavedColorThemeId,
+                                onColorsChange = paletteActions.onCustomColorsChange,
+                                onSave = paletteActions.onSaveCustomColorTheme,
+                                onApply = paletteActions.onApplySavedColorTheme,
+                                onDelete = paletteActions.onDeleteSavedColorTheme,
+                            )
+                        }
+                    }
+                }
                 val dynamicColorAvailable = LocalEchoPlatformCapabilities.current.dynamicColor
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_dynamic_color),

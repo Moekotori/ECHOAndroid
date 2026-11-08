@@ -14,8 +14,20 @@ internal fun JSONObject.objects(key: String): List<JSONObject> = optJSONArray(ke
 }.orEmpty()
 
 internal object AlbumOnlineInfoParser {
+    // Only edition metadata may be omitted. Live, remix and soundtrack subtitles identify other works.
+    private val editionSuffix = Regex(
+        """\s*[（(\[]\s*(?:(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?|(?:deluxe|expanded|special|limited|anniversary)(?:\s+edition)?|通常盤|初回限定盤|豪華盤|豪华版|豪華版|重制版|重製版)\s*[）)\]]\s*$""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    fun titleVariants(title: String): List<String> = listOf(title.trim(), title.replace(editionSuffix, "").trim())
+        .filter(String::isNotBlank).distinct()
+
     private fun normalized(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKD)
         .lowercase(Locale.ROOT).filter { it.isLetterOrDigit() }
+
+    private fun normalizedArtist(value: String): String = AlbumOnlineQueryPolicy.artistParts(value)
+        .map(::normalized).sorted().joinToString("|")
 
     fun query(album: AlbumSummary): String {
         fun escaped(value: String) = value.replace("\\", "\\\\").replace("\"", "\\\"")
@@ -23,15 +35,15 @@ internal object AlbumOnlineInfoParser {
     }
 
     fun selectRelease(payload: JSONObject, album: AlbumSummary): String? {
-        val artist = normalized(album.albumArtist?.takeIf { it.isNotBlank() } ?: album.artist.orEmpty())
-        val title = normalized(album.title)
-        if (artist.isEmpty() || title.isEmpty()) return null
+        val artist = normalizedArtist(AlbumOnlineQueryPolicy.artist(album).orEmpty())
+        val titles = titleVariants(album.title).map(::normalized)
+        if (artist.isEmpty() || titles.isEmpty()) return null
         val candidates = payload.objects("releases").filter { release ->
             val credits = release.objects("artist-credit")
             val names = credits.flatMap { listOfNotNull(it.text("name"), it.optJSONObject("artist")?.text("name")) }
             val combined = credits.joinToString("") { (it.text("name") ?: it.optJSONObject("artist")?.text("name").orEmpty()) + it.optString("joinphrase") }
-            normalized(release.optString("title")) == title &&
-                ((credits.size == 1 && names.any { normalized(it) == artist }) || normalized(combined) == artist) &&
+            titleVariants(release.optString("title")).any { normalized(it) in titles } &&
+                ((credits.size == 1 && names.any { normalizedArtist(it) == artist }) || normalizedArtist(combined) == artist) &&
                 release.text("id")?.matches(Regex("[a-fA-F0-9-]{36}")) == true
         }
         // Different release groups with the same title are ambiguous. Never pick by search score alone.

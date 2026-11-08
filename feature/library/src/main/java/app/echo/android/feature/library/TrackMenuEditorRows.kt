@@ -1,39 +1,53 @@
 package app.echo.android.feature.library
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoSwitch
+import app.echo.android.design.EchoOrderDragState
+import app.echo.android.design.EchoSheetOrderRow
 import app.echo.android.model.settings.*
 
-@Composable
-internal fun TrackMenuEditorRows(layout: EchoLibraryLayout, onChange: (EchoLibraryLayout) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(12.dp)) {
-        Text(stringResource(R.string.track_menu_title), style = MaterialTheme.typography.titleMedium)
-        Text(stringResource(R.string.track_menu_detail), style = MaterialTheme.typography.bodySmall)
-        EchoTrackMenuAction.entries.forEach { action ->
-            val label = stringResource(when(action) {
-                EchoTrackMenuAction.EditTags -> R.string.feature_library_edit_tags_c8ec75
-                EchoTrackMenuAction.ImportLyrics -> R.string.feature_library_import_lrc_lyrics_8e2810
-                EchoTrackMenuAction.Artwork -> R.string.feature_library_custom_artwork_c8c999
-                EchoTrackMenuAction.Versions -> R.string.track_versions_title
-                EchoTrackMenuAction.Hide -> R.string.hidden_track_hide
-                EchoTrackMenuAction.Delete -> R.string.feature_library_delete_138ccf
-            })
-            val visible = action !in layout.hiddenTrackActions
-            Row(Modifier.fillMaxWidth().toggleable(visible, role = Role.Switch, onValueChange = { show ->
-                onChange(layout.copy(hiddenTrackActions = if(show) layout.hiddenTrackActions - action else layout.hiddenTrackActions + action))
-            }).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(label, Modifier.weight(1f))
-                EchoSwitch(visible, onCheckedChange = null)
-            }
+internal fun LazyListScope.trackMenuEditorRows(layout: EchoLibraryLayout, drag: EchoOrderDragState,
+    onChange: (EchoLibraryLayout) -> Unit) {
+    item(key = "track-menu-header") {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Text(stringResource(R.string.track_menu_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.track_menu_detail), style = MaterialTheme.typography.bodySmall)
         }
     }
+    itemsIndexed(layout.trackActionOrder, key = { _, action -> "menu:${action.id}" }) { index, action ->
+        val label = stringResource(when (action) {
+            EchoTrackMenuAction.EditTags -> R.string.feature_library_edit_tags_c8ec75
+            EchoTrackMenuAction.ImportLyrics -> R.string.feature_library_import_lrc_lyrics_8e2810
+            EchoTrackMenuAction.Artwork -> R.string.feature_library_custom_artwork_c8c999
+            EchoTrackMenuAction.Versions -> R.string.track_versions_title
+            EchoTrackMenuAction.Hide -> R.string.hidden_track_hide
+            EchoTrackMenuAction.Delete -> R.string.feature_library_delete_138ccf
+        })
+        EchoSheetOrderRow(
+            position = index + 1, label = label, visible = action !in layout.hiddenTrackActions,
+            dragState = drag, itemKey = "menu:${action.id}",
+            canMoveUp = index > 0, canMoveDown = index < layout.trackActionOrder.lastIndex,
+            moveUpDescription = stringResource(R.string.library_layout_move_up, label),
+            moveDownDescription = stringResource(R.string.library_layout_move_down, label),
+            onMoveUp = { onChange(layout.moveTrackAction(action, -1)) },
+            onMoveDown = { onChange(layout.moveTrackAction(action, 1)) },
+            onVisibleChange = { show ->
+                onChange(layout.copy(hiddenTrackActions = if (show) layout.hiddenTrackActions - action else layout.hiddenTrackActions + action))
+            },
+        )
+    }
+}
+
+private fun EchoLibraryLayout.moveTrackAction(action: EchoTrackMenuAction, delta: Int): EchoLibraryLayout {
+    val order = trackActionOrder.toMutableList()
+    val from = order.indexOf(action)
+    val to = (from + delta).coerceIn(order.indices)
+    order.add(to, order.removeAt(from))
+    return copy(trackActionOrder = order)
 }

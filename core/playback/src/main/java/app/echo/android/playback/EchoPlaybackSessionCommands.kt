@@ -57,6 +57,7 @@ fun echoPlaybackCommandButtons(
     context: Context,
     favorite: Boolean,
     repeatMode: Int,
+    favoriteAvailable: Boolean = true,
 ): List<CommandButton> = listOf(
     CommandButton.Builder(
         if (favorite) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED,
@@ -68,7 +69,7 @@ fun echoPlaybackCommandButtons(
             ),
         )
         .setSlots(CommandButton.SLOT_OVERFLOW)
-        .setEnabled(true)
+        .setEnabled(favoriteAvailable)
         .build(),
     CommandButton.Builder(
         when (repeatMode) {

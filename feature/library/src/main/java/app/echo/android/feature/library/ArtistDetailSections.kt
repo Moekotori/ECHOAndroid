@@ -32,16 +32,21 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoArtworkImage
 import app.echo.android.design.EchoArtworkSize
 import app.echo.android.design.echoClickable
+import app.echo.android.design.echoPageSection
+import app.echo.android.design.echoSharedCover
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 
-/** Round portrait over a blurred copy of itself, then name and one line of totals. No dividers, no cards. */
+/**
+ * Compact profile row: a small round avatar beside the name and totals, over a soft glow that fades in from the
+ * top edge. The avatar is often just an album cover, so it stays small instead of dominating the screen.
+ */
 @Composable
 internal fun ArtistHero(artist: ArtistSummary, accent: Color) {
     Box(Modifier.fillMaxWidth()) {
-        artist.artworkUri?.takeIf { it.isNotBlank() }?.let { uri ->
-            AlbumHeroAtmosphere(uri, accent, Modifier.matchParentSize())
+        app.echo.android.design.artistArtwork(artist.name, artist.artworkUri)?.takeIf { it.isNotBlank() }?.let { uri ->
+            AlbumHeroAtmosphere(uri, accent, Modifier.matchParentSize(), fadeInFraction = 0.25f)
         }
         Column(
             Modifier
@@ -58,43 +63,52 @@ internal fun ArtistHero(artist: ArtistSummary, accent: Color) {
 @Composable
 internal fun ArtistProfileHeader(artist: ArtistSummary) {
     val colors = MaterialTheme.colorScheme
-    Column(
-        Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Row(
+        Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         EchoArtworkImage(
-            artworkUri = artist.artworkUri,
+            artworkUri = app.echo.android.design.artistArtwork(artist.name, artist.artworkUri),
             contentDescription = null,
-            modifier = Modifier.size(168.dp).shadow(14.dp, CircleShape, clip = false),
+            modifier = Modifier.echoSharedCover("artist", artist.artistKey)
+                .size(96.dp).shadow(6.dp, CircleShape, clip = false),
             shape = CircleShape,
             sizeClass = EchoArtworkSize.Card,
             placeholder = {
                 Box(Modifier.fillMaxSize().background(colors.surfaceContainerHigh), contentAlignment = Alignment.Center) {
-                    EchoIcon(Icons.Rounded.Person, null, Modifier.size(64.dp), tint = colors.onSurfaceVariant)
+                    EchoIcon(Icons.Rounded.Person, null, Modifier.size(40.dp), tint = colors.onSurfaceVariant)
                 }
             },
         )
-        Spacer(Modifier.height(18.dp))
-        Text(
-            displayMetadataOrUnknown(artist.name, unknownArtistLabel()),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.ExtraBold,
-            color = colors.onSurface,
-            textAlign = TextAlign.Center,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(Modifier.height(6.dp))
-        val totals = listOfNotNull(
-            pluralStringResource(R.plurals.artist_album_count, artist.albumCount, artist.albumCount),
-            artistTrackCountLabel(artist.trackCount),
-            artist.durationMs.takeIf { it > 0 }?.let { ms ->
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                displayMetadataOrUnknown(artist.name, unknownArtistLabel()),
+                modifier = Modifier.echoPageSection(0),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = colors.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val minutesLabel = artist.durationMs.takeIf { it > 0 }?.let { ms ->
                 val minutes = ms / 60_000
                 if (minutes < 60) stringResource(R.string.artist_total_minutes, minutes)
                 else stringResource(R.string.artist_total_time, minutes / 60, minutes % 60)
-            },
-        ).joinToString(" · ")
-        Text(totals, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
+            }
+            Text(
+                listOf(
+                    pluralStringResource(R.plurals.artist_album_count, artist.albumCount, artist.albumCount),
+                    artistTrackCountLabel(artist.trackCount),
+                ).joinToString(" · "),
+                modifier = Modifier.echoPageSection(1),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+            )
+            if (minutesLabel != null) {
+                Text(minutesLabel, Modifier.echoPageSection(1), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+            }
+        }
     }
 }
 

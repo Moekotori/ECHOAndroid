@@ -30,7 +30,7 @@ internal fun JSONObject.userEntry(endpoint: SubsonicEndpoint, kind: NavidromeKin
     return NavidromeEntry(id, userText("name") ?: userText("title") ?: id, kind,
         track = song?.toLibraryTrackEntity(endpoint, 0)?.toEchoTrack(),
         artworkUri = userText("coverArt")?.let { unsignedSubsonicResourceUrl(endpoint.normalizedBaseUrl, "getCoverArt.view", it,
-            listOf("size" to SubsonicClient.CoverArtSizePx.toString())) } ?: userText("artistImageUrl")?.takeIf(::isSubsonicWebUrl),
+            listOf("size" to SubsonicClient.CoverArtSizePx.toString()), sourceId = endpoint.sourceId) } ?: userText("artistImageUrl")?.takeIf(::isSubsonicWebUrl),
         favorite = userText("starred") != null, rating = optInt("userRating").coerceIn(0, 5),
         url = userText("streamUrl").orEmpty(), homepage = userText("homePageUrl").orEmpty())
 }
@@ -73,16 +73,7 @@ internal fun SubsonicClient.readUserLibrary(endpoint: SubsonicEndpoint, query: N
             .validUserRows("internetRadioStation", 200), query.page) { it.userEntry(endpoint, NavidromeKind.Radio) }
         NavidromeCollection.Queue -> readQueue(endpoint, query.page)
     }
-    is NavidromeQuery.Search -> {
-        require(query.text.isNotBlank() && query.text.length <= 500 && query.page in 0..10_000)
-        val offset = (query.page * 16).toString()
-        val root = request("search3.view", listOf("query" to query.text) +
-            listOf("song", "album", "artist").flatMap { listOf("${it}Count" to "17", "${it}Offset" to offset) })
-            .requiredUserObject("searchResult3")
-        val groups = listOf("artist" to NavidromeKind.Artist, "album" to NavidromeKind.Album, "song" to NavidromeKind.Track)
-            .map { (key, kind) -> root.validUserRows(key, 17).map { it.userEntry(endpoint, kind) } }
-        NavidromePage(groups.flatMap { it.take(16) }, query.page, groups.any { it.size > 16 })
-    }
+    is NavidromeQuery.Search -> searchUserLibrary(endpoint, query)
     is NavidromeQuery.Browse -> {
         require(query.id.isNotBlank() && query.kind in listOf(NavidromeKind.Album, NavidromeKind.Artist))
         val artist = query.kind == NavidromeKind.Artist
@@ -91,8 +82,10 @@ internal fun SubsonicClient.readUserLibrary(endpoint: SubsonicEndpoint, query: N
         require(root.userText("id") == query.id)
         val rows = root.validUserRows(if (artist) "album" else "song", if (artist) 10_000 else MaxUserSongs)
         if (!artist && root.has("songCount")) require(root.optInt("songCount") == rows.size)
-        userPage(rows, query.page) { row ->
+        userPage(rows, query.page) { cached ->
+            val row = if (artist) cached else JSONObject(cached.toString())
             if (!artist) {
+                if (row.userText("albumId") == null) row.put("albumId", root.userText("id"))
                 if (row.userText("album") == null) row.put("album", root.userText("name"))
                 if (row.userText("albumArtist") == null && row.userText("albumArtists") == null) {
                     row.put("albumArtists", root.opt("artists"))
@@ -106,7 +99,11 @@ internal fun SubsonicClient.readUserLibrary(endpoint: SubsonicEndpoint, query: N
 
 private fun SubsonicClient.supportsIndexQueue(): Boolean {
     val extensions = request("getOpenSubsonicExtensions.view").jsonObjects("openSubsonicExtensions")
-    return extensions.any { it.userText("name") == "indexBasedQueue" }
+    return extensions.any { extension ->
+        val versions = extension.optJSONArray("versions")
+        extension.userText("name") == "indexBasedQueue" && versions != null &&
+            (0 until versions.length()).any { versions.optInt(it, -1) == 1 }
+    }
 }
 
 internal fun SubsonicClient.readQueue(endpoint: SubsonicEndpoint, page: Int? = null): NavidromePage {

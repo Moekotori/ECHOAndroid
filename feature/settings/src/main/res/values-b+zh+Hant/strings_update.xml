@@ -27,4 +27,7 @@
     <string name="update_retry">重試</string>
     <string name="update_done">完成</string>
     <string name="update_hide_download">收起下載</string>
+    <string name="update_route">更新線路</string>
+    <string name="update_route_direct">GitHub 直連</string>
+    <string name="update_route_hint">中國大陸網路無法直連 GitHub 時，可切換加速線路。檢查和下載均使用所選線路，切換後會重新檢查。</string>
 </resources>

@@ -8,7 +8,7 @@ import kotlin.math.roundToInt
 
 object EchoEqualizerShareCodec {
     const val Prefix = "ECHOEQ1."
-    const val Version = 1
+    const val Version = 2
     private const val MaxDecodedBytes = 12 * 1024
     private const val MaxFilters = 32
 
@@ -22,6 +22,8 @@ object EchoEqualizerShareCodec {
                 formatNumber(normalized.preampDb),
                 encodeToken(normalized.sourceLabel.orEmpty()),
                 normalized.filters.take(MaxFilters).joinToString(";") { encodeFilter(it) },
+                "${formatNumber(normalized.options.strengthPercent)},${formatNumber(normalized.options.tiltDb)}",
+                encodeToken(normalized.opraEqId.orEmpty()),
             ).joinToString("|")
         } else {
             listOf(
@@ -32,6 +34,8 @@ object EchoEqualizerShareCodec {
                 normalized.gainsDb.joinToString(",") { formatNumber(it) },
                 formatNumber(normalized.preampDb),
                 encodeToken(normalized.sourceLabel.orEmpty()),
+                "${formatNumber(normalized.options.strengthPercent)},${formatNumber(normalized.options.tiltDb)}",
+                encodeToken(normalized.opraEqId.orEmpty()),
             ).joinToString("|")
         }
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(body.toByteArray(StandardCharsets.UTF_8))
@@ -39,13 +43,14 @@ object EchoEqualizerShareCodec {
     }
 
     fun decode(code: String, id: String): EchoEqualizerUserPreset? {
+        if (code.trimStart().startsWith("{") || code.trimStart().startsWith("[")) return runCatching { EchoEqPcJsonCodec.decode(code).singleOrNull()?.copy(id = id) }.getOrNull()
         if (extractEncoded(code) == null) {
             return EchoEqualizerApoCodec.parse(code, id)
         }
         val payload = extractPayload(code) ?: return EchoEqualizerApoCodec.parse(code, id)
         if (payload.size > MaxDecodedBytes) return null
         val parts = String(payload, StandardCharsets.UTF_8).split('|')
-        if (parts.size < 5 || parts[0].toIntOrNull() != Version) return null
+        if (parts.size < 5 || parts[0].toIntOrNull() !in 1..Version) return null
         val parametric = parts[1] == "1"
         val preset = if (parametric) {
             if (parts.size < 6) return null
@@ -58,6 +63,8 @@ object EchoEqualizerShareCodec {
                 preampDb = parts[3].toFloatOrNull() ?: return null,
                 filters = filters,
                 sourceLabel = decodeToken(parts[4]).takeIf { it.isNotEmpty() },
+                options = decodeOptions(parts.getOrNull(6)),
+                opraEqId = parts.getOrNull(7)?.let(::decodeToken)?.takeIf { it.isNotBlank() },
             )
         } else {
             if (parts.size < 7) return null
@@ -69,6 +76,8 @@ object EchoEqualizerShareCodec {
                 gainsDb = parts[4].split(',').mapNotNull { it.toFloatOrNull() },
                 preampDb = parts[5].toFloatOrNull() ?: return null,
                 sourceLabel = decodeToken(parts[6]).takeIf { it.isNotEmpty() },
+                options = decodeOptions(parts.getOrNull(7)),
+                opraEqId = parts.getOrNull(8)?.let(::decodeToken)?.takeIf { it.isNotBlank() },
             )
         }
         return EchoEqualizerUserPresets.normalize(preset)
@@ -102,6 +111,9 @@ object EchoEqualizerShareCodec {
             formatNumber(band.gainDb),
             band.q?.let(::formatNumber).orEmpty(),
             band.slope?.let(::formatNumber).orEmpty(),
+            if (band.enabled) "1" else "0", band.scope.id, band.dynamicMode.id,
+            formatNumber(band.dynamicThresholdDb), formatNumber(band.dynamicRatio),
+            formatNumber(band.dynamicAttackMs), formatNumber(band.dynamicReleaseMs),
         ).joinToString(",")
 
     private fun decodeFilters(raw: String): List<OpraEqBand> =
@@ -116,8 +128,19 @@ object EchoEqualizerShareCodec {
                 gainDb = fields[2].toFloatOrNull()?.takeIf { it.isFinite() } ?: 0f,
                 q = fields.getOrNull(3)?.toFloatOrNull()?.takeIf { it.isFinite() },
                 slope = fields.getOrNull(4)?.toFloatOrNull()?.takeIf { it.isFinite() },
+                enabled = fields.getOrNull(5) != "0",
+                scope = EchoEqBandScope.fromId(fields.getOrNull(6)),
+                dynamicMode = EchoEqDynamicMode.fromId(fields.getOrNull(7)),
+                dynamicThresholdDb = fields.getOrNull(8)?.toFloatOrNull() ?: -24f,
+                dynamicRatio = fields.getOrNull(9)?.toFloatOrNull() ?: 2f,
+                dynamicAttackMs = fields.getOrNull(10)?.toFloatOrNull() ?: 5f,
+                dynamicReleaseMs = fields.getOrNull(11)?.toFloatOrNull() ?: 80f,
             )
         }
+
+    private fun decodeOptions(raw: String?): EchoEqOptions = raw?.split(',')?.let {
+        EchoEqOptions(it.getOrNull(0)?.toFloatOrNull() ?: 100f, it.getOrNull(1)?.toFloatOrNull() ?: 0f).normalized
+    } ?: EchoEqOptions()
 
     private fun encodeToken(value: String): String =
         URLEncoder.encode(value, StandardCharsets.UTF_8.name()).replace("+", "%20")

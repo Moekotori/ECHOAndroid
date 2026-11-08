@@ -50,8 +50,8 @@ fun MetroStylePreview(lyrics: Boolean = false, artworkUri: String? = null) {
                             color = if (lyricPage) MetroStyle.Ink else MetroStyle.Muted,
                             fontSize = 13.sp, fontWeight = if (lyricPage) FontWeight.Bold else FontWeight.Normal)
                     }
-                    if (!lyricPage) MetroCoverPage(status, position, duration, actions, favorite, false, 1f, false,
-                        Modifier.fillMaxWidth().weight(1f))
+                    if (!lyricPage) MetroCoverPage(status, position, duration, actions, isFavorite = favorite, artworkScale = 1f, animate = false,
+                        modifier = Modifier.fillMaxWidth().weight(1f))
                     else NowPlayingLyricsPage(
                         status = status, lyricsState = EchoLyricsLoadState.Ready(previewLyrics),
                         showLyricsControlDeck = false, lyricsFontFamily = null, lyricsFontScale = 0.92f,

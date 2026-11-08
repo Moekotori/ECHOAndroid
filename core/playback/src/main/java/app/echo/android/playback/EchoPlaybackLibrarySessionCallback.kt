@@ -46,6 +46,7 @@ internal class EchoPlaybackLibrarySessionCallback(
             context = context,
             favorite = currentFavorite,
             repeatMode = player?.repeatMode ?: Player.REPEAT_MODE_OFF,
+            favoriteAvailable = player?.currentMediaItem?.mediaId?.startsWith("file:") != true,
         )
 
     fun onPlayerSurfaceChanged(player: Player) {
@@ -56,9 +57,11 @@ internal class EchoPlaybackLibrarySessionCallback(
             return
         }
         scope.launch {
-            currentFavorite = withContext(Dispatchers.IO) {
+            val favorite = withContext(Dispatchers.IO) {
                 catalog().isFavorite(mediaId)
             }
+            if (player.currentMediaItem?.mediaId != mediaId) return@launch
+            currentFavorite = favorite
             applyButtons(player)
         }
     }

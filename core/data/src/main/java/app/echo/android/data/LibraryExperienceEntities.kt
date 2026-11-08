@@ -26,10 +26,11 @@ data class LibrarySmartRuleEntity(
     @ColumnInfo(defaultValue = "0") val minimumDurationSeconds: Int = 0,
     @ColumnInfo(defaultValue = "0") val maximumDurationSeconds: Int = 0,
     @ColumnInfo(defaultValue = "''") val excludeText: String = "",
+    @ColumnInfo(defaultValue = "0") val minimumRating: Int = 0,
 ) {
     fun toRule() = EchoSmartPlaylistRule(artist, genre, favoriteOnly, notPlayedDays, minimumYear,
         maximumYear, EchoSmartPlaylistSort.entries.firstOrNull { it.name == sort } ?: EchoSmartPlaylistSort.Title,
-        matchAny, album, folder, format, minimumDurationSeconds, maximumDurationSeconds, excludeText)
+        matchAny, album, folder, format, minimumDurationSeconds, maximumDurationSeconds, excludeText, minimumRating)
 }
 
 @Entity(tableName = "library_bookmarks", indices = [Index("trackId")])

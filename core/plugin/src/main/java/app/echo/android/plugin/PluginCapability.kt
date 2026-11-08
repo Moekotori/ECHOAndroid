@@ -7,6 +7,7 @@ enum class PluginCapability(val wire: String) {
     Network("network"),
     Storage("storage"),
     UiPage("ui.page"),
+    LyricsProvider("lyrics.provider"),
     ;
 
     companion object {

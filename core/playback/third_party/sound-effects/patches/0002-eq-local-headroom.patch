@@ -1,0 +1,48 @@
+--- a/EqProcessor.h
++++ b/EqProcessor.h
+@@ -19,7 +19,7 @@
+ class EqProcessor
+ {
+ public:
+-    explicit EqProcessor(bool preserveOpraParameters = false);
++    explicit EqProcessor(bool preserveOpraParameters = false, bool localSafetyLimiter = true);
+ 
+     void prepare(double sampleRate, int maximumBlockSize, int channelCount);
+     void reset();
+@@ -66,6 +66,7 @@
+ private:
+     friend struct DspPreparedRuntime;
+     const bool preserveOpraParameters;
++    const bool localSafetyLimiter;
+     EqAuditionProcessor audition;
+     DspLoudnessMeter loudnessMeter;
+     DspMeasurementStore loudnessStore;
+--- a/EqProcessor.cpp
++++ b/EqProcessor.cpp
+@@ -50,7 +50,7 @@
+ }
+ } // namespace
+ 
+-EqProcessor::EqProcessor(bool preserve) : preserveOpraParameters(preserve)
++EqProcessor::EqProcessor(bool preserve, bool safety) : preserveOpraParameters(preserve), localSafetyLimiter(safety)
+ {
+     for (int band = 0; band < eqBandCount; ++band)
+     {
+@@ -241,7 +241,7 @@
+                 wet = channelStates[static_cast<size_t>(channel)].filters[band].processDouble(wet, coefficients[band]);
+ 
+             const double mixed = static_cast<double>(dry + (wet - dry) * bypassMix);
+-            const bool shouldProtect = isDspSafetyLimiterEnabled() && (bypassMix > 0.0 || targetBypassMix > 0.0 || wasEnabled);
++            const bool shouldProtect = localSafetyLimiter && isDspSafetyLimiterEnabled() && (bypassMix > 0.0 || targetBypassMix > 0.0 || wasEnabled);
+             samples[sample] = protectClippingSample(audition.process(channel, dry, mixed), shouldProtect, risk);
+         }
+     }
+@@ -642,7 +642,7 @@
+         wet[1] = nextMid - nextSide;
+     }
+ 
+-    const bool shouldProtect = isDspSafetyLimiterEnabled() && (bypassMix > 0.0 || targetBypassMix > 0.0 || wasEnabled);
++    const bool shouldProtect = localSafetyLimiter && isDspSafetyLimiterEnabled() && (bypassMix > 0.0 || targetBypassMix > 0.0 || wasEnabled);
+     for (int channel = 0; channel < channels; ++channel)
+     {
+         const double dry = buffer.getReadPointer(channel, startSample)[sample];

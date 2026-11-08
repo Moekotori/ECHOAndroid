@@ -48,6 +48,7 @@ suspend fun EchoLibraryRepository.restorePlaylistTrack(removed: RemovedPlaylistT
 /** Move by stable IDs so a paging refresh cannot apply a stale UI index to another song. */
 suspend fun EchoLibraryRepository.movePlaylistTrackTo(id: String, trackId: String, targetId: String): Boolean = withContext(Dispatchers.IO) {
     if (!observePlaylistOrder(id).first().isManual) return@withContext false
+    if (FilePlaylistStore.owns(id)) return@withContext filePlaylists.move(id, trackId, targetId)
     database.withTransaction {
         val dao = database.playlistDao()
         val playlist = dao.getPlaylist(id) ?: return@withTransaction false

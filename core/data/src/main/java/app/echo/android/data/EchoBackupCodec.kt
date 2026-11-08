@@ -162,11 +162,14 @@ object EchoBackupCodec {
         }
         putOptNullableBoolean("equalizerEnabled", settings.equalizerEnabled)
         putOpt("compressorMode", settings.compressorMode)
+        settings.dsp?.let { put("dsp", EchoDspCodec.encode(it)) }
         settings.mseb?.let { put("mseb", JSONObject(EchoMsebCodec.encode(it))) }
         settings.msebUserPresets?.let { put("msebUserPresets", JSONArray(EchoMsebPresetCodec.encode(it))) }
         putOpt("equalizerPreset", settings.equalizerPreset)
         settings.equalizerBandGains?.let { put("equalizerBandGains", JSONArray(it)) }
         settings.equalizerPreampDb?.let { put("equalizerPreampDb", it.toDouble()) }
+        settings.equalizerOptions?.let { put("equalizerOptions", JSONObject().put("strengthPercent", it.strengthPercent).put("tiltDb", it.tiltDb)) }
+        settings.headphoneCorrection?.let { put("headphoneCorrection", JSONObject(EchoHeadphoneCorrectionCodec.encode(it))) }
         putOptNullableBoolean("equalizerParametric", settings.equalizerParametric)
         putOpt("equalizerSourceLabel", settings.equalizerSourceLabel)
         settings.equalizerFilters?.takeIf { it.isNotEmpty() }?.let {
@@ -184,6 +187,9 @@ object EchoBackupCodec {
         putOpt("lyricsPageStyle", settings.lyricsPageStyle)
         putOpt("lyricsFontFamily", settings.lyricsFontFamily)
         settings.lyricsFontScale?.let { put("lyricsFontScale", it.toDouble()) }
+        putOptNullableBoolean("lyricsTranslationCurrentOnly", settings.lyricsTranslationCurrentOnly)
+        putOptNullableBoolean("playerOrientationLocked", settings.playerOrientationLocked)
+        putOptNullableBoolean("pauseOnMute", settings.pauseOnMute)
         settings.lyricsTranslationScale?.let { put("lyricsTranslationScale", it.toDouble()) }
         settings.lyricsRomanizationScale?.let { put("lyricsRomanizationScale", it.toDouble()) }
         putOpt("lyricsColorMode", settings.lyricsColorMode)
@@ -276,11 +282,14 @@ object EchoBackupCodec {
             trackTransitions = transitions,
             equalizerEnabled = json.optionalBoolean("equalizerEnabled"),
             compressorMode = json.optionalString("compressorMode"),
+            dsp = json.optJSONObject("dsp")?.let(EchoDspCodec::decode),
             mseb = json.optJSONObject("mseb")?.let { EchoMsebCodec.decode(it.toString()) },
             msebUserPresets = json.optJSONArray("msebUserPresets")?.let { EchoMsebPresetCodec.decode(it.toString()) },
             equalizerPreset = json.optionalString("equalizerPreset"),
             equalizerBandGains = json.optJSONArray("equalizerBandGains")?.floats(),
             equalizerPreampDb = json.optionalFloat("equalizerPreampDb"),
+            equalizerOptions = json.optJSONObject("equalizerOptions")?.let { app.echo.android.model.playback.EchoEqOptions(it.optDouble("strengthPercent", 100.0).toFloat(), it.optDouble("tiltDb", 0.0).toFloat()).normalized },
+            headphoneCorrection = json.optJSONObject("headphoneCorrection")?.let { EchoHeadphoneCorrectionCodec.decode(it.toString()) },
             equalizerParametric = json.optionalBoolean("equalizerParametric"),
             equalizerSourceLabel = json.optionalString("equalizerSourceLabel"),
             equalizerFilters = filters,
@@ -295,6 +304,8 @@ object EchoBackupCodec {
             lyricsFontFamily = json.optionalString("lyricsFontFamily"),
             lyricsFontScale = json.optionalFloat("lyricsFontScale"),
             lyricsTranslationScale = json.optionalFloat("lyricsTranslationScale"),
+            lyricsTranslationCurrentOnly = json.optionalBoolean("lyricsTranslationCurrentOnly"),
+            playerOrientationLocked = json.optionalBoolean("playerOrientationLocked"), pauseOnMute = json.optionalBoolean("pauseOnMute"),
             lyricsRomanizationScale = json.optionalFloat("lyricsRomanizationScale"),
             lyricsColorMode = json.optionalString("lyricsColorMode"),
             lyricsAlignment = json.optionalString("lyricsAlignment"),
@@ -372,7 +383,7 @@ object EchoBackupCodec {
                 .put("notPlayedDays", rule.notPlayedDays).put("minimumYear", rule.minimumYear)
                 .put("maximumYear", rule.maximumYear).put("sort", rule.sort.name)
                 .put("matchAny",rule.matchAny).put("album",rule.album).put("folder",rule.folder).put("format",rule.format)
-                .put("minimumDurationSeconds",rule.minimumDurationSeconds).put("maximumDurationSeconds",rule.maximumDurationSeconds).put("excludeText",rule.excludeText)) } }
+                .put("minimumDurationSeconds",rule.minimumDurationSeconds).put("maximumDurationSeconds",rule.maximumDurationSeconds).put("excludeText",rule.excludeText).put("minimumRating",rule.minimumRating)) } }
 
     private fun decodePlaylist(json: JSONObject): EchoBackupPlaylist? {
         val name = json.optString("name").trim().takeIf { it.isNotEmpty() } ?: return null
@@ -385,7 +396,7 @@ object EchoBackupCodec {
                     rule.optBoolean("favoriteOnly"), rule.optInt("notPlayedDays"), rule.optInt("minimumYear"), rule.optInt("maximumYear"),
                     app.echo.android.model.library.EchoSmartPlaylistSort.entries.firstOrNull { it.name == rule.optString("sort") }
                         ?: app.echo.android.model.library.EchoSmartPlaylistSort.Title, rule.optBoolean("matchAny"), rule.optString("album"),
-                    rule.optString("folder"),rule.optString("format"),rule.optInt("minimumDurationSeconds"),rule.optInt("maximumDurationSeconds"),rule.optString("excludeText")).also {
+                    rule.optString("folder"),rule.optString("format"),rule.optInt("minimumDurationSeconds"),rule.optInt("maximumDurationSeconds"),rule.optString("excludeText"),rule.optInt("minimumRating")).also {
                     if (!it.isValid) throw EchoBackupException("Invalid smart playlist rule")
                 }
             },

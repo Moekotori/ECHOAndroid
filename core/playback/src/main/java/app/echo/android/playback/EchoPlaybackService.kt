@@ -42,6 +42,7 @@ class EchoPlaybackService : MediaLibraryService() {
     private var audioRoutePlayback: EchoAudioRoutePlaybackController? = null
     private var surfaceProgressJob: Job? = null
     private var podcastProgress: EchoPodcastProgressBinding? = null
+    private var mutePause: EchoMutePauseController? = null
     private var audioPipelineBinding: EchoAudioPipelineBinding? = null
     private val audioPipelineState by lazy { (application as? EchoAudioPipelineOwner)?.audioPipelineState ?: EchoAudioPipelineState() }
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -141,6 +142,7 @@ class EchoPlaybackService : MediaLibraryService() {
                     smartMixer,
                     EchoPlaybackProcessRuntime.channelBalanceController().processor,
                     audioPipelineState = audioPipelineState,
+                    headphoneCorrectionProcessor = EchoPlaybackProcessRuntime.equalizerController().headphoneProcessor,
                 ),
             )
             .setLoadControl(EchoPlaybackLoadControl())
@@ -155,6 +157,7 @@ class EchoPlaybackService : MediaLibraryService() {
                 false,
             )
             .setHandleAudioBecomingNoisy(false)
+            .setDeviceVolumeControlEnabled(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setSeekBackIncrementMs(PREVIOUS_RESTART_THRESHOLD_MS)
             .setSeekForwardIncrementMs(SEEK_FORWARD_INCREMENT_MS)
@@ -199,6 +202,7 @@ class EchoPlaybackService : MediaLibraryService() {
         sessionRestorer = restorer
         EchoPlaybackProcessRuntime.setRemoteAuthReadyListener(restorer::playIfRemoteAuthReady)
         val manualPlayer = EchoManualFadePlayer(exoPlayer, serviceScope).also { manualFade = it }
+        mutePause = EchoMutePauseController(this, exoPlayer, serviceScope)
         val callback = EchoPlaybackLibrarySessionCallback(
             context = this,
             scope = serviceScope,
@@ -208,7 +212,7 @@ class EchoPlaybackService : MediaLibraryService() {
             restorer = restorer,
             nextUpQueue = { nextUpQueue },
             abLoop = { abLoop },
-            onUserCommand = { audioFocus?.onUserCommand(it) },
+            onUserCommand = { audioFocus?.onUserCommand(it); mutePause?.onUserCommand(it) },
             onManualToggle = { manualPlayer.toggle(); true },
         )
         sessionCallback = callback
@@ -315,6 +319,8 @@ class EchoPlaybackService : MediaLibraryService() {
         audioPipelineBinding?.close()
         audioPipelineBinding = null
         manualFade?.close()
+        mutePause?.close()
+        mutePause = null
         manualFade = null
         abLoop?.close()
         abLoop = null

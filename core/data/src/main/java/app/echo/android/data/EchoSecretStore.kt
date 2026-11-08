@@ -15,6 +15,7 @@ import javax.crypto.spec.GCMParameterSpec
 internal object EchoSecretKeys {
     const val EchoLinkToken = "echo_link_pc_token"
     const val SubsonicPassword = "subsonic_password"
+    const val SubsonicConnections = "subsonic_connections"
     const val WebDavPassword = "webdav_password"
     const val SmbPassword = "smb_password"
     const val LastFmSessionKey = "lastfm_session_key"
@@ -26,6 +27,9 @@ internal object EchoSecretKeys {
     fun echoLinkTokenKey(address: String): String =
         "echo_link_token:${address.trim().trimEnd('/').lowercase()}"
 }
+
+internal fun normalizedSecretValue(key: String, value: String?): String? =
+    (if (key == EchoSecretKeys.SubsonicPassword) value else value?.trim())?.takeIf { it.isNotBlank() }
 
 class EchoSecretStore internal constructor(
     context: Context,
@@ -43,7 +47,7 @@ class EchoSecretStore internal constructor(
     }
 
     fun set(key: String, value: String?) {
-        val trimmed = value?.trim()?.takeIf { it.isNotEmpty() }
+        val trimmed = normalizedSecretValue(key, value)
         if (trimmed == null) {
             prefs.edit().remove(key).apply()
             changes.incrementAndGet()
@@ -56,7 +60,7 @@ class EchoSecretStore internal constructor(
 
     fun takeIfMigrated(key: String, plaintext: String?): String? {
         get(key)?.let { return it }
-        val incoming = plaintext?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val incoming = normalizedSecretValue(key, plaintext) ?: return null
         set(key, incoming)
         return incoming
     }

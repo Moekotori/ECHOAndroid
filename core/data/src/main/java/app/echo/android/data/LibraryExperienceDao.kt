@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal const val SmartRuleMatchSql = """
  t.source IN ('mediastore', 'saf')
+ AND (r.minimumRating = 0 OR t.rating >= r.minimumRating)
  AND (r.excludeText = '' OR instr(lower(t.title || ' ' || t.artist || ' ' || COALESCE(t.album,'')), lower(r.excludeText)) = 0)
  AND (
  (r.matchAny = 0

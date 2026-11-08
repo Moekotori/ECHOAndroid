@@ -1,0 +1,23 @@
+{
+  "repository": "https://github.com/airwindows/airwindows",
+  "revision": "7fd5f5cae262a41e6dd7d9a83d60c46e84d3092a",
+  "license": "MIT",
+  "upstreamFiles": {
+    "Tape.h": "00c34c40a88a7de65d476f300578c4ebe17ea6d1819dc0733812753135001826",
+    "Tape.cpp": "5502b5c6bc835d171324ee1f3745e9c3791795ba4af00a8d2cee7d4aaec659a9",
+    "TapeProc.cpp": "736942486c58dc7c82be2ede861f091fe6c77761ae5fec49f69ce9798481f7b4"
+  },
+  "adaptation": [
+    "Extract only double-precision Tape processing and its private state; omit all VST interfaces and SDK dependencies.",
+    "Initialize state directly, use deterministic RNG seeds on reset, omit denormal-noise injection (native handles denormals).",
+    "Keep audio dither disabled as in the upstream double path. Set fixed ECHO preset A=0.5 and B=0.4.",
+    "Replace discarded pointer dereferences with increments; expose a noexcept frame-processing interface."
+  ],
+  "files": {
+    ".gitattributes": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9",
+    "AirwindowsTape.cpp": "15d181d66e4bd66541ab4eea9c0c2232f8c3b5270485b8302793c86b9c375f0c",
+    "AirwindowsTape.h": "974dd78ba8ca763f7dc345152d247cdd5ef8a4016fc5efe859ecf80e18f5f070",
+    "LICENSE.txt": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b"
+  },
+  "licenseSource": "https://github.com/airwindows/airwindows/blob/master/LICENSE"
+}

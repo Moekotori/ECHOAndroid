@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
@@ -32,7 +33,9 @@ internal fun SettingsServicesContent(
     setlistFmApiKeyLocked: Boolean,
     onPcHandoffEnabledChange: (Boolean) -> Unit,
     onLastFmEnabledChange: (Boolean) -> Unit,
-    onStartLastFmWebAuth: () -> Unit,
+    onStartLastFmWebAuth: (String, String) -> Unit,
+    lastFmConnecting: Boolean = false,
+    lastFmDetails: @Composable () -> Unit = {},
     onCompleteLastFmWebAuth: () -> Unit,
     onDisconnectLastFm: () -> Unit,
     onOpenLastFmApiAccounts: () -> Unit,
@@ -42,7 +45,7 @@ internal fun SettingsServicesContent(
     onSaveSetlistFmApiKey: (String?) -> Unit,
 ) {
     var lastFmApiKeyInput by rememberSaveable(lastFmApiKey) { mutableStateOf(lastFmApiKey.orEmpty()) }
-    var lastFmSecretInput by rememberSaveable(lastFmSharedSecret) { mutableStateOf(lastFmSharedSecret.orEmpty()) }
+    var lastFmSecretInput by remember(lastFmSharedSecret) { mutableStateOf(lastFmSharedSecret.orEmpty()) }
     var listenBrainzTokenInput by rememberSaveable(listenBrainzToken) { mutableStateOf(listenBrainzToken.orEmpty()) }
     var setlistFmApiKeyInput by rememberSaveable(setlistFmApiKey) { mutableStateOf(setlistFmApiKey.orEmpty()) }
     val lastFmPanel: @Composable () -> Unit = {
@@ -60,6 +63,8 @@ internal fun SettingsServicesContent(
             onApiKeyChange = { lastFmApiKeyInput = it },
             onSharedSecretChange = { lastFmSecretInput = it },
             onStartWebAuth = onStartLastFmWebAuth,
+            connecting = lastFmConnecting,
+            details = lastFmDetails,
             onCompleteWebAuth = onCompleteLastFmWebAuth,
             onDisconnect = onDisconnectLastFm,
             onOpenApiAccounts = onOpenLastFmApiAccounts,

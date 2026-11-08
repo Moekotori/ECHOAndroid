@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_import_review">Review and correct matches</string>
+    <string name="playlist_import_choose_match">Choose a matching song</string>
+    <string name="playlist_import_search_match">Search the music library</string>
+    <string name="playlist_import_skip_entry">Skip this entry</string>
+    <string name="playlist_import_skipped_entry">Skipped</string>
+    <string name="playlist_import_ambiguous_entry">Multiple candidates — choose one</string>
+    <string name="playlist_import_missing_entry">No match — choose a song</string>
+    <string name="playlist_import_review_done">Done</string>
+    <string name="playlist_export_format">Export playlist</string>
+    <string name="playlist_export_m3u_label">M3U8 · playable file references</string>
+    <string name="playlist_export_text_label">TXT · readable song list</string>
+    <string name="playlist_export_csv_label">CSV · title, artist, album and duration</string>
+    <string name="file_playlist_create">New file playlist</string>
+    <string name="file_playlist_hint">Keep courses and recordings in a separate playlist. Files stay outside the music library and its shuffle. Up to 2,000 audio files per playlist; originals remain in their current location.</string>
+    <string name="file_playlist_files">Choose audio files</string>
+    <string name="file_playlist_folder">Choose a folder</string>
+    <string name="file_playlist_failed">Could not save the file playlist. Check read access, choose supported audio files, and keep each folder within 2,000 audio files. For many files, select a folder to avoid exhausting persistent read permissions.</string>
+    <string name="file_playlist_progress">Reading audio files: %1$d / %2$d</string>
+    <string name="file_playlist_label">File playlist</string>
+    <string name="file_playlist_add_files">Add audio files</string>
+    <string name="file_playlist_add_library">Add from music library</string>
+</resources>

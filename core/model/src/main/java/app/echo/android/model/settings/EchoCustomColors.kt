@@ -13,9 +13,9 @@ data class EchoCustomColors(
 
     companion object {
         val Default = EchoCustomColors(
-            accent = 0xFFD3A9B5.toInt(),
-            secondary = 0xFFD7675D.toInt(),
-            background = 0xFF17171B.toInt(),
+            accent = 0xFFEBA5B8.toInt(),
+            secondary = 0xFFEDB38F.toInt(),
+            background = 0xFF161316.toInt(),
         )
 
         fun fromStored(accent: Int?, secondary: Int?, background: Int?): EchoCustomColors =

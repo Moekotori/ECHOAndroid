@@ -1,5 +1,6 @@
 package app.echo.android.feature.player
 
+import app.echo.android.design.EchoMotion
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -44,7 +45,7 @@ internal fun FullCoverBackdrop(
                 if (lyrics > 0f) drawRect(Color.Black.copy(alpha = LyricsDim * lyrics))
             }
         },
-        animationSpec = if (lightweight) snap() else tween(420),
+        animationSpec = if (lightweight) snap() else tween(420, easing = EchoMotion.Silk),
         label = "full-cover-artwork",
     ) { uri ->
         EchoArtworkImage(

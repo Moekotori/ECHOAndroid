@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import kotlin.coroutines.cancellation.CancellationException
@@ -60,6 +61,7 @@ class EchoLibraryRepository(
 ) {
     fun musicRelations() = LibraryMusicRelations(database, scanner::readAudioTagsFromUri)
 
+    val filePlaylists by lazy { FilePlaylistStore(appContext, database) }
     internal val playlistOrderStore by lazy { PlaylistOrderStore(appContext) }
     private fun text(@StringRes id: Int, vararg args: Any): String =
         if (args.isEmpty()) appContext.getString(id) else appContext.getString(id, *args)
@@ -142,7 +144,7 @@ class EchoLibraryRepository(
 
             emitAll(
                 Pager(
-                    config = defaultPagingConfig(enablePlaceholders = true),
+                    config = libraryTrackPagingConfig(),
                     pagingSourceFactory = {
                         sortedLibraryTrackPagingSource(database, trimmedQuery, matchQuery.takeIf { useFts }, sort, filter)
                     },
@@ -347,7 +349,7 @@ class EchoLibraryRepository(
 
     suspend fun toggleFavorite(trackId: String): Boolean {
         val id = trackId.trim()
-        if (id.isEmpty()) return false
+        if (id.isEmpty() || FilePlaylistStore.ownsTrack(id)) return false
         val dao = database.playlistDao()
         return if (dao.isFavorite(id)) {
             dao.deleteFavorite(id)
@@ -511,6 +513,7 @@ class EchoLibraryRepository(
     }
 
     suspend fun deleteLocalPlaylist(playlistId: String): Boolean {
+        if (FilePlaylistStore.owns(playlistId)) return filePlaylists.delete(playlistId)
         if (playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
             database.withTransaction {
                 database.experienceDao().deleteRule(playlistId)
@@ -552,6 +555,7 @@ class EchoLibraryRepository(
     }
 
     suspend fun removeTrackFromLocalPlaylist(playlistId: String, trackId: String): Boolean {
+        if (FilePlaylistStore.owns(playlistId)) return filePlaylists.remove(playlistId, trackId)
         if (LibraryFavoritePolicy.isLikedSongsId(playlistId)) {
             val id = trackId.trim()
             if (id.isEmpty()) return false
@@ -619,7 +623,9 @@ class EchoLibraryRepository(
         endpoint: SubsonicEndpoint,
         client: SubsonicClient,
         source: String,
-    ) {
+        onTrackIds: (List<String>) -> Unit,
+    ): Boolean {
+        var complete = true
         val remotePlaylists = try {
             withContext(LibraryScanDispatchers.Remote) {
                 client.fetchPlaylists()
@@ -632,80 +638,77 @@ class EchoLibraryRepository(
                 error.message ?: "Subsonic playlist sync failed.",
                 throwable = error,
             )
-            return
+            return false
         }
         val dao = database.playlistDao()
-        val knownTrackIds = database.trackDao().getIdsFromSource(source).toHashSet()
-        val seenIds = HashSet<String>()
+        val userLibrary = SubsonicUserLibrary(database, appContext)
         val now = System.currentTimeMillis()
         for (chunk in remotePlaylists.chunked(SubsonicSyncPolicy.PlaylistFetchConcurrency)) {
             coroutineContext.ensureActive()
-            val fetched = coroutineScope {
-                chunk.map { playlist ->
-                    async(LibraryScanDispatchers.Remote) {
-                        val songs = try {
-                            client.fetchPlaylistSongs(playlist.id)
-                        } catch (cancelled: CancellationException) {
-                            throw cancelled
-                        } catch (_: Throwable) {
-                            null
+            subsonicUserStateGate.withLock {
+                val fetched = coroutineScope {
+                    chunk.map { playlist ->
+                        async(LibraryScanDispatchers.Remote) {
+                            val songs = try {
+                                client.fetchPlaylistSongs(playlist.id)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (_: Throwable) {
+                                null
+                            }
+                            playlist to songs
                         }
-                        playlist to songs
-                    }
-                }.awaitAll()
-            }
-            for ((playlist, songsOrNull) in fetched) {
-                val localId = "${endpoint.sourceId}:playlist:${playlist.id}"
-                seenIds += localId
-                val songs = songsOrNull ?: continue
-                val matchedTrackIds = songs.map { "${endpoint.sourceId}:song:${it.id}" }.filter(knownTrackIds::contains)
-                if (
-                    !SubsonicSyncPolicy.shouldReplaceSyncedPlaylist(
-                        fetchSucceeded = true,
-                        remoteSongCount = songs.size,
-                        matchedTrackCount = matchedTrackIds.size,
-                    )
-                ) {
-                    continue
+                    }.awaitAll()
                 }
-                val trackIds = matchedTrackIds.distinct()
-                val incomingName = playlist.name.ifBlank { "Playlist" }
-                val existing = dao.getPlaylist(localId)
-                val existingTrackIds = existing?.let { dao.getPlaylistTrackIds(localId) }
-                val artworkUri = playlist.coverArt?.let(client::coverArtUrl)
-                    ?: trackIds.firstOrNull()?.let { trackId -> database.trackDao().getTrackById(trackId)?.artworkUri }
-                if (
-                    existing?.artworkUri == artworkUri && !SubsonicSyncPolicy.shouldRewriteSyncedPlaylist(
-                        existingName = existing?.name,
-                        existingTrackIds = existingTrackIds,
-                        incomingName = incomingName,
-                        incomingTrackIds = trackIds,
-                    )
-                ) {
-                    continue
-                }
-                dao.replacePlaylist(
-                    playlist = LibraryPlaylistEntity(
-                        id = localId,
-                        name = incomingName,
-                        source = source,
-                        artworkUri = artworkUri,
-                        trackCount = trackIds.size,
-                        updatedAtEpochMs = now,
-                    ),
-                    tracks = trackIds.mapIndexed { position, trackId ->
-                        LibraryPlaylistTrackEntity(
-                            playlistId = localId,
-                            trackId = trackId,
-                            position = position,
+                for ((playlist, songsOrNull) in fetched) {
+                    val localId = "${endpoint.sourceId}:playlist:${playlist.id}"
+                    val songs = songsOrNull
+                    if (songs == null) { complete = false; continue }
+                    userLibrary.index(endpoint, songs.map { it.toLibraryTrackEntity(endpoint, now).toEchoTrack() })
+                    val trackIds = songs.map { "${endpoint.sourceId}:song:${it.id}" }
+                    onTrackIds(trackIds)
+                    val incomingName = playlist.name.ifBlank { "Playlist" }
+                    val existing = dao.getPlaylist(localId)
+                    val existingTrackIds = existing?.let { dao.getPlaylistTrackIds(localId) }
+                    val artworkUri = playlist.coverArt?.let(client::coverArtUrl)
+                        ?: trackIds.firstOrNull()?.let { trackId -> database.trackDao().getTrackById(trackId)?.artworkUri }
+                    if (
+                        existing?.artworkUri == artworkUri && !SubsonicSyncPolicy.shouldRewriteSyncedPlaylist(
+                            existingName = existing?.name,
+                            existingTrackIds = existingTrackIds,
+                            incomingName = incomingName,
+                            incomingTrackIds = trackIds,
                         )
-                    },
-                )
+                    ) {
+                        continue
+                    }
+                    dao.replacePlaylist(
+                        playlist = LibraryPlaylistEntity(
+                            id = localId,
+                            name = incomingName,
+                            source = source,
+                            artworkUri = artworkUri,
+                            trackCount = trackIds.size,
+                            updatedAtEpochMs = now,
+                        ),
+                        tracks = trackIds.mapIndexed { position, trackId ->
+                            LibraryPlaylistTrackEntity(
+                                playlistId = localId,
+                                trackId = trackId,
+                                position = position,
+                            )
+                        },
+                    )
+                }
             }
         }
-        dao.getPlaylistIdsFromSource(source)
-            .filterNot(seenIds::contains)
-            .forEach { leftoverId -> dao.deletePlaylist(leftoverId) }
+        subsonicUserStateGate.withLock {
+            val currentIds = withContext(LibraryScanDispatchers.Remote) { client.fetchPlaylists() }
+                .mapTo(HashSet()) { "${endpoint.sourceId}:playlist:${it.id}" }
+            dao.getPlaylistIdsFromSource(source).filterNot(currentIds::contains)
+                .forEach { leftoverId -> dao.deletePlaylist(leftoverId) }
+        }
+        return complete
     }
 
     private suspend fun persistPlaylistRecord(record: LibraryPlaylistRecord) {
@@ -829,7 +832,7 @@ class EchoLibraryRepository(
         database.trackDao().getTrackById(trackId)
 
     suspend fun trackById(trackId: String): LibraryTrackEntity? =
-        database.trackDao().getTrackById(trackId)
+        if (FilePlaylistStore.ownsTrack(trackId)) filePlaylists.track(trackId) else database.trackDao().getTrackById(trackId)
 
     suspend fun tracksByIds(ids: List<String>): List<app.echo.android.model.library.EchoTrack> {
         if (ids.isEmpty()) return emptyList()
@@ -1014,6 +1017,10 @@ class EchoLibraryRepository(
         val dao = database.trackDao()
         if (origin is app.echo.android.model.library.LibraryPlaybackOrigin.Playlist) {
             val order = observePlaylistOrder(origin.playlistId).first()
+            if (FilePlaylistStore.owns(origin.playlistId)) {
+                val rows = filePlaylists.read(origin.playlistId, order)
+                return filePlaylistPlaybackWindow(rows, anchorId, limit)
+            }
             val first = dao.queryTracks(playlistTrackQuery(origin.playlistId, order, limit))
             return if (first.any { it.id == anchorId }) first
                 else dao.queryTracks(playlistTrackQuery(origin.playlistId, order, limit, anchorId))
@@ -1071,6 +1078,7 @@ class EchoLibraryRepository(
         limit: Int = AGGREGATION_QUEUE_LIMIT,
     ): List<LibraryTrackEntity> {
         val order = observePlaylistOrder(playlistId).first()
+        if (FilePlaylistStore.owns(playlistId)) return filePlaylists.read(playlistId, order).take(limit.coerceAtLeast(1))
         return database.trackDao().queryTracks(playlistTrackQuery(playlistId, order, limit.coerceAtLeast(1)))
     }
 
@@ -1116,6 +1124,7 @@ class EchoLibraryRepository(
         var insertedCount = 0
         var updatedCount = 0
         var skippedCount = 0
+        val skipReport = ScanSkipReport()
         var scannedCount = 0
         var totalCount: Int? = null
         var lastProgressEmitCount = 0
@@ -1135,6 +1144,7 @@ class EchoLibraryRepository(
                 scannedCount = scannedCount,
                 insertedCount = insertedCount,
                 skippedCount = skippedCount,
+                skipReasons = skipReport.counts(), skippedSamples = skipReport.samples(),
                 updatedCount = updatedCount,
                 deletedCount = deletedCount,
                 totalCount = totalCount,
@@ -1174,12 +1184,13 @@ class EchoLibraryRepository(
                 readSampleRate = !skipSampleRateRead,
                 refreshCueMetadata = refreshCueMetadata,
                 cueCache = cueCache,
-                onRetryIds = { retryIds.addAll(it) },
+                onRetryIds = { ids -> retryIds.addAll(ids); ids.forEach { skipReport.record(app.echo.android.model.library.LibraryScanSkippedItem(app.echo.android.model.library.LibraryScanSkipReason.ReadFailure, "")) } },
                 options = options,
                 rejectedFiles = rejectedFiles,
                 removeExcludedFromLibrary = removeExcludedFromLibrary,
                 onFolderArtwork = { ids, uri -> applyFolderArtwork(ids, uri) },
                 onSkipped = { skippedCount++ },
+                onSkippedDetail = skipReport::record,
                 onTotalCount = { count ->
                     totalCount = count
                     emitProgress(phase = LibraryScanPhase.QueryingMediaStore)
@@ -1208,7 +1219,7 @@ class EchoLibraryRepository(
                     coroutineContext.ensureActive()
                     seenIds.addAll(batch.map { it.id })
                     val recovered = retainMetadataOnFailedReads(dao, batch)
-                    val accepted = filterLocalScanBatch(recovered, importedScanIds, options)
+                    val accepted = filterLocalScanBatch(recovered, importedScanIds, options) { row, reason -> skipReport.record(app.echo.android.model.library.LibraryScanSkippedItem(reason, row.fileName ?: row.title, row.relativePath)) }
                     skippedCount += batch.size - accepted.size
                     val classified = classifyScanBatch(
                         batch = accepted,
@@ -1290,6 +1301,7 @@ class EchoLibraryRepository(
                                 relativePath = it.relativePath,
                                 options = options,
                                 removeExcludedFromLibrary = removeExcludedFromLibrary,
+                                fileName = existingFingerprints[it.id]?.fileName,
                             )
                         }
                         .filter {
@@ -1368,6 +1380,7 @@ class EchoLibraryRepository(
         var insertedCount = 0
         var updatedCount = 0
         var skippedCount = 0
+        val skipReport = ScanSkipReport()
         var scannedCount = 0
         var deletedCount = 0
         var lastProgressEmitCount = 0
@@ -1386,6 +1399,7 @@ class EchoLibraryRepository(
                 scannedCount = scannedCount,
                 insertedCount = insertedCount,
                 skippedCount = skippedCount,
+                skipReasons = skipReport.counts(), skippedSamples = skipReport.samples(),
                 updatedCount = updatedCount,
                 deletedCount = deletedCount,
                 totalCount = null,
@@ -1440,10 +1454,11 @@ class EchoLibraryRepository(
                 readSampleRate = !skipSampleRateRead,
                 refreshCueMetadata = refreshCueMetadata,
                 cueCache = cueCache,
-                onRetryIds = { retryIds.addAll(it) },
+                onRetryIds = { ids -> retryIds.addAll(ids); ids.forEach { skipReport.record(app.echo.android.model.library.LibraryScanSkippedItem(app.echo.android.model.library.LibraryScanSkipReason.ReadFailure, "")) } },
                 options = options,
                 rejectedFiles = rejectedFiles,
                 onSkipped = { skippedCount++ },
+                onSkippedDetail = skipReport::record,
                 onUnchangedIds = { ids -> seenIds.addAll(ids) },
                 listings = documentListings,
                 reuseDirectoryListings = reuseDirectoryListings,
@@ -1474,7 +1489,7 @@ class EchoLibraryRepository(
                     coroutineContext.ensureActive()
                     seenIds.addAll(batch.map { it.id })
                     val recovered = retainMetadataOnFailedReads(dao, batch)
-                    val accepted = filterLocalScanBatch(recovered, importedScanIds, options)
+                    val accepted = filterLocalScanBatch(recovered, importedScanIds, options) { row, reason -> skipReport.record(app.echo.android.model.library.LibraryScanSkippedItem(reason, row.fileName ?: row.title, row.relativePath)) }
                     skippedCount += batch.size - accepted.size
                     val classified = classifyScanBatch(
                         batch = accepted,
@@ -1532,6 +1547,7 @@ class EchoLibraryRepository(
                                     relativePath = existingFingerprints[it]?.relativePath,
                                     options = options,
                                     removeExcludedFromLibrary = removeExcludedFromLibrary,
+                                    fileName = existingFingerprints[it]?.fileName,
                                 )
                         },
                         seenIds,
@@ -1590,21 +1606,22 @@ class EchoLibraryRepository(
     fun refreshSubsonicSnapshot(
         endpoint: SubsonicEndpoint,
         batchSize: Int = SCAN_BATCH_SIZE,
-        onResolved: ((SubsonicEndpoint) -> Unit)? = null,
+        onResolved: (suspend (SubsonicEndpoint) -> Unit)? = null,
     ): Flow<LibraryScanProgress> = flow {
         val resolved = when {
             zspaceMappedPort(endpoint) != null ->
-                resolveSubsonicEndpoint(endpoint, appContext)
+                resolveSubsonicEndpoint(endpoint, appContext, cancellationJob = coroutineContext[kotlinx.coroutines.Job])
             isSubsonicLoopbackTunnel(endpoint) ->
                 resolveSubsonicEndpoint(
                     endpoint,
                     appContext,
                     fallbacks = nearbyLoopbackTunnelEndpoints(endpoint),
+                    cancellationJob = coroutineContext[kotlinx.coroutines.Job],
                 )
             else -> endpoint
         }
         onResolved?.invoke(resolved)
-        val client = SubsonicClient(resolved, appContext = appContext)
+        val client = SubsonicClient(resolved, appContext = appContext, cancellationJob = coroutineContext[kotlinx.coroutines.Job])
         val dao = database.trackDao()
         val source = resolved.sourceId
         val scanRunId = System.currentTimeMillis()
@@ -1656,20 +1673,13 @@ class EchoLibraryRepository(
             withContext(LibraryScanDispatchers.Remote) {
                 client.ping()
             }
-            val (albums, bulkSongs) = coroutineScope {
-                val albumsDeferred = async(LibraryScanDispatchers.Remote) { client.fetchAlbums() }
-                val bulkDeferred = async(LibraryScanDispatchers.Remote) {
-                    try {
-                        client.fetchSongsBySearch3()
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (_: Throwable) {
-                        emptyList()
-                    }
-                }
-                albumsDeferred.await() to bulkDeferred.await()
-            }
-            val expectedSongCount = albums.sumOf { it.songCount.coerceAtLeast(0) }
+            val albums = withContext(LibraryScanDispatchers.Remote) { client.fetchAlbums() }
+            var incompleteSync = false
+            var bulkSongCount = 0
+            var bulkSucceeded = false
+            val metadata = SubsonicSongMetadata(albums)
+            val ingestedIds = HashSet<String>()
+            var expectedSongCount = albums.sumOf { it.songCount.coerceAtLeast(0) }
             totalCount = expectedSongCount.takeIf { it > 0 } ?: albums.size
             emitProgress(
                 phase = LibraryScanPhase.QueryingMediaStore,
@@ -1683,17 +1693,18 @@ class EchoLibraryRepository(
                 insertedCount += written.insertedCount
                 updatedCount += written.updatedCount
                 seenIds.addAll(written.seenIds)
-                changedSummaries.add(written.summaryKeys)
+                rebuildSummariesIfNeeded(dao, written.summaryKeys)
                 pending.clear()
                 emitProgress(phase = LibraryScanPhase.WritingDatabase, currentTitle = title)
                 yield()
             }
 
             suspend fun ingestSongs(songs: List<SubsonicSong>, title: String?) {
-                for (song in songs) {
+                for (song in metadata.enrichMissingCovers(client, songs)) {
                     coroutineContext.ensureActive()
-                    if (song.id.isBlank()) continue
+                    if (song.id.isBlank() || !ingestedIds.add(song.id)) continue
                     scannedCount += 1
+                    if (totalCount != null && scannedCount > totalCount!!) totalCount = scannedCount
                     pending += song.toLibraryTrackEntity(resolved, scanRunId)
                     if (pending.size >= batchSize) {
                         flushPending(title)
@@ -1701,84 +1712,108 @@ class EchoLibraryRepository(
                 }
             }
 
-            val usedSearch3 = SubsonicSyncPolicy.shouldPreferSearch3Bulk(expectedSongCount, bulkSongs.size)
-            if (usedSearch3) {
-                emitProgress(
-                    phase = LibraryScanPhase.QueryingMediaStore,
-                    currentTitle = text(R.string.library_remote_read_tracks, bulkSongs.size),
-                )
-                ingestSongs(bulkSongs, title = "search3")
-            } else {
+            try {
+                val received = client.forEachSongPage { songs ->
+                    check(songs.any { it.id !in ingestedIds }) { "Subsonic song pagination repeated entries" }
+                    ingestSongs(songs, "search3")
+                }
+                bulkSongCount = ingestedIds.size
+                bulkSucceeded = received == bulkSongCount
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                EchoErrorLog.record(EchoErrorSource.Library, "Subsonic bulk sync fell back to albums", throwable = error)
+            }
+            val usedSearch3 = bulkSucceeded && bulkSongCount >= expectedSongCount && (bulkSongCount > 0 || albums.isEmpty())
+            if (!usedSearch3) {
                 // 回退路径去 N+1:与本地库按 albumKey 比对,未变专辑跳过 getAlbum,
                 // 只把其本地曲目标记为 seen(轮换窗口内的照常强刷)
                 val localTrackIdsByAlbumKey = dao.getTrackAlbumKeys(source)
                     .groupBy({ it.albumKey }, { it.id })
-                val fallbackPlan = SubsonicSyncPolicy.planAlbumFallbackSync(
-                    albums = albums,
-                    localTrackIdsByAlbumKey = localTrackIdsByAlbumKey,
-                    refreshSalt = scanRunId,
-                )
-                if (fallbackPlan.skippedAlbumCount > 0) {
-                    seenIds.addAll(fallbackPlan.seenTrackIds)
-                    scannedCount += fallbackPlan.skippedTrackCount
-                    emitProgress(
-                        phase = LibraryScanPhase.QueryingMediaStore,
-                        currentTitle = text(R.string.library_remote_skipped_albums, fallbackPlan.skippedAlbumCount),
+                var albumBatch = albums
+                var albumOffset = albums.size
+                val visitedAlbums = albums.mapTo(HashSet()) { it.id }
+                while (albumBatch.isNotEmpty()) {
+                    val fallbackPlan = SubsonicSyncPolicy.planAlbumFallbackSync(
+                        albums = albumBatch,
+                        localTrackIdsByAlbumKey = localTrackIdsByAlbumKey,
+                        refreshSalt = scanRunId,
                     )
-                }
-                for (chunk in fallbackPlan.albumsToFetch.chunked(SubsonicSyncPolicy.AlbumFetchConcurrency)) {
-                    coroutineContext.ensureActive()
-                    val chunkSongs = coroutineScope {
-                        chunk.map { album ->
-                            async(LibraryScanDispatchers.Remote) {
-                                val songs = try {
-                                    client.fetchAlbumSongs(album)
-                                } catch (cancelled: CancellationException) {
-                                    throw cancelled
-                                } catch (_: Throwable) {
-                                    null
+                    if (fallbackPlan.skippedAlbumCount > 0) {
+                        seenIds.addAll(fallbackPlan.seenTrackIds)
+                        scannedCount += fallbackPlan.skippedTrackCount
+                        emitProgress(
+                            phase = LibraryScanPhase.QueryingMediaStore,
+                            currentTitle = text(R.string.library_remote_skipped_albums, fallbackPlan.skippedAlbumCount),
+                        )
+                    }
+                    for (chunk in fallbackPlan.albumsToFetch.chunked(SubsonicSyncPolicy.AlbumFetchConcurrency)) {
+                        coroutineContext.ensureActive()
+                        val chunkSongs = coroutineScope {
+                            chunk.map { album ->
+                                async(LibraryScanDispatchers.Remote) {
+                                    val songs = try {
+                                        client.fetchAlbumSongs(album)
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Throwable) {
+                                        null
+                                    }
+                                    album to songs
                                 }
-                                album to songs
-                            }
-                        }.awaitAll()
-                    }
-                    for ((album, songs) in chunkSongs) {
-                        if (songs == null) {
-                            val localIds = SubsonicSyncPolicy.localTrackIdsForAlbum(
-                                album,
-                                localTrackIdsByAlbumKey,
-                            )
-                            seenIds.addAll(localIds)
-                            scannedCount += localIds.size
-                            continue
+                            }.awaitAll()
                         }
-                        ingestSongs(songs, album.name)
+                        for ((album, songs) in chunkSongs) {
+                            if (songs == null) {
+                                incompleteSync = true
+                                val localIds = SubsonicSyncPolicy.localTrackIdsForAlbum(
+                                    album,
+                                    localTrackIdsByAlbumKey,
+                                )
+                                seenIds.addAll(localIds)
+                                scannedCount += localIds.size
+                                continue
+                            }
+                            metadata.rememberAlbum(album)
+                            ingestSongs(songs, album.name)
+                        }
+                        emitProgress(
+                            phase = LibraryScanPhase.QueryingMediaStore,
+                            currentTitle = chunk.lastOrNull()?.name,
+                        )
                     }
-                    emitProgress(
-                        phase = LibraryScanPhase.QueryingMediaStore,
-                        currentTitle = chunk.lastOrNull()?.name,
-                    )
+                    // The first index window is bounded; continue the fallback in bounded pages too.
+                    if (albums.size < SubsonicClient.MaxAlbumsPerSync) break
+                    val next = withContext(LibraryScanDispatchers.Remote) {
+                        client.fetchAlbums(maxAlbums = SubsonicClient.AlbumPageSize, startOffset = albumOffset)
+                    }
+                    if (next.isEmpty()) break
+                    check(next.all { visitedAlbums.add(it.id) }) { "Subsonic album pagination repeated entries" }
+                    albumOffset = Math.addExact(albumOffset, next.size)
+                    expectedSongCount += next.sumOf { it.songCount.coerceAtLeast(0) }
+                    totalCount = expectedSongCount.coerceAtLeast(scannedCount)
+                    albumBatch = next
                 }
             }
             flushPending(title = null)
-            syncSubsonicPlaylists(resolved, client, source)
+            if (!syncSubsonicPlaylists(resolved, client, source) { ids -> seenIds.addAll(ids) }) incompleteSync = true
 
+            incompleteSync = incompleteSync || metadata.failedAlbumLookups > 0
             emitProgress(phase = LibraryScanPhase.CleaningRemoved, currentTitle = null)
-            val hitVisitCap = albums.size >= SubsonicClient.MaxAlbumsPerSync ||
-                (usedSearch3 && bulkSongs.size >= SubsonicClient.MaxSongsPerSync)
             val deletion = deleteMissingIfComplete(
                 dao = dao,
                 completeness = LibraryScanCompleteness(
                     querySucceeded = true,
                     scannedCount = scannedCount,
                     existingCount = existingFingerprints.size,
-                    hitVisitCap = hitVisitCap ||
+                    confirmedEmpty = bulkSucceeded && bulkSongCount == 0 && albums.isEmpty() && !incompleteSync,
+                    hitVisitCap = incompleteSync ||
                         !SubsonicSyncPolicy.shouldAuthorizeMissingRowDeletion(
                             usedSearch3 = usedSearch3,
                             expectedSongCount = expectedSongCount,
-                            bulkSongCount = bulkSongs.size,
+                            bulkSongCount = bulkSongCount,
                             existingRemoteCount = existingFingerprints.size,
-                            hitVisitCap = hitVisitCap,
+                            hitVisitCap = false,
+                            bulkExhausted = bulkSucceeded,
                         ),
                 ),
                 missingIds = { LibraryScanPolicy.unseenIds(existingFingerprints.keys, seenIds) },
@@ -1790,9 +1825,11 @@ class EchoLibraryRepository(
                 SubsonicUserLibrary(database, appContext).syncFavorites(resolved)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) {
+                incompleteSync = true
                 EchoErrorLog.record(EchoErrorSource.Library, "Navidrome favorites sync failed.", throwable = error)
             }
-            emitProgress(phase = LibraryScanPhase.Completed, currentTitle = null, isCompleted = true)
+            emitProgress(phase = if (incompleteSync) LibraryScanPhase.Error else LibraryScanPhase.Completed,
+                currentTitle = null, error = if (incompleteSync) text(R.string.library_remote_scan_partial) else null, isCompleted = true)
         } catch (error: CancellationException) {
             emitProgress(phase = LibraryScanPhase.Cancelled, currentTitle = null, isCompleted = true)
             throw error
@@ -2515,6 +2552,8 @@ class EchoLibraryRepository(
                 LibraryScanPolicy.scanRowAction(
                     existingFingerprint = existingFingerprints[preserved.id]?.fingerprint,
                     incomingFingerprint = incomingFingerprint,
+                    existingRating = existingFingerprints[preserved.id]?.embeddedRating,
+                    incomingRating = preserved.embeddedRating,
                 )
             ) {
                 LibraryScanRowAction.Insert -> inserts += preserved.withScanMetadata(scanRunId, editedTracks[preserved.id])
@@ -2670,6 +2709,11 @@ private suspend fun writeRemoteBatch(
         }
     }
     val mutated = inserts + updates
+    val summaries = LibrarySummaryKeyAccumulator()
+    summaries.add(mutated.toSummaryKeySet())
+    mutated.map { it.id }.chunked(500).forEach { ids ->
+        dao.getSummaryKeyRows(ids).forEach { summaries.add(it.toSummaryKeySet()) }
+    }
     mutated.chunked(500).forEach { chunk -> dao.upsertBatchWithFts(chunk) }
     if (LibraryScanPolicy.shouldStampLastSeenOnUnchangedRow() && tracks.isNotEmpty()) {
         val unchangedIds = seenIds.filter { id ->
@@ -2681,6 +2725,6 @@ private suspend fun writeRemoteBatch(
         insertedCount = inserts.size,
         updatedCount = updates.size,
         seenIds = seenIds,
-        summaryKeys = mutated.toSummaryKeySet(),
+        summaryKeys = summaries.build(),
     )
 }

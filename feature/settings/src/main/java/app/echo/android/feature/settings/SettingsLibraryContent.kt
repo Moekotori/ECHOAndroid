@@ -37,11 +37,6 @@ internal fun SettingsLibraryContent(
         Column(Modifier.fillMaxWidth()
             .settingsSearchAnchor(stringResource(R.string.settings_section_library))
             .padding(horizontal = SettingsContentInset)) {
-            SettingsActionRow(
-                title = stringResource(R.string.settings_local_music),
-                detail = stringResource(R.string.settings_local_music_detail),
-                onClick = onOpenLibrary,
-            )
             SettingsSwitchRow(
                 title = stringResource(R.string.settings_audio_tags),
                 detail = stringResource(R.string.settings_audio_tags_detail),

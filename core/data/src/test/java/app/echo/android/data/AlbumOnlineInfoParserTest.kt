@@ -38,6 +38,19 @@ class AlbumOnlineInfoParserTest {
         val query = AlbumOnlineInfoParser.query(album.copy(title = "A\" OR artist:* \\"))
         assertTrue(query.contains("A\\\" OR artist:* \\\\\""))
     }
+    @Test fun matchesEditionMetadataButKeepsLiveAndRemixTitlesDistinct() {
+        assertNotNull(AlbumOnlineInfoParser.selectRelease(search(candidate()), album.copy(title = "Blue (Deluxe Edition)")))
+        assertNotNull(AlbumOnlineInfoParser.selectRelease(search(candidate().put("title", "Blue [2011 Remastered]")), album))
+        assertNull(AlbumOnlineInfoParser.selectRelease(search(candidate()), album.copy(title = "Blue (Live)")))
+        assertNull(AlbumOnlineInfoParser.selectRelease(search(candidate()), album.copy(title = "Blue (Remix)")))
+    }
+    @Test fun jointCreditAcceptsConnectorVariationButStillRequiresEveryArtist() {
+        val duet = candidate().put("artist-credit", JSONArray()
+            .put(JSONObject().put("name", "Artist A").put("joinphrase", " & "))
+            .put(JSONObject().put("name", "Artist B")))
+        assertNotNull(AlbumOnlineInfoParser.selectRelease(search(duet), album.copy(albumArtist = "Artist A and Artist B")))
+        assertNull(AlbumOnlineInfoParser.selectRelease(search(duet), album))
+    }
     @Test fun parsesReleaseAndWorkCreditsWithoutLosingTrackContextInCache() {
         val payload = JSONObject("""{
           "id":"11111111-1111-1111-1111-111111111111", "title":"Blue", "date":"2001-03-04", "country":"JP",

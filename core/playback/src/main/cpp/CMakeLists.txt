@@ -9,7 +9,17 @@ foreach(component avutil swresample avcodec avformat)
         IMPORTED_LOCATION "${ffmpeg_prefix}/lib/lib${component}.a")
 endforeach()
 
-add_library(echo_dsp SHARED echo_dsp.cpp)
+add_library(echo_dsp SHARED echo_dsp.cpp echo_personal_audio.cpp)
+set(sound_effect_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/sound-effects/engine")
+target_compile_features(echo_dsp PRIVATE cxx_std_20)
+target_include_directories(echo_dsp PRIVATE "${sound_effect_root}" "${sound_effect_root}/third_party/signalsmith/dsp/include")
+target_sources(echo_dsp PRIVATE EchoSoundEffectEngine.cpp echo_sound_effects_jni.cpp
+    EchoPcEqualizer.cpp echo_pc_equalizer_jni.cpp
+    "${sound_effect_root}/AdditionalSoundEffects.cpp" "${sound_effect_root}/CharacterSoundEffects.cpp"
+    "${sound_effect_root}/ListeningColorEffects.cpp" "${sound_effect_root}/ModulationSoundEffects.cpp"
+    "${sound_effect_root}/EqProcessor.cpp" "${sound_effect_root}/DeEsserProcessor.cpp")
+file(GLOB sound_effect_airwindows CONFIGURE_DEPENDS "${sound_effect_root}/third_party/airwindows-*/*.cpp")
+target_sources(echo_dsp PRIVATE ${sound_effect_airwindows})
 target_link_libraries(echo_dsp android log)
 target_link_options(echo_dsp PRIVATE "-Wl,-z,max-page-size=16384")
 

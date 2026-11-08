@@ -53,7 +53,6 @@ internal fun FullCoverCoverPage(
     duration: State<Long>,
     actions: ExpressivePlayerActions,
     isFavorite: Boolean,
-    castActive: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val track = status.track
@@ -85,7 +84,7 @@ internal fun FullCoverCoverPage(
                         maxLines = 1, overflow = TextOverflow.Ellipsis, style = shadow,
                     )
                 }
-                PlayerControlButton(
+                if (status.track.supportsMusicFavorite()) PlayerControlButton(
                     if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                     stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                     onClick = { if (track != null) actions.favorite() },
@@ -146,7 +145,7 @@ internal fun FullCoverCoverPage(
                     touchSize = 48.dp, iconSize = 22.dp, tint = muted,
                 )
             }
-            Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 PlayerControlButton(
                     if (status.repeatMode == EchoRepeatMode.One) Icons.Sharp.RepeatOne else Icons.Sharp.Repeat,
                     stringResource(
@@ -159,15 +158,12 @@ internal fun FullCoverCoverPage(
                     onClick = { haptics.tick(); actions.repeat() },
                     touchSize = 48.dp, iconSize = 22.dp, tint = if (status.repeatMode != EchoRepeatMode.Off) Color.White else muted,
                 )
-                actions.cast?.let { cast ->
-                    PlayerControlButton(
-                        PlayerControlIcons.Cast,
-                        stringResource(if (castActive) R.string.feature_player_cast_active else R.string.feature_player_cast),
-                        onClick = { haptics.tick(); cast() },
-                        touchSize = 48.dp, iconSize = 23.dp,
-                        tint = if (castActive) MaterialTheme.colorScheme.primary else muted,
-                    )
-                }
+                PlayerControlButton(
+                    PlayerControlIcons.More,
+                    stringResource(R.string.feature_player_expand_playback_settings_cf64a0),
+                    onClick = { haptics.tick(); actions.more() },
+                    touchSize = 48.dp, iconSize = 23.dp, tint = muted,
+                )
             }
         },
     )

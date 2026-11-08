@@ -17,6 +17,7 @@ object EchoEqualizerApoCodec {
         var name: String? = null
         val filters = ArrayList<OpraEqBand>(8)
         var graphic = emptyList<OpraEqBand>()
+        var scope = EchoEqBandScope.Stereo
         for (line in lines) {
             val comment = Comment.matchEntire(line)?.groupValues?.get(1)?.trim()
             if (comment != null) {
@@ -35,8 +36,14 @@ object EchoEqualizerApoCodec {
                 graphic = parseGraphic(graphicMatch.groupValues[1])
                 continue
             }
+            if (line.startsWith("Channel:", true)) {
+                scope = when (line.substringAfter(':').trim().uppercase()) { "L", "LEFT" -> EchoEqBandScope.Left; "R", "RIGHT" -> EchoEqBandScope.Right
+                    "ALL", "L R", "R L" -> EchoEqBandScope.Stereo; else -> return null }; continue
+            }
+            if (Regex("^(Include|Copy|Convolution|VSTPlugin):", RegexOption.IGNORE_CASE).containsMatchIn(line)) return null
             val filter = parseFilter(line) ?: continue
-            if (filters.size < MaxFilters) filters.add(filter)
+            if (filters.size >= MaxFilters) return null
+            filters.add(filter.copy(scope = scope))
         }
         val bands = filters.ifEmpty { graphic }
         if (bands.isEmpty() && kotlin.math.abs(preamp) < 0.05f) return null
@@ -55,18 +62,21 @@ object EchoEqualizerApoCodec {
 
     fun encode(preset: EchoEqualizerUserPreset): String? {
         val normalized = EchoEqualizerUserPresets.normalize(preset.copy(id = preset.id.ifBlank { "share" })) ?: return null
+        if (normalized.filters.any { it.dynamicMode != EchoEqDynamicMode.Off || it.scope in listOf(EchoEqBandScope.Mid, EchoEqBandScope.Side) }) return null
         return buildString {
             append("# ").append(normalized.name).append('\n')
             append("Preamp: ").append(formatApoNumber(normalized.preampDb)).append(" dB\n")
             if (normalized.parametric) {
                 normalized.filters.take(MaxFilters).forEachIndexed { index, band ->
-                    append("Filter ").append(index + 1).append(": ").append(encodeFilter(band)).append('\n')
+                    append("Channel: ").append(when (band.scope) { EchoEqBandScope.Left -> "L"; EchoEqBandScope.Right -> "R"; else -> "ALL" }).append('\n')
+                    val effective = band.copy(gainDb = normalized.options.effectiveGain(band))
+                    append("Filter ").append(index + 1).append(": ").append(encodeFilter(effective)).append('\n')
                 }
             } else {
                 append("GraphicEQ: ")
                 append(
                     EchoEqualizerPresets.defaultFrequenciesHz.mapIndexed { index, frequency ->
-                        "$frequency ${formatApoNumber(normalized.gainsDb.getOrElse(index) { 0f })}"
+                        "${formatApoNumber(EchoEqualizerPresets.preciseFrequenciesHz[index])} ${formatApoNumber(normalized.options.effectiveGain(OpraEqBand(EchoEqFilterType.PeakDip, EchoEqualizerPresets.preciseFrequenciesHz[index], normalized.gainsDb.getOrElse(index) { 0f }, 1f, null)))}"
                     }.joinToString("; "),
                 )
                 append('\n')
@@ -76,7 +86,6 @@ object EchoEqualizerApoCodec {
 
     private fun parseFilter(line: String): OpraEqBand? {
         val match = FilterHeader.matchEntire(line) ?: return null
-        if (!match.groupValues[1].equals("ON", ignoreCase = true)) return null
         val type = apoType(match.groupValues[2]) ?: return null
         val rest = match.groupValues[3]
         val frequency = Frequency.find(rest)?.groupValues?.get(1)?.toFloatOrNull() ?: return null
@@ -85,6 +94,7 @@ object EchoEqualizerApoCodec {
         val q = Quality.find(rest)?.groupValues?.get(1)?.toFloatOrNull()?.takeIf { it.isFinite() && it > 0f }
         return OpraEqBand(
             type = type,
+            enabled = match.groupValues[1].equals("ON", true),
             frequencyHz = frequency,
             gainDb = gain,
             q = q,
@@ -119,7 +129,7 @@ object EchoEqualizerApoCodec {
             else -> "PK"
         }
         return buildString {
-            append("ON ").append(type).append(" Fc ").append(formatApoNumber(band.frequencyHz)).append(" Hz")
+            append(if (band.enabled) "ON " else "OFF ").append(type).append(" Fc ").append(formatApoNumber(band.frequencyHz)).append(" Hz")
             if (band.normalizedType() != EchoEqFilterType.LowPass && band.normalizedType() != EchoEqFilterType.HighPass || kotlin.math.abs(band.gainDb) >= 0.05f) {
                 append(" Gain ").append(formatApoNumber(band.gainDb)).append(" dB")
             }

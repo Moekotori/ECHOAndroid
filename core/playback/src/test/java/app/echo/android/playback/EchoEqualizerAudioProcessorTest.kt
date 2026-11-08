@@ -34,7 +34,7 @@ class EchoEqualizerAudioProcessorTest {
 
     @Test fun realPcmShelfAndPreampMatchReferenceGain() {
         var processingRate: Int? = null
-        val processor = EchoEqualizerAudioProcessor { processingRate = it }
+        val processor = EchoEqualizerAudioProcessor(onProcessingFormatChanged = { processingRate = it })
         processor.setRuntime(EchoEqualizerRuntime(true, -6f,
             listOf(OpraEqBand(EchoEqFilterType.LowShelf, 100f, 6f, 0.7f, null))))
         processor.configure(AudioProcessor.AudioFormat(48000, 1, C.ENCODING_PCM_FLOAT))

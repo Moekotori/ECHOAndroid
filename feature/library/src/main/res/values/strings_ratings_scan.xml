@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_rating">Local star rating</string>
+    <string name="track_rating_stars">%1$d stars</string>
+    <string name="track_rating_unrated">Unrated</string>
+    <string name="track_rating_file">Use file rating</string>
+    <string name="track_rating_minimum">Minimum star rating</string>
+    <string name="track_rating_at_least">%1$d stars or higher</string>
+    <string name="library_sort_rating_desc">Rating: high to low</string>
+    <string name="library_sort_rating_asc">Rating: low to high</string>
+    <string name="scan_name_keywords">Exclude filename keywords</string>
+    <string name="scan_name_keywords_hint">One keyword per line, up to 50 keywords of 64 characters. Matches filenames case-insensitively. The next complete scan removes matching music-library entries while keeping the original files and separate file playlists.</string>
+    <string name="scan_details">Scan details</string>
+    <string name="scan_details_count">%1$s: %2$d</string>
+    <string name="scan_details_sample_hint">Up to 40 examples from this scan. Failed metadata reads keep existing information for a later retry.</string>
+    <string name="scan_details_unreadable_item">Unreadable audio entry</string>
+    <string name="scan_reason_duration">Below duration threshold</string>
+    <string name="scan_reason_size">Below file-size threshold</string>
+    <string name="scan_reason_format">Excluded by format rule</string>
+    <string name="scan_reason_directory">Excluded by folder rule</string>
+    <string name="scan_reason_name">Excluded by filename keyword</string>
+    <string name="scan_reason_read">Metadata read failed; retry pending</string>
+</resources>

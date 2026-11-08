@@ -76,6 +76,7 @@ import app.echo.android.playback.toEchoTrackRef
 import app.echo.android.playback.toMediaItem
 import app.echo.android.playback.toPlaybackControlsState
 import app.echo.android.playback.toPlaybackDiagnosticsState
+import app.echo.android.model.playback.withSoundEffectRuntime
 import app.echo.android.playback.toPlaybackMetadataState
 import app.echo.android.playback.playbackSessionPersistSignature
 import app.echo.android.playback.toPlaybackPositionState
@@ -936,6 +937,7 @@ internal class PlaybackController(
         usbAudioJob?.cancel()
         usbAudioJob = scope.launch {
             launch { EchoPlaybackProcessRuntime.autoMixStatus.collect { updatePlaybackStatusOptions() } }
+            launch { app.echo.android.playback.EchoSoundEffectRuntime.status.collect { updateUsbDiagnostics(usbAudioMonitor.status.value) } }
             launch { audioPipelineState.diagnostics.collect { updateUsbDiagnostics(usbAudioMonitor.status.value) } }
             launch {
                 EchoPlaybackProcessRuntime.bitPerfectStates.collect {
@@ -1064,6 +1066,7 @@ internal class PlaybackController(
             .withUsbAudioStatus(status)
             .withOutputRoute(outputRouteMonitor.route.value)
             .withAudioPipeline(audioPipelineState.diagnostics.value)
+            .withSoundEffectRuntime(app.echo.android.playback.EchoSoundEffectRuntime.status.value)
         updateState(_playbackDiagnostics, PlaybackDiagnosticsState(diagnostics, diagnostics.lastError))
         updateState(_playbackStatus, _playbackStatus.value.copy(diagnostics = diagnostics).withPlaybackOptions())
     }

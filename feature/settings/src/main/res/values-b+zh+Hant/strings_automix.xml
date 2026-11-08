@@ -6,5 +6,5 @@
     <string name="automix_illustration">交疊示意</string>
     <string name="automix_current">目前歌曲</string>
     <string name="automix_next">下一首</string>
-    <string name="automix_description">Beta。兩首歌，一次自然交接。AutoMix 自動尋找銜接點，混合正常倍速的本機歌曲；開啟淡化後，淡化時長也會限制交疊。</string>
+    <string name="automix_description">Beta：自動銜接正常倍速的本機歌曲；開啟淡化時限制重疊。</string>
 </resources>

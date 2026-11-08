@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="library_layout_title">自訂分類</string>
-    <string name="library_layout_detail">把常用分類移到前面，也可以隱藏不用的分類，至少保留一項。</string>
+    <string name="library_layout_detail">拖曳把手調整分類順序，用開關隱藏或恢復分類，至少保留一項。</string>
     <string name="library_layout_move_up">上移%1$s</string>
     <string name="library_layout_move_down">下移%1$s</string>
     <string name="library_layout_reset">恢復預設</string>

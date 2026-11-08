@@ -20,6 +20,8 @@ object EchoEqualizerUserPresetCodec {
                     put("graphicPresetId", preset.graphicPresetId)
                     put("gainsDb", JSONArray(preset.gainsDb))
                     put("preampDb", preset.preampDb.toDouble())
+                    put("strengthPercent", preset.options.strengthPercent.toDouble())
+                    put("tiltDb", preset.options.tiltDb.toDouble())
                     if (preset.filters.isNotEmpty()) {
                         put("filters", JSONArray(formatEqualizerFilters(preset.filters)))
                     }
@@ -56,6 +58,7 @@ object EchoEqualizerUserPresetCodec {
                             List(gains.length()) { gainIndex -> gains.optDouble(gainIndex, 0.0).toFloat() }
                         }.orEmpty(),
                         preampDb = json.optDouble("preampDb", 0.0).toFloat(),
+                        options = app.echo.android.model.playback.EchoEqOptions(json.optDouble("strengthPercent", 100.0).toFloat(), json.optDouble("tiltDb", 0.0).toFloat()),
                         filters = filters,
                         sourceLabel = json.optString("sourceLabel").trim().takeIf { it.isNotEmpty() },
                         opraEqId = json.optString("opraEqId").trim().takeIf { it.isNotEmpty() },

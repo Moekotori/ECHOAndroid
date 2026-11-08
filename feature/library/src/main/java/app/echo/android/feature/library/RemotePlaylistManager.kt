@@ -111,7 +111,7 @@ fun RemotePlaylistManager(actions: RemoteLibraryWritebackActions, onDismiss: () 
                         TextButton(onClick = tracks::retry) { Text(stringResource(R.string.remote_playlist_retry)) }
                     }
                     else if (tracks.itemCount == 0) item { Text(stringResource(R.string.playlist_add_no_matches)) }
-                    items(tracks.itemCount, key = { tracks.peek(it)?.id ?: "remote-$it" }) { index ->
+                    items(tracks.itemCount, key = { "remote-$it:${tracks.peek(it)?.id.orEmpty()}" }) { index ->
                         tracks[index]?.let { track ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {

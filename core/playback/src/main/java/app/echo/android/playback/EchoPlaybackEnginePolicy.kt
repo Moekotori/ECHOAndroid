@@ -52,7 +52,6 @@ class EchoPlaybackEnginePolicy(
     private val replayGainUrisByMediaId = mutableMapOf<String, String>()
     private val replayGainTagsByMediaId = mutableMapOf<String, EchoReplayGainTags>()
     private val replayGainJobs = mutableMapOf<String, Job>()
-    private val subsonicTranscodeFallbackAttempts = hashSetOf<String>()
     private val echoLinkRefreshAttempts = mutableMapOf<String, Int>()
     private val echoLinkRefreshAttemptAtMs = mutableMapOf<String, Long>()
     private val echoLinkRefreshInFlight = mutableSetOf<String>()
@@ -102,7 +101,6 @@ class EchoPlaybackEnginePolicy(
         replayGainUrisByMediaId.clear()
         replayGainTagsByMediaId.clear()
         cancelReplayGainJobs()
-        subsonicTranscodeFallbackAttempts.clear()
         echoLinkPrefetchJob?.cancel()
         echoLinkPrefetchJob = null
         resetEchoLinkStreamRefresh()
@@ -143,7 +141,6 @@ class EchoPlaybackEnginePolicy(
         sampleRatesByMediaId.keys.retainAll(mediaIds)
         replayGainUrisByMediaId.keys.retainAll(mediaIds)
         replayGainTagsByMediaId.keys.retainAll(mediaIds)
-        subsonicTranscodeFallbackAttempts.retainAll(mediaIds)
         echoLinkRefreshAttempts.keys.retainAll(mediaIds)
         echoLinkRefreshAttemptAtMs.keys.retainAll(mediaIds)
         echoLinkRefreshInFlight.retainAll(mediaIds)
@@ -309,15 +306,16 @@ class EchoPlaybackEnginePolicy(
         if (index < 0 || index >= player.mediaItemCount) return false
         val item = player.getMediaItemAt(index)
         val mediaId = item.mediaId
-        if (mediaId.isBlank() || !subsonicTranscodeFallbackAttempts.add(mediaId)) return false
+        if (mediaId.isBlank()) return false
         val currentUri = item.localConfiguration?.uri?.toString() ?: return false
-        val fallbackUri = subsonicUnsupportedFormatFallbackUrl(currentUri) ?: return false
+        val fallback = subsonicTranscodeFallback(currentUri, player.currentPosition, player.playWhenReady) ?: return false
         player.replaceMediaItem(
             index,
-            item.buildUpon().setUri(android.net.Uri.parse(fallbackUri)).build(),
+            item.buildUpon().setUri(android.net.Uri.parse(fallback.uri)).build(),
         )
+        player.seekTo(index, fallback.positionMs)
         player.prepare()
-        player.play()
+        player.playWhenReady = fallback.playWhenReady
         return true
     }
 

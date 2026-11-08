@@ -207,13 +207,14 @@ object EchoLinkCastPolicy {
     fun parseRange(header: String?, totalLength: Long?): Pair<Long, Long?>? {
         val raw = header?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         if (!raw.startsWith("bytes=", ignoreCase = true)) return null
-        val spec = raw.removePrefix("bytes=").trim()
-        if (spec.startsWith('-')) return null
-        val startText = spec.substringBefore('-')
-        val endText = spec.substringAfter('-', "")
+        val spec = raw.substring("bytes=".length).trim()
+        val separator = spec.indexOf('-')
+        if (separator <= 0) return null
+        val startText = spec.substring(0, separator)
+        val endText = spec.substring(separator + 1)
+        if (startText.any { it !in '0'..'9' } || endText.any { it !in '0'..'9' }) return null
         val start = startText.toLongOrNull() ?: return null
-        if (start < 0L) return null
-        val end = endText.takeIf { it.isNotEmpty() }?.toLongOrNull()
+        val end = if (endText.isEmpty()) null else endText.toLongOrNull() ?: return null
         if (end != null && end < start) return null
         if (totalLength != null && start >= totalLength) return null
         val boundedEnd = when {

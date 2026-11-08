@@ -107,6 +107,7 @@ internal fun LyricsTransportControls(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onOpenQueue: () -> Unit,
+    onMore: (() -> Unit)? = null,
 ) {
     val haptics = rememberEchoHapticPerformer()
     BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -149,7 +150,12 @@ internal fun LyricsTransportControls(
                 )
             }
             Spacer(Modifier.weight(1f))
-            Spacer(Modifier.size(48.dp))
+            if (onMore != null) {
+                PlayerControlButton(
+                    PlayerControlIcons.Settings, stringResource(R.string.feature_player_lyrics_settings_843bc9),
+                    { haptics.tick(); onMore() }, touchSize = 48.dp, iconSize = secondaryIconSize + 2.dp, tint = OnArtMuted,
+                )
+            } else Spacer(Modifier.size(48.dp))
         }
     }
 }

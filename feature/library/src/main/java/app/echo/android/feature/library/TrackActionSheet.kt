@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoSheetRow
+import app.echo.android.model.settings.EchoTrackMenuAction
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.feature.library.R as L10nR
 
@@ -102,6 +103,7 @@ internal fun TrackActionSheet(
                 .verticalScroll(rememberScrollState(), overscrollEffect = null)
                 .padding(bottom = 16.dp),
         ) {
+            LocalLibraryMediaTools.current?.setRating?.let { TrackRatingControl(track, it) }
             if (onSelectForBatch != null) {
                 TrackActionRow(stringResource(L10nR.string.library_multiselect), Icons.Rounded.Checklist, enabled = true, onClick = onSelectForBatch)
             }
@@ -173,32 +175,19 @@ internal fun TrackActionSheet(
                     onClick = onRemoveFromPlaylist,
                 )
             }
-            if (shown(app.echo.android.model.settings.EchoTrackMenuAction.EditTags)) TrackActionRow(stringResource(L10nR.string.feature_library_edit_tags_c8ec75), Icons.Rounded.Edit, enabled = canEditMetadata, onClick = onEdit)
-            if (shown(app.echo.android.model.settings.EchoTrackMenuAction.ImportLyrics)) TrackActionRow(
-                stringResource(L10nR.string.feature_library_import_lrc_lyrics_8e2810),
-                Icons.Rounded.UploadFile,
-                enabled = canImportLyrics,
-                onClick = onImportLyrics,
-            )
-            if (shown(app.echo.android.model.settings.EchoTrackMenuAction.Artwork)) TrackActionRow(
-                stringResource(L10nR.string.feature_library_custom_artwork_c8c999),
-                Icons.Rounded.Album,
-                enabled = canPickArtwork,
-                onClick = onPickArtwork,
-            )
-            if (onVersions != null && shown(app.echo.android.model.settings.EchoTrackMenuAction.Versions)) {
-                TrackActionRow(stringResource(L10nR.string.track_versions_title), Icons.Rounded.Album, enabled = true, onClick = onVersions)
+            LocalTrackActionOrder.current.forEach { action ->
+                if (shown(action)) when (action) {
+                    EchoTrackMenuAction.EditTags -> TrackActionRow(stringResource(L10nR.string.feature_library_edit_tags_c8ec75), Icons.Rounded.Edit, canEditMetadata, onEdit)
+                    EchoTrackMenuAction.ImportLyrics -> TrackActionRow(stringResource(L10nR.string.feature_library_import_lrc_lyrics_8e2810), Icons.Rounded.UploadFile, canImportLyrics, onImportLyrics)
+                    EchoTrackMenuAction.Artwork -> TrackActionRow(stringResource(L10nR.string.feature_library_custom_artwork_c8c999), Icons.Rounded.Album, canPickArtwork, onPickArtwork)
+                    EchoTrackMenuAction.Versions -> if (onVersions != null) TrackActionRow(stringResource(L10nR.string.track_versions_title), Icons.Rounded.Album, true, onVersions)
+                    EchoTrackMenuAction.Hide -> if (onHide != null) TrackActionRow(stringResource(L10nR.string.hidden_track_hide), Icons.Rounded.VisibilityOff, true, onHide)
+                    EchoTrackMenuAction.Delete -> if (onDelete != null) TrackActionRow(stringResource(L10nR.string.feature_library_delete_138ccf), Icons.Rounded.DeleteOutline, true, onDelete, danger = true)
+                }
             }
             TrackActionRow(stringResource(L10nR.string.feature_library_track_info_36a07b), Icons.Rounded.Info, enabled = true, onClick = onInfo)
             if (onShare != null) TrackActionRow(stringResource(L10nR.string.audio_share_action), Icons.Rounded.Share,
                 enabled = true, onClick = onShare)
-            if (onHide != null && shown(app.echo.android.model.settings.EchoTrackMenuAction.Hide)) {
-                TrackActionRow(stringResource(L10nR.string.hidden_track_hide), Icons.Rounded.VisibilityOff,
-                    enabled = true, onClick = onHide)
-            }
-            if (onDelete != null && shown(app.echo.android.model.settings.EchoTrackMenuAction.Delete)) {
-                TrackActionRow(stringResource(L10nR.string.feature_library_delete_138ccf), Icons.Rounded.DeleteOutline, enabled = true, danger = true, onClick = onDelete)
-            }
         }
     }
 }

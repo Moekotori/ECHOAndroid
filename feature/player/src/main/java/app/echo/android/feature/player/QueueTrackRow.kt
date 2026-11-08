@@ -16,9 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,7 +47,6 @@ internal fun QueueTrackRow(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     modifier: Modifier = Modifier,
-    dropTarget: Boolean = false,
     interactive: Boolean = true,
     playing: Boolean = false,
     reorderable: Boolean = true,
@@ -61,13 +58,9 @@ internal fun QueueTrackRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .then(if (active) Modifier.background(ink.copy(alpha = 0.055f)) else Modifier)
-            .drawWithCache {
-                onDrawBehind {
-                    if (dropTarget) drawLine(ink, Offset.Zero, Offset(size.width, 0f), 2.dp.toPx())
-                }
-            }
             .then(if (interactive) Modifier.echoClickable(onClick = onPlay) else Modifier)
-            .padding(horizontal = 10.dp, vertical = if (active) 12.dp else 7.dp),
+            .padding(start = 10.dp, end = if (active) 10.dp else 0.dp,
+                top = if (active) 12.dp else 7.dp, bottom = if (active) 12.dp else 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -110,9 +103,12 @@ internal fun QueueTrackRow(
             style = MaterialTheme.typography.labelSmall,
         )
         if (!active) {
-            if (interactive) Box {
-                IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(48.dp)) {
-                    EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.queue_actions), Modifier.size(20.dp), tint = ink.copy(alpha = 0.6f))
+            Box {
+                // Keep exactly the same trailing slot in the floating drag copy.
+                IconButton(onClick = { menuExpanded = true }, enabled = interactive, modifier = Modifier.size(48.dp)) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
+                        EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.queue_actions), Modifier.size(20.dp), tint = ink.copy(alpha = 0.6f))
+                    }
                 }
                 EchoDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     if (reorderable && index > 0) EchoDropdownMenuItem(

@@ -44,12 +44,12 @@ internal fun bindPlaybackDspSettings(store: EchoSettingsStore, applicationContex
             StoredPlaybackDsp(settings.dsp, settings.equalizerEnabled, settings.equalizerPreset,
                 settings.equalizerBandGains, settings.equalizerPreampDb,
                 if (settings.equalizerParametric) settings.equalizerFilters else emptyList(),
-                settings.equalizerSourceLabel, settings.mseb)
+                settings.equalizerSourceLabel, settings.mseb, settings.equalizerOptions, settings.headphoneCorrection)
         }.distinctUntilChanged().collect { state ->
             EchoPlaybackProcessRuntime.setDspSettings(state.dsp)
             EchoPlaybackProcessRuntime.equalizerController().setConfig(
                 state.enabled, state.preset, state.gains, state.preamp, state.filters, state.source,
-                mseb = state.mseb,
+                mseb = state.mseb, options = state.options, correction = state.correction,
             )
         }
     }
@@ -64,4 +64,6 @@ private data class StoredPlaybackDsp(
     val filters: List<OpraEqBand>,
     val source: String?,
     val mseb: EchoMsebState,
+    val options: app.echo.android.model.playback.EchoEqOptions,
+    val correction: app.echo.android.model.playback.EchoHeadphoneCorrectionSettings,
 )

@@ -48,6 +48,9 @@ internal class EchoRemoteControlSession(
             job?.cancel(); job = null
             if (toggleInFlight || play?.revision == toggleIssued) play = null
             toggleInFlight = false
+            // Cancellation may happen before the PC applies these idempotent values.
+            // A foreground worker must be allowed to send them again after reading state.
+            seekIssued = -1; seekAttemptRevision = -1; volumeIssued = -1
             // Keep only value intent in the background, never a callback capturing a closed UI.
             play = play?.copy(success = {}); seek = seek?.copy(success = {}); volume = volume?.copy(success = {})
         } else start()

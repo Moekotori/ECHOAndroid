@@ -23,7 +23,8 @@ data class EchoPlaylist(
         get() = id.startsWith(EchoSmartPlaylistRule.IdPrefix)
 
     val canEdit: Boolean
-        get() = source == LibrarySource.MediaStore.id && !isLikedSongs && !isSmartPlaylist
+        get() = (source == LibrarySource.MediaStore.id || isFilePlaylist) && !isLikedSongs && !isSmartPlaylist
+    val isFilePlaylist: Boolean get() = source == LibrarySource.FilePlaylist.id
 
     val canRemoveTracks: Boolean
         get() = canEdit || isLikedSongs

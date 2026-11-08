@@ -53,6 +53,7 @@ fun PluginsHost(
     isActive: Boolean = true,
     onBackProgress: (Float) -> Unit = {},
     onBackCancel: () -> Unit = {},
+    onInstallLyricsSample: () -> Unit = {},
 ) {
     var destinationName by rememberSaveable { mutableStateOf(PluginDestination.List.name) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -129,6 +130,7 @@ fun PluginsHost(
                     onDismissNotice = onDismissNotice,
                 )
                 PluginDestination.Tutorial -> PluginTutorialScreen(
+                    onInstallLyricsSample = { onInstallLyricsSample(); show(PluginDestination.List) },
                     onBack = { show(PluginDestination.List) },
                     onInstallSample = {
                         onInstallSample()

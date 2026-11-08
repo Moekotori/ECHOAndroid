@@ -89,6 +89,8 @@ internal fun rememberNowPlayingSongActions(
         }
         AddToPlaylistDialog(playlists = playlists, onDismiss = { showPlaylist = false },
             containingPlaylistIds = memberships,
+            fileOnly = track.source == LibrarySource.FilePlaylist,
+            allowFilePlaylists = track.source.isLocalAudioFile,
             busy = busy, error = error, awaitResult = true,
             onSelectPlaylist = { playlist -> submit { viewModel.addPlayerSongToPlaylist(playlist.id, track.id) } },
             onCreatePlaylist = { name -> submit { viewModel.createPlayerPlaylist(name, track.id) } })
@@ -116,7 +118,7 @@ internal fun rememberNowPlayingSongActions(
         onDismiss = { showOnline = false },
     )
     val song = track?.takeUnless { EchoRadioStation.isRadio(it.id) }
-    val removable = indexedTrack?.takeUnless { it.source == LibrarySource.EchoLink || EchoRadioStation.isRadio(it.id) }
+    val removable = indexedTrack?.takeUnless { it.source == LibrarySource.EchoLink || it.source == LibrarySource.FilePlaylist || EchoRadioStation.isRadio(it.id) }
     return NowPlayingSongActions(
         loading = loading,
         loadFailed = loadFailed,
@@ -126,7 +128,7 @@ internal fun rememberNowPlayingSongActions(
         equalizer = onOpenEqualizer,
         album = album?.let { target -> { onOpenAlbum(target) } },
         info = track?.let { { showInfo = true } },
-        onlineAssets = if (song != null && indexedTrack != null) ({ showOnline = true }) else null,
+        onlineAssets = if (song != null && indexedTrack != null && song.source != LibrarySource.FilePlaylist) ({ showOnline = true }) else null,
         folder = folder?.let { target -> { onOpenFolder(target) } },
         hide = removable?.let { selected -> { removal.hide(selected) } },
         delete = removable?.let { selected -> { removal.delete(selected) } },

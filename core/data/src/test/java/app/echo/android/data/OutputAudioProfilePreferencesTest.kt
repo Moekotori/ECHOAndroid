@@ -5,6 +5,23 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class OutputAudioProfilePreferencesTest {
+    @Test fun oldProfilesRemainReadableAndPersonalAudioReturnsWithTheBaseline() {
+        val hrtf = booleanPreferencesKey("dsp_hrtf_enabled")
+        val profile = intPreferencesKey("dsp_hrtf_profile")
+        val prefs = mutablePreferencesOf(gain to -4f)
+        OutputAudioProfilePreferences.saveInto(prefs, "wired:Old")
+        val key = stringPreferencesKey("output_audio_profiles_v1")
+        val json = org.json.JSONObject(prefs[key]!!)
+        val saved = json.getJSONObject("wired:Old")
+        saved.keys().asSequence().filter { it.startsWith("dsp_") }.toList().forEach(saved::remove)
+        prefs[key] = json.toString()
+        prefs[gain] = 0f; prefs[hrtf] = true; prefs[profile] = 2
+        OutputAudioProfilePreferences.activateIn(prefs, "wired:Old")
+        assertEquals(-4f, prefs[gain]!!, 0f)
+        assertNull(prefs[hrtf])
+        OutputAudioProfilePreferences.activateIn(prefs, "speaker:Phone")
+        assertTrue(prefs[hrtf]!!); assertEquals(2, prefs[profile])
+    }
     private val gain = floatPreferencesKey("replay_gain_preamp_db")
     private val balance = floatPreferencesKey("channel_balance")
     private val eq = booleanPreferencesKey("equalizer_enabled")

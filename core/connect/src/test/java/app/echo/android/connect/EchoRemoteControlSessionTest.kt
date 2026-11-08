@@ -12,6 +12,42 @@ class EchoRemoteControlSessionTest {
         track = EchoRemoteTrack(id, "Song", "Artist", null, null, 60_000), durationMs = 60_000)
     private suspend fun eventually(condition: () -> Boolean) { withTimeout(2_000) { while (!condition()) delay(5) } }
 
+    @Test fun cancelledAbsoluteCommandsAreRetriedWhenTheAppReturns() = runBlocking {
+        for (command in listOf(EchoRemoteCommand.SeekTo(5_000), EchoRemoteCommand.SetVolume(0.25f))) {
+            val owner = CoroutineScope(coroutineContext + SupervisorJob())
+            val firstSent = CompletableDeferred<Unit>()
+            var actual = snapshot()
+            var attempts = 0
+            var closedUiNotified = false
+            lateinit var session: EchoRemoteControlSession
+            val transport = object : EchoLinkTransport by FakeEchoLinkTransport() {
+                override suspend fun fetchStatus(endpoint: EchoRemoteEndpoint) = EchoLinkStatusResponse("PC", actual)
+                override suspend fun sendCommand(endpoint: EchoRemoteEndpoint, command: EchoRemoteCommand): EchoLinkStatusResponse {
+                    attempts++
+                    if (attempts == 1) { firstSent.complete(Unit); awaitCancellation() }
+                    actual = when (command) {
+                        is EchoRemoteCommand.SeekTo -> actual.copy(positionMs = command.positionMs)
+                        is EchoRemoteCommand.SetVolume -> actual.copy(volume = command.volume)
+                        else -> error("Unexpected command")
+                    }
+                    return EchoLinkStatusResponse("PC", actual)
+                }
+            }
+            session = EchoRemoteControlSession(owner, transport,
+                { _, response -> session.observe(response.playback!!) }, {}, { _, error -> throw error }, {}, now = { 100L })
+            try {
+                session.bind(endpoint); session.observe(actual)
+                session.request(command) { closedUiNotified = true }
+                withTimeout(1_000) { firstSent.await() }
+                session.setActive(false)
+                session.setActive(true)
+                withTimeout(500) { while (session.pending) delay(5) }
+                assertEquals(2, attempts)
+                assertFalse(closedUiNotified)
+            } finally { owner.cancel() }
+        }
+    }
+
     @Test fun newestSeekWinsAndOldSnapshotsDoNotPullTheUiBack() = runBlocking {
         val owner = CoroutineScope(coroutineContext + SupervisorJob())
         val gate = CompletableDeferred<Unit>()

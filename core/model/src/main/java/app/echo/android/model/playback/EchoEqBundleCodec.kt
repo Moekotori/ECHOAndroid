@@ -14,6 +14,7 @@ object EchoEqBundleCodec {
     }
     fun decode(text: String): List<EchoEqualizerUserPreset> {
         require(text.length <= MaxBytes && text.toByteArray(Charsets.UTF_8).size <= MaxBytes)
+        if (text.trimStart().removePrefix("\uFEFF").trimStart().let { it.startsWith("{") || it.startsWith("[") }) return EchoEqPcJsonCodec.decode(text)
         val lines = text.removePrefix("\uFEFF").lineSequence().map(String::trim).filter(String::isNotEmpty).toList()
         require(lines.firstOrNull() == Header) { "Unsupported bundle format or version" }
         require(lines.size in 2..EchoEqualizerUserPresets.MaxCount + 1)

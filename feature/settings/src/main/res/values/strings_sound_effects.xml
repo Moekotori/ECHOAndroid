@@ -1,0 +1,34 @@
+<resources>
+    <string name="sound_effects_title">Sound effects</string>
+    <string name="sound_effects_detail">All 22 ECHO PC effects, processed by the native audio engine. Your personal EQ and headphone correction stay independent. Choose a sound, then compare using the switch.</string>
+    <string name="sound_effects_safety">Default off. Native preparation runs in the background; switching fades through the original signal. Supports 8–192 kHz PCM, 1–8 channels. Natural headphones and Auto pan need at least two channels. USB bit-perfect bypasses effects. Output peak protection remains active.</string>
+    <string name="sound_effects_off">Off</string>
+    <string name="sound_effects_active">Processing</string>
+    <string name="sound_effects_preparing">Preparing / switching</string>
+    <string name="sound_effects_waiting">Waiting for PCM playback</string>
+    <string name="sound_effects_bypassed">Bit-perfect bypass</string>
+    <string name="sound_effects_failed">Native effect unavailable · original signal</string>
+    <string name="sound_effects_unsupported">Unsupported format · original signal</string>
+    <string name="sound_effect_vocal">Clear vocals</string>
+    <string name="sound_effect_bass">Deep bass</string>
+    <string name="sound_effect_warm">Warm</string>
+    <string name="sound_effect_wide">Wide</string>
+    <string name="sound_effect_live">LiveHouse</string>
+    <string name="sound_effect_hall">Concert hall</string>
+    <string name="sound_effect_tape">Tape</string>
+    <string name="sound_effect_night">Night</string>
+    <string name="sound_effect_headphones">Natural headphones</string>
+    <string name="sound_effect_echo">Short echo</string>
+    <string name="sound_effect_tube">Tube</string>
+    <string name="sound_effect_vinyl">Vinyl</string>
+    <string name="sound_effect_autopan">Auto pan</string>
+    <string name="sound_effect_deess">Soft sibilance</string>
+    <string name="sound_effect_tremolo">Tremolo</string>
+    <string name="sound_effect_phaser">Phaser</string>
+    <string name="sound_effect_transient">Transient punch</string>
+    <string name="sound_effect_flanger">Flanger</string>
+    <string name="sound_effect_telephone">Telephone</string>
+    <string name="sound_effect_digital">Retro digital</string>
+    <string name="sound_effect_autowah">Auto wah</string>
+    <string name="sound_effect_ringmod">Ring modulation</string>
+</resources>

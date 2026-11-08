@@ -47,6 +47,7 @@ class MediaStoreTrackScanner(
         options: LibraryScanOptions = LibraryScanOptions(0L, 0L, false, false),
         rejectedFiles: LocalScanFilterCache? = null,
         onSkipped: suspend () -> Unit = {},
+        onSkippedDetail: suspend (app.echo.android.model.library.LibraryScanSkippedItem) -> Unit = {},
         onTotalCount: suspend (Int?) -> Unit = {},
         onUnchangedIds: suspend (List<String>) -> Unit = {},
         onRetryIds: suspend (List<String>) -> Unit = {},
@@ -122,7 +123,7 @@ class MediaStoreTrackScanner(
                 coroutineContext.ensureActive()
                 val parsed = runCatching {
                     val row = listing.toAudioRow(collection, columns)
-                    if (!options.includesDirectory(row.relativePath)) {
+                    if ((!options.includesDirectory(row.relativePath) || !options.includesFileName(row.fileName))) {
                         val trackId = row.libraryId()
                         if (existingTracks[trackId] != null && !removeExcludedFromLibrary) {
                             onUnchangedIds(listOf(trackId))
@@ -131,18 +132,21 @@ class MediaStoreTrackScanner(
                         } else {
                             scannedCount++
                             onSkipped()
+                            onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(options.rejectionReason(row.durationMs, row.sizeBytes, row.relativePath, row.fileName) ?: app.echo.android.model.library.LibraryScanSkipReason.Duration, row.fileName.orEmpty(), row.relativePath))
                             onProgress(scannedCount, null)
                         }
                         null
                     } else if (!options.acceptsFileFormat(row.fileName, alreadyImported(row.libraryId()))) {
                         scannedCount++
                         onSkipped()
+                            onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(app.echo.android.model.library.LibraryScanSkipReason.Format, row.fileName.orEmpty(), row.relativePath))
                         onProgress(scannedCount, null)
                         null
                     } else if (!alreadyImported(row.libraryId()) && !options.accepts(row.durationMs, row.sizeBytes, null)) {
                         rejectedFiles?.remember(row.contentUri, row.sizeBytes, row.dateModifiedSeconds, row.durationMs)
                         scannedCount++
                         onSkipped()
+                            onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(options.rejectionReason(row.durationMs, row.sizeBytes, row.relativePath, row.fileName) ?: app.echo.android.model.library.LibraryScanSkipReason.Duration, row.fileName.orEmpty(), row.relativePath))
                         onProgress(scannedCount, null)
                         null
                     } else row.toTrackEntity(existingTracks, readSampleRate) to row.fileName
@@ -243,7 +247,7 @@ class MediaStoreTrackScanner(
                         idPrefix = LibraryScanPolicy.MediaStoreFileIdPrefix,
                     )
                     val trackId = row.libraryId()
-                    val cached = if (options.includesDirectory(row.relativePath)) cueCache?.reuse(
+                    val cached = if (options.includesDirectory(row.relativePath) && options.includesFileName(row.fileName)) cueCache?.reuse(
                         cueSourceFacts(trackId, row.contentUri, row.sizeBytes, row.dateModifiedSeconds, row.relativePath, row.fileName),
                         row.fileName?.let { cueSheets[cueFolderKey(row.relativePath.orEmpty(), it)] }, existingTracks,
                         cueCatalog.isUncertain(row.relativePath),
@@ -270,10 +274,11 @@ class MediaStoreTrackScanner(
                             fileName = row.fileName,
                         )
                     ) {
-                        val excluded = !options.includesDirectory(row.relativePath)
+                        val excluded = (!options.includesDirectory(row.relativePath) || !options.includesFileName(row.fileName))
                         if (excluded && removeExcludedFromLibrary) {
                             scannedCount++
                             onSkipped()
+                            onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(options.rejectionReason(row.durationMs, row.sizeBytes, row.relativePath, row.fileName) ?: app.echo.android.model.library.LibraryScanSkipReason.Duration, row.fileName.orEmpty(), row.relativePath))
                             onProgress(scannedCount, null)
                         } else {
                             fileIdentities.add(
@@ -290,7 +295,7 @@ class MediaStoreTrackScanner(
                         continue
                     }
                     val parsed = runCatching {
-                        if (!options.includesDirectory(row.relativePath)) {
+                        if ((!options.includesDirectory(row.relativePath) || !options.includesFileName(row.fileName))) {
                             val trackId = row.libraryId()
                             if (existingTracks[trackId] != null && !removeExcludedFromLibrary) {
                                 onUnchangedIds(listOf(trackId))
@@ -299,12 +304,14 @@ class MediaStoreTrackScanner(
                             } else {
                                 scannedCount++
                                 onSkipped()
+                            onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(options.rejectionReason(row.durationMs, row.sizeBytes, row.relativePath, row.fileName) ?: app.echo.android.model.library.LibraryScanSkipReason.Duration, row.fileName.orEmpty(), row.relativePath))
                                 onProgress(scannedCount, null)
                             }
                             null
                         } else if (!options.acceptsFileFormat(row.fileName, alreadyImported(row.libraryId()))) {
                             scannedCount++
                             onSkipped()
+                            onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(app.echo.android.model.library.LibraryScanSkipReason.Format, row.fileName.orEmpty(), row.relativePath))
                             onProgress(scannedCount, null)
                             null
                         } else if (!alreadyImported(row.libraryId()) &&
@@ -318,6 +325,7 @@ class MediaStoreTrackScanner(
                             )
                             scannedCount++
                             onSkipped()
+                            onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(options.rejectionReason(row.durationMs, row.sizeBytes, row.relativePath, row.fileName) ?: app.echo.android.model.library.LibraryScanSkipReason.Duration, row.fileName.orEmpty(), row.relativePath))
                             onProgress(scannedCount, null)
                             null
                         } else {
@@ -419,7 +427,7 @@ class MediaStoreTrackScanner(
                     )
                     rememberAudio(relativePath, fileName)
                     val hasSheet = hasCueSheet(relativePath, fileName, cueSheets)
-                    val cached = if (options.includesDirectory(relativePath)) cueCache?.reuse(
+                    val cached = if (options.includesDirectory(relativePath) && options.includesFileName(fileName)) cueCache?.reuse(
                         cueSourceFacts(trackId, Uri.withAppendedPath(collection.uri, mediaId.toString()).toString(), sizeBytes,
                             dateModifiedSeconds, relativePath, fileName),
                         fileName?.let { cueSheets[cueFolderKey(relativePath.orEmpty(), it)] }, existingTracks,
@@ -447,6 +455,10 @@ class MediaStoreTrackScanner(
                         MediaStoreProbeAction.SkipRejected -> {
                             scannedCount++
                             onSkipped()
+                            val reason = options.rejectionReason(0, sizeBytes, relativePath, fileName)
+                                ?: if (!options.acceptsFileFormat(fileName.orEmpty(), false)) app.echo.android.model.library.LibraryScanSkipReason.Format
+                                else app.echo.android.model.library.LibraryScanSkipReason.Duration
+                            onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(reason, fileName.orEmpty(), relativePath))
                         }
                         MediaStoreProbeAction.RememberSeen -> {
                             val remembered = LibraryScanPolicy.rememberUnchangedCueIds(
@@ -835,6 +847,7 @@ class MediaStoreTrackScanner(
                     durationMs = container.durationMs.takeIf { it > 0 } ?: durationMs,
                     sampleRateHz = container.sampleRateHz.takeIf { readSampleRate } ?: entity.sampleRateHz,
                 ).withAudioTags(tags).copy(
+                    embeddedRating = tags?.rating ?: 0,
                     artworkUri = persistLocalArtwork(tags?.artworkBytes) ?: entity.artworkUri,
                 ).withFingerprint().withFastPathSampleRate(existingTrack, readSampleRate, ::readSampleRateHz)
             }
@@ -845,16 +858,18 @@ class MediaStoreTrackScanner(
                     durationMs = dsd.durationMs.takeIf { it > 0L } ?: durationMs,
                     sampleRateHz = dsd.sampleRateHz.takeIf { it > 0 } ?: sampleRateHz,
                 ).withAudioTags(dsd.tags).copy(
+                    embeddedRating = dsd.tags?.rating ?: 0,
                     artworkUri = persistLocalArtwork(dsd.tags?.artworkBytes) ?: entity.artworkUri,
                 ).withFingerprint()
             }
             val tagged = if (LocalAudioTagReadPolicy.prefersFileTags(mimeType, fileName ?: contentUri)) {
                 val tags = readAudioTagsFromUriChecked(contentUri, mimeType)
                 entity.withAudioTags(tags).copy(
+                    embeddedRating = tags?.rating ?: 0,
                     artworkUri = persistLocalArtwork(tags?.artworkBytes) ?: entity.artworkUri,
                 ).withFingerprint()
             } else {
-                entity
+                entity.copy(embeddedRating = 0)
             }
             return tagged.withFastPathSampleRate(existingTrack, readSampleRate, ::readSampleRateHz)
         } catch (cancelled: CancellationException) {

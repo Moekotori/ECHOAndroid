@@ -1,0 +1,34 @@
+<resources>
+    <string name="sound_effects_title">音效</string>
+    <string name="sound_effects_detail">ECHO PC 的全部 22 种音效，由原生音频引擎实际处理。个人均衡器和耳机校正保持独立，选好音效后可用开关对比听感。</string>
+    <string name="sound_effects_safety">默认关闭。算法在后台准备，切换时通过原音平滑过渡。支持 8–192 kHz、1–8 声道 PCM；耳机自然声场和左右流动需要至少两个声道。USB 位完美时旁路，保留输出峰值保护。</string>
+    <string name="sound_effects_off">已关闭</string>
+    <string name="sound_effects_active">正在处理</string>
+    <string name="sound_effects_preparing">准备／切换中</string>
+    <string name="sound_effects_waiting">等待 PCM 播放</string>
+    <string name="sound_effects_bypassed">位完美旁路</string>
+    <string name="sound_effects_failed">原生音效不可用，保持原音</string>
+    <string name="sound_effects_unsupported">此音频格式不支持音效，保持原音</string>
+    <string name="sound_effect_vocal">清晰人声</string>
+    <string name="sound_effect_bass">深沉低音</string>
+    <string name="sound_effect_warm">温暖柔和</string>
+    <string name="sound_effect_wide">宽阔声场</string>
+    <string name="sound_effect_live">LiveHouse 现场</string>
+    <string name="sound_effect_hall">音乐厅</string>
+    <string name="sound_effect_tape">磁带质感</string>
+    <string name="sound_effect_night">夜间舒适</string>
+    <string name="sound_effect_headphones">耳机自然声场</string>
+    <string name="sound_effect_echo">短回声</string>
+    <string name="sound_effect_tube">电子管质感</string>
+    <string name="sound_effect_vinyl">黑胶质感</string>
+    <string name="sound_effect_autopan">左右流动</string>
+    <string name="sound_effect_deess">齿音柔化</string>
+    <string name="sound_effect_tremolo">颤音律动</string>
+    <string name="sound_effect_phaser">相位扫频</string>
+    <string name="sound_effect_transient">鼓点塑形</string>
+    <string name="sound_effect_flanger">镶边扫频</string>
+    <string name="sound_effect_telephone">电话音色</string>
+    <string name="sound_effect_digital">复古数字</string>
+    <string name="sound_effect_autowah">自动哇音</string>
+    <string name="sound_effect_ringmod">金属调制</string>
+</resources>

@@ -6,6 +6,13 @@ data class OpraEqBand(
     val gainDb: Float,
     val q: Float?,
     val slope: Float?,
+    val enabled: Boolean = true,
+    val scope: EchoEqBandScope = EchoEqBandScope.Stereo,
+    val dynamicMode: EchoEqDynamicMode = EchoEqDynamicMode.Off,
+    val dynamicThresholdDb: Float = -24f,
+    val dynamicRatio: Float = 2f,
+    val dynamicAttackMs: Float = 5f,
+    val dynamicReleaseMs: Float = 80f,
 )
 
 data class OpraHeadphoneCorrectionPreset(

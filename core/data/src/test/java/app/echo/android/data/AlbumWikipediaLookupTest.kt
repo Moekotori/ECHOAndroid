@@ -18,43 +18,89 @@ class AlbumWikipediaLookupTest {
     private val warcry = "Alea Jacta Est is the third studio album by the Asturian power metal band WarCry, released on January 1, 2004."
 
     @Test fun titleMatchAllowsParentheticalButNotADifferentWork() {
-        assertTrue(AlbumWikipediaLookup.wikipediaTitleMatches("Alea jacta est", "Alea jacta est"))
-        assertTrue(AlbumWikipediaLookup.wikipediaTitleMatches("Alea Jacta Est (EP)", "Alea jacta est"))
-        assertTrue(AlbumWikipediaLookup.wikipediaTitleMatches("Alea jacta est（EP）", "ALEA jacta est"))
-        assertFalse(AlbumWikipediaLookup.wikipediaTitleMatches("Alea iacta est", "Alea jacta est"))
-        assertFalse(AlbumWikipediaLookup.wikipediaTitleMatches("Alea jacta est Live", "Alea jacta est"))
-        assertFalse(AlbumWikipediaLookup.wikipediaTitleMatches("Alea jacta est (EP) (Remaster)", "Alea jacta est"))
+        assertTrue(AlbumWikipediaMatch.wikipediaTitleMatches("Alea jacta est", "Alea jacta est"))
+        assertTrue(AlbumWikipediaMatch.wikipediaTitleMatches("Alea Jacta Est (EP)", "Alea jacta est"))
+        assertTrue(AlbumWikipediaMatch.wikipediaTitleMatches("Alea jacta est（EP）", "ALEA jacta est"))
+        assertFalse(AlbumWikipediaMatch.wikipediaTitleMatches("Alea iacta est", "Alea jacta est"))
+        assertFalse(AlbumWikipediaMatch.wikipediaTitleMatches("Alea jacta est Live", "Alea jacta est"))
+        assertFalse(AlbumWikipediaMatch.wikipediaTitleMatches("Alea jacta est (EP) (Remaster)", "Alea jacta est"))
+        assertFalse(AlbumWikipediaMatch.wikipediaTitleMatches("Blue (Live)", "Blue"))
+        assertTrue(AlbumWikipediaMatch.wikipediaTitleMatches("Blue (Live)", "Blue (Live)"))
     }
 
     @Test fun introRequiresArtistAndYearAndDoesNotMatchInsideOtherTokens() {
-        assertTrue(AlbumWikipediaLookup.wikipediaIntroCorroborates(zhIntro, listOf("Ave Mujica"), 2023, emptyList()))
-        assertTrue(AlbumWikipediaLookup.wikipediaIntroCorroborates(enIntro, listOf("Ave Mujica"), 2023, emptyList()))
-        assertTrue(AlbumWikipediaLookup.wikipediaIntroCorroborates("Album by Björk in 1997.", listOf("Bjork"), 1997, emptyList()))
-        assertFalse(AlbumWikipediaLookup.wikipediaIntroCorroborates(warcry, listOf("Ave Mujica"), 2023, emptyList()))
-        assertFalse(AlbumWikipediaLookup.wikipediaIntroCorroborates(enIntro, listOf("Ave Mujica"), 2004, emptyList()))
-        assertFalse(AlbumWikipediaLookup.wikipediaIntroCorroborates("released in 2023 by someone", listOf("U2"), 2023, emptyList()))
-        assertTrue(AlbumWikipediaLookup.wikipediaIntroCorroborates("an album by U2 in 2023", listOf("U2"), 2023, emptyList()))
-        assertTrue(AlbumWikipediaLookup.wikipediaIntroCorroborates(
+        assertTrue(AlbumWikipediaMatch.wikipediaIntroCorroborates(zhIntro, listOf("Ave Mujica"), 2023, emptyList()))
+        assertTrue(AlbumWikipediaMatch.wikipediaIntroCorroborates(enIntro, listOf("Ave Mujica"), 2023, emptyList()))
+        assertTrue(AlbumWikipediaMatch.wikipediaIntroCorroborates("Album by Björk in 1997.", listOf("Bjork"), 1997, emptyList()))
+        assertFalse(AlbumWikipediaMatch.wikipediaIntroCorroborates(warcry, listOf("Ave Mujica"), 2023, emptyList()))
+        assertFalse(AlbumWikipediaMatch.wikipediaIntroCorroborates(enIntro, listOf("Ave Mujica"), 2004, emptyList()))
+        assertFalse(AlbumWikipediaMatch.wikipediaIntroCorroborates("released in 2023 by someone", listOf("U2"), 2023, emptyList()))
+        assertTrue(AlbumWikipediaMatch.wikipediaIntroCorroborates("an album by U2 in 2023", listOf("U2"), 2023, emptyList()))
+        assertTrue(AlbumWikipediaMatch.wikipediaIntroCorroborates(
             "Blue is an album by Artist A on Example Records.", listOf("Artist A"), null, listOf("Example Records")))
-        assertFalse(AlbumWikipediaLookup.wikipediaIntroCorroborates(
+        assertFalse(AlbumWikipediaMatch.wikipediaIntroCorroborates(
             "Blue is an album by Artist A on Example Records.", listOf("Artist A"), null, listOf("Other Records")))
-        assertFalse(AlbumWikipediaLookup.wikipediaIntroCorroborates(enIntro, listOf("Ave Mujica"), null, emptyList()))
+        assertTrue(AlbumWikipediaMatch.wikipediaIntroCorroborates(enIntro, listOf("Ave Mujica"), null, emptyList()))
     }
 
     @Test fun wikidataVetoesAnotherReleaseGroupABandPageOrTheWrongYear() {
-        assertTrue(AlbumWikipediaLookup.entityAllows(entity("P31" to qid("Q482994"), "P577" to time(2023)), group, 2023))
-        assertFalse(AlbumWikipediaLookup.entityAllows(entity("P31" to qid("Q482994"), "P577" to time(2004)), group, 2023))
-        assertFalse(AlbumWikipediaLookup.entityAllows(entity("P31" to qid("Q215380")), group, 2023))
-        assertFalse(AlbumWikipediaLookup.entityAllows(entity("P436" to stringClaim("other-group"), "P31" to qid("Q482994")), group, 2023))
-        assertTrue(AlbumWikipediaLookup.entityAllows(entity("P436" to stringClaim(group), "P31" to qid("Q215380")), group, 2023))
-        assertTrue(AlbumWikipediaLookup.hasReleaseGroup(entity("P436" to stringClaim(group.uppercase())), group))
-        assertEquals("zh" to "Alea jacta est", AlbumWikipediaLookup.sitelink(JSONObject("""
+        assertTrue(AlbumWikipediaMatch.entityAllows(entity("P31" to qid("Q482994"), "P577" to time(2023)), group, 2023))
+        assertFalse(AlbumWikipediaMatch.entityAllows(entity("P31" to qid("Q482994"), "P577" to time(2004)), group, 2023))
+        assertFalse(AlbumWikipediaMatch.entityAllows(entity("P31" to qid("Q215380")), group, 2023))
+        assertFalse(AlbumWikipediaMatch.entityAllows(entity("P436" to stringClaim("other-group"), "P31" to qid("Q482994")), group, 2023))
+        assertTrue(AlbumWikipediaMatch.entityAllows(entity("P436" to stringClaim(group), "P31" to qid("Q215380")), group, 2023))
+        assertTrue(AlbumWikipediaMatch.hasReleaseGroup(entity("P436" to stringClaim(group.uppercase())), group))
+        assertTrue(AlbumWikipediaMatch.entityAllows(entity("P436" to stringClaim(group), "P31" to qid("Q482994")), null, null))
+        assertEquals("zh" to "Alea jacta est", AlbumWikipediaMatch.sitelink(JSONObject("""
             {"sitelinks":{"enwiki":{"title":"Alea Jacta Est (EP)"},"zhwiki":{"title":"Alea jacta est"}}}
         """), listOf("zh", "en")))
     }
+    @Test fun translatedAlbumTitleIsAcceptedOnlyWhenTheLeadIdentifiesTheOriginalWorkAndArtist() {
+        val page = JSONObject().put("title", "好管閒事").put("extract", "《好管閒事》（英語：Meddle）是 Pink Floyd 于1971年发行的录音室专辑。")
+        assertTrue(AlbumWikipediaMatch.pageMatches(page, listOf("Meddle"), listOf("Pink Floyd"), 1971, emptyList()))
+        assertFalse(AlbumWikipediaMatch.pageMatches(page, listOf("Meddle"), listOf("Other Artist"), 1971, emptyList()))
+        assertFalse(AlbumWikipediaMatch.pageMatches(page, listOf("The Wall"), listOf("Pink Floyd"), 1971, emptyList()))
+    }
+
+    @Test fun missingLeadYearUsesReleaseEvidenceButAnExplicitConflictingYearStillFails() {
+        val intro = "「視界の隅 朽ちる音」は、トゲナシトゲアリの8枚目のシングル。"
+        assertTrue(AlbumWikipediaMatch.wikipediaIntroCorroborates(intro, listOf("トゲナシトゲアリ"), 2024, emptyList()))
+        assertFalse(AlbumWikipediaMatch.wikipediaIntroCorroborates(intro + "2023年に発売。", listOf("トゲナシトゲアリ"), 2024, emptyList()))
+        assertFalse(AlbumWikipediaMatch.wikipediaIntroCorroborates("トゲナシトゲアリは日本のバンド。", listOf("トゲナシトゲアリ"), null, emptyList()))
+    }
+
+    @Test fun titleOnlySearchCanRecoverAnArticleMissingFromTheCompoundQuery() = runBlocking {
+        val queries = mutableListOf<String>()
+        val found = lookup { url ->
+            queries += url.queryParameter("gsrsearch").orEmpty()
+            if (queries.size == 1) JSONObject() else page("Alea Jacta Est (EP)", enIntro, null)
+        }.find("Alea jacta est", emptyList(), listOf("Ave Mujica"), 2023, emptyList(), null, listOf("en"))
+        assertEquals("en" to "Alea Jacta Est (EP)", found)
+        assertEquals(listOf("\"Alea jacta est\" \"Ave Mujica\"", "\"Alea jacta est\""), queries)
+    }
+
+    @Test fun translatedArtistRequiresMatchingWikidataPerformerIdentity() = runBlocking {
+        val finder = lookup { url -> when {
+            url.host.endsWith("wikipedia.org") -> page("好管閒事", "《好管閒事》（英語：Meddle）是平克·弗洛伊德於1971年發行的專輯。", "Q205458")
+            url.queryParameter("ids") == "Q205458" -> wrapped("Q205458", entity(
+                "P175" to qid("Q2306"), "P577" to time(1971), "P436" to stringClaim(group)))
+            url.queryParameter("ids") == "Q2306" -> wrapped("Q2306", JSONObject("""{"labels":{"en":{"value":"Pink Floyd"},"zh":{"value":"平克·弗洛伊德"}}}"""))
+            else -> error("unexpected $url")
+        } }
+        assertEquals("zh" to "好管閒事", finder.find("Meddle", emptyList(), listOf("Pink Floyd"), 1971, emptyList(), null, listOf("zh")))
+        assertNull(finder.find("Meddle", emptyList(), listOf("Other Artist"), 1971, emptyList(), null, listOf("zh")))
+    }
+    @Test fun cjkNamesDoNotRequireSpacesInProseButLatinNamesKeepBoundaries() {
+        assertTrue(AlbumWikipediaMatch.wikipediaIntroCorroborates(
+            "《范特西》是周杰伦的专辑，发行于2001年。", listOf("周杰伦"), 2001, emptyList()))
+        assertTrue(AlbumWikipediaMatch.wikipediaIntroCorroborates(
+            "宇多田ヒカルのアルバム。1999年に発売。", listOf("宇多田ヒカル"), 1999, emptyList()))
+        assertFalse(AlbumWikipediaMatch.wikipediaIntroCorroborates(
+            "An album by U2opia in 2001.", listOf("U2"), 2001, emptyList()))
+    }
 
     @Test fun searchRankingSkipsDisambiguationAndKeepsRelevanceOrder() {
-        val pages = AlbumWikipediaLookup.rankedPages(JSONObject("""{"query":{"pages":[
+        val pages = AlbumWikipediaMatch.rankedPages(JSONObject("""{"query":{"pages":[
             {"index":2,"ns":0,"title":"Later","extract":"later"},
             {"index":1,"ns":0,"title":"Dab","extract":"dab","pageprops":{"disambiguation":""}},
             {"index":4,"ns":0,"title":"Gone","missing":true},
@@ -63,32 +109,32 @@ class AlbumWikipediaLookupTest {
         ]}}"""))
         assertEquals(listOf("Later", "Unranked"), pages.map { it.getString("title") })
         val page = JSONObject().put("title", "Alea Jacta Est (EP)").put("extract", enIntro)
-        assertTrue(AlbumWikipediaLookup.pageMatches(page, listOf("Alea jacta est"), listOf("Ave Mujica"), 2023, emptyList()))
-        assertFalse(AlbumWikipediaLookup.pageMatches(
+        assertTrue(AlbumWikipediaMatch.pageMatches(page, listOf("Alea jacta est"), listOf("Ave Mujica"), 2023, emptyList()))
+        assertFalse(AlbumWikipediaMatch.pageMatches(
             JSONObject().put("title", "Alea Jacta Est (album)").put("extract", warcry),
             listOf("Alea jacta est"), listOf("Ave Mujica"), 2023, emptyList()))
     }
 
     @Test fun chineseVariantFollowsTheInterfaceScript() {
-        assertEquals("zh", AlbumWikipediaLookup.wikiLanguage("zh-CN"))
-        assertEquals("zh-cn", AlbumWikipediaLookup.chineseVariant("zh-CN"))
-        assertEquals("zh-cn", AlbumWikipediaLookup.chineseVariant("zh-Hans-CN"))
-        assertEquals("zh-tw", AlbumWikipediaLookup.chineseVariant("zh-TW"))
-        assertEquals("zh-tw", AlbumWikipediaLookup.chineseVariant("zh-Hant"))
-        assertEquals("zh-hk", AlbumWikipediaLookup.chineseVariant("zh-HK"))
-        assertNull(AlbumWikipediaLookup.chineseVariant("ja-JP"))
-        assertEquals("en", AlbumWikipediaLookup.wikiLanguage("fr-FR"))
+        assertEquals("zh", AlbumWikipediaMatch.wikiLanguage("zh-CN"))
+        assertEquals("zh-cn", AlbumWikipediaMatch.chineseVariant("zh-CN"))
+        assertEquals("zh-cn", AlbumWikipediaMatch.chineseVariant("zh-Hans-CN"))
+        assertEquals("zh-tw", AlbumWikipediaMatch.chineseVariant("zh-TW"))
+        assertEquals("zh-tw", AlbumWikipediaMatch.chineseVariant("zh-Hant"))
+        assertEquals("zh-hk", AlbumWikipediaMatch.chineseVariant("zh-HK"))
+        assertNull(AlbumWikipediaMatch.chineseVariant("ja-JP"))
+        assertEquals("en", AlbumWikipediaMatch.wikiLanguage("fr-FR"))
     }
 
     @Test fun parsesCreditsYearAndSearchQuery() {
         val release = JSONObject("""{"artist-credit":[{"name":"Ave Mujica"},{"name":"  "}]}""")
-        assertEquals(listOf("Ave Mujica"), AlbumWikipediaLookup.creditNames(release))
-        assertEquals(2023, AlbumWikipediaLookup.releaseYear("2023-09-13", 1999))
-        assertEquals(2023, AlbumWikipediaLookup.releaseYear(null, 2023))
-        assertNull(AlbumWikipediaLookup.releaseYear("1890-01-01", null))
-        assertEquals("\"A  OR\" \"Ave Mujica\"", AlbumWikipediaLookup.searchQuery("A\" OR", listOf("Ave Mujica")))
-        assertEquals("Q4714058", AlbumWikipediaLookup.statementEntityId(JSONObject("""{"query":{"search":[{"title":"Q4714058"}]}}""")))
-        assertNull(AlbumWikipediaLookup.statementEntityId(JSONObject("""{"query":{"search":[{"title":"Alea Jacta Est"}]}}""")))
+        assertEquals(listOf("Ave Mujica"), AlbumWikipediaMatch.creditNames(release))
+        assertEquals(2023, AlbumWikipediaMatch.releaseYear("2023-09-13", 1999))
+        assertEquals(2023, AlbumWikipediaMatch.releaseYear(null, 2023))
+        assertNull(AlbumWikipediaMatch.releaseYear("1890-01-01", null))
+        assertEquals("\"A  OR\" \"Ave Mujica\"", AlbumWikipediaMatch.searchQuery("A\" OR", listOf("Ave Mujica")))
+        assertEquals("Q4714058", AlbumWikipediaMatch.statementEntityId(JSONObject("""{"query":{"search":[{"title":"Q4714058"}]}}""")))
+        assertNull(AlbumWikipediaMatch.statementEntityId(JSONObject("""{"query":{"search":[{"title":"Alea Jacta Est"}]}}""")))
     }
 
     @Test fun corroboratedArticleIsUsedWhenMusicBrainzHasNoWikiLink() = runBlocking {
@@ -119,6 +165,14 @@ class AlbumWikipediaLookupTest {
         }.find("Alea jacta est", emptyList(), listOf("Ave Mujica"), 2023, emptyList(), group, listOf("zh", "en"))
         assertEquals("zh" to "Alea jacta est", found)
         assertTrue(calls.none { it.contains("wikipedia.org") })
+    }
+    @Test fun exactReleaseGroupLinkDoesNotRequireYearOrLabel() = runBlocking {
+        val found = lookup { url ->
+            if (url.queryParameter("list") == "search") JSONObject("""{"query":{"search":[{"title":"Q123"}]}}""")
+            else wrapped("Q123", entity("P436" to stringClaim(group)).put("sitelinks",
+                JSONObject().put("enwiki", JSONObject().put("title", "Blue"))))
+        }.find("Blue", emptyList(), listOf("Artist A"), null, emptyList(), group, listOf("en"))
+        assertEquals("en" to "Blue", found)
     }
 
     @Test fun bandPageLosesToTheReleasePage() = runBlocking {

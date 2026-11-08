@@ -18,6 +18,7 @@ data class EchoLyricsOptions(
     val bluetoothDelayMs: Int = 0,
     val translationScale: Float = 1f,
     val romanizationScale: Float = 1f,
+    val translationCurrentOnly: Boolean = false,
 ) {
     val normalized: EchoLyricsOptions
         get() = copy(

@@ -27,4 +27,7 @@
     <string name="update_retry">Erneut versuchen</string>
     <string name="update_done">Fertig</string>
     <string name="update_hide_download">Download ausblenden</string>
+    <string name="update_route">Update-Verbindung</string>
+    <string name="update_route_direct">GitHub direkt</string>
+    <string name="update_route_hint">Falls GitHub in Festlandchina nicht erreichbar ist, versuche eine beschleunigte Verbindung. Sie gilt für Prüfung und Download; ein Wechsel prüft erneut.</string>
 </resources>

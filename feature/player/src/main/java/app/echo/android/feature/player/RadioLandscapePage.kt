@@ -22,8 +22,7 @@ internal fun RadioLandscapePage(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onOpenQueue: () -> Unit,
-    onCast: (() -> Unit)?,
-    castActive: Boolean,
+    onMore: () -> Unit,
     onSetSleepTimer: (Int) -> Unit,
     onCancelSleepTimer: () -> Unit,
 ) {
@@ -56,7 +55,7 @@ internal fun RadioLandscapePage(
                 RadioListeningActions(colors, status.sleepTimerMode != EchoSleepTimerMode.Off,
                     onSetSleepTimer, onCancelSleepTimer)
                 RadioTransport(colors, status.isPlaying, onPrevious, onPlayPause, onNext)
-                RadioUtilities(colors, onOpenQueue, onCast, castActive)
+                RadioUtilities(colors, onOpenQueue, onMore)
             }
         },
     )

@@ -84,10 +84,11 @@ private fun LibraryBrowseOptionsSheet(
     val applied = remember(draft) { draft.applied() }
     val filterCount = draft.conditionCount + draft.tagCount + draft.rangeCount + if (draft.filter.formats.isEmpty()) 0 else 1
     val tabStates = rememberSaveableStateHolder()
-    val maxHeight = minOf(720.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.82f })
-    EchoModalSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    val maxHeight = minOf(520.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.62f })
+    EchoModalSheet(onDismissRequest = onDismiss, modifier = Modifier.widthIn(max = 480.dp),
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().heightIn(max = maxHeight)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
                     LibraryTextTabs(
                         labels = listOf(stringResource(R.string.library_sort_title),
@@ -106,8 +107,8 @@ private fun LibraryBrowseOptionsSheet(
             // A single bounded scroll area; tabs retain their drafts, expansion and scroll state.
             tabStates.SaveableStateProvider(tab) {
                 Column(Modifier.fillMaxWidth().weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (tab == 0) {
                         LibrarySortChoices(sort, LocalTrackSortOptions, { it.label() },
                             onSelect = { sortName = it.name }, section = ::trackSortSection)
@@ -121,9 +122,9 @@ private fun LibraryBrowseOptionsSheet(
                 }
             }
             if (applied == null) Text(stringResource(R.string.library_filter_invalid_range),
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_filter_cancel)) }
                 Button(onClick = { focus.clearFocus(); applied?.let { onApply(sort, it) } }, enabled = applied != null) {
@@ -146,6 +147,7 @@ private fun LibraryTrackFilterFields(
     val focus = LocalFocusManager.current
     val rangeFocus = remember { List(8) { FocusRequester() } }
     FilterSection(R.string.library_filter_conditions, activeCount = draft.conditionCount) {
+        MinimumRatingControl(draft.filter.minimumRating) { draft = draft.copy(filter = draft.filter.copy(minimumRating = it)) }
         FilterToggle(R.string.library_filter_favorites, draft.filter.favoritesOnly) {
             draft = draft.copy(filter = draft.filter.copy(favoritesOnly = it))
         }

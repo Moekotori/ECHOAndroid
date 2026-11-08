@@ -631,6 +631,7 @@ internal class LibraryController(
 
     fun refreshSubsonic(
         endpoint: SubsonicEndpoint,
+        onResolved: (suspend (SubsonicEndpoint) -> Unit)? = null,
         onSucceeded: ((SubsonicEndpoint) -> Unit)? = null,
     ) {
         val used = AtomicReference(endpoint)
@@ -638,7 +639,7 @@ internal class LibraryController(
             fallbackError = appContext.getString(R.string.remote_sync_subsonic_failed),
             onSucceeded = { onSucceeded?.invoke(used.get()) },
         ) {
-            repository.refreshSubsonicSnapshot(endpoint, onResolved = { used.set(it) })
+            repository.refreshSubsonicSnapshot(endpoint, onResolved = { used.set(it); onResolved?.invoke(it) })
         }
     }
 

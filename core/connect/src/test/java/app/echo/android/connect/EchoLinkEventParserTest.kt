@@ -11,6 +11,17 @@ import org.junit.Test
 
 class EchoLinkEventParserTest {
     @Test
+    fun eventAddressesCannotMoveCredentialsToAnotherOrigin() {
+        assertEquals("/events", endpoint.resolveEventsUrl("/events?ticket=one")!!.encodedPath)
+        assertNotNull(endpoint.resolveEventsUrl("http://192.168.1.20:26789/events"))
+        for (url in listOf("http://other.example/events", "//other.example/events",
+            "https://192.168.1.20:26789/events", "http://192.168.1.20:1234/events",
+            "http://user:pass@192.168.1.20:26789/events", "ftp://192.168.1.20/events")) {
+            assertEquals(url, null, endpoint.resolveEventsUrl(url))
+        }
+    }
+
+    @Test
     fun playbackOrderIsOptionalAndCommandsUseThePcWireValues() {
         val old = JSONObject("""{"state":"playing"}""").toPlaybackSnapshot(endpoint)
         assertEquals(null, old.playbackOrder)

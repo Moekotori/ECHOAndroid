@@ -1,21 +1,23 @@
 package app.echo.android.feature.player
 
-import androidx.compose.foundation.background
 import app.echo.android.design.detectEchoTargetDrag
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.playback.PlaybackQueueState
 import app.echo.android.design.rememberEchoHapticPerformer
@@ -23,9 +25,7 @@ import app.echo.android.design.EchoMotion
 import app.echo.android.design.EchoDragAutoScroll
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import kotlin.math.abs
-import kotlin.math.roundToInt
-
-private data class QueueDragTarget(val queueIndex: Int, val row: Int, val lastRow: Int, val group: Int)
+import kotlinx.coroutines.delay
 
 internal data class QueueSections(val nextUp: List<Int>, val continuation: List<Int>, val previous: List<Int>)
 
@@ -64,79 +64,104 @@ internal fun NextUpQueueList(
             }
         }
     }
-    var dragSource by remember { mutableStateOf<QueueDragTarget?>(null) }
-    var dropTarget by remember { mutableStateOf<QueueDragTarget?>(null) }
+    var dragSource by remember(queue) { mutableStateOf<QueueDragTarget?>(null) }
+    var dropTarget by remember(queue) { mutableStateOf<QueueDragTarget?>(null) }
+    var released by remember(queue) { mutableStateOf(false) }
+    var awaitingQueue by remember(queue) { mutableStateOf(false) }
+    var commitDrop by remember(queue) { mutableStateOf(false) }
+    var destinationTop by remember(queue) { mutableFloatStateOf(0f) }
+    var releaseTop by remember(queue) { mutableFloatStateOf(0f) }
+    var settlement by remember(queue) { mutableIntStateOf(0) }
     var pointerY by remember { mutableFloatStateOf(0f) }
     var grabOffsetY by remember { mutableFloatStateOf(0f) }
     var rowHeight by remember { mutableIntStateOf(0) }
     val animateItems = !lightweight && dragSource == null
-    val density = androidx.compose.ui.platform.LocalDensity.current
     val move by rememberUpdatedState(onMove)
+    val menuWidth = with(androidx.compose.ui.platform.LocalDensity.current) { 48.dp.toPx() }
+
+    fun finishDrag(commit: Boolean) {
+        val source = dragSource ?: return
+        val target = if (commit) dropTarget ?: source else source
+        if (!commit) dropTarget = source
+        releaseTop = if (released) destinationTop else pointerY - grabOffsetY
+        destinationTop = state.layoutInfo.visibleItemsInfo.firstOrNull {
+            dragTargets[it.key]?.queueIndex == target.queueIndex
+        }?.offset?.toFloat() ?: (pointerY - grabOffsetY)
+        commitDrop = commit && source.queueIndex != target.queueIndex
+        settlement++
+        released = true
+        haptics.endSeek(committed = commitDrop)
+    }
+
+    // A rejected or delayed edit returns through the same landing animation instead of snapping.
+    LaunchedEffect(awaitingQueue, queue) {
+        if (awaitingQueue) {
+            delay(1_000)
+            awaitingQueue = false
+            finishDrag(commit = false)
+        }
+    }
 
     fun updateDropTarget() {
+        if (released) return
         val group = dragSource?.group ?: return
         var next: QueueDragTarget? = null
         var nearest = Float.MAX_VALUE
+        val center = queueDragCenter(pointerY, grabOffsetY, rowHeight)
         for (info in state.layoutInfo.visibleItemsInfo) {
             val candidate = dragTargets[info.key]?.takeIf { it.group == group } ?: continue
-            val distance = abs(info.offset + info.size / 2f - pointerY)
+            val distance = abs(info.offset + info.size / 2f - center)
             if (distance < nearest) { nearest = distance; next = candidate }
         }
         if (next != null && next != dropTarget) haptics.seekStep(next.row)
         dropTarget = next
     }
 
-    EchoDragAutoScroll(state, dragging = dragSource != null, pointerY = { pointerY }) {
+    EchoDragAutoScroll(state, dragging = dragSource != null && !released, pointerY = { pointerY }) {
         updateDropTarget()
     }
     LaunchedEffect(queue.currentItem?.queueContext?.entryId ?: queue.currentIndex) { state.scrollToItem(0) }
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().clipToBounds()) {
     LazyColumn(
         state = state,
-        modifier = Modifier.fillMaxSize().pointerInput(state, dragTargets) {
+        modifier = Modifier.fillMaxSize().pointerInput(state, queue, dragTargets, menuWidth) {
             detectEchoTargetDrag(
                 longPress = true,
                 targetAt = { offset ->
+                    if (dragSource != null) return@detectEchoTargetDrag null
+                    if (!queueDragHitAllowed(offset.x, size.width.toFloat(), menuWidth)) return@detectEchoTargetDrag null
                     val info = state.layoutInfo.visibleItemsInfo.firstOrNull {
                         offset.y >= it.offset && offset.y < it.offset + it.size
                     }
                     info?.let { dragTargets[it.key]?.let { target -> target to it } }
                 },
                 onStart = { (target, info), offset ->
+                    val current = state.layoutInfo.visibleItemsInfo.firstOrNull { it.key == info.key }
+                        ?: return@detectEchoTargetDrag
                     dragSource = target
                     dropTarget = target
+                    released = false
+                    awaitingQueue = false
+                    commitDrop = false
                     pointerY = offset.y
-                    grabOffsetY = offset.y - info.offset
-                    rowHeight = info.size
+                    grabOffsetY = offset.y - current.offset
+                    rowHeight = current.size
                     haptics.grab()
-                    haptics.seekStep(target.row)
                 },
-                onDrag = { change, amount ->
-                    if (dragSource != null) {
+                onDrag = { change, _ ->
+                    if (dragSource != null && !released) {
                         change.consume()
-                        pointerY += amount.y
+                        pointerY = change.position.y
                         updateDropTarget()
                     }
                 },
-                onStop = {
-                    val from = dragSource?.queueIndex
-                    val to = dropTarget?.queueIndex
-                    dragSource = null
-                    dropTarget = null
-                    if (from != null && to != null && from != to) {
-                        move(from, to)
-                        haptics.endSeek(committed = true)
-                    } else haptics.endSeek(committed = false)
-                },
-                onCancel = {
-                    haptics.endSeek(committed = false)
-                    dragSource = null
-                    dropTarget = null
-                },
+                onStop = { finishDrag(commit = true) },
+                onCancel = { finishDrag(commit = false) },
             )
         },
         contentPadding = PaddingValues(bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp),
+        userScrollEnabled = dragSource == null,
     ) {
         queue.currentItem?.let { track ->
             item(key = "now-label") {
@@ -158,9 +183,9 @@ internal fun NextUpQueueList(
                     { onPlay(index) }, { onRemove(index) },
                     { nextUp.getOrNull(row - 1)?.let { onMove(index, it) } },
                     { nextUp.getOrNull(row + 1)?.let { onMove(index, it) } },
-                    modifier = queueItemMotion(animateItems)
-                        .graphicsLayer { alpha = if (dragSource?.queueIndex == index) 0f else 1f },
-                    dropTarget = dropTarget?.queueIndex == index && dragSource?.queueIndex != index)
+                    modifier = queueItemMotion(animateItems).queueDragPreview(
+                        row, 0, index, dragSource, dropTarget, rowHeight, lightweight),
+                    interactive = dragSource == null)
             }
         }
         if (continuation.isNotEmpty()) {
@@ -174,9 +199,9 @@ internal fun NextUpQueueList(
                     { onPlay(index) }, { onRemove(index) },
                     { continuation.getOrNull(row - 1)?.let { onMove(index, it) } },
                     { continuation.getOrNull(row + 1)?.let { onMove(index, it) } },
-                    modifier = queueItemMotion(animateItems)
-                        .graphicsLayer { alpha = if (dragSource?.queueIndex == index) 0f else 1f },
-                    dropTarget = dropTarget?.queueIndex == index && dragSource?.queueIndex != index)
+                    modifier = queueItemMotion(animateItems).queueDragPreview(
+                        row, 1, index, dragSource, dropTarget, rowHeight, lightweight),
+                    interactive = dragSource == null)
             }
         }
         if (queue.currentItem != null && nextUp.isEmpty() && continuation.isEmpty()) {
@@ -206,15 +231,47 @@ internal fun NextUpQueueList(
     }
     dragSource?.let { source ->
         queue.items.getOrNull(source.queueIndex)?.let { track ->
-            QueueTrackRow(track, source.row, source.lastRow, false, {}, {}, {}, {},
-                modifier = Modifier
-                    .offset { IntOffset(0, (pointerY - grabOffsetY).roundToInt()) }
-                    .height(with(density) { rowHeight.toDp() })
-                    .background(queueSurfaceColor()),
-                interactive = false)
+            QueueDragOverlay(
+                track = track,
+                source = source,
+                rowHeight = rowHeight,
+                top = { if (released) releaseTop else pointerY - grabOffsetY },
+                released = released,
+                settlement = settlement,
+                destinationTop = destinationTop,
+                lightweight = lightweight,
+                onSettled = {
+                    if (awaitingQueue) return@QueueDragOverlay
+                    val target = dropTarget
+                    if (commitDrop && target != null) {
+                        awaitingQueue = true
+                        move(source.queueIndex, target.queueIndex)
+                    } else {
+                        dragSource = null
+                        dropTarget = null
+                        released = false
+                    }
+                },
+            )
         }
     }
     }
+}
+
+@Composable
+private fun Modifier.queueDragPreview(
+    row: Int, group: Int, queueIndex: Int,
+    source: QueueDragTarget?, target: QueueDragTarget?, rowHeight: Int, lightweight: Boolean,
+): Modifier {
+    val displacement by animateFloatAsState(
+        targetValue = queueDragDisplacement(row, group, source, target, rowHeight),
+        animationSpec = if (source == null) snap() else if (lightweight) tween(90) else EchoMotion.silkFloat(240),
+        label = "queue-drag-gap",
+    )
+    return graphicsLayer {
+        translationY = displacement
+        alpha = if (source?.queueIndex == queueIndex) 0f else 1f
+    }.then(if (source?.queueIndex == queueIndex) Modifier.clearAndSetSemantics {} else Modifier)
 }
 
 private fun LazyItemScope.queueItemMotion(enabled: Boolean): Modifier = if (enabled) {

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="manual_fade_title">Fade manual play and pause</string>
-    <string name="manual_fade_detail">Use a short 180 ms fade for manual controls. Calls, output loss and timers still pause immediately. Strict bit-perfect output bypasses this fade.</string>
+    <string name="manual_fade_title">Play/pause fade</string>
+    <string name="manual_fade_detail">Smooth manual play/pause; bypassed in bit-perfect mode.</string>
     <string name="mix_status_title">Actual state</string>
     <string name="mix_status_idle">Idle</string>
     <string name="mix_status_bypassed">Normal playback</string>

@@ -20,7 +20,7 @@ class CueScanCache(private val file: File? = null, private val capacity: Int = 8
         load()
         val entry = entries[source.id] ?: return null
         if (stamp(source, cue) != entry.stamp || entry.outputs.any { (id, fingerprint) ->
-                existing[id]?.fingerprint != fingerprint || fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint
+                existing[id]?.fingerprint != fingerprint || existing[id]?.embeddedRating == null || fingerprint == LibraryScanPolicy.PendingDocumentMetadataFingerprint
             }) return null
         return entry.outputs.keys.toList()
     }

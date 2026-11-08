@@ -62,6 +62,16 @@ internal fun EchoPluginsOverlay(
     var focusPluginId by remember { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(playback, plugins) {
+        playback.setPluginLyricsSearch { request ->
+            plugins.searchLyrics(PluginLyricsRequest(request.title, request.artist, request.album.orEmpty(), request.durationMs))
+                .mapNotNull { candidate ->
+                    val lyrics = app.echo.android.lyrics.EchoLyricsParser.parse(candidate.text, sourceLabel = candidate.providerName)
+                    if (lyrics.lines.none { it.text.isNotBlank() }) null else app.echo.android.model.lyrics.EchoLyricsCandidate(
+                        id = candidate.id, title = candidate.title, artist = candidate.artist, album = candidate.album,
+                        durationMs = candidate.durationMs, lyrics = lyrics,
+                    )
+                }
+        }
         plugins.bridge.snapshotProvider = { playback.pluginSnapshot() }
         plugins.bridge.transportHandler = { command ->
             main.post {
@@ -90,6 +100,7 @@ internal fun EchoPluginsOverlay(
             }
         }
         onDispose {
+            playback.setPluginLyricsSearch(null)
             plugins.bridge.snapshotProvider = { PlaybackSnapshot() }
             plugins.bridge.transportHandler = {}
             plugins.bridge.searchHandler = { emptyList() }
@@ -162,6 +173,12 @@ internal fun EchoPluginsOverlay(
                 onImport = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
                 onInstallSample = {
                     plugins.installSample { result ->
+                        notice = result
+                        if (result is PluginInstallResult.Installed) focusPluginId = result.id
+                    }
+                },
+                onInstallLyricsSample = {
+                    plugins.installLyricsSample { result ->
                         notice = result
                         if (result is PluginInstallResult.Installed) focusPluginId = result.id
                     }

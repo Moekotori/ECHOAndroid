@@ -183,10 +183,11 @@ object LibraryScanPolicy {
         metadataEditedAtEpochMs: Long?,
     ): Boolean = metadataEditedAtEpochMs != null && incomingFingerprint != existingFingerprint
 
-    fun scanRowAction(existingFingerprint: String?, incomingFingerprint: String?): LibraryScanRowAction =
+    fun scanRowAction(existingFingerprint: String?, incomingFingerprint: String?, existingRating: Int? = 0, incomingRating: Int? = 0): LibraryScanRowAction =
         when {
             existingFingerprint == null -> LibraryScanRowAction.Insert
             existingFingerprint != incomingFingerprint -> LibraryScanRowAction.Update
+            existingRating != incomingRating && incomingRating != null -> LibraryScanRowAction.Update
             else -> LibraryScanRowAction.RememberSeen
         }
 
@@ -206,6 +207,7 @@ object LibraryScanPolicy {
         fileName: String? = existing?.fileName,
     ): Boolean =
         existing?.fingerprint != null &&
+            existing.embeddedRating != null &&
             existing.fingerprint != PendingDocumentMetadataFingerprint &&
             (dateModifiedSeconds > 0L || sizeBytes > 0L) &&
             existing.dateModifiedSeconds == dateModifiedSeconds &&
@@ -228,7 +230,7 @@ object LibraryScanPolicy {
         fileName: String? = null,
         removeExcludedFromLibrary: Boolean = true,
     ): MediaStoreProbeAction {
-        if (!options.includesDirectory(relativePath)) {
+        if ((!options.includesDirectory(relativePath) || !options.includesFileName(fileName))) {
             return if (existing != null && !removeExcludedFromLibrary) {
                 MediaStoreProbeAction.RememberSeen
             } else {
@@ -253,7 +255,8 @@ object LibraryScanPolicy {
         relativePath: String?,
         options: LibraryScanOptions,
         removeExcludedFromLibrary: Boolean,
-    ): Boolean = removeExcludedFromLibrary || options.includesDirectory(relativePath)
+        fileName: String? = null,
+    ): Boolean = removeExcludedFromLibrary || (options.includesDirectory(relativePath) && options.includesFileName(fileName))
 
     fun shouldRefreshLocalLibraryAfterPermissionGrant(localMediaStoreCount: Int): Boolean =
         localMediaStoreCount <= 0
@@ -429,7 +432,7 @@ object LibraryScanPolicy {
         incomingRelativePath: String?,
     ): Boolean {
         val fingerprint = existing?.fingerprint
-        if (existing == null || existing.durationMs <= 0L) return false
+        if (existing == null || existing.durationMs <= 0L || existing.embeddedRating == null) return false
         if (fingerprint.isNullOrEmpty() || fingerprint == PendingDocumentMetadataFingerprint) return false
         return shouldReuseUnchangedDocumentFingerprint(
             existingContentUri = existing.contentUri,

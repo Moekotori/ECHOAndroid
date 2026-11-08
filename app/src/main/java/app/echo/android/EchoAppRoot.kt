@@ -128,6 +128,7 @@ import app.echo.android.ui.shell.pagerPage
 import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.ui.shell.outerPagerUserScrollEnabled
 import app.echo.android.ui.shell.rememberHomeSafePagerNestedScroll
+import app.echo.android.ui.shell.recoverStrandedPager
 import app.echo.android.ui.shell.dockNavigationMotionSpec
 import app.echo.android.model.settings.EchoBackgroundMode
 import app.echo.android.model.settings.EchoFontFamilyMode
@@ -162,7 +163,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 private val LyricsDocumentMimeTypes = arrayOf("text/*", "application/xml", "application/octet-stream", "*/*")
@@ -781,6 +781,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         }
     }
 
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        viewModel.resumeLastFmAuthorization()
+    }
     val lastFmApiKey = appSettings.lastFmApiKey?.takeIf { it.isNotBlank() }
         ?: LastFmApiConfig.API_KEY.takeIf { it.isNotBlank() }
     val lastFmSharedSecret = appSettings.lastFmSharedSecret?.takeIf { it.isNotBlank() }
@@ -1147,16 +1150,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             }
         }
     }
-    // A dock tap retargets the pager and turns user scrolling off. A touch that lands in that
-    // window can end its drag with no fling and leave the pager at rest between two pages.
-    // Nothing else would settle it, so snap back to the nearest page.
+    // An interrupted drag/navigation can leave a partial page at rest. Finish at the nearest
+    // page; the recovery's own scrolling state must not cancel its animation.
     LaunchedEffect(tabPagerState) {
-        snapshotFlow {
+        fun isStranded(): Boolean =
             !tabPagerState.isScrollInProgress && tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
-        }.collectLatest { stranded ->
-            if (!stranded) return@collectLatest
-            // A fling takes over from the drag within a few frames; only act on a real rest.
-            delay(120)
+        snapshotFlow {
+            isStranded()
+        }.recoverStrandedPager(isStillStranded = ::isStranded) {
             val page = tabPagerState.currentPage
             tabPagerState.animateScrollToPage(
                 page = page,
@@ -1278,6 +1279,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val customBackgroundActive = appSettings.customBackgroundMode != EchoBackgroundMode.Default &&
         !appSettings.customBackgroundUri.isNullOrBlank() &&
         !(effectivePerformanceMode.isLightweight && appSettings.customBackgroundMode == EchoBackgroundMode.Video)
+    val artistArtworkOverrides by remember(context) { (context.applicationContext as EchoApplication).artistArtwork.overrides }
+        .collectAsStateWithLifecycle(initialValue = emptyMap())
+    androidx.compose.runtime.CompositionLocalProvider(app.echo.android.design.LocalArtistArtworkOverrides provides artistArtworkOverrides) {
     EchoMobileTheme(
         darkTheme = darkTheme,
         dynamicColor = appSettings.dynamicColorEnabled,
@@ -1498,39 +1502,24 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             val libraryScanProgress by viewModel.scanState.collectAsStateWithLifecycle()
                             val lastFmState by viewModel.lastFmState.collectAsStateWithLifecycle()
                             val listenBrainzState by viewModel.listenBrainzState.collectAsStateWithLifecycle()
-                            val usbExclusiveTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
                             val errorLogCount by viewModel.errorLogCount.collectAsStateWithLifecycle(0)
                             val backupNotice by viewModel.backupNotice.collectAsStateWithLifecycle()
-                            val settingsEqualizerState by viewModel.equalizerState.collectAsStateWithLifecycle()
                             SettingsScreen(
                                 permissionState = rememberEchoSettingsPermissions(
                                     active = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
                                 ),
                                 onOpenPermissionSettings = context::openEchoPermissionSettings,
                                 onScanMusic = { addMusicVisible = true },
-                                onOpenSound = {
-                                    audioSettingsRequested = false
-                                    audioSettingsAnchor = null
-                                    settingsSoundRequestId++
-                                    navigateToPage(EchoPagerPage.Diagnostics)
-                                },
                                 onOpenAudioSettings = { anchor ->
                                     audioSettingsAnchor = anchor
                                     audioSettingsRequested = true
                                     settingsSoundRequestId++
                                     navigateToPage(EchoPagerPage.Diagnostics)
                                 },
-                                soundSummary = (if (settingsEqualizerState.mseb.enabled)
-                                    stringResource(app.echo.android.feature.settings.R.string.mseb_title) + " · " else "") + stringResource(
-                                    if (settingsEqualizerState.enabled)
-                                        app.echo.android.feature.settings.R.string.settings_quick_eq_on
-                                    else app.echo.android.feature.settings.R.string.settings_quick_eq_off,
-                                ),
                                 importedFontFamily = importedFontFamily,
                                 isPageVisible = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
                                 isActive = tabPagerState.currentPage == EchoPagerPage.Settings.ordinal &&
                                     !nowPlayingExpanded && !searchVisible && !errorLogVisible && !queueSheetVisible && !pluginsVisible,
-                                status = playbackStatus,
                                 trackCount = libraryStats.trackCount,
                                 albumCount = libraryStats.albumCount,
                                 artistCount = libraryStats.artistCount,
@@ -1557,6 +1546,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onlineLyricsEnabled = appSettings.onlineLyricsEnabled,
                                 lockScreenLyricsEnabled = appSettings.lockScreenLyricsEnabled,
                                 lyricsOptions = appSettings.lyricsOptions,
+                                playerOrientationLocked = appSettings.playerOrientationLocked, onPlayerOrientationLockedChange = viewModel::setPlayerOrientationLocked,
+                                pauseOnMute = appSettings.pauseOnMute, onPauseOnMuteChange = viewModel::setPauseOnMute,
                                 onLyricsOptionsChange = viewModel::setLyricsOptions,
                                 onOpenLyricsInterface = {
                                     expandNowPlaying()
@@ -1576,20 +1567,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                         )
                                     }
                                 },
-                                usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
-                                usbBitPerfectEnabled = appSettings.usbBitPerfectEnabled,
-                                usbOutputOptions = appSettings.usbOutputOptions,
                                 shuffleOptions = appSettings.shuffleOptions,
                                 trackTransitions = appSettings.trackTransitions,
-                                usbExclusiveAutoRequestOnStartup = appSettings.usbExclusiveAutoRequestOnStartup,
                                 sleepTimerFinishTrack = appSettings.sleepTimerFinishTrack,
                                 stopOnTaskRemoved = appSettings.stopOnTaskRemoved,
                                 onStopOnTaskRemovedChange = viewModel::setStopOnTaskRemoved,
                                 onSleepTimerFinishTrackChange = viewModel::setSleepTimerFinishTrack,
-                                pauseOnAudioDisconnect = appSettings.pauseOnAudioDisconnect,
-                                resumeOnAudioReconnect = appSettings.resumeOnAudioReconnect,
                                 replayGainEnabled = appSettings.replayGainEnabled,
-                                usbExclusiveTestResult = usbExclusiveTestResult,
                                 customBackgroundMode = appSettings.customBackgroundMode,
                                 customBackgroundUri = appSettings.customBackgroundUri,
                                 startupBackgroundUri = appSettings.startupBackgroundUri,
@@ -1621,9 +1605,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 lastFmApiKey = lastFmApiKey,
                                 lastFmSharedSecret = lastFmSharedSecret,
                                 lastFmSessionKey = appSettings.lastFmSessionKey,
-                                lastFmStatusLabel = lastFmState.lastMessageArg?.let {
-                                    stringResource(lastFmState.lastMessageRes, it)
-                                } ?: stringResource(lastFmState.lastMessageRes),
+                                lastFmStatusLabel = if (!appSettings.lastFmSessionKey.isNullOrBlank() &&
+                                    !lastFmState.webAuthPending && !lastFmState.isConnecting)
+                                    stringResource(R.string.lastfm_connected, appSettings.lastFmUsername.orEmpty())
+                                else lastFmState.lastMessageArg?.let { stringResource(lastFmState.lastMessageRes, it) }
+                                    ?: stringResource(lastFmState.lastMessageRes),
                                 lastFmErrorLabel = lastFmState.lastError,
                                 lastFmWebAuthPending = lastFmState.webAuthPending,
                                 lastFmApiKeyLocked = LastFmApiConfig.HAS_API_KEY,
@@ -1646,14 +1632,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onPcHandoffEnabledChange = viewModel::setPcHandoffEnabled,
                                 onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
                                 onLockScreenLyricsEnabledChange = viewModel::setLockScreenLyricsEnabled,
-                                onUsbExclusiveEnabledChange = viewModel::setUsbExclusiveEnabled,
-                                onUsbBitPerfectEnabledChange = viewModel::setUsbBitPerfectEnabled,
-                                onUsbOutputOptionsChange = viewModel::setUsbOutputOptions,
                                 onShuffleOptionsChange = viewModel::setShuffleOptions,
-                                onUsbExclusiveAutoRequestOnStartupChange = viewModel::setUsbExclusiveAutoRequestOnStartup,
-                                onPauseOnAudioDisconnectChange = viewModel::setPauseOnAudioDisconnect,
-                                onResumeOnAudioReconnectChange = viewModel::setResumeOnAudioReconnect,
-                                onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
                                 onPickImageBackground = { backgroundImageLauncher.launch(arrayOf("image/*")) },
                                 onPickStartupBackground = { startupBackgroundLauncher.launch(arrayOf("image/*")) },
                                 onClearStartupBackground = { viewModel.setStartupBackground(null) },
@@ -1703,8 +1682,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onScheduledDarkStartMinuteChange = viewModel::setScheduledDarkStartMinute,
                                 onScheduledDarkEndMinuteChange = viewModel::setScheduledDarkEndMinute,
                                 onLastFmEnabledChange = viewModel::setLastFmEnabled,
-                                onStartLastFmWebAuth = {
-                                    viewModel.startLastFmWebAuth { authUrl ->
+                                lastFmConnecting = lastFmState.isConnecting,
+                                lastFmDetails = {
+                                    app.echo.android.ui.settings.LastFmSettingsHost(viewModel, appSettings.lastFmEnabled,
+                                        !appSettings.lastFmSessionKey.isNullOrBlank(), appSettings.lastFmOptions)
+                                },
+                                onStartLastFmWebAuth = { apiKey, secret ->
+                                    viewModel.startLastFmWebAuth(apiKey, secret) { authUrl ->
                                         runCatching {
                                             context.startActivity(
                                                 Intent(
@@ -1712,7 +1696,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                                     AndroidUri.parse(authUrl),
                                                 ),
                                             )
-                                        }
+                                        }.getOrThrow()
                                     }
                                 },
                                 onCompleteLastFmWebAuth = viewModel::completeLastFmWebAuth,
@@ -2452,6 +2436,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 },
             )
         }
+    }
     }
 }
 

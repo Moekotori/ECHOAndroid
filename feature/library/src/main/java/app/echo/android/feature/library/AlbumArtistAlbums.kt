@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -38,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
+import androidx.paging.filter
 import androidx.paging.compose.collectAsLazyPagingItems
 import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoContentMaxWidth
@@ -47,6 +47,7 @@ import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.echoClickable
 import app.echo.android.model.library.AlbumSummary
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 private const val RailAlbumLimit = 20
 
@@ -63,13 +64,11 @@ internal fun ArtistAlbumsRail(
     onOpenAlbum: (AlbumSummary) -> Unit,
     onShowAll: () -> Unit,
 ) {
-    val flow = remember(currentAlbumKey) { albums() } ?: return
+    val flow = remember(currentAlbumKey, artistName) {
+        albums()?.map { page -> page.filter { it.albumKey != currentAlbumKey } }
+    } ?: return
     val paged = flow.collectAsLazyPagingItems()
-    val loaded = paged.itemSnapshotList.items
-    val others = remember(loaded, currentAlbumKey) {
-        loaded.filter { it.albumKey != currentAlbumKey }.take(RailAlbumLimit)
-    }
-    if (others.isEmpty()) return
+    if (paged.itemCount == 0) return
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -104,8 +103,12 @@ internal fun ArtistAlbumsRail(
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            items(items = others, key = { it.albumKey }) { other ->
-                ArtistAlbumCard(other, accent) { onOpenAlbum(other) }
+            items(
+                count = minOf(paged.itemCount, RailAlbumLimit),
+                key = { index -> paged.peek(index)?.albumKey ?: "album-placeholder-$index" },
+            ) { index ->
+                // Access through Paging so a short first page can request the next page as it scrolls.
+                paged[index]?.let { other -> ArtistAlbumCard(other, accent) { onOpenAlbum(other) } }
             }
         }
     }

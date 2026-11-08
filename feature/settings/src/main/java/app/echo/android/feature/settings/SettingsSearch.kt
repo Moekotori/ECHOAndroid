@@ -39,7 +39,9 @@ internal data class SettingsSearchItem(
     val opensPlugins: Boolean = false,
 ) {
     val opensAudioSettings: Boolean
-        get() = category == SettingsCategory.Playback && anchorRes in audioSettingsSearchAnchors
+        get() = category == SettingsCategory.Usb ||
+            (category == SettingsCategory.Playback &&
+                (anchorRes in audioSettingsSearchAnchors || anchorRes in usbAudioSettingsSearchAnchors))
 }
 
 internal data class SettingsSearchResult(
@@ -60,6 +62,15 @@ private val audioSettingsSearchAnchors = setOf(
     R.string.settings_replay_gain, R.string.settings_replay_gain_mode, R.string.eq_preamp,
     R.string.settings_section_transition, R.string.settings_gapless, R.string.settings_track_fade,
     R.string.settings_track_fade_duration, R.string.settings_smart_transition,
+    R.string.settings_section_volume, R.string.audio_behavior_title, R.string.audio_reset_section,
+    R.string.settings_pause_on_disconnect, R.string.settings_resume_on_reconnect,
+)
+
+internal val usbAudioSettingsSearchAnchors = setOf(
+    R.string.settings_section_usb, R.string.settings_usb_exclusive, R.string.settings_usb_bitperfect,
+    R.string.settings_usb_auto_request, R.string.settings_test_usb, R.string.diag_sample_rate,
+    R.string.path_output_bits, R.string.diag_channels, R.string.usb_param_volume,
+    R.string.usb_param_buffer, R.string.usb_param_keep_alive,
 )
 
 private fun item(
@@ -191,6 +202,8 @@ private val indexedSettings = listOf(
     item(SettingsCategory.Playback, R.string.settings_section_listening),
     item(SettingsCategory.Playback, R.string.audio_settings_title, anchor = R.string.audio_output_title),
     item(SettingsCategory.Playback, R.string.audio_output_title),
+    item(SettingsCategory.Playback, R.string.audio_behavior_title),
+    item(SettingsCategory.Playback, R.string.audio_reset_section),
     item(SettingsCategory.Playback, R.string.audio_focus_title,
         keywords = *intArrayOf(R.string.audio_focus_detail)),
     item(SettingsCategory.Playback, R.string.audio_output_reset,
@@ -212,7 +225,7 @@ private val indexedSettings = listOf(
     item(SettingsCategory.Playback, R.string.settings_shuffle_rules,
         keywords = *intArrayOf(R.string.settings_shuffle_rules_summary)),
     item(SettingsCategory.Playback, R.string.settings_section_transition),
-    item(SettingsCategory.Playback, R.string.settings_section_volume, anchor = R.string.audio_output_title),
+    item(SettingsCategory.Playback, R.string.settings_section_volume),
     item(SettingsCategory.Playback, R.string.effects_panel_open, anchor = R.string.effects_panel_title),
     item(SettingsCategory.Playback, R.string.stop_on_task_removed_title, anchor = R.string.settings_section_listening,
         keywords = *intArrayOf(R.string.stop_on_task_removed_detail)),
@@ -238,6 +251,8 @@ private val indexedSettings = listOf(
     item(SettingsCategory.Playback, R.string.settings_lyrics_interface),
     item(SettingsCategory.Playback, R.string.settings_lyrics_source_order),
     item(SettingsCategory.Playback, R.string.settings_bluetooth_lyrics_delay),
+    item(SettingsCategory.Playback, R.string.player_orientation_lock),
+    item(SettingsCategory.Playback, R.string.pause_on_mute),
     item(SettingsCategory.Playback, R.string.settings_notification_lyrics),
     item(SettingsCategory.Playback, R.string.settings_status_overlay_lyrics),
     item(SettingsCategory.Playback, R.string.settings_system_status_lyrics),
@@ -268,6 +283,15 @@ private val indexedSettings = listOf(
     item(SettingsCategory.Services, R.string.settings_section_connect),
     item(SettingsCategory.Services, R.string.settings_section_music_services),
     item(SettingsCategory.Services, R.string.settings_search_lastfm),
+    item(SettingsCategory.Services, R.string.lastfm_now_playing_title,
+        keywords = *intArrayOf(R.string.lastfm_now_playing_detail)),
+    item(SettingsCategory.Services, R.string.lastfm_scrobble_title,
+        keywords = *intArrayOf(R.string.lastfm_scrobble_detail)),
+    item(SettingsCategory.Services, R.string.lastfm_love_title,
+        keywords = *intArrayOf(R.string.lastfm_love_detail)),
+    item(SettingsCategory.Services, R.string.lastfm_import_title,
+        keywords = *intArrayOf(R.string.lastfm_import_detail)),
+    item(SettingsCategory.Services, R.string.lastfm_refresh),
     item(SettingsCategory.Services, R.string.settings_search_api_key,
         requirement = SettingsSearchRequirement.LastFm, fallback = R.string.settings_search_lastfm),
     item(SettingsCategory.Services, R.string.settings_search_shared_secret,
@@ -302,7 +326,7 @@ private val indexedSettings = listOf(
         keywords = *intArrayOf(R.string.settings_audio_tags_detail)),
     item(SettingsCategory.Library, R.string.settings_watched_folder_rescan,
         keywords = *intArrayOf(R.string.settings_watched_folder_rescan_detail)),
-    item(SettingsCategory.Library, R.string.settings_local_music,
+    item(SettingsCategory.Library, R.string.settings_local_music, anchor = R.string.settings_section_library,
         keywords = *intArrayOf(R.string.settings_local_music_detail)),
     item(SettingsCategory.Library, R.string.settings_library_cleanup,
         keywords = *intArrayOf(R.string.settings_library_cleanup_detail)),

@@ -99,6 +99,8 @@ internal fun LyricsSettingsPanel(
     romanizationScale: Float = 1f,
     onTranslationScaleChange: (Float) -> Unit = {},
     onRomanizationScaleChange: (Float) -> Unit = {},
+    translationCurrentOnly: Boolean = false,
+    onTranslationCurrentOnlyChange: (Boolean) -> Unit = {},
 ) {
     val dark = LocalEchoDarkTheme.current
     val titleColor = if (dark) Color.White else echoTheme().heading
@@ -235,6 +237,8 @@ internal fun LyricsSettingsPanel(
                                     0.45f..1.35f, 1f, onLyricsWordHighlightIntensityChange)
                             }
                             if (page == LyricsSettingsCategory.Content) {
+                                LyricsSettingToggle(stringResource(L10nR.string.lyrics_translation_current_only), translationCurrentOnly, onTranslationCurrentOnlyChange,
+                                    hint = stringResource(L10nR.string.lyrics_translation_current_only_hint))
                                 val noContent = stringResource(L10nR.string.lyrics_setting_no_content)
                                 LyricsSettingToggle(stringResource(L10nR.string.feature_player_translation_53c7ce), showTranslation,
                                     onLyricsShowTranslationChange, hint = if (!hasTranslation) noContent else null)

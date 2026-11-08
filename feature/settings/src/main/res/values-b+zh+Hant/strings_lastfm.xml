@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lastfm_now_playing_title">正在播放</string>
+    <string name="lastfm_now_playing_detail">在 Last.fm 個人頁面顯示目前歌曲</string>
+    <string name="lastfm_scrobble_title">記錄聆聽歷史</string>
+    <string name="lastfm_scrobble_detail">實際聆聽達到歌曲時長的一半或 4 分鐘後提交；不記錄 30 秒及以下的歌曲。</string>
+    <string name="lastfm_love_title">同步喜歡到 Last.fm</string>
+    <string name="lastfm_love_detail">同步本機既有和新增的喜歡，只傳送歌名和藝人。本機取消喜歡不會刪除 Last.fm 喜歡，關閉即可停止上傳。</string>
+    <string name="lastfm_connect_first">請先連接並啟用 Last.fm</string>
+    <string name="lastfm_capacity">同步記錄已達上限</string>
+    <string name="lastfm_love_failed">同步尚未完成，待同步工作已保留</string>
+    <string name="lastfm_love_scanning">正在讀取本機喜歡…</string>
+    <string name="lastfm_love_progress">已同步 %1$d 首 · 待同步 %2$d 首</string>
+    <string name="lastfm_import_title">從 Last.fm 匯入</string>
+    <string name="lastfm_import_detail">將喜歡和累計播放次數匯入相符的本機歌曲；未相符和有多個版本的歌曲會略過。重複匯入不會累加相同的播放次數。</string>
+    <string name="lastfm_import_cancel">取消匯入</string>
+    <string name="lastfm_import_running">已處理 %1$d 首</string>
+    <string name="lastfm_import_completed">匯入完成</string>
+    <string name="lastfm_import_cancelled">已取消匯入</string>
+    <string name="lastfm_import_failed">匯入失敗，可重試；已完成的頁面會保留。</string>
+    <string name="lastfm_import_result">新增喜歡 %1$d 首 · 更新播放次數 %2$d 首 · 未相符 %3$d 首 · 歧義 %4$d 首</string>
+    <string name="lastfm_last_now_playing">最近更新正在播放</string>
+    <string name="lastfm_last_scrobble">最近提交聆聽記錄</string>
+    <string name="lastfm_active_track">目前歌曲</string>
+    <string name="lastfm_no_active_track">暫無正在播放的歌曲</string>
+    <string name="lastfm_active_progress">%1$s — %2$s · %3$d / %4$d 秒</string>
+    <string name="lastfm_pending_title">待提交的聆聽記錄</string>
+    <string name="lastfm_pending_detail">已儲存 %1$d 條記錄，將自動重試</string>
+    <string name="lastfm_refresh">重新整理狀態</string>
+    <string name="lastfm_refresh_detail">重試待提交工作，並完成已批准的授權</string>
+    <string name="lastfm_never">尚無記錄</string>
+    <string name="lastfm_connecting">正在連接…</string>
+</resources>

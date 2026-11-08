@@ -1,0 +1,7 @@
+ECHO Android sound effects: portable native algorithms and fixed preset parameters
+ported from https://github.com/moekotori/echosteam at a8f1bd0091db9fd103144909ff36257d6de54b2f.
+ECHO portions are AGPL-3.0-only. No Electron, TypeScript, PC host or transport is included.
+Signalsmith Audio DSP/basics and Airwindows retain their MIT notices; STFX uses Boost Software License 1.0.
+Pinned upstream sources and ECHO adaptations are recorded in the vendored sources.json files.
+Android adaptation: correct ARM32 FPSCR/AArch64 FPCR denormal control and restore the original register.
+Android EQ adaptation: per-instance local clipping protection can be disabled to preserve intermediate headroom before the existing final output limiter.

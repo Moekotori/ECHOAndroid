@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="player_menu_edit">編輯選單</string>
-    <string name="player_menu_detail">勾選要顯示的功能，用上下箭頭調整順序，點儲存生效。不支援的功能會隨歌曲來源自動隱藏。</string>
+    <string name="player_menu_detail">拖曳把手調整順序，用開關隱藏或恢復功能，點儲存生效。不支援的功能會隨歌曲來源自動隱藏。</string>
     <string name="player_menu_move_up">上移 %1$s</string>
     <string name="player_menu_move_down">下移 %1$s</string>
     <string name="player_menu_save_failed">儲存失敗，請重試。</string>

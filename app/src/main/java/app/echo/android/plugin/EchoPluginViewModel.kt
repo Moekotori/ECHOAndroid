@@ -46,6 +46,9 @@ internal class EchoPluginViewModel(application: Application) : AndroidViewModel(
         engine.installSample { result -> main.post { onDone(result) } }
     }
 
+    fun installLyricsSample(onDone: (PluginInstallResult) -> Unit) =
+        engine.install(SampleLyricsPlugin.zipBytes()) { result -> main.post { onDone(result) } }
+
     fun setEnabled(id: String, enabled: Boolean) = engine.setEnabled(id, enabled)
 
     fun setGrant(id: String, capability: PluginCapability, granted: Boolean) = engine.setGrant(id, capability, granted)
@@ -57,6 +60,18 @@ internal class EchoPluginViewModel(application: Application) : AndroidViewModel(
     fun performAction(id: String, actionId: String) = engine.performAction(id, actionId)
 
     fun dispatch(snapshot: PlaybackSnapshot) = engine.dispatchPlayback(snapshot)
+
+    suspend fun searchLyrics(request: PluginLyricsRequest): List<PluginLyricsCandidate> =
+        kotlinx.coroutines.withTimeoutOrNull(13_000) { kotlinx.coroutines.suspendCancellableCoroutine<List<PluginLyricsCandidate>> { continuation ->
+            try {
+                val job = engine.searchLyrics(request) { result ->
+                    if (continuation.isActive) continuation.resumeWith(Result.success(result))
+                }
+                continuation.invokeOnCancellation { job.cancel(true) }
+            } catch (_: java.util.concurrent.RejectedExecutionException) {
+                continuation.resumeWith(Result.success(emptyList()))
+            }
+        } }.orEmpty()
 
     override fun onCleared() {
         engine.close()

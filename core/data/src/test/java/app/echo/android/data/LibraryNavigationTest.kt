@@ -1,10 +1,23 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.AlbumSummary
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class LibraryNavigationTest {
+    @Test
+    fun albumNavigationUsesAlbumArtistMembershipsInsteadOfSongArtist() {
+        val album = AlbumSummary("album", "Release", " Ｅａｇｌｅｓ ", "Guest singer", "cover", 1, 0L, null)
+        val target = albumArtistNavigationTarget(album)
+        assertEquals("album-artist:eagles", target?.artistKey)
+        assertEquals("cover", target?.artworkUri)
+        assertEquals("album-artist:guest singer", albumArtistNavigationTarget(album.copy(albumArtist = " "))?.artistKey)
+        assertEquals("album-artist:guest singer", albumArtistNavigationTarget(album.copy(albumArtist = "Unknown artist"))?.artistKey)
+        assertNull(albumArtistNavigationTarget(album.copy(albumArtist = "Various Artists")))
+        assertNull(albumArtistNavigationTarget(album.copy(albumArtist = null, artist = null)))
+    }
+
     @Test
     fun artistKeyMatchesLibraryAggregation() {
         val target = artistNavigationTarget("Eagles")

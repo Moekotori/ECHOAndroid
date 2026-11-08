@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.echoSharedCover
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +54,7 @@ import app.echo.android.design.EchoIcon
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.echoClickable
+import app.echo.android.design.echoPageSection
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.feature.library.R as L10nR
 
@@ -160,18 +162,18 @@ internal fun PlaylistHero(
             if (maxWidth < 320.dp || fontScale > 1.2f) {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     PlaylistCover(playlist, coverUris, echoAccentColor(),
-                        Modifier.size(if (compact) 104.dp else 156.dp).align(Alignment.CenterHorizontally))
-                    PlaylistHeroText(playlist, durationMs)
+                        Modifier.echoSharedCover("playlist", playlist.id).size(if (compact) 104.dp else 156.dp).align(Alignment.CenterHorizontally))
+                    PlaylistHeroText(playlist, durationMs, Modifier.echoPageSection(1))
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    PlaylistCover(playlist, coverUris, echoAccentColor(), Modifier.size(if (compact) 96.dp else 124.dp))
-                    PlaylistHeroText(playlist, durationMs, Modifier.weight(1f))
+                    PlaylistCover(playlist, coverUris, echoAccentColor(), Modifier.echoSharedCover("playlist", playlist.id).size(if (compact) 96.dp else 124.dp))
+                    PlaylistHeroText(playlist, durationMs, Modifier.weight(1f).echoPageSection(1))
                 }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+        Row(Modifier.fillMaxWidth().echoPageSection(2), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             PlaylistActionButton(Icons.Rounded.PlayArrow,
                 stringResource(L10nR.string.feature_library_play_all_55c80e),

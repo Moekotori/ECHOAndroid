@@ -31,7 +31,7 @@ import java.util.Locale
 
 @Composable
 internal fun TypePosterCoverPage(status: EchoPlaybackStatus, position: State<Long>, duration: State<Long>,
-                                actions: ExpressivePlayerActions, castActive: Boolean,
+                                actions: ExpressivePlayerActions,
                                 artworkScale: Float, modifier: Modifier = Modifier) {
     val ink = ExpressivePlayerStyle.PosterInk
     val track = status.track
@@ -75,7 +75,7 @@ internal fun TypePosterCoverPage(status: EchoPlaybackStatus, position: State<Lon
             Spacer(Modifier.height(12.dp))
             ExpressiveTransport(false, status.isPlaying, actions)
             Spacer(Modifier.height(12.dp))
-            ExpressiveUtilities(false, status, castActive, actions)
+            ExpressiveUtilities(false, status, actions)
             Spacer(Modifier.height(4.dp))
         },
     )

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.ArrowDownward
@@ -33,9 +34,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -178,8 +176,8 @@ private fun HistoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Box(
         Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(50))
-            .echoClickable(role = Role.Tab, onClick = onClick)
-            .semantics { role = Role.Tab; this.selected = selected },
+            .selectable(selected = selected, interactionSource = null, indication = null,
+                role = Role.Tab, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Surface(

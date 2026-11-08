@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_greeting_morning">Доброе утро</string>
+    <string name="home_greeting_morning_sub">Спокойное начало дня?</string>
+    <string name="home_greeting_noon">Добрый день</string>
+    <string name="home_greeting_noon_sub">Музыка к обеду?</string>
+    <string name="home_greeting_afternoon">Добрый день</string>
+    <string name="home_greeting_evening">Добрый вечер</string>
+    <string name="home_greeting_ask_sub">Что хотите послушать?</string>
+    <string name="home_greeting_night">Уже поздно</string>
+    <string name="home_greeting_night_sub">Что-нибудь тихое?</string>
+</resources>

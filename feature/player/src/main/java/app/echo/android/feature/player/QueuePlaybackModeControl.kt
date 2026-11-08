@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
@@ -36,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.EchoDropdownMenu
@@ -79,6 +79,7 @@ internal fun QueuePlaybackModeControl(
     shuffleEnabled: Boolean,
     onSetRepeatMode: (EchoRepeatMode) -> Unit,
     onToggleShuffle: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val current = QueuePlaybackMode.from(repeatMode, shuffleEnabled)
@@ -91,24 +92,22 @@ internal fun QueuePlaybackModeControl(
         animationSpec = EchoMotion.silkFloat(240),
         label = "queue-mode-chevron",
     ).value
-    Box {
+    Box(modifier) {
         Row(
             modifier = Modifier
                 .heightIn(min = 48.dp)
-                .padding(vertical = 4.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(ink.copy(alpha = 0.045f))
                 .echoClickable(
                     role = Role.Button,
                     onClickLabel = stringResource(R.string.feature_player_playback_mode),
                     onClick = { expanded = true },
                 )
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(end = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (lightweight) {
-                QueueModeLabel(current)
+                QueueModeLabel(current, Modifier.weight(1f, fill = false))
             } else AnimatedContent(
                 targetState = current,
                 transitionSpec = {
@@ -120,6 +119,7 @@ internal fun QueuePlaybackModeControl(
                 },
                 contentAlignment = Alignment.CenterStart,
                 label = "queue-mode-label",
+                modifier = Modifier.weight(1f, fill = false),
             ) { mode -> QueueModeLabel(mode) }
             EchoIcon(Icons.Rounded.ExpandMore, null,
                 Modifier.size(18.dp).graphicsLayer { rotationZ = chevronRotation }, tint = ink)
@@ -141,11 +141,12 @@ internal fun QueuePlaybackModeControl(
 }
 
 @Composable
-private fun QueueModeLabel(mode: QueuePlaybackMode) {
+private fun QueueModeLabel(mode: QueuePlaybackMode, modifier: Modifier = Modifier) {
     val ink = echoIconColor()
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        EchoIcon(mode.icon(), null, Modifier.size(21.dp), tint = ink)
-        Text(stringResource(mode.label()), color = ink, style = MaterialTheme.typography.labelLarge)
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        EchoIcon(mode.icon(), null, Modifier.size(18.dp), tint = ink)
+        Text(stringResource(mode.label()), color = ink, style = MaterialTheme.typography.bodySmall,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

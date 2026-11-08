@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircleOutline
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -16,7 +16,9 @@ import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanProgress
 
 @Composable
-internal fun AddMusicScanResult(state: LibraryScanProgress, onCancel: () -> Unit, onOpenLibrary: () -> Unit) {
+internal fun AddMusicScanResult(state: LibraryScanProgress, onCancel: () -> Unit, onOpenLibrary: () -> Unit, onRules: () -> Unit = {}) {
+    var details by remember { mutableStateOf(false) }
+    if (details) ScanDetailsDialog(state, onRules) { details = false }
     Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when {
@@ -62,6 +64,7 @@ internal fun AddMusicScanResult(state: LibraryScanProgress, onCancel: () -> Unit
             else -> Unit
         }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        if (state.skipReasons.isNotEmpty()) TextButton(onClick = { details = true }) { Text(stringResource(R.string.scan_details)) }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 }

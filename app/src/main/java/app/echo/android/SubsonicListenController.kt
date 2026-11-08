@@ -22,6 +22,7 @@ internal class SubsonicListenController(
     private val scope: CoroutineScope,
     private val endpointRef: AtomicReference<SubsonicEndpoint?>,
     private val nowEpochMs: () -> Long = { System.currentTimeMillis() },
+    private val endpointForTrack: (String?) -> SubsonicEndpoint? = { endpointRef.get() },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val submitListen: (
         SubsonicEndpoint,
@@ -61,12 +62,20 @@ internal class SubsonicListenController(
     }
 
     internal fun onPlayback(status: EchoPlaybackStatus, position: PlaybackPositionState) {
-        val endpoint = endpointRef.get()
         val track = status.track
-        if (active?.sourceId != endpoint?.sourceId) active = null
+        val endpoint = endpointForTrack(track?.id ?: active?.trackId)
+        val now = nowEpochMs()
+        val previous = active
+        if (previous != null && previous.sourceId != endpoint?.sourceId) {
+            endpointForTrack(previous.trackId)?.takeIf { it.sourceId == previous.sourceId }?.let { oldEndpoint ->
+                val accumulated = LastFmScrobbleRules.accumulatedPlayMs(previous.accumulatedPlayMs,
+                    previous.wasPlaying, previous.lastTickEpochMs, now)
+                submitScrobbleIfDue(oldEndpoint, previous.copy(accumulatedPlayMs = accumulated))
+            }
+            active = null
+        }
         val songId = track?.id?.takeIf { endpoint != null && it.startsWith("${endpoint.sourceId}:song:") }
             ?.let { subsonicSongIdFromTrack(it) }
-        val now = nowEpochMs()
         if (endpoint == null || track == null || songId.isNullOrBlank()) {
             val current = active
             if (current != null && endpoint != null) {

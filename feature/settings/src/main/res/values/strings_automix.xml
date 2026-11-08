@@ -6,5 +6,5 @@
     <string name="automix_illustration">Overlap illustration</string>
     <string name="automix_current">Current track</string>
     <string name="automix_next">Next track</string>
-    <string name="automix_description">Beta. Two tracks, one smooth handover. AutoMix finds the transition points and blends local tracks at normal speed. When fading is enabled, its duration also limits the overlap.</string>
+    <string name="automix_description">Beta. Blend local tracks at normal speed; enabling fades limits overlap.</string>
 </resources>

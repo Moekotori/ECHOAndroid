@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="player_menu_edit">메뉴 편집</string>
-    <string name="player_menu_detail">표시할 항목을 선택하고 화살표로 순서를 바꾼 뒤 저장하세요. 곡 소스에서 지원하지 않는 항목은 숨겨집니다.</string>
+    <string name="player_menu_detail">핸들을 드래그해 순서를 바꾸고 스위치로 숨기거나 다시 표시한 뒤 저장하세요. 곡 소스에서 지원하지 않는 항목은 숨겨집니다.</string>
     <string name="player_menu_move_up">%1$s 위로 이동</string>
     <string name="player_menu_move_down">%1$s 아래로 이동</string>
     <string name="player_menu_save_failed">저장하지 못했습니다. 다시 시도하세요.</string>

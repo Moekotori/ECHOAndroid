@@ -17,6 +17,7 @@ import app.echo.android.design.EchoDropdownMenuDivider
 import app.echo.android.model.library.*
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 internal fun PlaylistDetailToolbar(
     playlist: EchoPlaylist,
     order: PlaylistTrackOrder,
@@ -25,9 +26,11 @@ internal fun PlaylistDetailToolbar(
     onSort: ((PlaylistTrackOrder) -> Unit)?,
     onEdit: (() -> Unit)?,
     onAdd: (() -> Unit)?,
+    onAddFiles: ((Boolean) -> Unit)? = null,
 ) {
     val colors = rememberPlaylistDetailColors()
     var menu by remember { mutableStateOf(false) }
+    var addMenu by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.feature_library_tracks_2d80e8), color = colors.muted,
@@ -62,8 +65,19 @@ internal fun PlaylistDetailToolbar(
             }
         }
         if (editing) {
-            if (onAdd != null) TextButton(onClick = onAdd, enabled = !busy) {
-                Text(stringResource(R.string.playlist_add_tracks), color = colors.content)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onAdd != null) TextButton(onClick = onAdd, enabled = !busy) {
+                    Text(stringResource(if (onAddFiles != null) R.string.file_playlist_add_library else R.string.playlist_add_tracks), color = colors.content)
+                }
+                if (onAddFiles != null) Box {
+                    TextButton(onClick = { addMenu = true }, enabled = !busy) { Text(stringResource(R.string.file_playlist_add_files), color = colors.content) }
+                    EchoDropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
+                        EchoDropdownMenuItem(text = { Text(stringResource(R.string.file_playlist_files)) }, selected = false,
+                            onClick = { addMenu = false; onAddFiles(false) })
+                        EchoDropdownMenuItem(text = { Text(stringResource(R.string.file_playlist_folder)) }, selected = false,
+                            onClick = { addMenu = false; onAddFiles(true) })
+                    }
+                }
             }
             if (playlist.canEdit && !order.isManual) Text(stringResource(R.string.playlist_manual_hint),
                 color = colors.muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp))

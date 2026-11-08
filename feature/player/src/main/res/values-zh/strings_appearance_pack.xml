@@ -1,0 +1,19 @@
+<resources>
+    <string name="appearance_pack_dynamic_colors">动态配色会跟随这台设备的壁纸。</string>
+    <string name="appearance_pack_title">场景与外观包</string>
+    <string name="appearance_pack_detail">将播放器样式、歌词排版、配色与静态背景、歌词字体一起分享。视频背景不包含在内，使用 Android 外观包格式。</string>
+    <string name="appearance_pack_import">导入外观包</string>
+    <string name="appearance_pack_export">导出当前外观</string>
+    <string name="appearance_pack_name">外观包名称</string>
+    <string name="appearance_pack_apply">应用外观</string>
+    <string name="appearance_pack_cancel">取消</string>
+    <string name="appearance_pack_undo">恢复应用前的外观</string>
+    <string name="appearance_pack_preview_line">让音乐再多停留一会</string>
+    <string name="appearance_pack_preview_note">这里展示排版与配色示意；播放器场景、动画和导入字体在应用后呈现。应用前的外观会保留，可随时恢复。</string>
+    <string name="appearance_pack_exported">外观包已导出。</string>
+    <string name="appearance_pack_applied">外观已应用，可恢复应用前的外观。</string>
+    <string name="appearance_pack_restored">已恢复应用前的外观。</string>
+    <string name="appearance_pack_read_failed">无法读取外观包。请使用不超过 12 MiB 的 Android 外观包，其中图片不超过 8 MiB，字体不超过 4 MiB。</string>
+    <string name="appearance_pack_write_failed">无法导出。请检查背景和字体是否仍可访问、大小是否符合限制，并选择可写入的位置。</string>
+    <string name="appearance_pack_apply_failed">无法应用外观，请检查剩余存储空间后重试。</string>
+</resources>

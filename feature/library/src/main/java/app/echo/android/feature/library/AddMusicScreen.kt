@@ -88,7 +88,7 @@ fun AddMusicScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (scanState.phase != LibraryScanPhase.Idle) item("scan-progress") {
-                AddMusicScanResult(scanState, onCancelScan, onBack)
+                AddMusicScanResult(scanState, onCancelScan, onBack, onRules = { showRules = true })
             }
             actionError?.let { error -> item("action-error") {
                 Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)

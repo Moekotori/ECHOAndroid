@@ -6,7 +6,6 @@ import app.echo.android.model.connect.EchoRemotePlaybackQueue
 import app.echo.android.model.connect.EchoRemotePlaybackSnapshot
 import app.echo.android.model.connect.EchoRemoteTrack
 import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -34,10 +33,7 @@ internal fun parseEchoLinkEventData(
         queueIncluded = playbackJson.optJSONObject("queue")?.let {
             it.has("items") || it.has("tracks")
         } == true || playbackJson.has("queue") && playbackJson.isNull("queue"),
-        trackArtworkIncluded = playbackJson.optJSONObject("track")?.let {
-            it.has("artworkUrl") || it.has("coverUrl") || it.has("coverThumb") ||
-                it.has("cover") || it.has("albumArtUrl") || it.has("albumArt")
-        } ?: true,
+        trackArtworkIncluded = playbackJson.optJSONObject("track")?.hasEchoLinkArtwork() ?: true,
         volumeControlIncluded = playbackJson.has("volumeControlEnabled"),
         outputIncluded = playbackJson.has("outputMode") || playbackJson.has("output"),
         playbackOrderIncluded = playbackJson.has("playbackOrder"),
@@ -86,8 +82,9 @@ internal fun JSONObject?.toRemoteQueue(endpoint: EchoRemoteEndpoint): EchoRemote
 
 internal fun EchoRemoteEndpoint.resolveEventsUrl(raw: String?): HttpUrl? {
     val value = raw?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    value.toHttpUrlOrNull()?.let { return it }
-    val relative = if (value.startsWith("/")) value else "/$value"
-    return "http://placeholder.invalid$relative".toHttpUrlOrNull()
-        ?.newBuilder()?.scheme(scheme)?.host(host)?.port(port)?.build()
+    val base = HttpUrl.Builder().scheme(scheme).host(host).port(port).build()
+    return base.resolve(value)?.takeIf {
+        it.scheme == base.scheme && it.host == base.host && it.port == base.port &&
+            it.username.isEmpty() && it.password.isEmpty()
+    }
 }

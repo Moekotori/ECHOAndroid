@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_rating">本地星级</string>
+    <string name="track_rating_stars">%1$d 星</string>
+    <string name="track_rating_unrated">不评分</string>
+    <string name="track_rating_file">使用文件星级</string>
+    <string name="track_rating_minimum">最低星级</string>
+    <string name="track_rating_at_least">%1$d 星及以上</string>
+    <string name="library_sort_rating_desc">星级：高到低</string>
+    <string name="library_sort_rating_asc">星级：低到高</string>
+    <string name="scan_name_keywords">文件名排除关键词</string>
+    <string name="scan_name_keywords_hint">一行一个关键词，最多 50 个、每个 64 字符，不区分大小写匹配文件名。下次完整扫描会移除匹配的音乐库条目，保留原文件和独立文件歌单。</string>
+    <string name="scan_details">扫描明细</string>
+    <string name="scan_details_count">%1$s：%2$d</string>
+    <string name="scan_details_sample_hint">以下最多展示本次扫描的 40 个样例；读取失败的条目会保留原信息，等待重试。</string>
+    <string name="scan_details_unreadable_item">无法读取的音频条目</string>
+    <string name="scan_reason_duration">短于时长阈值</string>
+    <string name="scan_reason_size">小于文件大小阈值</string>
+    <string name="scan_reason_format">格式规则排除</string>
+    <string name="scan_reason_directory">目录规则排除</string>
+    <string name="scan_reason_name">文件名关键词排除</string>
+    <string name="scan_reason_read">读取失败／等待重试</string>
+</resources>

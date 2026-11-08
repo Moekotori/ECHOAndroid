@@ -16,6 +16,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import app.echo.android.design.echoClickable
+import app.echo.android.design.echoSharedCover
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.layout.Arrangement
@@ -450,7 +451,7 @@ internal fun AlbumSummaryWall(
             items = albums,
             key = { album -> album.albumKey },
         ) { album ->
-            AlbumWallCard(album = album, onClick = { onOpenAlbum(album) })
+            AlbumWallCard(album = album, onClick = { onOpenAlbum(album) }, sharedCover = true)
         }
     }
 }
@@ -459,6 +460,7 @@ internal fun AlbumSummaryWall(
 internal fun AlbumWallCard(
     album: AlbumSummary,
     onClick: () -> Unit,
+    sharedCover: Boolean = false,
 ) {
     val artistLabel = displayMetadataOrUnknown(album.albumArtist ?: album.artist, unknownArtistLabel())
     val colors = rememberLibraryGlassColors()
@@ -470,7 +472,7 @@ internal fun AlbumWallCard(
     ) {
         ArtworkTile(
             artworkUri = album.artworkUri,
-            modifier = Modifier
+            modifier = (if (sharedCover) Modifier.echoSharedCover("album", album.albumKey) else Modifier)
                 .fillMaxWidth()
                 .aspectRatio(1f),
             accent = rememberLibraryArtworkAccent(),
@@ -577,7 +579,7 @@ internal fun ArtistWall(
             key = { index: Int -> artists.peek(index)?.artistKey ?: "artist-$index" },
         ) { index: Int ->
             artists[index]?.let { artist ->
-                ArtistWallCard(artist = artist, onClick = { onOpenArtist(artist) })
+                ArtistWallCard(artist = artist, onClick = { onOpenArtist(artist) }, sharedCover = true)
             }
         }
     }
@@ -601,7 +603,7 @@ internal fun ArtistSummaryWall(
             items = artists,
             key = { artist -> artist.artistKey },
         ) { artist ->
-            ArtistWallCard(artist = artist, onClick = { onOpenArtist(artist) })
+            ArtistWallCard(artist = artist, onClick = { onOpenArtist(artist) }, sharedCover = true)
         }
     }
 }
@@ -610,6 +612,7 @@ internal fun ArtistSummaryWall(
 internal fun ArtistWallCard(
     artist: ArtistSummary,
     onClick: () -> Unit,
+    sharedCover: Boolean = false,
 ) {
     // 每位艺人按标识生成稳定柔和的取色，呼应详情页（同步、无额外位图解码）
     val palette = remember(artist.artistKey) { ArtworkPalette.fromSeed(artist.artistKey) }
@@ -623,8 +626,9 @@ internal fun ArtistWallCard(
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         ArtistWallAvatar(
-            artworkUri = artist.artworkUri,
+            artworkUri = app.echo.android.design.artistArtwork(artist.name, artist.artworkUri),
             palette = palette,
+            sharedKey = artist.artistKey.takeIf { sharedCover },
         )
         Text(
             displayMetadataOrUnknown(artist.name, unknownArtistLabel()),
@@ -647,10 +651,10 @@ internal fun ArtistWallCard(
 }
 
 @Composable
-private fun ArtistWallAvatar(artworkUri: String?, palette: ArtworkPalette) {
+private fun ArtistWallAvatar(artworkUri: String?, palette: ArtworkPalette, sharedKey: String?) {
     EchoArtworkImage(
         artworkUri = artworkUri, contentDescription = null,
-        modifier = Modifier
+        modifier = (if (sharedKey != null) Modifier.echoSharedCover("artist", sharedKey) else Modifier)
             .fillMaxWidth()
             .aspectRatio(1f),
         shape = CircleShape,
@@ -731,8 +735,10 @@ internal fun LibraryScanResultBanner(scanState: LibraryScanProgress) {
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(durationMillis = 160)) + expandVertically(tween(durationMillis = 180)),
-        exit = fadeOut(tween(durationMillis = 180)) + shrinkVertically(tween(durationMillis = 220)),
+        enter = fadeIn(tween(EchoMotion.FadeMs, easing = EchoMotion.Silk)) +
+            expandVertically(EchoMotion.silkSize(EchoMotion.ExpandMs)),
+        exit = fadeOut(tween(EchoMotion.FadeExitMs, easing = EchoMotion.SilkExit)) +
+            shrinkVertically(EchoMotion.silkSize(EchoMotion.CollapseMs)),
     ) {
         EchoPanel(Modifier.fillMaxWidth()) {
             Text(

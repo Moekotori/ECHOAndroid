@@ -12,11 +12,10 @@ private fun compactOpraSearch(value: String): String =
     value.filter(Char::isLetterOrDigit).lowercase(Locale.ROOT)
 
 internal fun EchoEqualizerState.matchesCorrection(preset: OpraHeadphoneCorrectionPreset): Boolean =
-    enabled && parametric && sourceLabel == preset.displayName && filters == preset.bands && abs(preampDb - preset.preampDb) < 0.05f
+    headphoneCorrection.enabled && headphoneCorrection.id == preset.eqId
 
 internal fun EchoEqualizerState.matchesCorrection(preset: EchoEqualizerUserPreset): Boolean =
-    enabled && parametric && preset.parametric && sourceLabel == preset.sourceLabel &&
-        filters == preset.filters && abs(preampDb - preset.preampDb) < 0.05f
+    headphoneCorrection.enabled && preset.fromOpra && headphoneCorrection.id == preset.opraEqId
 
 internal fun filterCorrectionFavorites(presets: List<EchoEqualizerUserPreset>, query: String): List<EchoEqualizerUserPreset> {
     val tokens = query.split(Regex("\\s+")).map(::compactOpraSearch).filter(String::isNotEmpty)

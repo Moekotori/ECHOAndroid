@@ -408,10 +408,10 @@ internal fun TrackContextMenu(
     modifier: Modifier = Modifier,
     content: @Composable (Modifier) -> Unit,
 ) {
-    val selection = LocalLibraryBatchSelection.current
+    val selection = LocalLibraryBatchSelection.current.takeUnless { track.source == app.echo.android.model.library.LibrarySource.FilePlaylist }
     val shareOriginal = LocalOriginalAudioShare.current
-    val requestTrackDeletion = LocalLibraryDeleteTrack.current
-    val hiddenTracks = LocalHiddenTracksUi.current
+    val requestTrackDeletion = LocalLibraryDeleteTrack.current.takeUnless { track.source == app.echo.android.model.library.LibrarySource.FilePlaylist }
+    val hiddenTracks = LocalHiddenTracksUi.current.takeUnless { track.source == app.echo.android.model.library.LibrarySource.FilePlaylist }
     val openTrackVersions = LocalTrackVersionsAction.current
     val selecting = selection?.active == true
     val selected = selecting && track.id in selection.selected
@@ -568,7 +568,7 @@ internal fun TrackContextMenu(
                     onRangeEnd = if (rangeSource != null && selection?.rangeAnchor != null && !selection.locked) ({ sheetMode = null; selection.endRange(rangeSource, track) }) else null,
                     canEditMetadata = canEditMetadata,
                     canImportLyrics = onImportLyrics != null,
-                    canPickArtwork = onPickArtwork != null,
+                    canPickArtwork = onPickArtwork != null && track.source != app.echo.android.model.library.LibrarySource.FilePlaylist,
                     canAddToPlaylist = onAddToPlaylist != null,
                     canPlayNext = onPlayNext != null,
                     canAddNextUp = onAddNextUp != null,
@@ -665,7 +665,7 @@ internal fun TrackContextMenu(
                         saving = editorSaving,
                         onDismiss = { sheetMode = null },
                         onSave = ::saveMetadata,
-                        canPickArtwork = onPickArtwork != null,
+                        canPickArtwork = onPickArtwork != null && track.source != app.echo.android.model.library.LibrarySource.FilePlaylist,
                     )
                 }
             }
@@ -690,7 +690,7 @@ internal fun TrackContextMenu(
             saving = editorSaving,
             onDismiss = { showEditor = false },
             onSave = ::saveMetadata,
-            canPickArtwork = onPickArtwork != null,
+            canPickArtwork = onPickArtwork != null && track.source != app.echo.android.model.library.LibrarySource.FilePlaylist,
         )
     }
 }

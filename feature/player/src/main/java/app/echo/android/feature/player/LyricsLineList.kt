@@ -142,6 +142,7 @@ internal fun LyricsLineList(
                     wordHighlightEnabled = lyricsWordHighlightEnabled && !lightweight && animationsVisible,
                     estimatedWordHighlightEnabled = lyricsEstimatedWordHighlightEnabled,
                     focusGlowEnabled = focusGlowEnabled, showTranslation = showTranslation,
+                    translationVisible = !LocalTranslationCurrentOnly.current || focused || !following || !synced,
                     showRomanization = showRomanization, motion = motion, blurEffects = blurEffects,
                     animateFocus = animateFocus, paper = paper, passed = focusIndex >= 0 && index < focusIndex,
                     stationNumber = index + 1,

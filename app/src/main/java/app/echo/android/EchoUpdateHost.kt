@@ -52,6 +52,7 @@ internal fun EchoUpdateHost(viewModel: EchoUpdateViewModel) {
         currentVersion = BuildConfig.VERSION_NAME, sizeBytes = state.update?.size,
         version = state.update?.versionName, notes = state.update?.notes.orEmpty(),
         busy = state.busy, progress = state.progress, ready = state.apk != null, error = state.error,
+        source = state.source, onSourceSelected = viewModel::selectSource,
         onDismiss = viewModel::dismiss, onCheck = { viewModel.check() },
         onCancel = viewModel::cancelDownload,
         onDownload = viewModel::download, onInstall = { requestInstall() },

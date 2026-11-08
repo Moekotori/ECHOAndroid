@@ -11,7 +11,7 @@ internal fun SubsonicClient.information(endpoint: SubsonicEndpoint, entry: Navid
     val detail = request(if (track) "getSong.view" else if (artist) "getArtist.view" else "getAlbum.view",
         listOf("id" to entry.id)).optJSONObject(detailKey) ?: error("Incomplete Navidrome metadata")
     require(detail.optString("id") == entry.id)
-    var enriched = detail.userEntry(endpoint, entry.kind)
+    var enriched = detail.userEntry(endpoint, entry.kind).copy(positionMs = entry.positionMs, comment = entry.comment)
     val info = if (track) null else try {
         request(if (artist) "getArtistInfo2.view" else "getAlbumInfo2.view", listOf("id" to entry.id))
             .optJSONObject(if (artist) "artistInfo2" else "albumInfo")

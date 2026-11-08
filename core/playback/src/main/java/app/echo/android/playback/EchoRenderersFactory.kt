@@ -18,6 +18,7 @@ internal class EchoRenderersFactory(
     private val smartTransitionProcessor: AudioProcessor = EchoSmartTransitionMixer(),
     private val channelBalanceProcessor: AudioProcessor = EchoChannelBalanceAudioProcessor(),
     private val audioPipelineState: EchoAudioPipelineState = EchoAudioPipelineState(),
+    private val headphoneCorrectionProcessor: AudioProcessor = EchoEqualizerAudioProcessor(),
 ) : DefaultRenderersFactory(context) {
     init {
         // Keep platform decoding first; use the bundled software renderer for unsupported formats.
@@ -43,7 +44,7 @@ internal class EchoRenderersFactory(
         enableFloatOutput: Boolean,
         enableAudioTrackPlaybackParams: Boolean,
     ): AudioSink {
-        val processor = EchoDspAudioProcessor(arrayOf(smartTransitionProcessor, equalizerProcessor, channelBalanceProcessor))
+        val processor = EchoDspAudioProcessor(arrayOf(smartTransitionProcessor, equalizerProcessor, headphoneCorrectionProcessor, channelBalanceProcessor))
         val sink = DefaultAudioSink.Builder(context)
             // Custom DSP uses internal float buffers and preserves the negotiated output encoding.
             .setEnableFloatOutput(false)

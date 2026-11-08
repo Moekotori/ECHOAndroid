@@ -21,12 +21,7 @@ object SubsonicSyncPolicy {
 
     /** 与 withComputedSearchMetadata 对 getAlbum 歌曲计算 albumKey 的方式保持一致 */
     internal fun albumCandidateKey(album: SubsonicAlbum): String {
-        val normalizedArtist = album.artist?.normalizedForSearch()
-        return libraryAlbumKey(
-            normalizedAlbum = album.name.normalizedForSearch(),
-            normalizedAlbumArtist = normalizedArtist,
-            normalizedArtist = normalizedArtist,
-        )
+        return subsonicAlbumKey(album.id)
     }
 
     /**
@@ -41,8 +36,7 @@ object SubsonicSyncPolicy {
         localTrackIdsByAlbumKey: Map<String, List<String>>,
         refreshSalt: Long,
     ): SubsonicAlbumFallbackPlan {
-        // 同一 albumKey 可能对应多张服务器专辑,跳过/强刷都要按组进行,
-        // 否则组内只拉一半会让另一半的本地行被当成缺失而删除
+        // 使用服务器专辑身份，避免同名发行版本相互影响。
         val groups = albums.groupBy(::albumCandidateKey)
         val changed = ArrayList<SubsonicAlbum>(albums.size)
         val skippableGroups = ArrayList<Map.Entry<String, List<SubsonicAlbum>>>()
@@ -101,9 +95,11 @@ object SubsonicSyncPolicy {
         bulkSongCount: Int,
         existingRemoteCount: Int,
         hitVisitCap: Boolean = false,
+        bulkExhausted: Boolean = false,
     ): Boolean {
         if (hitVisitCap) return false
         if (!usedSearch3) return true
+        if (bulkExhausted) return bulkSongCount >= expectedSongCount && expectedSongCount >= 0
         if (expectedSongCount <= 0) return false
         if (bulkSongCount < expectedSongCount) return false
         if (existingRemoteCount > 0 && bulkSongCount < existingRemoteCount) return false

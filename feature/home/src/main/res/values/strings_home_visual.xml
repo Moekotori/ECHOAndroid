@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_page_title">Your music</string>
+    <string name="home_greeting_morning">Good morning</string>
+    <string name="home_greeting_morning_sub">A gentle start to the day?</string>
+    <string name="home_greeting_noon">Hello there</string>
+    <string name="home_greeting_noon_sub">Some music with lunch?</string>
+    <string name="home_greeting_afternoon">Good afternoon</string>
+    <string name="home_greeting_evening">Good evening</string>
+    <string name="home_greeting_ask_sub">What would you like to hear?</string>
+    <string name="home_greeting_night">Late night</string>
+    <string name="home_greeting_night_sub">Something quiet?</string>
 </resources>

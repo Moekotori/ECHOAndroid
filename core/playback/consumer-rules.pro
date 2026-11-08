@@ -1,4 +1,6 @@
 -keep class app.echo.android.playback.EchoDspNative { native <methods>; }
+-keep class app.echo.android.playback.EchoSoundEffectNative { native <methods>; }
+-keep class app.echo.android.playback.EchoPcEqNative { native <methods>; }
 -keep class app.echo.android.playback.EchoFfmpegDemuxer { native <methods>; }
 -keepclassmembers class app.echo.android.playback.EchoFfmpegInput {
     int read(java.nio.ByteBuffer, int);

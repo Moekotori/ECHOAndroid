@@ -29,11 +29,12 @@ internal fun PeqBandControls(band: OpraEqBand, enabled: Boolean, onCommit: (Opra
         val type = band.normalizedType()
         if (type == EchoEqFilterType.PeakDip || type == EchoEqFilterType.LowShelf || type == EchoEqFilterType.HighShelf) {
             DspValueSlider(stringResource(R.string.dsp_band_gain), band.gainDb,
-                EchoParametricEq.MinGainDb..EchoParametricEq.MaxGainDb, enabled, ::formatEqGain,
+                minOf(EchoParametricEq.MinGainDb, band.gainDb)..maxOf(EchoParametricEq.EditorMaxGainDb, band.gainDb), enabled, ::formatEqGain,
                 { onCommit(band.copy(gainDb = it)) }, onPreview = { onPreview(band.copy(gainDb = it)) })
         }
-        if (!EchoParametricEq.isPass(type)) {
-            PeqLogControl("Q", band.q ?: 0.707f, EchoParametricEq.MinQ..EchoParametricEq.MaxQ,
+        if (!EchoParametricEq.isPass(type) || EchoParametricEq.snapSlope(band.slope) == 12f) {
+            val standardQ = if (type == EchoEqFilterType.BandStop) EchoParametricEq.NotchMaxQ else EchoParametricEq.EditorMaxQ
+            PeqLogControl("Q", band.q ?: 0.707f, minOf(EchoParametricEq.MinQ, band.q ?: 1f)..maxOf(standardQ, band.q ?: 1f),
                 "Q", 2, enabled, { signalNumber(it, 2) }, { onPreview(band.copy(q = it)) }) { onCommit(band.copy(q = it)) }
         }
     }

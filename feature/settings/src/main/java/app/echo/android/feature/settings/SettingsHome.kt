@@ -15,7 +15,6 @@ private val settingsMenuCategories = listOf(
     SettingsCategory.Library,
     SettingsCategory.Appearance,
     SettingsCategory.Playback,
-    SettingsCategory.Usb,
     SettingsCategory.Interface,
     SettingsCategory.Accessibility,
     SettingsCategory.Services,
@@ -32,8 +31,6 @@ internal fun SettingsHome(
     onQueryChange: (String) -> Unit,
     onOpenPlugins: () -> Unit,
     onScanMusic: () -> Unit,
-    onOpenSound: () -> Unit,
-    soundSummary: String,
     onOpenCategory: (SettingsCategory) -> Unit,
     onSearchSelect: (SettingsSearchResult) -> Unit,
 ) {
@@ -78,16 +75,9 @@ internal fun SettingsHome(
                         SettingsMenuRow(entry.icon, stringResource(entry.title),
                             summary = when (entry) {
                                 SettingsCategory.Appearance, SettingsCategory.Interface -> summaries[entry].orEmpty()
-                                SettingsCategory.Usb -> summaries[entry].orEmpty()
                                 else -> ""
                             },
                             compactMode = compactMode, selected = entry == selectedCategory) { onOpenCategory(entry) }
-                    }
-                    if (entry == SettingsCategory.Appearance) {
-                        item(key = "sound", contentType = "menu-row") {
-                            SettingsMenuRow(SettingsCategoryIcons.Sound,
-                                stringResource(R.string.settings_quick_sound), soundSummary, compactMode, onClick = onOpenSound)
-                        }
                     }
                 }
                 item(key = "plugins", contentType = "menu-row") {

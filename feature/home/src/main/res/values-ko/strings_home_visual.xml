@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_greeting_morning">좋은 아침이에요</string>
+    <string name="home_greeting_morning_sub">가볍게 하루를 시작해 볼까요?</string>
+    <string name="home_greeting_noon">안녕하세요</string>
+    <string name="home_greeting_noon_sub">점심에 음악 한 곡 어때요?</string>
+    <string name="home_greeting_afternoon">좋은 오후예요</string>
+    <string name="home_greeting_evening">좋은 저녁이에요</string>
+    <string name="home_greeting_ask_sub">오늘은 뭘 들어 볼까요?</string>
+    <string name="home_greeting_night">밤이 깊었어요</string>
+    <string name="home_greeting_night_sub">잔잔한 음악은 어때요?</string>
+</resources>

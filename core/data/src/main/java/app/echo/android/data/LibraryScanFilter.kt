@@ -39,12 +39,19 @@ internal fun filterLocalScanBatch(
     batch: List<LibraryTrackEntity>,
     existingIds: Set<String>,
     options: LibraryScanOptions,
+    onRejected: (LibraryTrackEntity, app.echo.android.model.library.LibraryScanSkipReason) -> Unit = { _, _ -> },
 ): List<LibraryTrackEntity> = batch.filter {
-    if (!options.includesDirectory(it.relativePath)) return@filter false
+    if (!options.includesDirectory(it.relativePath) || !options.includesFileName(it.fileName)) {
+        onRejected(it, if (!options.includesDirectory(it.relativePath)) app.echo.android.model.library.LibraryScanSkipReason.Directory else app.echo.android.model.library.LibraryScanSkipReason.Name)
+        return@filter false
+    }
     if (it.id in existingIds) return@filter true
     // Cue titles inherit the image file's import; short movements must not hit min duration.
     if (CueSheetPolicy.isCueTrackId(it.id)) return@filter true
-    options.accepts(it.durationMs, it.sizeBytes, null)
+    options.accepts(it.durationMs, it.sizeBytes, null).also { accepted ->
+        if (!accepted) onRejected(it, options.rejectionReason(it.durationMs, it.sizeBytes, null, it.fileName)
+            ?: app.echo.android.model.library.LibraryScanSkipReason.Duration)
+    }
 }
 
 private val NonMusicFolderNames = setOf(

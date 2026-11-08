@@ -105,11 +105,13 @@ object EchoBiquadMath {
     }
 
     fun stages(band: OpraEqBand, sampleRateHz: Float): List<EchoBiquadCoeffs> {
+        if (!band.enabled) return emptyList()
         val type = band.normalizedType()
         if (type != EchoEqFilterType.LowPass && type != EchoEqFilterType.HighPass) {
             return listOfNotNull(coefficients(band, sampleRateHz))
         }
         val slope = band.slope ?: 12f
+        if (slope == 12f && band.q != null) return listOfNotNull(coefficients(band, sampleRateHz))
         if (slope !in listOf(6f, 12f, 18f, 24f, 30f, 36f) || band.frequencyHz <= 0f || sampleRateHz <= 0f) return emptyList()
         val order = (slope / 6).toInt()
         val high = type == EchoEqFilterType.HighPass

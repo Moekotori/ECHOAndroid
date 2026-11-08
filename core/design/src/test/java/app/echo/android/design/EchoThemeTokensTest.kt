@@ -47,7 +47,7 @@ class EchoThemeTokensTest {
         val lightScheme = echoColorScheme(light)
         assertEquals(EchoColors.Sky, darkScheme.primary)
         assertEquals(EchoColors.Night, darkScheme.background)
-        assertEquals(Color(0xFF925568), lightScheme.primary)
+        assertEquals(Color(0xFFB04A68), lightScheme.primary)
     }
 
     @Test
@@ -84,22 +84,23 @@ class EchoThemeTokensTest {
 
     @Test
     fun defaultStartupWindowMatchesLightPageAndPreservesDarkSplash() {
-        assertEquals(0xFF080B12.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = true))
-        assertEquals(0xFFF5F5F3.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = false))
+        val dark = echoThemeTokens(EchoColorTheme.Echo, dark = true)
+        assertEquals(dark.bgTop.toArgb(), echoStartupWindowColor(EchoColorTheme.Echo, dark = true))
+        assertEquals(0xFFF7F4F5.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = false))
     }
 
     @Test
     fun echoLightKeepsTheNeutralPaper() {
         val tokens = echoThemeTokens(EchoColorTheme.Echo, dark = false)
         val scheme = echoColorScheme(tokens)
-        assertEquals(Color(0xFFF5F5F3), scheme.background)
-        assertEquals(Color(0xFFFAFAF8), scheme.surface)
-        assertEquals(0xFFF5F5F3.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, false))
+        assertEquals(Color(0xFFF7F4F5), scheme.background)
+        assertEquals(Color(0xFFFCFAFA), scheme.surface)
+        assertEquals(0xFFF7F4F5.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, false))
     }
 
     @Test
     fun otherLightPresetsWashThePageWithTheirOwnHue() {
-        val paper = Color(0xFFF5F5F3)
+        val paper = Color(0xFFF7F4F5)
         for (theme in EchoColorTheme.entries.filter { it != EchoColorTheme.Echo && it != EchoColorTheme.Custom }) {
             val tokens = echoThemeTokens(theme, dark = false)
             val scheme = echoColorScheme(tokens)
@@ -128,9 +129,9 @@ class EchoThemeTokensTest {
     @Test
     fun echoDarkSchemeDoesNotUseMaterialBaselinePurple() {
         val scheme = echoColorScheme(echoThemeTokens(EchoColorTheme.Echo, dark = true))
-        assertEquals(Color(0xFF3A2C32), scheme.primaryContainer)
-        assertEquals(Color(0xFFE4C4CC), scheme.onPrimaryContainer)
-        assertEquals(Color(0xFF202126), scheme.surfaceContainer)
+        assertEquals(Color(0xFF4A363F), scheme.primaryContainer)
+        assertEquals(Color(0xFFF4C2CF), scheme.onPrimaryContainer)
+        assertEquals(Color(0xFF1F1A1E), scheme.surfaceContainer)
         assertTrue(scheme.primaryContainer != MaterialDarkPrimaryContainer)
         assertTrue(scheme.secondaryContainer != MaterialDarkSecondaryContainer)
         assertTrue(scheme.surfaceContainer != MaterialDarkSurfaceContainer)

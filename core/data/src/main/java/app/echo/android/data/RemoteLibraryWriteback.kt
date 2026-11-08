@@ -2,7 +2,6 @@ package app.echo.android.data
 
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
-import androidx.room.withTransaction
 import app.echo.android.model.library.EchoPlaylist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
@@ -23,50 +22,43 @@ class RemoteLibraryWriteback(
         database.trackDao().pageRemoteWritebackCandidates(source, escapeSqlLikeArgument(query.trim()))
     }.flow
 
-    suspend fun create(endpoint: SubsonicEndpoint, name: String): EchoPlaylist = withContext(Dispatchers.IO) {
+    suspend fun create(endpoint: SubsonicEndpoint, name: String): EchoPlaylist = withContext(Dispatchers.IO) { subsonicUserStateGate.withLock {
         val normalized = requireNotNull(LibraryPlaylistPolicy.normalizeName(name))
         val remoteId = client(endpoint).createPlaylist(normalized)
         val id = "${endpoint.sourceId}:playlist:$remoteId"
         val now = System.currentTimeMillis()
         database.playlistDao().upsertPlaylist(LibraryPlaylistEntity(id, normalized, endpoint.sourceId, null, 0, now))
         EchoPlaylist(id, normalized, source = endpoint.sourceId, updatedAtEpochMs = now)
-    }
+    } }
 
-    suspend fun rename(endpoint: SubsonicEndpoint, id: String, name: String) = withContext(Dispatchers.IO) {
+    suspend fun rename(endpoint: SubsonicEndpoint, id: String, name: String) = withContext(Dispatchers.IO) { subsonicUserStateGate.withLock {
         val remoteId = playlistId(endpoint, id)
         val normalized = requireNotNull(LibraryPlaylistPolicy.normalizeName(name))
         client(endpoint).renamePlaylist(remoteId, normalized)
         database.playlistDao().setName(id, normalized, System.currentTimeMillis())
-    }
+    } }
 
-    suspend fun delete(endpoint: SubsonicEndpoint, id: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(endpoint: SubsonicEndpoint, id: String) = withContext(Dispatchers.IO) { subsonicUserStateGate.withLock {
         client(endpoint).deletePlaylist(playlistId(endpoint, id))
         database.playlistDao().deletePlaylist(id)
-    }
+    } }
 
-    suspend fun add(endpoint: SubsonicEndpoint, id: String, trackId: String) = withContext(Dispatchers.IO) {
+    suspend fun add(endpoint: SubsonicEndpoint, id: String, trackId: String): Unit = withContext(Dispatchers.IO) { subsonicUserStateGate.withLock {
         val remoteId = playlistId(endpoint, id)
         val songId = songId(endpoint, trackId)
-        val dao = database.playlistDao()
         val client = client(endpoint)
         // A previous accepted request may have lost its response. Avoid a duplicate on manual retry.
         if (client.fetchPlaylistSongs(remoteId).none { it.id == songId }) {
             client.addPlaylistSongs(remoteId, listOf(songId))
         }
-        database.withTransaction {
-            if (dao.membership(id, trackId) == null) dao.insertPlaylistTracks(listOf(
-                LibraryPlaylistTrackEntity(id, trackId, dao.lastPosition(id) + 1)))
-            dao.refreshMembershipSummary(id, System.currentTimeMillis())
-        }
-    }
+        SubsonicUserLibrary(database, context).refreshPlaylistLocked(endpoint, remoteId)
+    } }
 
-    suspend fun remove(endpoint: SubsonicEndpoint, id: String, trackId: String) = withContext(Dispatchers.IO) {
-        client(endpoint).removePlaylistSong(playlistId(endpoint, id), songId(endpoint, trackId))
-        database.withTransaction {
-            database.playlistDao().removeMember(id, trackId)
-            database.playlistDao().refreshMembershipSummary(id, System.currentTimeMillis())
-        }
-    }
+    suspend fun remove(endpoint: SubsonicEndpoint, id: String, trackId: String): Unit = withContext(Dispatchers.IO) { subsonicUserStateGate.withLock {
+        val remoteId = playlistId(endpoint, id)
+        client(endpoint).removePlaylistSong(remoteId, songId(endpoint, trackId))
+        SubsonicUserLibrary(database, context).refreshPlaylistLocked(endpoint, remoteId)
+    } }
 
     suspend fun toggleFavorite(endpoint: SubsonicEndpoint, trackId: String): Boolean = withContext(Dispatchers.IO) {
         subsonicUserStateGate.withLock {
@@ -102,5 +94,6 @@ class RemoteLibraryWriteback(
         return id.removePrefix(prefix)
     }
 
-    private fun client(endpoint: SubsonicEndpoint) = SubsonicClient(endpoint, appContext = context.applicationContext)
+    private suspend fun client(endpoint: SubsonicEndpoint) = SubsonicClient(endpoint, appContext = context.applicationContext,
+        cancellationJob = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job])
 }

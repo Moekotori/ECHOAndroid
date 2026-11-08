@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_greeting_morning">Bonjour</string>
+    <string name="home_greeting_morning_sub">Un début de journée tout en douceur ?</string>
+    <string name="home_greeting_noon">Bonjour</string>
+    <string name="home_greeting_noon_sub">De la musique pour le déjeuner ?</string>
+    <string name="home_greeting_afternoon">Bon après-midi</string>
+    <string name="home_greeting_evening">Bonsoir</string>
+    <string name="home_greeting_ask_sub">Que voulez-vous écouter ?</string>
+    <string name="home_greeting_night">Il se fait tard</string>
+    <string name="home_greeting_night_sub">Quelque chose de calme ?</string>
+</resources>

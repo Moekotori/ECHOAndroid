@@ -34,9 +34,11 @@ data class EchoPlaybackRuntimeOptions(
     val stopOnTaskRemoved: Boolean = false,
     val trackTransitions: app.echo.android.model.playback.EchoTrackTransitionOptions = app.echo.android.model.playback.EchoTrackTransitionOptions(),
     val shuffleOptions: app.echo.android.model.playback.EchoShuffleOptions = app.echo.android.model.playback.EchoShuffleOptions(),
+    val pauseOnMute: Boolean = false,
 )
 
 object EchoPlaybackRuntimeOptionsStore {
+    fun setPauseOnMute(enabled: Boolean) { _options.update { it.copy(pauseOnMute = enabled) } }
     private val _options = MutableStateFlow(EchoPlaybackRuntimeOptions())
     val options: StateFlow<EchoPlaybackRuntimeOptions> = _options.asStateFlow()
 
@@ -59,6 +61,9 @@ fun interface EchoPlaybackStreamResolver {
 
 @UnstableApi
 object EchoPlaybackProcessRuntime {
+    private val _automaticResumeEpoch = MutableStateFlow(0L)
+    internal val automaticResumeEpoch = _automaticResumeEpoch.asStateFlow()
+    internal fun invalidateAutomaticResume() { _automaticResumeEpoch.update { it + 1 } }
     @Volatile private var uiVisible = false
     private var audioInteractionGate: (() -> Boolean)? = null
     fun setUiVisible(visible: Boolean) { uiVisible = visible }
@@ -72,7 +77,12 @@ object EchoPlaybackProcessRuntime {
     @Volatile internal var dspReplayGainDb = 0f
     @Volatile var volumeSettings = app.echo.android.model.playback.EchoVolumeSettings()
         private set
-    fun setVolumeSettings(value: app.echo.android.model.playback.EchoVolumeSettings) { volumeSettings = value.normalized }
+    private val _volumeSettingsState = MutableStateFlow(volumeSettings)
+    val volumeSettingsState = _volumeSettingsState.asStateFlow()
+    fun setVolumeSettings(value: app.echo.android.model.playback.EchoVolumeSettings) {
+        volumeSettings = value.normalized
+        _volumeSettingsState.value = volumeSettings
+    }
     fun setDspSettings(value: app.echo.android.model.playback.EchoDspSettings) { dspSettings = value.normalized }
 
     @Volatile
@@ -621,6 +631,7 @@ object EchoPlaybackProcessRuntime {
         reason: app.echo.android.model.playback.EchoSleepTimerCancellationReason =
             app.echo.android.model.playback.EchoSleepTimerCancellationReason.PlaybackChanged,
     ) {
+        invalidateAutomaticResume()
         sleepCancellationEvents.cancelIfFinishing(sleepTimerFinishingCurrentTrack, reason, ::cancelSleepTimer)
     }
 
@@ -682,6 +693,7 @@ object EchoPlaybackProcessRuntime {
                 }
                 enginePolicyOrNull()?.applyReplayGain()
                 if (EchoSleepTimerPolicy.shouldPause(sleepTimerMode, remainingMs)) {
+                    invalidateAutomaticResume()
                     player?.pause()
                     mediaController?.pause()
                     cancelSleepTimer()

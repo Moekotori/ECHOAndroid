@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="player_menu_edit">メニューを編集</string>
-    <string name="player_menu_detail">表示する項目を選び、矢印で順序を変えて保存します。曲のソースで利用できない項目は非表示になります。</string>
+    <string name="player_menu_detail">ハンドルをドラッグして並べ替え、スイッチで表示・非表示を切り替えて保存します。曲のソースで利用できない項目は非表示になります。</string>
     <string name="player_menu_move_up">%1$s を上へ</string>
     <string name="player_menu_move_down">%1$s を下へ</string>
     <string name="player_menu_save_failed">保存できませんでした。再試行してください。</string>

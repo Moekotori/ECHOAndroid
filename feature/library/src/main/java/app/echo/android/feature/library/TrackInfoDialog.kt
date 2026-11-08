@@ -63,6 +63,7 @@ fun TrackInfoDialog(
         },
         text = {
             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 480.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                mediaTools?.setRating?.let { setter -> item { TrackRatingControl(track, setter) } }
                 fields.forEachIndexed { index, field ->
                     item(key = "field:$index") {
                         TrackInfoLine(field.label, field.value,

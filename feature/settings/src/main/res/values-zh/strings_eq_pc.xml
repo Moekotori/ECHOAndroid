@@ -1,0 +1,35 @@
+<resources>
+    <string name="eq_pc_independent_correction">独立耳机校正</string>
+    <string name="eq_pc_correction_detail">校正使用独立处理节点和开关，主 EQ 的预设、强度和倾斜保持独立。</string>
+    <string name="eq_pc_duplicate_correction">主 EQ 和耳机校正中存在相同曲线，请确认是否需要同时叠加。</string>
+    <string name="eq_pc_correction_saved">耳机校正已保存：%1$s，主 EQ 保留。</string>
+    <string name="eq_pc_correction_saved_bypassed">耳机校正已保存，USB 位完美当前旁路此处理。</string>
+    <string name="eq_pc_correction_invalid">此校正超出了支持的参数或滤波器数量范围。</string>
+    <string name="eq_pc_strength">EQ 强度</string>
+    <string name="eq_pc_tilt">音色倾斜</string>
+    <string name="eq_pc_band_enabled">启用此频段</string>
+    <string name="eq_pc_scope">作用声道</string>
+    <string name="eq_pc_combined">汇总</string>
+    <string name="eq_pc_stereo">立体声</string>
+    <string name="eq_pc_left">左声道</string>
+    <string name="eq_pc_right">右声道</string>
+    <string name="eq_pc_mid">中声道</string>
+    <string name="eq_pc_side">侧声道</string>
+    <string name="eq_pc_dynamic">动态 EQ</string>
+    <string name="eq_pc_dynamic_off">关闭</string>
+    <string name="eq_pc_dynamic_down">向下压缩</string>
+    <string name="eq_pc_dynamic_up">向上增强</string>
+    <string name="eq_pc_dynamic_limit">最多同时启用 4 个动态频段，请先关闭其他动态频段。</string>
+    <string name="eq_pc_threshold">阈值</string>
+    <string name="eq_pc_ratio">压缩比</string>
+    <string name="eq_pc_attack">起音</string>
+    <string name="eq_pc_release">释放</string>
+    <string name="eq_pc_audition_hold">按住试听当前频段</string>
+    <string name="eq_pc_audition_active">正在试听，松开恢复播放</string>
+    <string name="eq_pc_native_failed">EQ 暂不可用，保持原音</string>
+    <string name="eq_pc_compat_processing">静态 EQ 兼容处理路径</string>
+    <string name="eq_pc_compat_note">使用 ECHO PC EQ 引擎；兼容旧 5 段、斜率和耳机校正参数。保留输出峰值保护，USB 位完美时旁路。</string>
+    <string name="eq_pc_catalogue">31 个固定频段 · %1$d 套 PC 预设。偏好曲线不等于特定型号的耳机校正。</string>
+    <string name="eq_pc_export_json">导出 PC JSON</string>
+    <string name="eq_pc_json_detail">PC JSON 和 ECHO 预设包保留声道与动态 EQ 参数；APO 仅导出静态设置，动态频段请使用完整格式。</string>
+</resources>

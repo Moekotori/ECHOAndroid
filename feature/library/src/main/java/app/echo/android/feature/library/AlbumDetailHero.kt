@@ -43,6 +43,8 @@ import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.echoClickable
+import app.echo.android.design.echoPageSection
+import app.echo.android.design.echoSharedCover
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.AlbumSummary
 
@@ -68,7 +70,7 @@ internal fun AlbumHero(
     ) {
         ArtworkTile(
             artworkUri = album.artworkUri,
-            modifier = Modifier.size(AlbumHeroArtworkSize),
+            modifier = Modifier.echoSharedCover("album", album.albumKey).size(AlbumHeroArtworkSize),
             accent = palette.vibrant,
             showSignal = album.artworkUri == null,
             cornerRadius = 18.dp,
@@ -78,6 +80,7 @@ internal fun AlbumHero(
         Text(
             displayMetadataOrUnknown(album.title, unknownAlbumLabel()),
             color = colors.content,
+            modifier = Modifier.echoPageSection(0),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center,
@@ -86,7 +89,7 @@ internal fun AlbumHero(
         )
         Spacer(Modifier.height(6.dp))
         Row(
-            modifier = if (onOpenArtist != null) {
+            modifier = (if (onOpenArtist != null) {
                 Modifier.echoClickable(
                     onClickLabel = stringResource(L10nR.string.feature_library_go_to_artist),
                     role = Role.Button,
@@ -94,7 +97,7 @@ internal fun AlbumHero(
                 )
             } else {
                 Modifier
-            },
+            }).echoPageSection(1),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
@@ -120,6 +123,7 @@ internal fun AlbumHero(
         Spacer(Modifier.height(4.dp))
         Text(
             albumFactsLine(album, facts.genre),
+            modifier = Modifier.echoPageSection(2),
             color = colors.muted,
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
@@ -147,7 +151,7 @@ private fun AlbumSpecLine(spec: AlbumSpec, color: Color) {
             }
             append(rest)
         },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().echoPageSection(2),
         color = color,
         style = MaterialTheme.typography.bodySmall,
         textAlign = TextAlign.Center,
@@ -173,7 +177,13 @@ private fun albumFactsLine(album: AlbumSummary, genre: String?): String {
  * in lightweight mode, where the plain colour wash drawn by the page background stays.
  */
 @Composable
-internal fun AlbumHeroAtmosphere(artworkUri: String, accent: Color, modifier: Modifier = Modifier) {
+internal fun AlbumHeroAtmosphere(
+    artworkUri: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    /** Fraction of the height over which the glow fades in from the top edge; 0 starts fully opaque. */
+    fadeInFraction: Float = 0f,
+) {
     if (LocalEchoEffectivePerformanceMode.current.isLightweight || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
     val dark = LocalEchoDarkTheme.current
     Box(
@@ -183,12 +193,22 @@ internal fun AlbumHeroAtmosphere(artworkUri: String, accent: Color, modifier: Mo
             .drawWithContent {
                 drawContent()
                 drawRect(
-                    brush = Brush.verticalGradient(
-                        0f to Color.Black,
-                        0.3f to Color.Black,
-                        0.75f to Color.Transparent,
-                        1f to Color.Transparent,
-                    ),
+                    brush = if (fadeInFraction > 0f) {
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            fadeInFraction to Color.Black,
+                            0.45f.coerceAtLeast(fadeInFraction + 0.05f) to Color.Black,
+                            0.9f to Color.Transparent,
+                            1f to Color.Transparent,
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            0f to Color.Black,
+                            0.3f to Color.Black,
+                            0.75f to Color.Transparent,
+                            1f to Color.Transparent,
+                        )
+                    },
                     blendMode = BlendMode.DstIn,
                 )
             },

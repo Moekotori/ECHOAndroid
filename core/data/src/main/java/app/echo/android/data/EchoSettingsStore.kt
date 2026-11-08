@@ -78,6 +78,8 @@ data class EchoAppSettings(
     val onlineLyricsEnabled: Boolean = false,
     val lockScreenLyricsEnabled: Boolean = true,
     val lyricsOptions: app.echo.android.model.settings.EchoLyricsOptions = app.echo.android.model.settings.EchoLyricsOptions(),
+    val playerOrientationLocked: Boolean = false,
+    val pauseOnMute: Boolean = false,
     val floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings =
         app.echo.android.model.settings.EchoFloatingLyricsSettings(),
     val usbExclusiveEnabled: Boolean = false,
@@ -98,6 +100,8 @@ data class EchoAppSettings(
     val equalizerPreset: String = EchoEqualizerPreset.Flat,
     val equalizerBandGains: List<Float> = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
     val equalizerPreampDb: Float = 0f,
+    val equalizerOptions: app.echo.android.model.playback.EchoEqOptions = app.echo.android.model.playback.EchoEqOptions(),
+    val headphoneCorrection: app.echo.android.model.playback.EchoHeadphoneCorrectionSettings = app.echo.android.model.playback.EchoHeadphoneCorrectionSettings(),
     val equalizerParametric: Boolean = false,
     val equalizerSourceLabel: String? = null,
     val equalizerFilters: List<OpraEqBand> = emptyList(),
@@ -146,6 +150,7 @@ data class EchoAppSettings(
     val scheduledDarkModeEnabled: Boolean = false,
     val scheduledDarkStartMinute: Int = 22 * 60,
     val scheduledDarkEndMinute: Int = 7 * 60,
+    val lastFmOptions: app.echo.android.model.settings.LastFmOptions = app.echo.android.model.settings.LastFmOptions(),
     val lastFmEnabled: Boolean = false,
     val lastFmApiKey: String? = null,
     val lastFmSharedSecret: String? = null,
@@ -168,6 +173,7 @@ data class EchoAppSettings(
     val subsonicServerUrl: String? = null,
     val subsonicUsername: String? = null,
     val subsonicPassword: String? = null,
+    val subsonicConnections: List<SubsonicEndpoint> = emptyList(),
     val webDavServerUrl: String? = null,
     val webDavUsername: String? = null,
     val webDavPassword: String? = null,
@@ -252,8 +258,10 @@ class EchoSettingsStore(
             },
         ) { preferences ->
             val savedColorThemes = EchoSavedColorThemeCodec.decode(preferences[Keys.SavedColorThemes])
+            val subsonicConnections = decodeSubsonicConnections(secrets.get(EchoSecretKeys.SubsonicConnections))
             val themeMode = normalizeThemeMode(preferences[Keys.ThemeMode])
             val lyricsStyle = PlayerAppearancePreferences.lyricsStyle(preferences)
+            val legacyEq = LegacyGraphicEq.filters(preferences[Keys.EqualizerPreset], preferences[Keys.EqualizerBandGains], preferences[Keys.EqualizerParametric] ?: false)
             EchoAppSettings(
                 homeLayout = HomeLayoutPreferences.read(preferences),
                 libraryLayout = LibraryLayoutPreferences.read(preferences),
@@ -273,6 +281,8 @@ class EchoSettingsStore(
                 playerArtworkScale = PlayerAppearancePreferences.artworkScale(preferences),
                 onlineLyricsEnabled = preferences[Keys.OnlineLyricsEnabled] ?: false,
                 lockScreenLyricsEnabled = preferences[Keys.LockScreenLyricsEnabled] ?: true,
+                playerOrientationLocked = preferences[Keys.PlayerOrientationLocked] ?: false,
+                pauseOnMute = preferences[Keys.PauseOnMute] ?: false,
                 lyricsOptions = app.echo.android.model.settings.EchoLyricsOptions(
                     sourceOrder = app.echo.android.model.settings.EchoLyricsOptions.sourcesFromId(preferences[Keys.LyricsSourceOrder]),
                     notificationEnabled = preferences[Keys.LyricsNotificationEnabled] ?: true,
@@ -286,6 +296,7 @@ class EchoSettingsStore(
                     bluetoothDelayMs = preferences[Keys.LyricsBluetoothDelayMs] ?: 0,
                     translationScale = preferences[Keys.LyricsTranslationScale] ?: 1f,
                     romanizationScale = preferences[Keys.LyricsRomanizationScale] ?: 1f,
+                    translationCurrentOnly = preferences[Keys.LyricsTranslationCurrentOnly] ?: false,
                 ).normalized,
                 floatingLyrics = app.echo.android.model.settings.EchoFloatingLyricsSettings(
                     enabled = preferences[Keys.FloatingLyricsEnabled] ?: false,
@@ -322,19 +333,29 @@ class EchoSettingsStore(
                     preferences[Keys.DspCrossfeedEnabled] ?: false,
                     preferences[Keys.DspCrossfeedAmount] ?: 0.3f,
                     app.echo.android.model.playback.EchoCompressorMode.fromId(preferences[Keys.DspCompressor]),
+                    hrtfEnabled = preferences[Keys.HrtfEnabled] ?: false,
+                    hrtfProfile = preferences[Keys.HrtfProfile] ?: 1,
+                    hrtfAmount = preferences[Keys.HrtfAmount] ?: 1f,
+                    equalLoudnessEnabled = preferences[Keys.EqualLoudnessEnabled] ?: false,
+                    equalLoudnessReferenceDb = preferences[Keys.EqualLoudnessReference] ?: -10f,
+                    equalLoudnessBassDb = preferences[Keys.EqualLoudnessBass] ?: 6f,
+                    equalLoudnessTrebleDb = preferences[Keys.EqualLoudnessTreble] ?: 3f,
+                    soundEffect = app.echo.android.model.playback.EchoSoundEffectSettings.fromStored(preferences[Keys.SoundEffectEnabled] ?: false, preferences[Keys.SoundEffectPreset]),
                 ).normalized,
+                headphoneCorrection = EchoHeadphoneCorrectionCodec.decode(preferences[Keys.HeadphoneCorrection]),
                 equalizerEnabled = preferences[Keys.EqualizerEnabled] ?: false,
                 mseb = EchoMsebCodec.decode(preferences[Keys.Mseb]),
                 msebUserPresets = EchoMsebPresetCodec.decode(preferences[Keys.MsebUserPresets]),
-                equalizerPreset = EchoEqualizerPresets.normalizePresetId(preferences[Keys.EqualizerPreset]),
+                equalizerPreset = if (legacyEq.isNotEmpty()) EchoEqualizerPreset.Custom else EchoEqualizerPresets.normalizePresetId(preferences[Keys.EqualizerPreset]),
                 equalizerBandGains = parseEqualizerBandGains(
                     preferences[Keys.EqualizerBandGains],
                     EchoEqualizerPresets.normalizePresetId(preferences[Keys.EqualizerPreset]),
                 ),
-                equalizerPreampDb = (preferences[Keys.EqualizerPreampDb] ?: 0f).coerceIn(-24f, 12f),
-                equalizerParametric = preferences[Keys.EqualizerParametric] ?: false,
+                equalizerPreampDb = (preferences[Keys.EqualizerPreampDb] ?: 0f).coerceIn(-60f, 24f),
+                equalizerOptions = app.echo.android.model.playback.EchoEqOptions(preferences[Keys.EqualizerStrength] ?: 100f, preferences[Keys.EqualizerTilt] ?: 0f).normalized,
+                equalizerParametric = legacyEq.isNotEmpty() || (preferences[Keys.EqualizerParametric] ?: false),
                 equalizerSourceLabel = preferences[Keys.EqualizerSourceLabel],
-                equalizerFilters = parseEqualizerFilters(preferences[Keys.EqualizerFilters]),
+                equalizerFilters = legacyEq.ifEmpty { parseEqualizerFilters(preferences[Keys.EqualizerFilters]) },
                 equalizerUserPresets = EchoEqualizerUserPresetCodec.decode(preferences[Keys.EqualizerUserPresets]),
                 equalizerActiveUserPresetId = preferences[Keys.EqualizerActiveUserPresetId]?.trim()?.takeIf { it.isNotEmpty() },
                 equalizerDevicePresetIds = EchoOutputDspCodec.decode(preferences[Keys.EqualizerDevicePresetIds]),
@@ -397,6 +418,11 @@ class EchoSettingsStore(
                 scheduledDarkModeEnabled = preferences[Keys.ScheduledDarkModeEnabled] ?: false,
                 scheduledDarkStartMinute = (preferences[Keys.ScheduledDarkStartMinute] ?: 22 * 60).coerceIn(0, 23 * 60 + 59),
                 scheduledDarkEndMinute = (preferences[Keys.ScheduledDarkEndMinute] ?: 7 * 60).coerceIn(0, 23 * 60 + 59),
+                lastFmOptions = app.echo.android.model.settings.LastFmOptions(
+                    nowPlayingEnabled = preferences[Keys.LastFmNowPlayingEnabled] ?: true,
+                    scrobbleEnabled = preferences[Keys.LastFmScrobbleEnabled] ?: true,
+                    loveSyncEnabled = preferences[Keys.LastFmLoveSyncEnabled] ?: false,
+                ),
                 lastFmEnabled = preferences[Keys.LastFmEnabled] ?: false,
                 lastFmApiKey = preferences[Keys.LastFmApiKey],
                 lastFmSharedSecret = secrets.takeIfMigrated(
@@ -442,10 +468,10 @@ class EchoSettingsStore(
                     ?.let(::normalizeSubsonicBaseUrl)
                     ?.takeIf { it.isNotBlank() },
                 subsonicUsername = preferences[Keys.SubsonicUsername],
-                subsonicPassword = secrets.takeIfMigrated(
-                    EchoSecretKeys.SubsonicPassword,
-                    preferences[Keys.SubsonicPassword],
-                ),
+                subsonicConnections = subsonicConnections,
+                subsonicPassword = savedSubsonicConnection(subsonicConnections,
+                    preferences[Keys.SubsonicServerUrl], preferences[Keys.SubsonicUsername])?.password
+                    ?: secrets.takeIfMigrated(EchoSecretKeys.SubsonicPassword, preferences[Keys.SubsonicPassword]),
                 webDavServerUrl = preferences[Keys.WebDavServerUrl],
                 webDavUsername = preferences[Keys.WebDavUsername],
                 webDavPassword = secrets.takeIfMigrated(
@@ -551,6 +577,9 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.LockScreenLyricsEnabled] = enabled }
     }
 
+    suspend fun setPlayerOrientationLocked(value: Boolean) { context.echoSettings.edit { it[Keys.PlayerOrientationLocked] = value } }
+    suspend fun setPauseOnMute(value: Boolean) { context.echoSettings.edit { it[Keys.PauseOnMute] = value } }
+
     suspend fun setLyricsOptions(value: app.echo.android.model.settings.EchoLyricsOptions) {
         val normalized = value.normalized
         context.echoSettings.edit {
@@ -566,6 +595,7 @@ class EchoSettingsStore(
             it[Keys.LyricsBluetoothDelayMs] = normalized.bluetoothDelayMs
             it[Keys.LyricsTranslationScale] = normalized.translationScale
             it[Keys.LyricsRomanizationScale] = normalized.romanizationScale
+            it[Keys.LyricsTranslationCurrentOnly] = normalized.translationCurrentOnly
         }
     }
 
@@ -670,7 +700,26 @@ class EchoSettingsStore(
             it[Keys.DspLimiterCeiling] = state.limiterCeilingDb
             it[Keys.DspCrossfeedEnabled] = state.crossfeedEnabled
             it[Keys.DspCrossfeedAmount] = state.crossfeedAmount
+            it[Keys.HrtfEnabled] = state.hrtfEnabled
+            it[Keys.HrtfProfile] = state.hrtfProfile
+            it[Keys.HrtfAmount] = state.hrtfAmount
+            it[Keys.EqualLoudnessEnabled] = state.equalLoudnessEnabled
+            it[Keys.EqualLoudnessReference] = state.equalLoudnessReferenceDb
+            it[Keys.EqualLoudnessBass] = state.equalLoudnessBassDb
+            it[Keys.EqualLoudnessTreble] = state.equalLoudnessTrebleDb
+            it[Keys.SoundEffectEnabled] = state.soundEffect.enabled
+            it[Keys.SoundEffectPreset] = state.soundEffect.preset.id
         }
+    }
+
+    suspend fun setHeadphoneCorrection(value: app.echo.android.model.playback.EchoHeadphoneCorrectionSettings) {
+        val encoded = EchoHeadphoneCorrectionCodec.encode(value)
+        context.echoSettings.edit { it[Keys.HeadphoneCorrection] = encoded }
+    }
+
+    suspend fun setEqualizerOptions(value: app.echo.android.model.playback.EchoEqOptions) {
+        val safe = value.normalized
+        context.echoSettings.edit { prefs -> prefs[Keys.EqualizerStrength] = safe.strengthPercent; prefs[Keys.EqualizerTilt] = safe.tiltDb }
     }
 
     suspend fun setEqualizerEnabled(enabled: Boolean) {
@@ -699,7 +748,7 @@ class EchoSettingsStore(
             )
             clearEqualizerParametric(it)
             // Persist the controller's compensated gain atomically with the preset.
-            it[Keys.EqualizerPreampDb] = preampDb.coerceIn(-24f, 12f)
+            it[Keys.EqualizerPreampDb] = preampDb.coerceIn(-60f, 24f)
             it.remove(Keys.EqualizerActiveUserPresetId)
         }
     }
@@ -718,7 +767,7 @@ class EchoSettingsStore(
     suspend fun setEqualizerPreamp(gainDb: Float) {
         if (!gainDb.isFinite()) return
         context.echoSettings.edit {
-            it[Keys.EqualizerPreampDb] = gainDb.coerceIn(-24f, 12f)
+            it[Keys.EqualizerPreampDb] = gainDb.coerceIn(-60f, 24f)
         }
     }
 
@@ -733,7 +782,7 @@ class EchoSettingsStore(
             it[Keys.EqualizerEnabled] = enabled
             it[Keys.EqualizerPreset] = EchoEqualizerPreset.Custom
             it[Keys.EqualizerBandGains] = formatEqualizerBandGains(gainsDb)
-            it[Keys.EqualizerPreampDb] = preampDb.coerceIn(-24f, 12f)
+            it[Keys.EqualizerPreampDb] = preampDb.coerceIn(-60f, 24f)
             it[Keys.EqualizerParametric] = filters.isNotEmpty()
             it[Keys.EqualizerFilters] = formatEqualizerFilters(filters)
             if (sourceLabel.isNullOrBlank()) {
@@ -746,6 +795,8 @@ class EchoSettingsStore(
 
     suspend fun resetEqualizer() {
         context.echoSettings.edit {
+            it[Keys.EqualizerStrength] = 100f
+            it[Keys.EqualizerTilt] = 0f
             it[Keys.EqualizerPreset] = EchoEqualizerPreset.Flat
             it[Keys.EqualizerBandGains] = formatEqualizerBandGains(
                 EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
@@ -841,8 +892,11 @@ class EchoSettingsStore(
 
     suspend fun applyEqualizerUserPreset(preset: EchoEqualizerUserPreset) {
         val normalized = EchoEqualizerUserPresets.normalize(preset) ?: return
+        if (normalized.fromOpra) { setHeadphoneCorrection(app.echo.android.model.playback.EchoHeadphoneCorrectionSettings.fromFavorite(normalized)); return }
         context.echoSettings.edit {
             it[Keys.EqualizerEnabled] = true
+            it[Keys.EqualizerStrength] = normalized.options.strengthPercent
+            it[Keys.EqualizerTilt] = normalized.options.tiltDb
             it[Keys.EqualizerActiveUserPresetId] = normalized.id
             it[Keys.EqualizerPreampDb] = normalized.preampDb
             if (normalized.parametric) {
@@ -1225,6 +1279,14 @@ class EchoSettingsStore(
         )
     }
 
+    suspend fun setLastFmOptions(options: app.echo.android.model.settings.LastFmOptions) {
+        context.echoSettings.edit {
+            it[Keys.LastFmNowPlayingEnabled] = options.nowPlayingEnabled
+            it[Keys.LastFmScrobbleEnabled] = options.scrobbleEnabled
+            it[Keys.LastFmLoveSyncEnabled] = options.loveSyncEnabled
+        }
+    }
+
     suspend fun setLastFmEnabled(enabled: Boolean) {
         context.echoSettings.edit { it[Keys.LastFmEnabled] = enabled }
     }
@@ -1235,9 +1297,13 @@ class EchoSettingsStore(
         username: String,
         sessionKey: String,
     ) {
-        secrets.set(EchoSecretKeys.LastFmSharedSecret, sharedSecret)
-        secrets.set(EchoSecretKeys.LastFmSessionKey, sessionKey)
         context.echoSettings.edit {
+            secrets.set(EchoSecretKeys.LastFmSharedSecret, sharedSecret)
+            secrets.set(EchoSecretKeys.LastFmSessionKey, sessionKey)
+            check(secrets.get(EchoSecretKeys.LastFmSessionKey) == sessionKey.trim() &&
+                secrets.get(EchoSecretKeys.LastFmSharedSecret) == sharedSecret.trim()) {
+                "Unable to save Last.fm credentials securely"
+            }
             it[Keys.LastFmApiKey] = apiKey.trim()
             it.remove(Keys.LastFmSharedSecret)
             it[Keys.LastFmUsername] = username.trim()
@@ -1253,10 +1319,19 @@ class EchoSettingsStore(
         }
     }
 
-    suspend fun clearLastFmCredentials() {
-        secrets.set(EchoSecretKeys.LastFmSessionKey, null)
-        secrets.set(EchoSecretKeys.LastFmSharedSecret, null)
+    suspend fun clearLastFmSession(expectedSessionKey: String) {
         context.echoSettings.edit {
+            if (secrets.get(EchoSecretKeys.LastFmSessionKey) != expectedSessionKey) return@edit
+            secrets.set(EchoSecretKeys.LastFmSessionKey, null)
+            it.remove(Keys.LastFmUsername)
+            it.remove(Keys.LastFmSessionKey)
+        }
+    }
+
+    suspend fun clearLastFmCredentials() {
+        context.echoSettings.edit {
+            secrets.set(EchoSecretKeys.LastFmSessionKey, null)
+            secrets.set(EchoSecretKeys.LastFmSharedSecret, null)
             it[Keys.LastFmEnabled] = false
             it.remove(Keys.LastFmUsername)
             it.remove(Keys.LastFmSessionKey)
@@ -1552,12 +1627,25 @@ class EchoSettingsStore(
     ) {
         context.echoSettings.edit {
             val normalizedUrl = normalizeSubsonicBaseUrl(serverUrl)
+            val saved = decodeSubsonicConnections(secrets.get(EchoSecretKeys.SubsonicConnections)).toMutableList()
+            val previousUrl = it[Keys.SubsonicServerUrl]
+            val previousUser = it[Keys.SubsonicUsername]
+            val previousPassword = savedSubsonicConnection(saved, previousUrl, previousUser)?.password
+                ?: secrets.takeIfMigrated(EchoSecretKeys.SubsonicPassword, it[Keys.SubsonicPassword])
+            if (!previousUrl.isNullOrBlank() && !previousUser.isNullOrBlank() && !previousPassword.isNullOrBlank()) {
+                val previous = SubsonicEndpoint(previousUrl, previousUser, previousPassword)
+                saved.removeAll { row -> row.sourceId == previous.sourceId }; saved.add(0, previous)
+            }
             if (normalizedUrl.isBlank() || username.isBlank() || password.isBlank()) {
                 secrets.set(EchoSecretKeys.SubsonicPassword, null)
                 it.remove(Keys.SubsonicServerUrl)
                 it.remove(Keys.SubsonicUsername)
                 it.remove(Keys.SubsonicPassword)
             } else {
+                val incoming = SubsonicEndpoint(normalizedUrl, username.trim(), password)
+                saved.removeAll { row -> row.sourceId == incoming.sourceId }; saved.add(0, incoming)
+                require(saved.size <= 32) { "Too many saved Subsonic connections" }
+                secrets.set(EchoSecretKeys.SubsonicConnections, encodeSubsonicConnections(saved))
                 secrets.set(EchoSecretKeys.SubsonicPassword, password)
                 it[Keys.SubsonicServerUrl] = normalizedUrl
                 it[Keys.SubsonicUsername] = username.trim()
@@ -1567,8 +1655,13 @@ class EchoSettingsStore(
     }
 
     suspend fun clearSubsonicCredentials() {
-        secrets.set(EchoSecretKeys.SubsonicPassword, null)
         context.echoSettings.edit {
+            val url = it[Keys.SubsonicServerUrl]
+            val user = it[Keys.SubsonicUsername]
+            val source = if (url != null && user != null) SubsonicEndpoint(url, user, "").sourceId else null
+            val saved = decodeSubsonicConnections(secrets.get(EchoSecretKeys.SubsonicConnections))
+            secrets.set(EchoSecretKeys.SubsonicConnections, encodeSubsonicConnections(saved.filterNot { row -> row.sourceId == source }))
+            secrets.set(EchoSecretKeys.SubsonicPassword, null)
             it.remove(Keys.SubsonicServerUrl)
             it.remove(Keys.SubsonicUsername)
             it.remove(Keys.SubsonicPassword)
@@ -1762,10 +1855,28 @@ class EchoSettingsStore(
             }
             backup.equalizerEnabled?.let { prefs[Keys.EqualizerEnabled] = it }
             backup.compressorMode?.let { prefs[Keys.DspCompressor] = app.echo.android.model.playback.EchoCompressorMode.fromId(it).id }
+            backup.dsp?.normalized?.let { state ->
+                prefs[Keys.DspLimiterEnabled] = state.limiterEnabled
+                prefs[Keys.DspLimiterCeiling] = state.limiterCeilingDb
+                prefs[Keys.DspCrossfeedEnabled] = state.crossfeedEnabled
+                prefs[Keys.DspCrossfeedAmount] = state.crossfeedAmount
+                prefs[Keys.DspCompressor] = state.compressor.id
+                prefs[Keys.HrtfEnabled] = state.hrtfEnabled
+                prefs[Keys.HrtfProfile] = state.hrtfProfile
+                prefs[Keys.HrtfAmount] = state.hrtfAmount
+                prefs[Keys.EqualLoudnessEnabled] = state.equalLoudnessEnabled
+                prefs[Keys.EqualLoudnessReference] = state.equalLoudnessReferenceDb
+                prefs[Keys.EqualLoudnessBass] = state.equalLoudnessBassDb
+                prefs[Keys.EqualLoudnessTreble] = state.equalLoudnessTrebleDb
+                prefs[Keys.SoundEffectEnabled] = state.soundEffect.enabled
+                prefs[Keys.SoundEffectPreset] = state.soundEffect.preset.id
+            }
             backup.mseb?.let { prefs[Keys.Mseb] = EchoMsebCodec.encode(it) }
             backup.msebUserPresets?.let { prefs[Keys.MsebUserPresets] = EchoMsebPresetCodec.encode(it) }
             backup.equalizerPreset?.let { prefs[Keys.EqualizerPreset] = it }
             backup.equalizerBandGains?.let { prefs[Keys.EqualizerBandGains] = formatEqualizerBandGains(it) }
+            backup.headphoneCorrection?.let { prefs[Keys.HeadphoneCorrection] = EchoHeadphoneCorrectionCodec.encode(it) }
+            backup.equalizerOptions?.normalized?.let { prefs[Keys.EqualizerStrength] = it.strengthPercent; prefs[Keys.EqualizerTilt] = it.tiltDb }
             backup.equalizerPreampDb?.let { prefs[Keys.EqualizerPreampDb] = it }
             backup.equalizerParametric?.let { prefs[Keys.EqualizerParametric] = it }
             backup.equalizerSourceLabel?.let { label ->
@@ -1801,6 +1912,9 @@ class EchoSettingsStore(
             }
             backup.lyricsFontFamily?.let { prefs[Keys.LyricsFontFamily] = it }
             backup.lyricsFontScale?.let { prefs[Keys.LyricsFontScale] = it }
+            backup.playerOrientationLocked?.let { prefs[Keys.PlayerOrientationLocked] = it }
+            backup.pauseOnMute?.let { prefs[Keys.PauseOnMute] = it }
+            backup.lyricsTranslationCurrentOnly?.let { prefs[Keys.LyricsTranslationCurrentOnly] = it }
             backup.lyricsTranslationScale?.let { prefs[Keys.LyricsTranslationScale] = app.echo.android.model.settings.EchoLyricsOptions.secondaryScale(it) }
             backup.lyricsRomanizationScale?.let { prefs[Keys.LyricsRomanizationScale] = app.echo.android.model.settings.EchoLyricsOptions.secondaryScale(it) }
             backup.lyricsColorMode?.let { prefs[Keys.LyricsColorMode] = it }
@@ -1846,6 +1960,9 @@ class EchoSettingsStore(
         val LyricsStatusWidthDp = intPreferencesKey("lyrics_status_width_dp")
         val LyricsStatusOffsetXDp = intPreferencesKey("lyrics_status_offset_x_dp")
         val LyricsStatusOffsetYDp = intPreferencesKey("lyrics_status_offset_y_dp")
+        val PlayerOrientationLocked = booleanPreferencesKey("player_orientation_locked")
+        val PauseOnMute = booleanPreferencesKey("pause_on_mute")
+        val LyricsTranslationCurrentOnly = booleanPreferencesKey("lyrics_translation_current_only")
         val LyricsBluetoothDelayMs = intPreferencesKey("lyrics_bluetooth_delay_ms")
         val LyricsTranslationScale = floatPreferencesKey("lyrics_translation_scale")
         val LyricsRomanizationScale = floatPreferencesKey("lyrics_romanization_scale")
@@ -1876,12 +1993,24 @@ class EchoSettingsStore(
         val DspLimiterCeiling = floatPreferencesKey("dsp_limiter_ceiling")
         val DspCrossfeedEnabled = booleanPreferencesKey("dsp_crossfeed_enabled")
         val DspCrossfeedAmount = floatPreferencesKey("dsp_crossfeed_amount")
+        val HrtfEnabled = booleanPreferencesKey("dsp_hrtf_enabled")
+        val HrtfProfile = intPreferencesKey("dsp_hrtf_profile")
+        val HrtfAmount = floatPreferencesKey("dsp_hrtf_amount")
+        val EqualLoudnessEnabled = booleanPreferencesKey("dsp_equal_loudness_enabled")
+        val EqualLoudnessReference = floatPreferencesKey("dsp_equal_loudness_reference")
+        val EqualLoudnessBass = floatPreferencesKey("dsp_equal_loudness_bass")
+        val EqualLoudnessTreble = floatPreferencesKey("dsp_equal_loudness_treble")
+        val SoundEffectEnabled = booleanPreferencesKey("dsp_sound_effect_enabled")
+        val SoundEffectPreset = stringPreferencesKey("dsp_sound_effect_preset")
+        val HeadphoneCorrection = stringPreferencesKey("headphone_correction_v1")
         val EqualizerEnabled = booleanPreferencesKey("equalizer_enabled")
         val MsebUserPresets = stringPreferencesKey("mseb_user_presets")
         val Mseb = stringPreferencesKey("mseb")
         val EqualizerPreset = stringPreferencesKey("equalizer_preset")
         val EqualizerBandGains = stringPreferencesKey("equalizer_band_gains")
         val EqualizerPreampDb = floatPreferencesKey("equalizer_preamp_db")
+        val EqualizerStrength = floatPreferencesKey("equalizer_strength_percent")
+        val EqualizerTilt = floatPreferencesKey("equalizer_tilt_db")
         val EqualizerParametric = booleanPreferencesKey("equalizer_parametric")
         val EqualizerSourceLabel = stringPreferencesKey("equalizer_source_label")
         val EqualizerFilters = stringPreferencesKey("equalizer_filters")
@@ -1943,6 +2072,9 @@ class EchoSettingsStore(
         val ScheduledDarkModeEnabled = booleanPreferencesKey("scheduled_dark_mode_enabled")
         val ScheduledDarkStartMinute = intPreferencesKey("scheduled_dark_start_minute")
         val ScheduledDarkEndMinute = intPreferencesKey("scheduled_dark_end_minute")
+        val LastFmNowPlayingEnabled = booleanPreferencesKey("lastfm_now_playing_enabled")
+        val LastFmScrobbleEnabled = booleanPreferencesKey("lastfm_scrobble_enabled")
+        val LastFmLoveSyncEnabled = booleanPreferencesKey("lastfm_love_sync_enabled")
         val LastFmEnabled = booleanPreferencesKey("lastfm_enabled")
         val LastFmApiKey = stringPreferencesKey("lastfm_api_key")
         val SetlistFmApiKey = stringPreferencesKey("setlistfm_api_key")
@@ -2049,14 +2181,14 @@ private fun normalizeLibrarySelectedSource(value: String?): String =
 private fun parseEqualizerBandGains(value: String?, presetId: String): List<Float> {
     val parsed = value
         ?.split(',')
-        ?.mapNotNull { raw -> raw.trim().toFloatOrNull()?.coerceIn(-18f, 18f) }
+        ?.mapNotNull { raw -> raw.trim().toFloatOrNull()?.takeIf(Float::isFinite)?.coerceIn(-60f, 30f) }
         .orEmpty()
     return parsed.ifEmpty { EchoEqualizerPresets.gainsForPreset(presetId) }
 }
 
 private fun formatEqualizerBandGains(gainsDb: List<Float>): String =
     gainsDb.joinToString(",") { value ->
-        ((value.coerceIn(-18f, 18f) * 10f).toInt() / 10f).toString()
+        ((value.coerceIn(-60f, 30f) * 10f).toInt() / 10f).toString()
     }
 
 private fun parseChannelBalanceBands(value: String?): List<Float> {
@@ -2085,6 +2217,10 @@ internal fun parseEqualizerFilters(value: String?): List<OpraEqBand> {
                     gainDb = band.optDouble("gainDb", 0.0).toFloat().takeIf { it.isFinite() } ?: 0f,
                     q = band.optDouble("q", Double.NaN).toFloat().takeIf { it.isFinite() },
                     slope = band.optDouble("slope", Double.NaN).toFloat().takeIf { it.isFinite() },
+                    enabled = band.optBoolean("enabled", true), scope = app.echo.android.model.playback.EchoEqBandScope.fromId(band.optString("scope")),
+                    dynamicMode = app.echo.android.model.playback.EchoEqDynamicMode.fromId(band.optString("dynamicMode")),
+                    dynamicThresholdDb = band.optDouble("dynamicThresholdDb", -24.0).toFloat(), dynamicRatio = band.optDouble("dynamicRatio", 2.0).toFloat(),
+                    dynamicAttackMs = band.optDouble("dynamicAttackMs", 5.0).toFloat(), dynamicReleaseMs = band.optDouble("dynamicReleaseMs", 80.0).toFloat(),
                 )
             }
     }.getOrDefault(emptyList())
@@ -2138,11 +2274,14 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         trackTransitions = trackTransitions,
         equalizerEnabled = equalizerEnabled,
         compressorMode = dsp.compressor.id,
+        dsp = dsp,
         mseb = mseb,
         msebUserPresets = msebUserPresets,
         equalizerPreset = equalizerPreset,
         equalizerBandGains = equalizerBandGains,
         equalizerPreampDb = equalizerPreampDb,
+        equalizerOptions = equalizerOptions,
+        headphoneCorrection = headphoneCorrection,
         equalizerParametric = equalizerParametric,
         equalizerSourceLabel = equalizerSourceLabel,
         equalizerFilters = equalizerFilters,
@@ -2155,6 +2294,8 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         lyricsFontFamily = lyricsFontFamily,
         lyricsFontScale = lyricsFontScale,
         lyricsTranslationScale = lyricsOptions.translationScale, lyricsRomanizationScale = lyricsOptions.romanizationScale,
+        lyricsTranslationCurrentOnly = lyricsOptions.translationCurrentOnly,
+        playerOrientationLocked = playerOrientationLocked, pauseOnMute = pauseOnMute,
         lyricsColorMode = lyricsColorMode,
         lyricsAlignment = lyricsAlignment,
         lyricsLineSpacing = lyricsLineSpacing,
@@ -2181,6 +2322,9 @@ internal fun formatEqualizerFilters(filters: List<OpraEqBand>): String {
                 put("type", band.type)
                 put("frequencyHz", band.frequencyHz.toDouble())
                 put("gainDb", band.gainDb.toDouble())
+                put("enabled", band.enabled); put("scope", band.scope.id); put("dynamicMode", band.dynamicMode.id)
+                put("dynamicThresholdDb", band.dynamicThresholdDb); put("dynamicRatio", band.dynamicRatio)
+                put("dynamicAttackMs", band.dynamicAttackMs); put("dynamicReleaseMs", band.dynamicReleaseMs)
                 band.q?.let { put("q", it.toDouble()) }
                 band.slope?.let { put("slope", it.toDouble()) }
             },

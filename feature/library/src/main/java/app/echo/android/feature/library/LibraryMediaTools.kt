@@ -12,6 +12,7 @@ data class LibraryMediaTools(
     val previewFolder: suspend (EchoTrack, String) -> List<EchoFolderEncodingItem>,
     val applyFolder: suspend (List<EchoFolderEncodingItem>) -> EchoFolderEncodingResult,
     val containingPlaylists: ((EchoTrack) -> Flow<List<EchoPlaylist>>)? = null,
+    val setRating: (suspend (EchoTrack, Int?) -> Int)? = null,
 )
 
 internal val LocalLibraryMediaTools = staticCompositionLocalOf<LibraryMediaTools?> { null }

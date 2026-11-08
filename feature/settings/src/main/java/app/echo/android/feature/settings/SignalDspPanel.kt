@@ -25,6 +25,8 @@ internal fun SignalDspPanel(
     }) }
     val enabledCount = (if (settings.limiterEnabled) 1 else 0) +
         (if (settings.crossfeedEnabled) 1 else 0) + (if (status.replayGainEnabled) 1 else 0) +
+        (if (settings.hrtfEnabled) 1 else 0) + (if (settings.equalLoudnessEnabled) 1 else 0) +
+        (if (settings.soundEffect.enabled) 1 else 0) +
         (if (settings.compressor != EchoCompressorMode.Off) 1 else 0)
     val defaults = remember { EchoDspSettings() }
     val modeLabel = stringResource(when (status.replayGainMode) {
@@ -43,6 +45,9 @@ internal fun SignalDspPanel(
             }) { Text(stringResource(R.string.signal_reset_dsp)) }
         }
         if (bypassed) SignalNote(stringResource(R.string.signal_bypass_detail))
+        SignalSoundEffects(settings.soundEffect, status.diagnostics.soundEffect, !bypassed) {
+            onSettings(settings.copy(soundEffect = it))
+        }
         SignalDspSection(
             title = stringResource(R.string.dsp_loudness), detail = stringResource(R.string.dsp_loudness_detail),
             summary = "$modeLabel · ${formatEqGain(status.replayGainPreampDb)}",
@@ -58,7 +63,7 @@ internal fun SignalDspPanel(
             summary = stringResource(R.string.signal_crossfeed_summary, signalNumber(settings.crossfeedAmount * 100, 0)),
             checked = settings.crossfeedEnabled, enabled = !bypassed, expanded = expanded == "crossfeed",
             onExpand = { expanded = if (expanded == "crossfeed") "" else "crossfeed" },
-            onChecked = { onSettings(settings.copy(crossfeedEnabled = it)); if (it) expanded = "crossfeed" },
+            onChecked = { onSettings(settings.copy(crossfeedEnabled = it, hrtfEnabled = if (it) false else settings.hrtfEnabled)); if (it) expanded = "crossfeed" },
             onReset = { onSettings(settings.copy(crossfeedEnabled = defaults.crossfeedEnabled, crossfeedAmount = defaults.crossfeedAmount)) },
         ) {
             val amounts = listOf(0.15f, 0.3f, 0.5f)
@@ -70,6 +75,7 @@ internal fun SignalDspPanel(
                 { "${signalNumber(it * 100, 0)}%" }, { onSettings(settings.copy(crossfeedAmount = it)) },
                 unit = "%", scale = 100f, decimals = 0)
         }
+        SignalPersonalAudioControls(settings, !bypassed, onSettings)
         SignalCompressorControl(settings, !bypassed, onSettings)
         SignalDspSection(
             title = stringResource(R.string.dsp_limiter), detail = stringResource(R.string.dsp_limiter_detail),

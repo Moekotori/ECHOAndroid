@@ -13,6 +13,8 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import java.time.LocalTime
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,10 +28,16 @@ import androidx.compose.ui.text.font.FontWeight
 internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = null,
     onOpenHistory: (() -> Unit)? = null, onOpenSettings: (() -> Unit)? = null) {
     val compact = app.echo.android.design.LocalEchoLayout.current.heightDp < 600f
-    val title: @Composable () -> Unit = {
-        Text(stringResource(R.string.home_page_title),
+    val greeting = remember { homeGreetingForHour(LocalTime.now().hour) }
+    val pageLabel: @Composable () -> Unit = {
+        Text(stringResource(R.string.home_page_title), style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+    val greetingTitle: @Composable () -> Unit = {
+        Text(stringResource(greeting.title),
             style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.semantics { heading() })
     }
     val actions: @Composable () -> Unit = {
@@ -47,7 +55,7 @@ internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = 
         if (compact && maxWidth >= 560.dp * fontScale) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Box(Modifier.widthIn(max = 160.dp)) { title() }
+                Box(Modifier.widthIn(max = 160.dp)) { greetingTitle() }
                 Box(Modifier.weight(1f)) {
                     HomeSearchBar(stringResource(R.string.feature_home_search_songs_albums_and_artists_c46634), onOpenSearch)
                 }
@@ -56,8 +64,13 @@ internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = 
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 16.dp)) {
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { title() }
+                    Box(Modifier.weight(1f)) { pageLabel() }
                     actions()
+                }
+                if (compact) greetingTitle() else Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    greetingTitle()
+                    Text(stringResource(greeting.subtitle), style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 HomeSearchBar(stringResource(R.string.feature_home_search_songs_albums_and_artists_c46634), onOpenSearch)
             }

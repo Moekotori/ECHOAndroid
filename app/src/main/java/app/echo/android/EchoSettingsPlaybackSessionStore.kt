@@ -14,6 +14,7 @@ class EchoSettingsPlaybackSessionStore(
 ) : EchoPlaybackSessionStore {
     override suspend fun load(): EchoPlaybackSessionSnapshot? {
         val settings = settingsStore.appSettings.first()
+        EchoPlaybackRuntimeOptionsStore.setPauseOnMute(settings.pauseOnMute)
         EchoPlaybackRuntimeOptionsStore.setTrackTransitions(settings.trackTransitions)
         EchoPlaybackRuntimeOptionsStore.setShuffleOptions(settings.shuffleOptions)
         EchoPlaybackRuntimeOptionsStore.setListeningOptions(

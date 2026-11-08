@@ -68,24 +68,24 @@ import kotlinx.coroutines.withContext
 val EchoContentMaxWidth = 560.dp
 
 // Default Echo palette constants. Prefer echoTheme() in UI.
-val EchoAccent = Color(0xFFD3A9B5)
-val EchoAccentText = Color(0xFFE4C4CC)
-val EchoAccentDeep = Color(0xFF9B5B6A)
+val EchoAccent = Color(0xFFEBA5B8)
+val EchoAccentText = Color(0xFFF4C2CF)
+val EchoAccentDeep = Color(0xFFB8566F)
 val EchoBgTop = EchoLightSurfaces.Background
 val EchoBgMid = EchoLightSurfaces.Background
 val EchoBgBottom = EchoLightSurfaces.Background
-val RoonInk = Color(0xFF27272D)
-val RoonMuted = Color(0xFF686870)
+val RoonInk = Color(0xFF2A2529)
+val RoonMuted = Color(0xFF6B636A)
 val EchoHomeBlue = EchoAccent
 val EchoHomeBlueDeep = EchoAccentDeep
-val EchoHomeMist = Color(0xFFF4F1F2)
-val EchoGlassBorder = Color(0xFFE6E3E5)
-val EchoSoftLine = Color(0xFFDCD8DA)
-val EchoGlassNight = Color(0xFF17171B)
-val EchoGlassInk = Color(0xFF202126)
-val EchoGlassPanel = Color(0xFF2A2B30)
-val EchoGlassViolet = Color(0xFF252329)
-val EchoGlassCyan = Color(0xFF2D2E33)
+val EchoHomeMist = Color(0xFFF6F1F3)
+val EchoGlassBorder = Color(0xFFE6DFE2)
+val EchoSoftLine = Color(0xFFE0D7DB)
+val EchoGlassNight = Color(0xFF161316)
+val EchoGlassInk = Color(0xFF1F1A1E)
+val EchoGlassPanel = Color(0xFF2B252A)
+val EchoGlassViolet = Color(0xFF261F25)
+val EchoGlassCyan = Color(0xFF2F292E)
 val EchoDarkGlassBorder = Color.White.copy(alpha = 0.08f)
 
 @Composable
@@ -543,6 +543,7 @@ fun rememberArtworkPalette(artworkUri: String?, seedKey: String? = artworkUri): 
                 artworkUri = fetchUri ?: artworkUri,
                 sampleSize = sampleSize,
                 headers = requestHeaders,
+                cacheUri = artworkUri,
             )
             if (bitmap != null) {
                 extractPalette(bitmap)
@@ -559,6 +560,7 @@ internal suspend fun loadArtworkSwatch(
     artworkUri: String?,
     sampleSize: Int,
     headers: Map<String, String>,
+    cacheUri: String? = artworkUri,
 ): Bitmap? {
     if (artworkUri.isNullOrBlank()) return null
     val edge = if (sampleSize <= 8) 128 else 64
@@ -567,7 +569,8 @@ internal suspend fun loadArtworkSwatch(
         .size(edge, edge)
         .bitmapConfig(Bitmap.Config.ARGB_8888)
         .allowHardware(false)
-        .memoryCacheKey(echoArtworkCacheKey(artworkUri, edge, highBitDepth = true))
+        .memoryCacheKey(echoArtworkCacheKey(cacheUri ?: artworkUri, edge, highBitDepth = true))
+        .diskCacheKey(echoArtworkCacheKey(cacheUri ?: artworkUri, edge, highBitDepth = true))
         .crossfade(false)
         .apply {
             headers.forEach { (name, value) -> setHeader(name, value) }

@@ -13,6 +13,7 @@ internal object BackupExperienceCodec {
                 .put("showFileNames", layout.showFileNames)
                 .put("showPlayNext", layout.showPlayNext)
                 .put("showAlbumArtists", layout.showAlbumArtists)
+                .put("trackActionOrder", JSONArray(layout.trackActionOrder.map { it.id }))
                 .put("hiddenTrackActions", JSONArray(layout.hiddenTrackActions.map { it.id })))
         }
         value.homeLayout?.let { json.put("homeLayout", JSONObject().put("order", JSONArray(it.order.map(EchoHomeSection::id))).put("hidden", JSONArray(it.hidden.map(EchoHomeSection::id)))) }
@@ -40,7 +41,10 @@ internal object BackupExperienceCodec {
             app.echo.android.model.settings.EchoTrackMenuAction.fromId(actions.optString(it)) }.toSet()
         return EchoLibraryLayout(categories("order"), categories("hidden").toSet(), value.optBoolean("showFileNames", false), hiddenActions,
             showPlayNext = value.optBoolean("showPlayNext", false),
-            showAlbumArtists = value.optBoolean("showAlbumArtists", false)).normalized()
+            showAlbumArtists = value.optBoolean("showAlbumArtists", false),
+            trackActionOrder = value.optJSONArray("trackActionOrder")?.let { array ->
+                (0 until array.length()).mapNotNull { EchoTrackMenuAction.fromId(array.optString(it)) }
+            }.orEmpty()).normalized()
     }
     fun encode(json: JSONObject, document: EchoBackupDocument) {
         json.put("history", JSONArray().apply { document.history.forEach { event -> put(JSONObject()

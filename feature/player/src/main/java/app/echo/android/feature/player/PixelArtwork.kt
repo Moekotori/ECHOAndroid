@@ -40,6 +40,8 @@ internal fun PixelArtwork(uri: String?, description: String?, modifier: Modifier
         ImageRequest.Builder(context.applicationContext)
             .data(if (staleSubsonic) null else rewritten)
             .size(256)
+            .memoryCacheKey("pixel:$uri")
+            .diskCacheKey("pixel:$uri")
             .allowHardware(false)
             .crossfade(false)
             .transformations(PixelArtworkTransformation)

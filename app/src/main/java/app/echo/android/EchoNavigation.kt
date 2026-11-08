@@ -24,7 +24,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -170,7 +169,7 @@ private fun RailItem(
             .selectable(
                 selected = selected,
                 interactionSource = interaction,
-                indication = ripple(color = activeColor),
+                indication = null,
                 role = Role.Tab,
                 onClick = { if (!selected) haptics.tick(); onClick() },
             ).semantics { contentDescription = label },
@@ -226,7 +225,7 @@ private fun DockItem(
             .selectable(
                 selected = selected,
                 interactionSource = interactionSource,
-                indication = ripple(color = activeColor),
+                indication = null,
                 role = Role.Tab,
                 onClick = {
                     if (!selected) haptics.tick()

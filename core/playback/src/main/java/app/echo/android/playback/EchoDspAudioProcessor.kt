@@ -9,7 +9,8 @@ import java.nio.ByteOrder
 
 /** Keeps internal headroom until the final limiter and converts back only once. */
 @UnstableApi
-internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) : BaseAudioProcessor() {
+internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>,
+    private val soundEffects: EchoSoundEffectProcessor = EchoSoundEffectProcessor()) : BaseAudioProcessor() {
     init {
         stages.forEach {
             when (it) {
@@ -20,6 +21,10 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         }
     }
     private val kernel = EchoDspKernel()
+    private val personal = EchoPersonalAudioKernel()
+    private val tailInput = ByteBuffer.allocateDirect(1024 * 8 * 4)
+    private var tailFramesRemaining = 0
+    private var drainingTail = false
     private var scratch = ByteBuffer.allocateDirect(1024 * 8 * 4).order(ByteOrder.nativeOrder())
     private val multichannelFrame = FloatArray(8)
     private var bytesPerSample = 2
@@ -44,6 +49,8 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         val internalFormat = AudioProcessor.AudioFormat(format.sampleRate, format.channelCount, C.ENCODING_PCM_FLOAT)
         stages.forEach { it.configure(internalFormat) }
         kernel.configure(format.sampleRate)
+        personal.configure(format.sampleRate)
+        soundEffects.configure(format.sampleRate, format.channelCount)
         return format
     }
 
@@ -55,9 +62,30 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         kernel.setTarget(EchoPlaybackProcessRuntime.dspSettings, EchoPlaybackProcessRuntime.dspReplayGainDb,
             EchoPlaybackProcessRuntime.volumeSettings)
         kernel.reset()
+        personal.reset()
+        soundEffects.flush()
+        tailFramesRemaining = 0
     }
 
-    override fun onReset() { stages.forEach { it.reset() }; kernel.reset() }
+    override fun onReset() { stages.forEach { it.reset() }; kernel.reset(); personal.reset(); soundEffects.close(); tailFramesRemaining = 0 }
+
+    override fun onQueueEndOfStream() {
+        val endUs = streamOffsetUs + streamFrames * 1_000_000L / inputAudioFormat.sampleRate.coerceAtLeast(1)
+        tailFramesRemaining = if (shouldDrainSoundEffectTail(EchoPlaybackProcessRuntime.surfaceSnapshot, endUs)) soundEffects.tailFrames else 0
+    }
+
+    override fun isEnded(): Boolean = tailFramesRemaining == 0 && super.isEnded()
+
+    override fun getOutput(): ByteBuffer {
+        val buffered = super.getOutput()
+        if (buffered.hasRemaining() || tailFramesRemaining == 0) return buffered
+        val frames = minOf(1024, tailFramesRemaining)
+        tailInput.clear(); tailInput.limit(frames * inputAudioFormat.channelCount * bytesPerSample)
+        drainingTail = true
+        try { queueInput(tailInput) } finally { drainingTail = false }
+        tailFramesRemaining = minOf((tailFramesRemaining - frames).coerceAtLeast(0), soundEffects.tailFrames)
+        return super.getOutput()
+    }
 
     override fun queueInput(input: ByteBuffer) {
         if (!input.hasRemaining()) return
@@ -66,16 +94,20 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
             stages.forEach { if (it is EchoSmartTransitionMixer) it.anchorPosition(streamOffsetUs) }
             needsClockAnchor = false
         }
-        syncSmartMixer()
+        if (!drainingTail) syncSmartMixer()
         val channels = inputAudioFormat.channelCount
         val frames = minOf(1024, input.remaining() / (channels * bytesPerSample))
         check(frames > 0) { "Incomplete PCM frame" }
-        streamFrames += frames
+        if (!drainingTail) streamFrames += frames
         val output = replaceOutputBuffer(frames * channels * bytesPerSample).order(order)
         val settings = EchoPlaybackProcessRuntime.dspSettings
         val replayGain = EchoPlaybackProcessRuntime.dspReplayGainDb
         val volume = EchoPlaybackProcessRuntime.volumeSettings
-        if (settings.compressor == app.echo.android.model.playback.EchoCompressorMode.Off && !settings.limiterEnabled && !settings.crossfeedEnabled && replayGain == 0f && !volume.changesSamples && kernel.neutral && stages.none { it.isActive }) {
+        soundEffects.update(settings.soundEffect)
+        val soundEffectActive = soundEffects.needsProcessing
+        personal.setTarget(settings, volume)
+        val personalActive = channels == 2 && personal.active
+        if (!soundEffectActive && !personalActive && personal.neutral && settings.compressor == app.echo.android.model.playback.EchoCompressorMode.Off && !settings.limiterEnabled && !settings.crossfeedEnabled && replayGain == 0f && !volume.changesSamples && kernel.neutral && stages.none { it.isActive }) {
             val originalLimit = input.limit()
             input.limit(input.position() + frames * channels * bytesPerSample)
             output.put(input)
@@ -89,12 +121,17 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         scratch.flip()
         var samples = scratch
         for (stage in stages) {
+            if (drainingTail && stage is EchoSmartTransitionMixer) continue
             if (stage.isActive) {
                 stage.queueInput(samples)
                 samples = stage.output.order(ByteOrder.nativeOrder())
             }
         }
-        kernel.setTarget(settings, replayGain, volume)
+        val soundEffectProcessed = soundEffectActive && soundEffects.process(samples, frames)
+        if (personalActive) {
+            personal.process(samples, frames, channels)
+        }
+        kernel.setTarget(settings, replayGain, volume, personalAudioActive = personalActive || soundEffectProcessed || stages.any { it is EchoEqualizerAudioProcessor && it.isActive })
         if (channels <= 2 && kernel.processBuffer(samples, frames, channels)) {
             samples.position(0)
             samples.limit(frames * channels * 4)
@@ -170,3 +207,8 @@ internal class EchoDspAudioProcessor(private val stages: Array<AudioProcessor>) 
         }
     }
 }
+
+/** A processor reconfiguration or gapless boundary must not append a room's tail to the queue. */
+internal fun shouldDrainSoundEffectTail(surface: EchoPlaybackSurfaceSnapshot, processedEndUs: Long): Boolean =
+    !surface.hasNextTrack && surface.repeatMode == androidx.media3.common.Player.REPEAT_MODE_OFF &&
+        (!surface.hasTrack || surface.durationMs <= 0 || processedEndUs >= surface.durationMs * 1000 - 250_000)

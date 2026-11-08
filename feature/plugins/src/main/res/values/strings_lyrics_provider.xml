@@ -1,0 +1,7 @@
+<resources>
+    <string name="plugins_lyrics_sample_title">Try a lyric source</string>
+    <string name="plugins_lyrics_sample_detail">Install the LRCLIB example, allow lyric candidates and network access, then enable it. Search from the player lyric manager to preview and choose a result. Song metadata is sent to lrclib.net only when you search.</string>
+    <string name="plugins_lyrics_sample_install">Install LRCLIB lyric source</string>
+    <string name="plugins_perm_lyrics">Provide lyric candidates</string>
+    <string name="plugins_perm_lyrics_detail">Receive a song title, artist, album and duration when you search for lyrics, and return candidates for preview. Network access requires separate permission. Lyrics are saved only when you choose a candidate.</string>
+</resources>

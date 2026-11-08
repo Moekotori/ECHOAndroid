@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.design.EchoExpand
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,7 +49,7 @@ internal fun SettingsScheduleDarkContent(
             checked = enabled,
             onCheckedChange = onEnabledChange,
         )
-        if (enabled) {
+        EchoExpand(enabled) {
             Row(
                 Modifier.fillMaxWidth().padding(bottom = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

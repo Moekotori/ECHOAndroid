@@ -28,6 +28,7 @@ internal fun PlayerAppearanceSettings(
     lyricsBackdrop: String,
     onLyricsBackdropChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    appearancePacks: @Composable () -> Unit = {},
 ) {
     val backdrop = EchoLyricsBackdrop.fromId(lyricsBackdrop)
     LazyColumn(
@@ -35,6 +36,7 @@ internal fun PlayerAppearanceSettings(
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
+        item(key = "appearance-packs") { appearancePacks() }
         item(key = "styles") {
             PlayerPageStyleSelector(EchoPlayerPageStyle.fromId(appearance.style)) { id ->
                 onPreview(appearance.copy(style = id)); onCommit()
@@ -91,6 +93,7 @@ internal fun playerPageStyleLabel(style: EchoPlayerPageStyle): Int = when (style
     EchoPlayerPageStyle.Dither -> R.string.player_appearance_dither
     EchoPlayerPageStyle.GlyphField -> R.string.player_appearance_glyph_field
     EchoPlayerPageStyle.FullCover -> R.string.player_appearance_full_cover
+    EchoPlayerPageStyle.GrooveSpiral -> R.string.player_appearance_groove_spiral
 }
 
 @Composable

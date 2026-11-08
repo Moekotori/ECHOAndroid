@@ -27,7 +27,7 @@ internal class EchoNowPlayingLyricsSession(application: Application) {
     private val database = EchoLibraryDatabase.create(application)
     private val lyricsIndex = app.echo.android.data.LibraryLyricsIndex(database)
     val controller = LyricsController(
-        trackForLyrics = { id -> withContext(Dispatchers.IO) { database.trackDao().getTrackById(id) } },
+        trackForLyrics = { id -> withContext(Dispatchers.IO) { if (app.echo.android.data.FilePlaylistStore.ownsTrack(id)) app.echo.android.data.FilePlaylistStore(application, database).track(id) else database.trackDao().getTrackById(id) } },
         lyricsResolver = LocalLyricsResolver(application),
         onlineLyricsResolver = OnlineLyricsResolver(),
         importedLyricsStore = ImportedLyricsStore(application),
@@ -35,11 +35,12 @@ internal class EchoNowPlayingLyricsSession(application: Application) {
         onSelectionChanged = lyricsIndex::selectionChanged,
         onLoaded = lyricsIndex::loaded,
         subsonicLyricsLoader = { track ->
-            val endpoint = EchoSubsonicEndpointRef.get() ?: return@LyricsController null
+            val endpoint = subsonicEndpointForTrack(track.id) ?: return@LyricsController null
             val songId = subsonicSongIdFromTrack(track.id, track.source) ?: return@LyricsController null
             if (track.source != endpoint.sourceId) return@LyricsController null
             val content = try {
-                fetchSubsonicLyrics(endpoint, songId, track.artist, track.title)
+                fetchSubsonicLyrics(endpoint, songId, track.artist, track.title,
+                    cancellationJob = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job])
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Throwable) {
@@ -51,6 +52,16 @@ internal class EchoNowPlayingLyricsSession(application: Application) {
     )
 
     fun start(settingsStore: EchoSettingsStore) {
+        EchoPlaybackProcessRuntime.scope.launch {
+            var previous = emptyList<app.echo.android.data.SubsonicEndpoint>()
+            EchoSubsonicEndpoints.collect { endpoints ->
+                val trackId = EchoPlaybackProcessRuntime.surfaceSnapshot.mediaId
+                val before = subsonicEndpointForTrack(trackId, previous)
+                val ready = subsonicEndpointForTrack(trackId, endpoints)
+                previous = endpoints
+                if (ready != null && ready != before) controller.updateLyricsForTrack(trackId, force = true)
+            }
+        }
         EchoPlaybackProcessRuntime.scope.launch {
             settingsStore.appSettings
                 .map { it.onlineLyricsEnabled to it.lyricsOptions.sourceOrder }

@@ -1,0 +1,425 @@
+{
+  "repository": "https://github.com/moekotori/echosteam",
+  "revision": "a8f1bd0091db9fd103144909ff36257d6de54b2f",
+  "license": "AGPL-3.0-only for ECHO adaptation; see each third-party LICENSE.txt",
+  "files": [
+    {
+      "path": "AdditionalSoundEffects.cpp",
+      "sha256": "7cc9615f721baebed35986468f333c467fdd5dd5bd077f2f5a5577717384ca89",
+      "upstream_sha256": "7cc9615f721baebed35986468f333c467fdd5dd5bd077f2f5a5577717384ca89"
+    },
+    {
+      "path": "AdditionalSoundEffects.h",
+      "sha256": "9b80d4276b8990f154240ce7e36854cc18e16d95a8f14616d3fd104852124e0e",
+      "upstream_sha256": "9b80d4276b8990f154240ce7e36854cc18e16d95a8f14616d3fd104852124e0e"
+    },
+    {
+      "path": "CharacterSoundEffects.cpp",
+      "sha256": "f080b0208e8ace1fa2b6a2e0bfbe53460018bda2cc0773aa56da211c7ddfe942",
+      "upstream_sha256": "f080b0208e8ace1fa2b6a2e0bfbe53460018bda2cc0773aa56da211c7ddfe942"
+    },
+    {
+      "path": "CharacterSoundEffects.h",
+      "sha256": "d74160c5f86c1f5cf929e38d5eac52a9a6cecf3c8474705d627b79792df6933c",
+      "upstream_sha256": "d74160c5f86c1f5cf929e38d5eac52a9a6cecf3c8474705d627b79792df6933c"
+    },
+    {
+      "path": "ListeningColorEffects.cpp",
+      "sha256": "a0d075afbf9ac685c7d8c2da44965979f1cec6348734a2e7b2e19fc32ccf01b2",
+      "upstream_sha256": "a0d075afbf9ac685c7d8c2da44965979f1cec6348734a2e7b2e19fc32ccf01b2"
+    },
+    {
+      "path": "ListeningColorEffects.h",
+      "sha256": "b3793f0488a9980633f6ff5aafea56b80ad7ff3311e68c44a5f8d079afb96450",
+      "upstream_sha256": "b3793f0488a9980633f6ff5aafea56b80ad7ff3311e68c44a5f8d079afb96450"
+    },
+    {
+      "path": "ModulationSoundEffects.cpp",
+      "sha256": "b308a00759ffd0cb65b3c836acb213847e415b2e963c9a830842d81112b60002",
+      "upstream_sha256": "b308a00759ffd0cb65b3c836acb213847e415b2e963c9a830842d81112b60002"
+    },
+    {
+      "path": "ModulationSoundEffects.h",
+      "sha256": "fa2668e59bc7de94a226f597c18895cac47c25bb4b017cc7f1e6a86956be0bcc",
+      "upstream_sha256": "fa2668e59bc7de94a226f597c18895cac47c25bb4b017cc7f1e6a86956be0bcc"
+    },
+    {
+      "path": "PairedSoundEffect.h",
+      "sha256": "9b61c3602b4efe2c0bb92d97e6a3c5694ac7290634cf05ce4b9dfd57855961e3",
+      "upstream_sha256": "9b61c3602b4efe2c0bb92d97e6a3c5694ac7290634cf05ce4b9dfd57855961e3"
+    },
+    {
+      "path": "Bs2bCrossfeed.h",
+      "sha256": "337d049ba96b12bb67716d559388569808c3a80ed1af7a63cd17a1cd29b00677",
+      "upstream_sha256": "337d049ba96b12bb67716d559388569808c3a80ed1af7a63cd17a1cd29b00677"
+    },
+    {
+      "path": "EqProcessor.cpp",
+      "sha256": "f9ebf3e9e3e48bb036b8d86ade02730edf38f6ff02cc5fe2204703f473181eb6",
+      "upstream_sha256": "99965bb193b4748569202222a0dd8585c231fde3faa834eb19e4e0a70ef05c99"
+    },
+    {
+      "path": "EqProcessor.h",
+      "sha256": "0750ccb1f2358ef02b96b941d83e76333e60a457ef362413b4feed0766092dbf",
+      "upstream_sha256": "6dd67c27d8665973596996cf112bf729cc67b770874466fc911d618a274f876c"
+    },
+    {
+      "path": "EqBand.h",
+      "sha256": "01e19eeb4b3e753f6ed9e00c718d0f84779de6b34df49a617350c2964dd64465",
+      "upstream_sha256": "01e19eeb4b3e753f6ed9e00c718d0f84779de6b34df49a617350c2964dd64465"
+    },
+    {
+      "path": "EqTypes.h",
+      "sha256": "09a772694b412f93be7a3bd5686073303ba752208f36993d4973d75b84e81bbd",
+      "upstream_sha256": "09a772694b412f93be7a3bd5686073303ba752208f36993d4973d75b84e81bbd"
+    },
+    {
+      "path": "EqAuditionProcessor.h",
+      "sha256": "0dd76ca27deef3462892be86a7e22f2f0efb8edb342ad057ac612d4e7c5d17ae",
+      "upstream_sha256": "0dd76ca27deef3462892be86a7e22f2f0efb8edb342ad057ac612d4e7c5d17ae"
+    },
+    {
+      "path": "EqSvf.h",
+      "sha256": "9356a8579624b4d19f4c9bd625ce3af8d4be10386238135850e3b12cbfb19fab",
+      "upstream_sha256": "9356a8579624b4d19f4c9bd625ce3af8d4be10386238135850e3b12cbfb19fab"
+    },
+    {
+      "path": "HeadphoneCorrectionParameters.h",
+      "sha256": "12df13ac9829043859c06c324ca470f29bc0b5b158ada49c514ee79de5dd3292",
+      "upstream_sha256": "12df13ac9829043859c06c324ca470f29bc0b5b158ada49c514ee79de5dd3292"
+    },
+    {
+      "path": "DspMeasurement.h",
+      "sha256": "98ae56efa15e719fd947f7b8e42afec38a89fd56082b59c50e083c50d8935f9e",
+      "upstream_sha256": "98ae56efa15e719fd947f7b8e42afec38a89fd56082b59c50e083c50d8935f9e"
+    },
+    {
+      "path": "DspSafetyLimiter.h",
+      "sha256": "b073bcaac5da21d33db8ab646040d006e2e9035bf0376d01f0d15cef3937ea70",
+      "upstream_sha256": "b073bcaac5da21d33db8ab646040d006e2e9035bf0376d01f0d15cef3937ea70"
+    },
+    {
+      "path": "DeEsserProcessor.cpp",
+      "sha256": "49da2e5553fb47c37d9a4d60e338054a8e2eb041091cc46a64423620b6e3b577",
+      "upstream_sha256": "49da2e5553fb47c37d9a4d60e338054a8e2eb041091cc46a64423620b6e3b577"
+    },
+    {
+      "path": "DeEsserProcessor.h",
+      "sha256": "020c4f61e0a80f9e29923f65189ec762035e19b8fc9fd936bdcd832f0ccbc363",
+      "upstream_sha256": "020c4f61e0a80f9e29923f65189ec762035e19b8fc9fd936bdcd832f0ccbc363"
+    },
+    {
+      "path": "DynamicsReduction.h",
+      "sha256": "34564e248433821fff5868c5dd36b6ca9f885c2b1bd830b1d7ff07be9dd3107c",
+      "upstream_sha256": "34564e248433821fff5868c5dd36b6ca9f885c2b1bd830b1d7ff07be9dd3107c"
+    },
+    {
+      "path": "buffer.h",
+      "sha256": "55c77dbeefb1090ef69eed1c07165e306e1eb63ea7214a238788d4babe3a7e8f",
+      "upstream_sha256": "55c77dbeefb1090ef69eed1c07165e306e1eb63ea7214a238788d4babe3a7e8f"
+    },
+    {
+      "path": "third_party/airwindows-character/AirwindowsDeRez3.cpp",
+      "sha256": "b0ca8bd51ff887096b3958bf30b4d8c1580aea8658e742d6ef5b2b82d152efa7",
+      "upstream_sha256": "b0ca8bd51ff887096b3958bf30b4d8c1580aea8658e742d6ef5b2b82d152efa7"
+    },
+    {
+      "path": "third_party/airwindows-character/AirwindowsDeRez3.h",
+      "sha256": "762d9153a63b6cddac85b4bf567aae9cb48dacdc0da8f7017d33d6cd8d836d36",
+      "upstream_sha256": "762d9153a63b6cddac85b4bf567aae9cb48dacdc0da8f7017d33d6cd8d836d36"
+    },
+    {
+      "path": "third_party/airwindows-character/AirwindowsRingModulator.cpp",
+      "sha256": "937dbdf99dc59f9c3f1c1a8624caab3d7715968b10fd1ed1c0cf0cfe06057dee",
+      "upstream_sha256": "937dbdf99dc59f9c3f1c1a8624caab3d7715968b10fd1ed1c0cf0cfe06057dee"
+    },
+    {
+      "path": "third_party/airwindows-character/AirwindowsRingModulator.h",
+      "sha256": "bbc4c84bf885ff7dd712eb4f561c2b0fac8dd11e72ed05c1d59f5472e62cf315",
+      "upstream_sha256": "bbc4c84bf885ff7dd712eb4f561c2b0fac8dd11e72ed05c1d59f5472e62cf315"
+    },
+    {
+      "path": "third_party/airwindows-character/LICENSE.txt",
+      "sha256": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b",
+      "upstream_sha256": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b"
+    },
+    {
+      "path": "third_party/airwindows-character/sources.json",
+      "sha256": "bfbd52860e6c70fcc385b6d5649acf528c6ce4c25e2b18681ff18b5f39419e50",
+      "upstream_sha256": "bfbd52860e6c70fcc385b6d5649acf528c6ce4c25e2b18681ff18b5f39419e50"
+    },
+    {
+      "path": "third_party/airwindows-colors/AirwindowsAutoPan.cpp",
+      "sha256": "c9f3e2d5eca16c053b31bb17617dbf7bf5a542d7aca99e62fb3c97c09c708eaf",
+      "upstream_sha256": "c9f3e2d5eca16c053b31bb17617dbf7bf5a542d7aca99e62fb3c97c09c708eaf"
+    },
+    {
+      "path": "third_party/airwindows-colors/AirwindowsAutoPan.h",
+      "sha256": "696daeebb9a03ba987a62335b38b6cf3e82cf2ab3a642ec3a78d9884c7b86829",
+      "upstream_sha256": "696daeebb9a03ba987a62335b38b6cf3e82cf2ab3a642ec3a78d9884c7b86829"
+    },
+    {
+      "path": "third_party/airwindows-colors/AirwindowsTube.cpp",
+      "sha256": "b684bba815cbd16fc30eadffc40b961c9f279f99633fac0b38b0f0d94344d734",
+      "upstream_sha256": "b684bba815cbd16fc30eadffc40b961c9f279f99633fac0b38b0f0d94344d734"
+    },
+    {
+      "path": "third_party/airwindows-colors/AirwindowsTube.h",
+      "sha256": "2571aac937451381e1538802e4af55644a2878d8131c9b1a5a628c9cef9beb1d",
+      "upstream_sha256": "2571aac937451381e1538802e4af55644a2878d8131c9b1a5a628c9cef9beb1d"
+    },
+    {
+      "path": "third_party/airwindows-colors/AirwindowsVinyl.cpp",
+      "sha256": "069d1e757837c8c851829ae4aadf07b7a8aad5be63388f2c9a237d805662dc20",
+      "upstream_sha256": "069d1e757837c8c851829ae4aadf07b7a8aad5be63388f2c9a237d805662dc20"
+    },
+    {
+      "path": "third_party/airwindows-colors/AirwindowsVinyl.h",
+      "sha256": "21a68308f8a52d24a5e6e5bc6d6bf87dddc3ea9c125b4fabc71626c76daf76f9",
+      "upstream_sha256": "21a68308f8a52d24a5e6e5bc6d6bf87dddc3ea9c125b4fabc71626c76daf76f9"
+    },
+    {
+      "path": "third_party/airwindows-colors/LICENSE.txt",
+      "sha256": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b",
+      "upstream_sha256": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b"
+    },
+    {
+      "path": "third_party/airwindows-colors/sources.json",
+      "sha256": "5b0e94098faf585df5b21ecb279b8769d74bfe51f4d6ae9f595fd31376e8e16e",
+      "upstream_sha256": "5b0e94098faf585df5b21ecb279b8769d74bfe51f4d6ae9f595fd31376e8e16e"
+    },
+    {
+      "path": "third_party/airwindows-modulation/AirwindowsPoint.cpp",
+      "sha256": "1718a283f1e1e8324eb7fc233e4c2d5faae1b90484d7eae97ac84ee301fb1bd6",
+      "upstream_sha256": "1718a283f1e1e8324eb7fc233e4c2d5faae1b90484d7eae97ac84ee301fb1bd6"
+    },
+    {
+      "path": "third_party/airwindows-modulation/AirwindowsPoint.h",
+      "sha256": "1ec79977657247f15c7263a39f8dfbc519741797120c11574872521040ec6867",
+      "upstream_sha256": "1ec79977657247f15c7263a39f8dfbc519741797120c11574872521040ec6867"
+    },
+    {
+      "path": "third_party/airwindows-modulation/AirwindowsTremolo.cpp",
+      "sha256": "a5aabb9862926b5302e223fae2905e44bc8fbeea83cef15953ab5d07bcc61da7",
+      "upstream_sha256": "a5aabb9862926b5302e223fae2905e44bc8fbeea83cef15953ab5d07bcc61da7"
+    },
+    {
+      "path": "third_party/airwindows-modulation/AirwindowsTremolo.h",
+      "sha256": "7425c1f9c440378b6aafd8d6a9faffb144b0446c9435635f199fe4e18dfb31b8",
+      "upstream_sha256": "7425c1f9c440378b6aafd8d6a9faffb144b0446c9435635f199fe4e18dfb31b8"
+    },
+    {
+      "path": "third_party/airwindows-modulation/LICENSE.txt",
+      "sha256": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b",
+      "upstream_sha256": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b"
+    },
+    {
+      "path": "third_party/airwindows-modulation/sources.json",
+      "sha256": "c8fde351e065495c0506c18c8e5303c7319e64a413ca8e2be75d35865c89d138",
+      "upstream_sha256": "c8fde351e065495c0506c18c8e5303c7319e64a413ca8e2be75d35865c89d138"
+    },
+    {
+      "path": "third_party/airwindows-tape/AirwindowsTape.cpp",
+      "sha256": "15d181d66e4bd66541ab4eea9c0c2232f8c3b5270485b8302793c86b9c375f0c",
+      "upstream_sha256": "15d181d66e4bd66541ab4eea9c0c2232f8c3b5270485b8302793c86b9c375f0c"
+    },
+    {
+      "path": "third_party/airwindows-tape/AirwindowsTape.h",
+      "sha256": "974dd78ba8ca763f7dc345152d247cdd5ef8a4016fc5efe859ecf80e18f5f070",
+      "upstream_sha256": "974dd78ba8ca763f7dc345152d247cdd5ef8a4016fc5efe859ecf80e18f5f070"
+    },
+    {
+      "path": "third_party/airwindows-tape/LICENSE.txt",
+      "sha256": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b",
+      "upstream_sha256": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b"
+    },
+    {
+      "path": "third_party/airwindows-tape/sources.json",
+      "sha256": "a117166510ce36e48baa32e29cca0c1442c6f3ee0ae5a8d68a7f8ddd8b56ff83",
+      "upstream_sha256": "a117166510ce36e48baa32e29cca0c1442c6f3ee0ae5a8d68a7f8ddd8b56ff83"
+    },
+    {
+      "path": "third_party/signalsmith/basics/LICENSE.txt",
+      "sha256": "b81eab3abab58e20eb74c74e70b8f3cbf7160ae3b3f1951b8f5e6692b52d10b5",
+      "upstream_sha256": "b81eab3abab58e20eb74c74e70b8f3cbf7160ae3b3f1951b8f5e6692b52d10b5"
+    },
+    {
+      "path": "third_party/signalsmith/basics/SUPPORT.txt",
+      "sha256": "effc0e9edc9cf0fa6e40e21477cef7021c841e215e364aa6da8874ffaacaecb6",
+      "upstream_sha256": "effc0e9edc9cf0fa6e40e21477cef7021c841e215e364aa6da8874ffaacaecb6"
+    },
+    {
+      "path": "third_party/signalsmith/basics/include/signalsmith-basics/chorus.h",
+      "sha256": "9c1a8b12f2c2a1dc6c2dc557c17cfa7cb48b6dda18d7e086b63be0d354de4c92",
+      "upstream_sha256": "9c1a8b12f2c2a1dc6c2dc557c17cfa7cb48b6dda18d7e086b63be0d354de4c92"
+    },
+    {
+      "path": "third_party/signalsmith/basics/include/signalsmith-basics/crunch.h",
+      "sha256": "e569e2cfe65edd6936c32caa80b90140ae996cefa2bfb8445f52423aa013648c",
+      "upstream_sha256": "e569e2cfe65edd6936c32caa80b90140ae996cefa2bfb8445f52423aa013648c"
+    },
+    {
+      "path": "third_party/signalsmith/basics/include/signalsmith-basics/dynamics.h",
+      "sha256": "7eb0fc25a79cc29b16166531c69b3ca6e45c30f50de84c4085f1a09d8cc4ee81",
+      "upstream_sha256": "7eb0fc25a79cc29b16166531c69b3ca6e45c30f50de84c4085f1a09d8cc4ee81"
+    },
+    {
+      "path": "third_party/signalsmith/basics/include/signalsmith-basics/reverb.h",
+      "sha256": "bb8cb42ff59d2a96a31567c0470b8d9d4c68b9b44c6ca5d078bed17cb02dfa86",
+      "upstream_sha256": "bb8cb42ff59d2a96a31567c0470b8d9d4c68b9b44c6ca5d078bed17cb02dfa86"
+    },
+    {
+      "path": "third_party/signalsmith/basics/include/stfx/LICENSE.txt",
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+      "upstream_sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+    },
+    {
+      "path": "third_party/signalsmith/basics/include/stfx/stfx-library.h",
+      "sha256": "cafd3ed1c68f337ee674011c9511da97a6db58e06e3d83d00c32d91fc5d107d1",
+      "upstream_sha256": "55f615730a0f90d0880f1c5ec51375509e3bc17291267c306b2eccfc3bff03ba"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/LICENSE.txt",
+      "sha256": "8b7cb3437bcbe89c4bd5c51da3c1a67f71fa7e9026a89670e9e499189225aff8",
+      "upstream_sha256": "8b7cb3437bcbe89c4bd5c51da3c1a67f71fa7e9026a89670e9e499189225aff8"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/common.h",
+      "sha256": "d0a9055695090c4a217f684cadea8cc2c5343e93cdfd180125f941318b2f9366",
+      "upstream_sha256": "d0a9055695090c4a217f684cadea8cc2c5343e93cdfd180125f941318b2f9366"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/curves.h",
+      "sha256": "762c64abf1fe4d94debfe439627d2075b74ce56816edcd6aba7088ec63495a1c",
+      "upstream_sha256": "762c64abf1fe4d94debfe439627d2075b74ce56816edcd6aba7088ec63495a1c"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/delay.h",
+      "sha256": "8404c2f3ece11314933d560a8fc6fd9c3220e2308492912b02ac6d1e834af24c",
+      "upstream_sha256": "8404c2f3ece11314933d560a8fc6fd9c3220e2308492912b02ac6d1e834af24c"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/envelopes.h",
+      "sha256": "168403fcc3c94e6655e84f9e9d2e374e627f7283e2c9cdf62361833322268e11",
+      "upstream_sha256": "168403fcc3c94e6655e84f9e9d2e374e627f7283e2c9cdf62361833322268e11"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/fft.h",
+      "sha256": "01c193813c0b3bd7da30b227a1d55fa54b137bef78560fc7a12e84df81c0fd52",
+      "upstream_sha256": "01c193813c0b3bd7da30b227a1d55fa54b137bef78560fc7a12e84df81c0fd52"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/filters.h",
+      "sha256": "752215646c6d78701b3727023ca0dec2426f16725f88e3f56484ce4183ca98d0",
+      "upstream_sha256": "752215646c6d78701b3727023ca0dec2426f16725f88e3f56484ce4183ca98d0"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/curves.h",
+      "sha256": "663a5095126da354896a00f178600bea0f21ef461f5d88e84e46e75ff43925aa",
+      "upstream_sha256": "663a5095126da354896a00f178600bea0f21ef461f5d88e84e46e75ff43925aa"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/delay.h",
+      "sha256": "cc86e9804e50ca2b004c1023987cc5b8c9810fc6e2bc131cdc02f4ed874a4fdf",
+      "upstream_sha256": "cc86e9804e50ca2b004c1023987cc5b8c9810fc6e2bc131cdc02f4ed874a4fdf"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/envelopes.h",
+      "sha256": "0dec696807a2504b01f0c2d20cd2e50393010c9a4b8107f396b2455700f7e340",
+      "upstream_sha256": "0dec696807a2504b01f0c2d20cd2e50393010c9a4b8107f396b2455700f7e340"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/fft.h",
+      "sha256": "98e7e64093b6fc8ccbba31f710370d5548243bad35beb489e8282de4dc25d76d",
+      "upstream_sha256": "98e7e64093b6fc8ccbba31f710370d5548243bad35beb489e8282de4dc25d76d"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/filters.h",
+      "sha256": "bdd3dc5ad39524d2984ead6b9955c628ca1a3ce41c03c79ec18b567bd21b679d",
+      "upstream_sha256": "bdd3dc5ad39524d2984ead6b9955c628ca1a3ce41c03c79ec18b567bd21b679d"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/mix.h",
+      "sha256": "7387cb5794c15c7b6720e4a6fbc7b65fbb7b9f619259dfd39e5d54945ae757a2",
+      "upstream_sha256": "7387cb5794c15c7b6720e4a6fbc7b65fbb7b9f619259dfd39e5d54945ae757a2"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/perf.h",
+      "sha256": "627bfa6eb4f050be429629db0a08324334979bde2428206f0400648f0df47365",
+      "upstream_sha256": "627bfa6eb4f050be429629db0a08324334979bde2428206f0400648f0df47365"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/rates.h",
+      "sha256": "a9149d5c6a4952d3c1a43e6f77c830b9a6ce70e0d49efad874c62b661e3dee5d",
+      "upstream_sha256": "a9149d5c6a4952d3c1a43e6f77c830b9a6ce70e0d49efad874c62b661e3dee5d"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/spectral.h",
+      "sha256": "c880288ed072ec5daa23911261e0ba62aa99edf338b9c377d0fe2caa17061ae4",
+      "upstream_sha256": "c880288ed072ec5daa23911261e0ba62aa99edf338b9c377d0fe2caa17061ae4"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/include/signalsmith-dsp/windows.h",
+      "sha256": "773760bd60f1cbd7b3d2045b6ec9b9372721101673d351060f409ed6cd399789",
+      "upstream_sha256": "773760bd60f1cbd7b3d2045b6ec9b9372721101673d351060f409ed6cd399789"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/mix.h",
+      "sha256": "3bb1f307e5f79fd3aafd91fac41d33c29cf0b0c2a6a2a0b5041981e050ec5834",
+      "upstream_sha256": "3bb1f307e5f79fd3aafd91fac41d33c29cf0b0c2a6a2a0b5041981e050ec5834"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/perf.h",
+      "sha256": "8d8dcad667c4955da42468f55d13a854a14541bc68121a4ebd09a08cdb6e3814",
+      "upstream_sha256": "8d8dcad667c4955da42468f55d13a854a14541bc68121a4ebd09a08cdb6e3814"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/rates.h",
+      "sha256": "17c70c9d2c123b2ec1823309ea4317aa711098aef874090c0c97901267dc8a1a",
+      "upstream_sha256": "17c70c9d2c123b2ec1823309ea4317aa711098aef874090c0c97901267dc8a1a"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/spectral.h",
+      "sha256": "9353dc555dc74f6a2913bb439e3d2e2c1432d316bbb3bfd33c7f1a5d0af6d0eb",
+      "upstream_sha256": "9353dc555dc74f6a2913bb439e3d2e2c1432d316bbb3bfd33c7f1a5d0af6d0eb"
+    },
+    {
+      "path": "third_party/signalsmith/dsp/windows.h",
+      "sha256": "e1ef72403301aed069f3d523cfde058e155f9c4054e4d19cbcefb38223ecbf3c",
+      "upstream_sha256": "e1ef72403301aed069f3d523cfde058e155f9c4054e4d19cbcefb38223ecbf3c"
+    },
+    {
+      "path": "third_party/signalsmith/sources.json",
+      "sha256": "f61d81606dbaadfbb00c120adb19454751f6807b99dd61149a54a8d8505ebb67",
+      "upstream_sha256": "f61d81606dbaadfbb00c120adb19454751f6807b99dd61149a54a8d8505ebb67"
+    }
+  ],
+  "patches": [
+    "patches/0001-stfx-arm-denormals.patch",
+    "patches/0002-eq-local-headroom.patch"
+  ],
+  "presets": [
+    "vocal",
+    "bass",
+    "warm",
+    "wide",
+    "live",
+    "hall",
+    "tape",
+    "night",
+    "headphones",
+    "echo",
+    "tube",
+    "vinyl",
+    "autopan",
+    "deess",
+    "tremolo",
+    "phaser",
+    "transient",
+    "flanger",
+    "telephone",
+    "digital",
+    "autowah",
+    "ringmod"
+  ]
+}

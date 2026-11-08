@@ -122,7 +122,7 @@ fun rememberArtworkColorGrid(artworkUri: String?, enabled: Boolean = true, detai
     val headers = EchoArtworkRequestHeadersRegistry.headersFor(artworkUri)
     val grid by produceState<ArtworkColorGrid?>(null, artworkUri, fetchUri, rewriteRevision, headers, detailed) {
         val loaded = withContext(Dispatchers.IO) {
-            loadArtworkSwatch(context, fetchUri ?: artworkUri, sampleSize = if (detailed) 8 else 16, headers = headers)
+            loadArtworkSwatch(context, fetchUri ?: artworkUri, sampleSize = if (detailed) 8 else 16, headers = headers, cacheUri = artworkUri)
                 ?.let {
                     if (detailed) ArtworkColorGrid.fromBitmap(it, ArtworkColorGrid.DetailedColumns, ArtworkColorGrid.DetailedRows)
                     else ArtworkColorGrid.fromBitmap(it)

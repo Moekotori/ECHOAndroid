@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_import_review">逐項檢查與修正</string>
+    <string name="playlist_import_choose_match">選擇符合的歌曲</string>
+    <string name="playlist_import_search_match">搜尋音樂庫</string>
+    <string name="playlist_import_skip_entry">略過此項</string>
+    <string name="playlist_import_skipped_entry">已略過</string>
+    <string name="playlist_import_ambiguous_entry">有多個候選，請選擇</string>
+    <string name="playlist_import_missing_entry">未找到符合項目，請選擇歌曲</string>
+    <string name="playlist_import_review_done">完成</string>
+    <string name="playlist_export_format">匯出播放清單</string>
+    <string name="playlist_export_m3u_label">M3U8 · 檔案參照清單</string>
+    <string name="playlist_export_text_label">TXT · 可閱讀歌曲清單</string>
+    <string name="playlist_export_csv_label">CSV · 歌名、歌手、專輯與時長</string>
+    <string name="file_playlist_create">新增檔案播放清單</string>
+    <string name="file_playlist_hint">將課程、錄音保存在獨立清單中，不加入音樂庫或全庫隨機。每個清單最多 2,000 個音訊檔案，原始檔案保留在原位置。</string>
+    <string name="file_playlist_files">選擇音訊檔案</string>
+    <string name="file_playlist_folder">選擇資料夾</string>
+    <string name="file_playlist_failed">無法儲存檔案歌單。請檢查讀取授權、選擇支援的音訊格式，並將每個資料夾限制在 2,000 個音訊檔案以內。大量檔案請改選資料夾，避免耗盡持久讀取授權。</string>
+    <string name="file_playlist_progress">正在讀取音訊：%1$d / %2$d</string>
+    <string name="file_playlist_label">檔案播放清單</string>
+    <string name="file_playlist_add_files">加入音訊檔案</string>
+    <string name="file_playlist_add_library">從音樂庫加入</string>
+</resources>

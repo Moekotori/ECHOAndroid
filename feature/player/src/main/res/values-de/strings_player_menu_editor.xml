@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="player_menu_edit">Menü bearbeiten</string>
-    <string name="player_menu_detail">Sichtbare Aktionen auswählen, mit den Pfeilen sortieren und speichern. Nicht unterstützte Aktionen bleiben je nach Musikquelle verborgen.</string>
+    <string name="player_menu_detail">Ziehe die Griffe zum Sortieren und nutze die Schalter zum Aus- oder Einblenden. Speichere anschließend. Nicht unterstützte Aktionen bleiben je nach Musikquelle verborgen.</string>
     <string name="player_menu_move_up">%1$s nach oben</string>
     <string name="player_menu_move_down">%1$s nach unten</string>
     <string name="player_menu_save_failed">Speichern fehlgeschlagen. Bitte erneut versuchen.</string>

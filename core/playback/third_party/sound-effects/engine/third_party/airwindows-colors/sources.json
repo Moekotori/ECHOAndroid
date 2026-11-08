@@ -1,0 +1,36 @@
+{
+  "repository": "https://github.com/airwindows/airwindows",
+  "revision": "7fd5f5cae262a41e6dd7d9a83d60c46e84d3092a",
+  "license": "MIT",
+  "upstreamFiles": {
+    "AirwindowsTube": {
+      "Tube2.h": "36cc0db2f280bab4a845e70c921b478505129b65eb9c3572f14b1e17a233ac2c",
+      "Tube2Proc.cpp": "e6135ff072fb2c542dd4ec712dacb61e8ce58b879b0ec5bcaacd440098bf7d1f"
+    },
+    "AirwindowsVinyl": {
+      "ToVinyl4.h": "3a55bfff6c44320648c3ef8a34130104395233007123349f7e224b551b05a5c4",
+      "ToVinyl4Proc.cpp": "af8305322ecdfb91564dadb8a5715d2672c2d65e365147008a9467cf42ba54de"
+    },
+    "AirwindowsAutoPan": {
+      "AutoPan.h": "1d766ef7db8a27de9ebb24cb8bbf3615840df7f1d440ff688a46287c6874b52d",
+      "AutoPanProc.cpp": "492f9e97a45a6e1a039538e7470ca6253907bd5eefda2c504d5a27820797d2e5"
+    }
+  },
+  "adaptations": [
+    "Retain only double-precision processing and private DSP histories; omit VST SDK, float path and UI.",
+    "Zero-initialize histories and use deterministic seeds/reset. Omit denormal-noise injection; retain disabled double-path dither.",
+    "Use typed noexcept processing and sample-rate accessor, replace discarded dereferences with pointer increments.",
+    "Fixed ECHO tuning: Tube2 A=1, B=.55; ToVinyl4 A=.203419, B=.60, C=.32, D=.064; AutoPan A=.23, B=0, C=0, D=.55.",
+    "AutoPan starts at phase zero with rate multiplier .6 instead of the upstream first-call sentinel."
+  ],
+  "files": {
+    ".gitattributes": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9",
+    "AirwindowsAutoPan.cpp": "c9f3e2d5eca16c053b31bb17617dbf7bf5a542d7aca99e62fb3c97c09c708eaf",
+    "AirwindowsAutoPan.h": "696daeebb9a03ba987a62335b38b6cf3e82cf2ab3a642ec3a78d9884c7b86829",
+    "AirwindowsTube.cpp": "b684bba815cbd16fc30eadffc40b961c9f279f99633fac0b38b0f0d94344d734",
+    "AirwindowsTube.h": "2571aac937451381e1538802e4af55644a2878d8131c9b1a5a628c9cef9beb1d",
+    "AirwindowsVinyl.cpp": "069d1e757837c8c851829ae4aadf07b7a8aad5be63388f2c9a237d805662dc20",
+    "AirwindowsVinyl.h": "21a68308f8a52d24a5e6e5bc6d6bf87dddc3ea9c125b4fabc71626c76daf76f9",
+    "LICENSE.txt": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b"
+  }
+}

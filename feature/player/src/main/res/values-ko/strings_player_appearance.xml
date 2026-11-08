@@ -23,4 +23,5 @@
     <string name="player_appearance_dither">디더링</string>
     <string name="player_appearance_glyph_field">글자 아트</string>
     <string name="player_appearance_full_cover">전체 화면 커버</string>
+    <string name="player_appearance_groove_spiral">그루브 나선</string>
 </resources>

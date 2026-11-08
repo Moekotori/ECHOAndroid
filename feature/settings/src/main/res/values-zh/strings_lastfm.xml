@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lastfm_now_playing_title">正在播放</string>
+    <string name="lastfm_now_playing_detail">在 Last.fm 个人主页显示当前歌曲</string>
+    <string name="lastfm_scrobble_title">记录听歌历史</string>
+    <string name="lastfm_scrobble_detail">实际收听达到歌曲时长的一半或 4 分钟后提交；不记录 30 秒及以下的歌曲。</string>
+    <string name="lastfm_love_title">同步喜欢到 Last.fm</string>
+    <string name="lastfm_love_detail">同步本地已有和新增的喜欢，只发送歌名和艺人。本地取消喜欢不会删除 Last.fm 喜欢，关闭即可停止上传。</string>
+    <string name="lastfm_connect_first">请先连接并启用 Last.fm</string>
+    <string name="lastfm_capacity">同步记录已达上限</string>
+    <string name="lastfm_love_failed">同步暂未完成，待同步任务已保留</string>
+    <string name="lastfm_love_scanning">正在读取本地喜欢…</string>
+    <string name="lastfm_love_progress">已同步 %1$d 首 · 待同步 %2$d 首</string>
+    <string name="lastfm_import_title">从 Last.fm 导入</string>
+    <string name="lastfm_import_detail">将喜欢和累计播放次数导入匹配的本地歌曲；未匹配和存在多个版本的歌曲会跳过。重复导入不会累加相同的播放次数。</string>
+    <string name="lastfm_import_cancel">取消导入</string>
+    <string name="lastfm_import_running">已处理 %1$d 首</string>
+    <string name="lastfm_import_completed">导入完成</string>
+    <string name="lastfm_import_cancelled">已取消导入</string>
+    <string name="lastfm_import_failed">导入失败，可重试；已完成的页面会保留。</string>
+    <string name="lastfm_import_result">新增喜欢 %1$d 首 · 更新播放次数 %2$d 首 · 未匹配 %3$d 首 · 歧义 %4$d 首</string>
+    <string name="lastfm_last_now_playing">最近更新正在播放</string>
+    <string name="lastfm_last_scrobble">最近提交听歌记录</string>
+    <string name="lastfm_active_track">当前歌曲</string>
+    <string name="lastfm_no_active_track">暂无正在播放的歌曲</string>
+    <string name="lastfm_active_progress">%1$s — %2$s · %3$d / %4$d 秒</string>
+    <string name="lastfm_pending_title">待提交的听歌记录</string>
+    <string name="lastfm_pending_detail">已保存 %1$d 条记录，将自动重试</string>
+    <string name="lastfm_refresh">刷新状态</string>
+    <string name="lastfm_refresh_detail">重试待提交任务，并完成已批准的授权</string>
+    <string name="lastfm_never">尚无记录</string>
+    <string name="lastfm_connecting">正在连接…</string>
+</resources>

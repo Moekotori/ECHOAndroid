@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_layout_title">編排首頁</string>
-    <string name="home_layout_detail">用箭頭調整順序，關閉不常用的內容。暫時沒有資料的內容會在資料可用時出現。</string>
+    <string name="home_layout_detail">拖曳把手調整順序，用開關隱藏或恢復內容。暫時沒有資料的內容會在資料可用時出現。</string>
     <string name="home_layout_move_up">將%1$s上移</string>
     <string name="home_layout_move_down">將%1$s下移</string>
     <string name="home_layout_reset">恢復預設</string>

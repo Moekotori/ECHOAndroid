@@ -23,72 +23,74 @@ import androidx.compose.ui.text.font.FontFamily
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
 
 object EchoColors {
-    // Graphite surfaces with dusty-rose controls. Keep accents warm so glass doesn't pick up leftover blue.
-    val Night = Color(0xFF19191D)
-    val Ink = Color(0xFF222327)
-    val Slate = Color(0xFF2B2C31)
-    val Rose = Color(0xFF9B5B6A)
+    // Warm plum-tinted graphite surfaces with a clean rose accent, so the pink melts into the page
+    // instead of sitting on cold grey. Coral stays the error tone; Peach is the warm companion.
+    val Night = Color(0xFF161316)
+    val Ink = Color(0xFF231E22)
+    val Slate = Color(0xFF2B252A)
+    val Rose = Color(0xFFB8566F)
     val Brass = Color(0xFFE1A33A)
     val Coral = Color(0xFFD7675D)
-    val Sky = Color(0xFFD3A9B5)
-    val Paper = Color(0xFFF3F1F2)
+    val Peach = Color(0xFFEDB38F)
+    val Sky = Color(0xFFEBA5B8)
+    val Paper = Color(0xFFF4F0F2)
     val Mist = Color(0xFFF1EEEF)
     val Smoke = Color(0xFFA8A8AE)
 }
 
 private val EchoDarkScheme = darkColorScheme(
     primary = EchoColors.Sky,
-    onPrimary = Color(0xFF251B20),
-    primaryContainer = Color(0xFF3A2C32),
-    onPrimaryContainer = Color(0xFFE4C4CC),
-    inversePrimary = Color(0xFF925568),
+    onPrimary = Color(0xFF2A141B),
+    primaryContainer = Color(0xFF4A363F),
+    onPrimaryContainer = Color(0xFFF4C2CF),
+    inversePrimary = Color(0xFFB04A68),
     secondary = EchoColors.Sky,
-    onSecondary = Color(0xFF251B20),
-    secondaryContainer = Color(0xFF322A2E),
-    onSecondaryContainer = Color(0xFFE4C4CC),
-    tertiary = EchoColors.Coral,
-    onTertiary = Color(0xFF2A1614),
-    tertiaryContainer = Color(0xFF3A2A28),
-    onTertiaryContainer = Color(0xFFF0D0C8),
+    onSecondary = Color(0xFF2A141B),
+    secondaryContainer = Color(0xFF342A2F),
+    onSecondaryContainer = Color(0xFFF4C2CF),
+    tertiary = EchoColors.Peach,
+    onTertiary = Color(0xFF2A1A12),
+    tertiaryContainer = Color(0xFF3D2E26),
+    onTertiaryContainer = Color(0xFFF6D9C6),
     background = EchoColors.Night,
     onBackground = EchoColors.Paper,
     surface = EchoColors.Ink,
     onSurface = EchoColors.Paper,
     surfaceVariant = EchoColors.Slate,
-    onSurfaceVariant = Color(0xFFBCBBC2),
+    onSurfaceVariant = Color(0xFFC0B8BD),
     surfaceTint = EchoColors.Sky,
-    inverseSurface = Color(0xFFE8E4E6),
-    inverseOnSurface = Color(0xFF1C1C20),
-    outline = Color(0xFF5D5C63),
-    outlineVariant = Color(0xFF3A3A40),
-    surfaceDim = Color(0xFF151519),
-    surfaceBright = Color(0xFF2B2C31),
-    surfaceContainerLowest = Color(0xFF101014),
-    surfaceContainerLow = Color(0xFF1C1C20),
-    surfaceContainer = Color(0xFF202126),
-    surfaceContainerHigh = Color(0xFF2A2B30),
-    surfaceContainerHighest = Color(0xFF323338),
+    inverseSurface = Color(0xFFEAE4E7),
+    inverseOnSurface = Color(0xFF1C181B),
+    outline = Color(0xFF645A61),
+    outlineVariant = Color(0xFF3B3339),
+    surfaceDim = Color(0xFF141114),
+    surfaceBright = Color(0xFF2B252A),
+    surfaceContainerLowest = Color(0xFF100D10),
+    surfaceContainerLow = Color(0xFF191518),
+    surfaceContainer = Color(0xFF1F1A1E),
+    surfaceContainerHigh = Color(0xFF2B252A),
+    surfaceContainerHighest = Color(0xFF342E33),
 )
 
 private val EchoLightScheme = lightColorScheme(
-    primary = Color(0xFF925568),
+    primary = Color(0xFFB04A68),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFF1E5E9),
-    onPrimaryContainer = Color(0xFF442532),
-    secondary = Color(0xFF76616A),
+    primaryContainer = Color(0xFFF5E3E8),
+    onPrimaryContainer = Color(0xFF4A1B2A),
+    secondary = Color(0xFF8A6A5E),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFEEE8EC),
-    onSecondaryContainer = Color(0xFF382D33),
+    secondaryContainer = Color(0xFFF2E8E3),
+    onSecondaryContainer = Color(0xFF3A2A24),
     tertiary = Color(0xFF846536),
     onTertiary = Color.White,
     tertiaryContainer = Color(0xFFF4E5CA),
     onTertiaryContainer = Color(0xFF423016),
     background = EchoLightSurfaces.Background,
-    onBackground = Color(0xFF27272D),
+    onBackground = Color(0xFF2A2529),
     surface = EchoLightSurfaces.Surface,
-    onSurface = Color(0xFF27272D),
+    onSurface = Color(0xFF2A2529),
     surfaceVariant = EchoLightSurfaces.ContainerHigh,
-    onSurfaceVariant = Color(0xFF686870),
+    onSurfaceVariant = Color(0xFF6B636A),
     surfaceDim = EchoLightSurfaces.ContainerHighest,
     surfaceBright = EchoLightSurfaces.Surface,
     surfaceContainerLowest = EchoLightSurfaces.Surface,
@@ -98,10 +100,10 @@ private val EchoLightScheme = lightColorScheme(
     surfaceContainerHighest = EchoLightSurfaces.ContainerHighest,
     inverseSurface = Color(0xFF322D31),
     inverseOnSurface = Color(0xFFF8F0F2),
-    inversePrimary = Color(0xFFE6B4C5),
-    outline = Color(0xFF85858E),
+    inversePrimary = Color(0xFFEBA5B8),
+    outline = Color(0xFF8A8187),
     outlineVariant = EchoLightSurfaces.Outline,
-    surfaceTint = Color(0xFF925568),
+    surfaceTint = Color(0xFFB04A68),
 )
 
 val LocalEchoDensityScale = staticCompositionLocalOf { 1f }
@@ -177,11 +179,12 @@ fun EchoMobileTheme(
         val typography = remember(fontFamily, fontScale) {
             echoTypography(fontFamily, fontScale.coerceIn(0.88f, 1.18f))
         }
+        val shownScheme = rememberAnimatedColorScheme(colorScheme, effectivePerformanceMode.isLightweight)
         MaterialTheme(
-            colorScheme = colorScheme,
+            colorScheme = shownScheme,
             typography = typography,
         ) {
-            CompositionLocalProvider(LocalContentColor provides colorScheme.onBackground) {
+            CompositionLocalProvider(LocalContentColor provides shownScheme.onBackground) {
                 content()
             }
         }

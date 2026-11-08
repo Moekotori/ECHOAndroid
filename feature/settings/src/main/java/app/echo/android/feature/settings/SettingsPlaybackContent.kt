@@ -10,7 +10,6 @@ import app.echo.android.design.LocalEchoPlatformCapabilities
 @Composable
 internal fun SettingsPlaybackContent(
     subNav: SettingsSubNav,
-    playbackHapticsEnabled: Boolean,
     onlineLyricsEnabled: Boolean,
     lockScreenLyricsEnabled: Boolean,
     floatingLyrics: app.echo.android.model.settings.EchoFloatingLyricsSettings,
@@ -18,21 +17,20 @@ internal fun SettingsPlaybackContent(
     lyricsOptions: app.echo.android.model.settings.EchoLyricsOptions,
     onLyricsOptionsChange: (app.echo.android.model.settings.EchoLyricsOptions) -> Unit,
     onOpenLyricsInterface: () -> Unit,
+    playerOrientationLocked: Boolean = false,
+    onPlayerOrientationLockedChange: (Boolean) -> Unit = {},
+    pauseOnMute: Boolean = false,
+    onPauseOnMuteChange: (Boolean) -> Unit = {},
     shuffleOptions: app.echo.android.model.playback.EchoShuffleOptions,
     onShuffleOptionsChange: (app.echo.android.model.playback.EchoShuffleOptions) -> Unit,
     sleepTimerFinishTrack: Boolean = true,
     stopOnTaskRemoved: Boolean = false,
     onStopOnTaskRemovedChange: (Boolean) -> Unit = {},
     onSleepTimerFinishTrackChange: (Boolean) -> Unit = {},
-    pauseOnAudioDisconnect: Boolean,
-    resumeOnAudioReconnect: Boolean,
-    onPlaybackHapticsEnabledChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
     onLockScreenLyricsEnabledChange: (Boolean) -> Unit,
     onFloatingLyricsChange: (app.echo.android.model.settings.EchoFloatingLyricsSettings) -> Unit,
     onRequestFloatingLyricsPermission: () -> Unit,
-    onPauseOnAudioDisconnectChange: (Boolean) -> Unit,
-    onResumeOnAudioReconnectChange: (Boolean) -> Unit,
     notificationPermissionGranted: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
 ) {
@@ -45,31 +43,14 @@ internal fun SettingsPlaybackContent(
         SettingsShuffleModeRow(shuffleOptions, onShuffleOptionsChange)
         SettingsPlayNextBehaviorRow(shuffleOptions, onShuffleOptionsChange)
         SettingsSectionCard(title = stringResource(R.string.settings_section_listening)) {
+            SettingsSwitchRow(title = stringResource(R.string.pause_on_mute), detail = stringResource(R.string.pause_on_mute_hint),
+                checked = pauseOnMute, onCheckedChange = onPauseOnMuteChange)
             SettingsSwitchRow(title = stringResource(R.string.stop_on_task_removed_title),
                 detail = stringResource(R.string.stop_on_task_removed_detail),
                 checked = stopOnTaskRemoved, onCheckedChange = onStopOnTaskRemovedChange)
             SettingsSwitchRow(title = stringResource(R.string.listening_finish_track),
                 detail = stringResource(R.string.listening_finish_track_detail),
                 checked = sleepTimerFinishTrack, onCheckedChange = onSleepTimerFinishTrackChange)
-            SettingsSwitchRow(
-                title = stringResource(R.string.settings_pause_on_disconnect),
-                detail = stringResource(R.string.settings_pause_on_disconnect_detail),
-                checked = pauseOnAudioDisconnect,
-                onCheckedChange = onPauseOnAudioDisconnectChange,
-            )
-            SettingsSwitchRow(
-                title = stringResource(R.string.settings_resume_on_reconnect),
-                detail = stringResource(R.string.settings_resume_on_reconnect_detail),
-                checked = resumeOnAudioReconnect,
-                onCheckedChange = onResumeOnAudioReconnectChange,
-                enabled = pauseOnAudioDisconnect,
-            )
-            SettingsSwitchRow(
-                title = stringResource(R.string.settings_playback_haptics),
-                detail = stringResource(R.string.settings_playback_haptics_detail),
-                checked = playbackHapticsEnabled,
-                onCheckedChange = onPlaybackHapticsEnabledChange,
-            )
         }
     }
     if (subNav.shows(SettingsSubPage.PlaybackLyrics)) {
@@ -81,6 +62,8 @@ internal fun SettingsPlaybackContent(
             )
             SettingsLyricsSourceRow(lyricsOptions, onLyricsOptionsChange)
             SettingsBluetoothLyricsDelay(lyricsOptions, onLyricsOptionsChange)
+            SettingsSwitchRow(title = stringResource(R.string.player_orientation_lock), detail = stringResource(R.string.player_orientation_lock_hint),
+                checked = playerOrientationLocked, onCheckedChange = onPlayerOrientationLockedChange)
             SettingsSwitchRow(
                 title = stringResource(R.string.settings_online_lyrics),
                 detail = stringResource(R.string.settings_online_lyrics_detail),

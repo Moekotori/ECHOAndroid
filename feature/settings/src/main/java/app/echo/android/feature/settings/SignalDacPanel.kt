@@ -1,5 +1,7 @@
 package app.echo.android.feature.settings
 
+import androidx.compose.foundation.layout.padding
+import app.echo.android.design.EchoExpand
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -133,16 +135,18 @@ internal fun SignalDacPanel(status: EchoPlaybackStatus, onDiagnostics: () -> Uni
             }
         }
         HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.55f))
+        Column {
         TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(horizontal = 0.dp)) {
             EchoIcon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null)
             Text(stringResource(if (expanded) R.string.dac_hide_capabilities else R.string.dac_show_capabilities))
         }
-        if (expanded) {
+        EchoExpand(expanded) { Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SignalReadout(rows[1].first, rows[1].second)
             SignalReadout(rows[3].first, rows[3].second)
             precisionRows.filterIndexed { index, _ -> index != 2 }.forEach { (label, value) -> SignalReadout(label, value) }
             SignalNote(evidenceNote)
             SignalNote(ratesNote)
+        } }
         }
     }
 }

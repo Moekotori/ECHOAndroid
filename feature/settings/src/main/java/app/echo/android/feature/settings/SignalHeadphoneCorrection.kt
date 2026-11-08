@@ -39,6 +39,7 @@ internal fun SignalHeadphoneCorrection(
     onApplySelected: () -> Unit,
     onToggleFavorite: () -> Unit,
     onApplyUserPreset: (String) -> Unit,
+    onEnabledChange: (Boolean) -> Unit = {},
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
@@ -105,6 +106,16 @@ internal fun SignalHeadphoneCorrection(
     }
     Column(Modifier.fillMaxSize()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.eq_pc_independent_correction), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                app.echo.android.design.EchoSwitch(equalizer.headphoneCorrection.enabled, onEnabledChange,
+                    enabled = !bypassed && (equalizer.headphoneCorrection.enabled || equalizer.headphoneCorrection.filters.isNotEmpty() || kotlin.math.abs(equalizer.headphoneCorrection.preampDb) > .05f))
+            }
+            SignalNote(stringResource(R.string.eq_pc_correction_detail))
+            if (equalizer.enabled && equalizer.headphoneCorrection.enabled && equalizer.filters.isNotEmpty() &&
+                equalizer.filters == equalizer.headphoneCorrection.filters && kotlin.math.abs(equalizer.preampDb - equalizer.headphoneCorrection.preampDb) < .05f)
+                SignalNote(stringResource(R.string.eq_pc_duplicate_correction))
+            if (equalizer.correctionProcessingState == EchoEqProcessingState.Failed) SignalNote(stringResource(R.string.eq_pc_native_failed), error = true)
             OpraCatalogControls(state, onQueryChange, onSearch = { closeKeyboard(); if (state.selectedBrandId == null) onSearch() },
                 onCatalogSelected = chooseBrand, onRefresh = onRefresh)
             selectedBrand?.let { brand ->
@@ -137,10 +148,10 @@ internal fun SignalHeadphoneCorrection(
                 }
             }
             if (bypassed) item("bypass") { SignalNote(stringResource(R.string.signal_bypass_detail), error = true) }
-            if (equalizer.parametric && equalizer.sourceLabel != null) item("current") {
+            if (equalizer.headphoneCorrection.label != null) item("current") {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SignalLiveDot(active = playing && equalizer.active && !bypassed && equalizer.processingSampleRateHz != null)
-                    Text(equalizer.sourceLabel.orEmpty(), style = MaterialTheme.typography.bodySmall,
+                    SignalLiveDot(active = playing && equalizer.headphoneCorrection.enabled && !bypassed && equalizer.correctionSampleRateHz != null)
+                    Text(equalizer.headphoneCorrection.label.orEmpty(), style = MaterialTheme.typography.bodySmall,
                         color = scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }

@@ -2,6 +2,7 @@ package app.echo.android.feature.library
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.VerticalAlignTop
@@ -11,14 +12,15 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -28,12 +30,13 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.LocalEchoPageInteractive
 import app.echo.android.model.library.EchoTrack
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.abs
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Scroll state is read here so navigation does not recompose the song list on each pixel. */
 @Composable
@@ -49,75 +52,75 @@ internal fun SongListNavigation(
     val scope = rememberCoroutineScope()
     val lookup by rememberUpdatedState(findIndex)
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val interactive = LocalEchoPageInteractive.current
+    val dragging by listState.interactionSource.collectIsDraggedAsState()
     val selecting = LocalLibraryBatchSelection.current?.active == true
     val refresh = tracks.loadState.refresh
-    val currentIndex by produceState<Int?>(null, playingTrackId, queryKey, refresh, tracks.itemCount) {
-        value = null
-        if (playingTrackId != null && refresh is LoadState.NotLoading && lookup != null) {
-            // Match the library search debounce; a changed query cancels the old lookup.
-            delay(350)
-            try {
-                value = lookup?.invoke(playingTrackId)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                value = null
-            }
-        }
-    }
     val showTop by remember(listState) {
         derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
-    }
-    val currentVisible by remember(listState, playingTrackId) {
-        derivedStateOf {
-            val layout = listState.layoutInfo
-            layout.visibleItemsInfo.any { item ->
-                item.key == playingTrackId && item.offset >= layout.viewportStartOffset &&
-                    item.offset + item.size <= layout.viewportEndOffset - layout.afterContentPadding
-            }
-        }
     }
     var jumpJob by remember { mutableStateOf<Job?>(null) }
     var locating by remember { mutableStateOf(false) }
     val notFound = stringResource(R.string.library_playing_song_not_found)
     val failed = stringResource(R.string.library_locate_song_failed)
-    DisposableEffect(queryKey, playingTrackId, refresh) {
+    // A locate can itself trigger a Paging refresh; that must not cancel its own animation.
+    DisposableEffect(queryKey, playingTrackId, selecting, interactive) {
         onDispose { jumpJob?.cancel() }
+    }
+    LaunchedEffect(dragging) {
+        if (dragging) jumpJob?.cancel()
     }
 
     Row(modifier) {
-        if (!selecting && currentIndex != null && !currentVisible) {
+        // Keep the action in place across scrolling and Paging refreshes; resolve only on click.
+        if (!selecting && playingTrackId != null && lookup != null) {
             SongNavigationButton(
                 label = stringResource(R.string.library_locate_playing_song),
-                onClick = {
+                onClick = locate@{
+                    if (locating || !interactive) return@locate
                     jumpJob?.cancel()
+                    locating = true
                     jumpJob = scope.launch {
-                        locating = true
+                        var message: String? = null
                         try {
-                            // Resolve again at click time: scans or metadata edits may have moved it.
-                            val index = playingTrackId?.let { lookup?.invoke(it) }
+                            // The retained window is bounded to 600 rows. Reading it does not load pages.
+                            val snapshot = tracks.itemSnapshotList
+                            val loadedIndex = snapshot.items.indexOfFirst { it.id == playingTrackId }
+                            val index = if (loadedIndex >= 0) snapshot.placeholdersBefore + loadedIndex
+                                else lookup?.invoke(playingTrackId)
                             if (index == null || index !in 0 until tracks.itemCount) {
-                                snackbar.showSnackbar(notFound)
+                                message = notFound
+                            } else if (tracks.loadState.refresh !is LoadState.NotLoading) {
+                                // An external refresh replaced the result while the lookup was running.
+                                return@launch
                             } else {
                                 // Trigger Paging access so unloaded placeholders request their page.
                                 tracks[index]
-                                val offset = -(listState.layoutInfo.viewportSize.height / 3)
-                                if (lightweight || abs(index - listState.firstVisibleItemIndex) > 20) {
-                                    listState.scrollToItem(index, offset)
-                                } else {
-                                    listState.animateScrollToItem(index, offset)
+                                listState.scrollToSong(index, lightweight)
+                                // Keep feedback until the target arrives, without polling or an unbounded wait.
+                                val ready = withTimeoutOrNull(3_000) {
+                                    snapshotFlow {
+                                        when {
+                                            index in 0 until tracks.itemCount &&
+                                                tracks.peek(index)?.id == playingTrackId -> true
+                                            tracks.loadState.hasError -> false
+                                            else -> null
+                                        }
+                                    }.first { it != null }
                                 }
+                                if (ready != true) message = failed
                             }
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (_: Exception) {
-                            snackbar.showSnackbar(failed)
+                            message = failed
                         } finally {
                             locating = false
                         }
+                        message?.let { snackbar.showSnackbar(it) }
                     }
                 },
-                enabled = !locating && refresh is LoadState.NotLoading,
+                enabled = interactive && !locating && refresh is LoadState.NotLoading,
             ) {
                 if (locating) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp,
                     color = LocalContentColor.current)
@@ -126,11 +129,10 @@ internal fun SongListNavigation(
             }
         }
         if (!selecting && showTop) {
-            SongNavigationButton(label = stringResource(R.string.library_back_to_top), onClick = {
+            SongNavigationButton(label = stringResource(R.string.library_back_to_top), enabled = interactive && !locating, onClick = {
                 jumpJob?.cancel()
                 jumpJob = scope.launch {
-                    if (lightweight || listState.firstVisibleItemIndex > 20) listState.scrollToItem(0)
-                    else listState.animateScrollToItem(0)
+                    listState.scrollToSong(0, lightweight)
                 }
             }) {
                 EchoIcon(Icons.Rounded.VerticalAlignTop, null,

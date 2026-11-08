@@ -73,7 +73,7 @@ fun ContributingArtistsSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        EchoArtworkImage(artist.artworkUri, null, Modifier.size(56.dp), shape = CircleShape, sizeClass = EchoArtworkSize.Thumbnail)
+                        EchoArtworkImage(app.echo.android.design.artistArtwork(artist.name, artist.artworkUri), null, Modifier.size(56.dp), shape = CircleShape, sizeClass = EchoArtworkSize.Thumbnail)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(artist.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(

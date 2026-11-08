@@ -14,6 +14,17 @@ import java.net.URLEncoder
 
 class EchoPairingParserTest {
     @Test
+    fun invalidPairingAddressesAreRejectedBeforeConnecting() {
+        val suffix = "&token=abcdefghijklmnop"
+        for (address in listOf("host=pc&port=0", "host=pc&port=65536", "host=pc&port=oops",
+            "host=pc&port=-1", "host=%20", "host=bad%2Fhost", "host=pc&scheme=ftp")) {
+            assertNull(address, EchoPairingParser.parse("echo://pair?$address$suffix"))
+        }
+        val malformed = "echo://pair?host=pc&port=65536$suffix"
+        assertNull(EchoPairingParser.parseManual("http://pc/echo-link/v2/remote#pair=${URLEncoder.encode(malformed, "UTF-8")}"))
+    }
+
+    @Test
     fun manualAddressConnectsWithoutTokenAndKeepsLegacyPairing() {
         val direct = EchoPairingParser.parseManual("192.168.1.20")!!
         assertEquals("", direct.token)

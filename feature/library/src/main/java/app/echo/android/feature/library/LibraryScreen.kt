@@ -274,6 +274,7 @@ fun LibraryScreen(
     onFindSongLetterIndex: suspend (Char) -> Int,
     onFindAlbumLetterIndex: (suspend (Char, Boolean) -> Int)? = null,
     playingTrackId: String? = null,
+    isPlaying: Boolean = false,
     onFindPlayingSongIndex: (suspend (String) -> Int?)? = null,
     onAlbumSortModeChange: (AlbumSortMode) -> Unit,
     onArtistSortModeChange: (ArtistSortMode) -> Unit,
@@ -474,6 +475,15 @@ fun LibraryScreen(
         }
     }
 
+    fun selectRadio() {
+        if (onOpenRadio != null) onOpenRadio()
+        else if (selectedSource != LibrarySourceMode.Local || selectedMode != LibraryViewMode.Radio) {
+            selectSource(LibrarySourceMode.Local)
+            onLibraryQueryChange("")
+            selectedModeIndex = LibraryViewMode.Radio.ordinal
+        }
+    }
+
     val prefersSplit = app.echo.android.design.LocalEchoLayout.current.supportsTwoPanes()
 
     @Composable
@@ -509,10 +519,13 @@ fun LibraryScreen(
                         artistSortMode = artistSortMode,
                         folderSortMode = folderSortMode,
                         onSelectMode = { mode ->
-                            selectedModeIndex = mode.ordinal
-                            if (displayedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
-                                selectedSource = LibrarySourceMode.Local
-                                onLibrarySourceChange(LibrarySourceMode.Local.id)
+                            if (mode == LibraryViewMode.Radio) selectRadio()
+                            else {
+                                selectedModeIndex = mode.ordinal
+                                if (displayedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
+                                    selectedSource = LibrarySourceMode.Local
+                                    onLibrarySourceChange(LibrarySourceMode.Local.id)
+                                }
                             }
                         },
                         onSortModeChange = onTrackSortModeChange,
@@ -724,19 +737,12 @@ fun LibraryScreen(
                     selectedSource = selectedSource,
                     onSelectSource = ::selectSource,
                     radioSelected = selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Radio,
-                    onSelectRadio = {
-                        if (onOpenRadio != null) onOpenRadio()
-                        else if (selectedSource != LibrarySourceMode.Local || selectedMode != LibraryViewMode.Radio) {
-                            selectSource(LibrarySourceMode.Local)
-                            onLibraryQueryChange("")
-                            selectedModeIndex = LibraryViewMode.Radio.ordinal
-                        }
-                    },
+                    onSelectRadio = ::selectRadio,
                     onSelectPodcasts = onOpenPodcasts,
                 )
             },
             navigationActions = {
-                if (songTrackItems != null && songTrackItems.itemCount > 0) {
+                if (songTrackItems != null) {
                     SongListNavigation(
                         tracks = songTrackItems,
                         listState = songListState,
@@ -948,6 +954,7 @@ fun LibraryScreen(
                 onOpenAlbum = onOpenAlbum,
                 playingTrackId = playingTrackId,
                 modifier = Modifier.fillMaxSize(),
+                isPlaying = isPlaying,
             )
             is LibraryDetailTransitionTarget.GenreDetail -> GenreTrackDetailPage(
                 artist = ArtistSummary(
@@ -1167,6 +1174,8 @@ fun LibraryScreen(
         AddToPlaylistDialog(
             playlists = playlists,
             containingPlaylistIds = memberships,
+            fileOnly = track.source == app.echo.android.model.library.LibrarySource.FilePlaylist,
+            allowFilePlaylists = track.source.isLocalAudioFile,
             onDismiss = { addToPlaylistTrack = null },
             onSelectPlaylist = { playlist ->
                 onAddTrackToPlaylist(playlist, track)
@@ -2037,10 +2046,11 @@ private fun LibraryBrowserHeader(
     if (showScanResultBanner) {
         LibraryScanResultBanner(scanState)
     }
-    if (selectedMode == LibraryViewMode.Radio) return
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
-            LibraryPagerTabs(selectedMode, onSelectMode, modes = modes, pager = pager, showAlbumArtists = showAlbumArtists)
+            // Radio opens its existing destination; it does not add a category pager page.
+            val tabs = if (selectedSource == LibrarySourceMode.Local) modes + LibraryViewMode.Radio else modes
+            LibraryPagerTabs(selectedMode, onSelectMode, modes = tabs, pager = pager, showAlbumArtists = showAlbumArtists)
         }
         when (selectedMode) {
             LibraryViewMode.Songs -> if (selectedSource == LibrarySourceMode.Local) {

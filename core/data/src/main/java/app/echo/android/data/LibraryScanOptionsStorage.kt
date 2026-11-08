@@ -15,6 +15,7 @@ internal fun LibraryScanOptions.normalizedForStorage(): LibraryScanOptions = cop
     minDurationMs = minDurationMs.coerceAtLeast(0),
     minSizeBytes = minSizeBytes.coerceAtLeast(0),
     excludedRelativePaths = excludedRelativePaths.mapNotNull(::normalizeScanExcludedPath).toSet(),
+    excludedNameKeywords = excludedNameKeywords.map { it.trim().take(64) }.filter(String::isNotBlank).distinctBy { it.lowercase(java.util.Locale.ROOT) }.take(50).toSet(),
 )
 
 internal fun encodeLibraryScanOptions(options: LibraryScanOptions): String =
@@ -26,6 +27,7 @@ internal fun encodeLibraryScanOptions(options: LibraryScanOptions): String =
             put("excludeHiddenFolders", value.excludeHiddenFolders)
             put("allowedExtensions", JSONArray(value.allowedExtensions.toList()))
             put("excludedRelativePaths", JSONArray(value.excludedRelativePaths.toList()))
+            put("excludedNameKeywords", JSONArray(value.excludedNameKeywords.toList()))
         }.toString()
     }
 
@@ -36,6 +38,7 @@ internal fun decodeLibraryScanOptions(raw: String?): LibraryScanOptions {
         val obj = JSONObject(raw)
         val paths = obj.optJSONArray("excludedRelativePaths")
         val extensions = obj.optJSONArray("allowedExtensions")
+        val keywords = obj.optJSONArray("excludedNameKeywords")
         defaults.copy(
             allowedExtensions = (0 until (extensions?.length() ?: 0))
                 .mapNotNull { extensions?.optString(it) }.toSet(),
@@ -45,6 +48,7 @@ internal fun decodeLibraryScanOptions(raw: String?): LibraryScanOptions {
             excludeHiddenFolders = obj.optBoolean("excludeHiddenFolders", true),
             excludedRelativePaths = (0 until (paths?.length() ?: 0))
                 .mapNotNull { paths?.optString(it) }.toSet(),
+            excludedNameKeywords = (0 until minOf(keywords?.length() ?: 0, 50)).mapNotNull { keywords?.optString(it) }.toSet(),
         ).normalizedForStorage()
     }.getOrDefault(defaults)
 }

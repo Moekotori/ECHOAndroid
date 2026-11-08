@@ -55,4 +55,5 @@ data class EchoPlaybackDiagnostics(
     val lastError: EchoPlaybackError? = null,
     val decoder: EchoDecoderDiagnostics = EchoDecoderDiagnostics(),
     val usbConversion: EchoUsbConversionDiagnostics? = null,
+    val soundEffect: EchoSoundEffectRuntimeStatus = EchoSoundEffectRuntimeStatus(),
 )

@@ -114,11 +114,11 @@ class SubsonicUserLibraryTest {
     @Test fun translationsMergeAtEffectiveTimesWithoutConcatenatingWholeVersions() {
         val lyrics = parseSubsonicStructuredLyrics(JSONObject("""{"lyricsList":{"structuredLyrics":[
             {"lang":"ja","synced":true,"offset":100,"line":[{"start":1000,"value":"Original"}]},
-            {"lang":"zh","synced":true,"offset":0,"line":[{"start":1100,"value":"Translation"}]},
+            {"lang":"zh","synced":true,"offset":0,"line":[{"start":900,"value":"Translation"}]},
             {"lang":"ja-Latn","synced":true,"offset":100,"line":[{"start":1000,"value":"Romaji"}]}
         ]}}"""))!!
         assertEquals(1, lyrics.lines.size)
-        assertEquals(1100L, lyrics.lines.single().startMs)
+        assertEquals(900L, lyrics.lines.single().startMs)
         assertEquals("Original", lyrics.lines.single().text)
         assertEquals("Translation", lyrics.lines.single().translation)
         assertEquals("Romaji", lyrics.lines.single().romanization)

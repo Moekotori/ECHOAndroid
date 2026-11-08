@@ -33,7 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.feature.player.LyricsLineList
-import app.echo.android.feature.player.LyricsPageActions
+import app.echo.android.feature.player.LyricsCastAction
 import app.echo.android.feature.player.LyricsScrubber
 import app.echo.android.feature.player.LyricsTransportControls
 import app.echo.android.feature.player.R
@@ -81,8 +81,7 @@ internal fun AfterglowImmersivePage(
     val controls: @Composable (@Composable () -> Unit) -> Unit = { sceneControls ->
         AfterglowChromeOverlay(chrome.visible, lightweight, status, position, duration,
             onDismiss, { chrome.touch(); onSettings() }, onPlayPause, onNext, onPrevious,
-            onSeek, onQueue, onCast, castActive, sceneControls,
-            onActionsMenu = { chrome.menuOpen = it; chrome.touch() })
+            onSeek, onQueue, onCast?.let { cast -> { chrome.touch(); cast() } }, castActive, sceneControls)
     }
     Box(modifier.fillMaxSize().background(Color(palette.background))
         .semantics { onClick(label = if (chrome.visible) hideLabel else showLabel) { chrome.toggle(); true } }
@@ -134,7 +133,6 @@ private fun AfterglowChromeOverlay(
     position: State<Long>, duration: State<Long>, onDismiss: () -> Unit, onSettings: () -> Unit,
     onPlayPause: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onSeek: (Long) -> Unit,
     onQueue: () -> Unit, onCast: (() -> Unit)?, castActive: Boolean, sceneControls: @Composable () -> Unit,
-    onActionsMenu: (Boolean) -> Unit,
 ) {
     val fadeMs = if (lightweight) 0 else 160
     BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
@@ -148,7 +146,7 @@ private fun AfterglowChromeOverlay(
                 Text(status.track?.let { displayTrack(it.title) }.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(status.track?.let { displayArtist(it.artist) }.orEmpty(), color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            LyricsPageActions(onSettings, onCast, castActive, Color.White, onMenuExpanded = onActionsMenu)
+            LyricsCastAction(onCast, castActive, Color.White)
         }
     }
     AnimatedVisibility(shown, modifier = Modifier.align(if (shortLandscape) Alignment.BottomEnd else Alignment.BottomCenter), enter = fadeIn(tween(fadeMs)), exit = fadeOut(tween(fadeMs))) {
@@ -159,7 +157,7 @@ private fun AfterglowChromeOverlay(
             sceneControls()
             Spacer(Modifier.height(12.dp))
             LyricsScrubber(status.track?.id, position, duration, onSeek)
-            LyricsTransportControls(status.isPlaying, onPlayPause, onNext, onPrevious, onQueue)
+            LyricsTransportControls(status.isPlaying, onPlayPause, onNext, onPrevious, onQueue, onMore = onSettings)
         }
     }
     }

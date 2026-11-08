@@ -58,9 +58,13 @@ internal fun ArtistDetailPager(
             IconButton(onClick = onBack) {
                 EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.feature_library_back_49093c))
             }
-            Text(if (pager.currentPage == 0) stringResource(R.string.artist_page_artist) else artist.name,
-                style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f).padding(start = 8.dp))
+            // Tabs share the top bar row: one line of chrome instead of a title row plus a tab row.
+            Box(Modifier.weight(1f).padding(start = 8.dp)) {
+                LibraryTextTabs(listOf(stringResource(R.string.artist_page_music), stringResource(R.string.artist_page_information),
+                    stringResource(R.string.artist_page_concerts)), pager.currentPage, pager = pager, compact = true, onSelect = { page ->
+                    scope.launch { pager.animateSilkToPage(page, lightweight) }
+                })
+            }
             Box {
                 IconButton(onClick = { showActions = true }, enabled = playbackEnabled) {
                     EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.artist_playback_actions))
@@ -108,13 +112,6 @@ internal fun ArtistDetailPager(
                     }
                 }
             }
-        }
-        Box(Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
-            .widthIn(max = EchoContentMaxWidth).padding(horizontal = 24.dp)) {
-            LibraryTextTabs(listOf(stringResource(R.string.artist_page_music), stringResource(R.string.artist_page_information),
-                stringResource(R.string.artist_page_concerts)), pager.currentPage, pager = pager, onSelect = { page ->
-                scope.launch { pager.animateSilkToPage(page, lightweight) }
-            })
         }
         HorizontalPager(
             state = pager,

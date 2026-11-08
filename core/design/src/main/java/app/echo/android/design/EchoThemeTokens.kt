@@ -91,58 +91,59 @@ internal fun relativeLuminance(color: Color): Float {
     return (0.2126 * channel(color.red) + 0.7152 * channel(color.green) + 0.0722 * channel(color.blue)).toFloat()
 }
 
-private const val EchoDefaultStartupDarkArgb = 0xFF080B12.toInt()
+private const val EchoDefaultStartupDarkArgb = 0xFF161316.toInt()
 private const val EchoDefaultStartupLightArgb = EchoLightSurfaces.BackgroundArgb
 
 // Shared near-white roles keep built-in pages, panels and chrome in the same light palette.
+// Slightly warm (rose-tinted) paper so the rose accent sits on it instead of on cold grey.
 internal object EchoLightSurfaces {
-    const val BackgroundArgb = 0xFFF5F5F3.toInt()
+    const val BackgroundArgb = 0xFFF7F4F5.toInt()
     val Background = Color(BackgroundArgb)
-    val Surface = Color(0xFFFAFAF8)
-    val Container = Color(0xFFF0F0EE)
-    val ContainerHigh = Color(0xFFECECEA)
-    val ContainerHighest = Color(0xFFE6E6E4)
-    val Outline = Color(0xFFE2E2E0)
+    val Surface = Color(0xFFFCFAFA)
+    val Container = Color(0xFFF2EEF0)
+    val ContainerHigh = Color(0xFFEEE9EC)
+    val ContainerHighest = Color(0xFFE8E2E5)
+    val Outline = Color(0xFFE6DFE2)
 }
 
 private val EchoDefaultDark = EchoThemeTokens(
     id = EchoColorTheme.Echo.id,
     dark = true,
-    accent = Color(0xFFD3A9B5),
-    accentDeep = Color(0xFF9B5B6A),
-    accentText = Color(0xFFE4C4CC),
-    onAccent = Color(0xFF251B20),
-    secondary = Color(0xFFD7675D),
+    accent = Color(0xFFEBA5B8),
+    accentDeep = Color(0xFFB8566F),
+    accentText = Color(0xFFF4C2CF),
+    onAccent = Color(0xFF2A141B),
+    secondary = Color(0xFFEDB38F),
     heading = Color.White,
-    muted = Color(0xFFBCBBC2),
-    onSurface = Color(0xFFF3F1F2),
-    bgTop = Color(0xFF17171B),
-    bgMid = Color(0xFF1D1D21),
-    bgBottom = Color(0xFF151519),
-    night = Color(0xFF17171B),
-    ink = Color(0xFF202126),
-    panel = Color(0xFF2A2B30),
-    mist = Color(0xFFF4F1F2),
+    muted = Color(0xFFC0B8BD),
+    onSurface = Color(0xFFF4F0F2),
+    bgTop = Color(0xFF161316),
+    bgMid = Color(0xFF1C181B),
+    bgBottom = Color(0xFF141114),
+    night = Color(0xFF161316),
+    ink = Color(0xFF1F1A1E),
+    panel = Color(0xFF2B252A),
+    mist = Color(0xFFF6F1F3),
     glassBorder = Color.White.copy(alpha = 0.08f),
-    softLine = Color(0xFFDCD8DA),
-    glassWash = Color(0xFF2D2E33),
-    outline = Color(0xFF5D5C63),
-    outlineVariant = Color(0xFF3A3A40),
-    onSurfaceVariant = Color(0xFFBCBBC2),
-    surface = Color(0xFF222327),
+    softLine = Color(0xFFE0D7DB),
+    glassWash = Color(0xFF2F292E),
+    outline = Color(0xFF645A61),
+    outlineVariant = Color(0xFF3B3339),
+    onSurfaceVariant = Color(0xFFC0B8BD),
+    surface = Color(0xFF231E22),
 )
 
 private val EchoDefaultLight = EchoThemeTokens(
     id = EchoColorTheme.Echo.id,
     dark = false,
-    accent = Color(0xFF925568),
-    accentDeep = Color(0xFF9B5B6A),
-    accentText = Color(0xFF925568),
+    accent = Color(0xFFB04A68),
+    accentDeep = Color(0xFF8F3A54),
+    accentText = Color(0xFFB04A68),
     onAccent = Color.White,
-    secondary = Color(0xFF76616A),
-    heading = Color(0xFF27272D),
-    muted = Color(0xFF686870),
-    onSurface = Color(0xFF27272D),
+    secondary = Color(0xFF8A6A5E),
+    heading = Color(0xFF2A2529),
+    muted = Color(0xFF6B636A),
+    onSurface = Color(0xFF2A2529),
     bgTop = EchoLightSurfaces.Background,
     bgMid = EchoLightSurfaces.Background,
     bgBottom = EchoLightSurfaces.Background,
@@ -153,9 +154,9 @@ private val EchoDefaultLight = EchoThemeTokens(
     glassBorder = EchoLightSurfaces.Outline,
     softLine = EchoLightSurfaces.Outline,
     glassWash = EchoLightSurfaces.Surface,
-    outline = Color(0xFF85858E),
+    outline = Color(0xFF8A8187),
     outlineVariant = EchoLightSurfaces.Outline,
-    onSurfaceVariant = Color(0xFF686870),
+    onSurfaceVariant = Color(0xFF6B636A),
     surface = EchoLightSurfaces.Surface,
 )
 

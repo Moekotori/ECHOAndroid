@@ -23,6 +23,8 @@ import javax.net.ssl.SSLHandshakeException
 import javax.net.ssl.SSLPeerUnverifiedException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.absoluteValue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.InternalCoroutinesApi
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -77,6 +79,7 @@ internal data class SubsonicSong(
     val sampleRateHz: Int? = null,
     val genre: String? = null,
     val composer: String? = null,
+    val albumId: String? = null,
 )
 
 internal class SubsonicClient(
@@ -84,9 +87,11 @@ internal class SubsonicClient(
     httpGet: ((String) -> String?)? = null,
     private val saltFactory: () -> String = ::randomTokenSalt,
     private val appContext: Context? = null,
+    private val cancellationJob: Job? = null,
+    private val snapshots: SubsonicBrowseSnapshots? = null,
 ) {
-    private val httpGet: (String) -> String? = httpGet ?: { defaultHttpGet(it, appContext) }
-    private val httpMutation: (String) -> String? = httpGet ?: { mutationHttpPost(it, appContext) }
+    private val httpGet: (String) -> String? = httpGet ?: { httpGetWithClient(SharedSubsonicHttpClient, it, appContext, job = cancellationJob) }
+    private val httpMutation: (String) -> String? = httpGet ?: { httpGetWithClient(MutationSubsonicHttpClient, it, appContext, mutation = true, job = cancellationJob) }
     fun ping() {
         request("ping.view")
     }
@@ -94,10 +99,11 @@ internal class SubsonicClient(
     internal fun fetchAlbums(
         pageSize: Int = AlbumPageSize,
         maxAlbums: Int = MaxAlbumsPerSync,
+        startOffset: Int = 0,
     ): List<SubsonicAlbum> {
         val albums = ArrayList<SubsonicAlbum>()
         val seenIds = HashSet<String>()
-        var offset = 0
+        var offset = startOffset
         var effectivePageSize = pageSize.coerceAtLeast(1)
         while (albums.size < maxAlbums) {
             val remaining = (maxAlbums - albums.size).coerceAtMost(effectivePageSize)
@@ -109,13 +115,11 @@ internal class SubsonicClient(
                     "offset" to offset.toString(),
                 ),
             )
-            val batch = root.optJSONObject("albumList2")
-                ?.jsonObjects("album")
-                ?.map { it.toSubsonicAlbum() }
-                .orEmpty()
+            val batch = root.requiredUserObject("albumList2").validUserRows("album", remaining)
+                .map { it.toSubsonicAlbum() }
             if (batch.isEmpty()) break
             val unique = batch.filter { album -> album.id.isNotBlank() && seenIds.add(album.id) }
-            if (unique.isEmpty()) break
+            check(unique.size == batch.size) { "Subsonic album pagination repeated entries" }
             albums += unique
             offset += batch.size
             if (batch.size < remaining) {
@@ -126,14 +130,22 @@ internal class SubsonicClient(
         return albums
     }
 
+    internal fun fetchAlbumMetadata(id: String): SubsonicAlbum {
+        val album = request("getAlbum.view", listOf("id" to id)).requiredUserObject("album")
+        require(album.optString("id") == id)
+        return album.toSubsonicAlbum()
+    }
+
     internal fun fetchAlbumSongs(album: SubsonicAlbum): List<SubsonicSong> {
         if (album.id.isBlank()) return emptyList()
         val root = request(
             path = "getAlbum.view",
             params = listOf("id" to album.id),
         )
-        val albumObject = root.optJSONObject("album") ?: return emptyList()
-        return albumObject.jsonObjects("song")
+        val albumObject = root.requiredUserObject("album")
+        val rows = albumObject.validUserRows("song", MaxSongsPerSync)
+        require(!albumObject.has("songCount") || albumObject.optInt("songCount") == rows.size)
+        return rows
             .map { it.toSubsonicSong(album) }
             .filter { it.id.isNotBlank() }
     }
@@ -174,10 +186,8 @@ internal class SubsonicClient(
                     "artistCount" to "0",
                 ),
             )
-            val batch = root.optJSONObject("searchResult3")
-                ?.jsonObjects("song")
-                ?.map { it.toSubsonicSong() }
-                .orEmpty()
+            val batch = root.requiredUserObject("searchResult3").validUserRows("song", remaining)
+                .map { it.toSubsonicSong() }
             if (batch.isEmpty()) break
             val unique = batch.filter { song -> song.id.isNotBlank() && seenIds.add(song.id) }
             if (unique.isEmpty()) break
@@ -192,7 +202,7 @@ internal class SubsonicClient(
     }
 
     fun streamUrl(songId: String): String =
-        unsignedSubsonicResourceUrl(endpoint.normalizedBaseUrl, "stream.view", songId)
+        unsignedSubsonicResourceUrl(endpoint.normalizedBaseUrl, "stream.view", songId, sourceId = endpoint.sourceId)
 
     fun coverArtUrl(coverArt: String?): String? =
         coverArt?.takeIf { it.isNotBlank() }
@@ -202,6 +212,7 @@ internal class SubsonicClient(
                     path = "getCoverArt.view",
                     id = it,
                     extraParams = listOf("size" to CoverArtSizePx.toString()),
+                    sourceId = endpoint.sourceId,
                 )
             }
 
@@ -305,7 +316,7 @@ internal class SubsonicClient(
                 if (value.isBlank()) return@mapNotNull null
                 val startMs = line.optLong("start", -1L)
                 if (startMs >= 0L) {
-                    "${formatLrcTimestamp(startMs + offsetMs)}$value"
+                    "${formatLrcTimestamp(subsonicLyricStartMs(startMs, offsetMs))}$value"
                 } else {
                     value
                 }
@@ -328,6 +339,13 @@ internal class SubsonicClient(
     }
 
     internal fun request(path: String, params: List<Pair<String, String>> = emptyList(), mutation: Boolean = false): JSONObject {
+        val cacheable = !mutation && path in setOf("getStarred2.view", "getArtists.view", "getAlbum.view", "getArtist.view",
+            "getBookmarks.view", "getPlayQueue.view", "getPlayQueueByIndex.view", "getInternetRadioStations.view")
+        return if (cacheable && snapshots != null) snapshots.read(endpoint, path, params) { requestUncached(path, params, mutation) }
+            else requestUncached(path, params, mutation)
+    }
+
+    private fun requestUncached(path: String, params: List<Pair<String, String>>, mutation: Boolean): JSONObject {
         val url = buildUrl(path, params)
         val body = try {
             (if (mutation) httpMutation else httpGet)(url)
@@ -377,7 +395,7 @@ internal fun SubsonicSong.toLibraryTrackEntity(
     endpoint: SubsonicEndpoint,
     scanRunId: Long,
 ): LibraryTrackEntity {
-    val contentUri = unsignedSubsonicResourceUrl(endpoint.normalizedBaseUrl, "stream.view", id)
+    val contentUri = unsignedSubsonicResourceUrl(endpoint.normalizedBaseUrl, "stream.view", id, sourceId = endpoint.sourceId)
     val artworkUri = coverArt
         ?.takeIf { it.isNotBlank() }
         ?.let {
@@ -386,6 +404,7 @@ internal fun SubsonicSong.toLibraryTrackEntity(
                 path = "getCoverArt.view",
                 id = it,
                 extraParams = listOf("size" to SubsonicClient.CoverArtSizePx.toString()),
+                sourceId = endpoint.sourceId,
             )
         }
     return LibraryTrackEntity(
@@ -395,6 +414,7 @@ internal fun SubsonicSong.toLibraryTrackEntity(
         artist = artist.ifBlank { "Unknown Artist" },
         album = album,
         albumArtist = albumArtist,
+        remoteAlbumId = albumId,
         artworkUri = artworkUri,
         durationMs = durationSeconds.coerceAtLeast(0L) * 1000L,
         trackNumber = trackNumber,
@@ -507,6 +527,7 @@ internal fun JSONObject.toSubsonicSong(album: SubsonicAlbum? = null): SubsonicSo
             it.optJsonString("name").takeIf(String::isNotBlank)
         }.orEmpty() }.takeIf(String::isNotBlank),
         composer = optJsonString("displayComposer").ifBlank { optJsonString("composer") }.takeIf(String::isNotBlank),
+        albumId = optJsonString("albumId").takeIf(String::isNotBlank) ?: album?.id,
     )
 
 private fun JSONObject.optJsonString(name: String): String {
@@ -553,7 +574,8 @@ private fun defaultHttpGet(url: String, context: Context? = null): String =
 private fun probeHttpGet(url: String, context: Context? = null): String =
     httpGetWithClient(ProbeSubsonicHttpClient, url, context)
 
-private fun httpGetWithClient(client: OkHttpClient, url: String, context: Context?, mutation: Boolean = false): String {
+@OptIn(InternalCoroutinesApi::class)
+private fun httpGetWithClient(client: OkHttpClient, url: String, context: Context?, mutation: Boolean = false, job: Job? = null): String {
     val parsed = url.toHttpUrl()
     val requestBuilder = Request.Builder()
         .url(if (mutation) parsed.newBuilder().query(null).build() else parsed)
@@ -564,8 +586,13 @@ private fun httpGetWithClient(client: OkHttpClient, url: String, context: Contex
         requestBuilder.post(form.build())
     } else requestBuilder.get()
     val request = requestBuilder.build()
+    val call = client.newCall(request)
+    // A normal completion hook runs too late for blocking execute(); cancel at the Job cancellation boundary.
+    val cancellation = job?.invokeOnCompletion(onCancelling = true, invokeImmediately = true) { cause ->
+        if (cause != null) call.cancel()
+    }
     return try {
-        client.newCall(request).execute().use { response ->
+        call.execute().use { response ->
             val body = response.body ?: error(subsonicHttpStatusMessage(response.code, context))
             val declaredLength = body.contentLength()
             if (declaredLength > SubsonicClient.MaxResponseBytes) {
@@ -600,7 +627,10 @@ private fun httpGetWithClient(client: OkHttpClient, url: String, context: Contex
     } catch (error: IllegalStateException) {
         throw error
     } catch (error: Throwable) {
+        if (job?.isCancelled == true) throw CancellationException("Subsonic request cancelled", error)
         error(subsonicTransportFailureMessage(error, context))
+    } finally {
+        cancellation?.dispose()
     }
 }
 
@@ -782,8 +812,9 @@ internal fun resolveSubsonicEndpoint(
     context: Context? = null,
     httpGet: ((String) -> String?)? = null,
     fallbacks: List<SubsonicEndpoint> = zspaceLocalFallbackEndpoints(endpoint),
+    cancellationJob: Job? = null,
 ): SubsonicEndpoint {
-    val getter = httpGet ?: { probeHttpGet(it, context) }
+    val getter = httpGet ?: { httpGetWithClient(ProbeSubsonicHttpClient, it, context, job = cancellationJob) }
     fun ping(target: SubsonicEndpoint) {
         SubsonicClient(target, httpGet = getter, appContext = context).ping()
     }
@@ -869,12 +900,12 @@ internal fun normalizeSubsonicBaseUrl(raw: String): String {
     val trimmed = raw.trim()
     if (trimmed.isEmpty()) return ""
     val withScheme = if (hasHttpScheme(trimmed)) trimmed else "http://$trimmed"
-    val uri = runCatching { URI(withScheme) }.getOrNull() ?: return trimmed.trimEnd('/')
+    val uri = runCatching { URI(withScheme.replace(" ", "%20")) }.getOrNull() ?: return trimmed.trimEnd('/')
     val scheme = uri.scheme?.lowercase(Locale.ROOT)
         ?.takeIf { it == "http" || it == "https" }
         ?: "http"
     val host = uri.host?.takeIf { it.isNotBlank() } ?: return withScheme.substringBefore('#').trimEnd('/')
-    var path = uri.path.orEmpty()
+    var path = uri.rawPath.orEmpty()
     while (true) {
         val collapsed = path.trimEnd('/')
         val lower = collapsed.lowercase(Locale.ROOT)
@@ -896,7 +927,7 @@ internal fun normalizeSubsonicBaseUrl(raw: String): String {
             else -> "/$remaining"
         }
     }
-    val hostPart = if (host.contains(':')) "[$host]" else host
+    val hostPart = if (host.contains(':') && !host.startsWith("[")) "[$host]" else host
     val port = uri.port
     val defaultPort = if (scheme == "https") 443 else 80
     val portPart = if (port != -1 && port != defaultPort) ":$port" else ""
@@ -908,11 +939,13 @@ internal fun unsignedSubsonicResourceUrl(
     path: String,
     id: String,
     extraParams: List<Pair<String, String>> = emptyList(),
+    sourceId: String? = null,
 ): String {
     val origin = baseUrl.trimEnd('/')
     val query = ArrayList<Pair<String, String>>(1 + extraParams.size)
     query += "id" to id
     query += extraParams
+    sourceId?.let { query += "echoSource" to it }
     return query.joinToString("&", prefix = "$origin/rest/$path?") { (name, value) ->
         "${name.urlEncode()}=${value.urlEncode()}"
     }

@@ -58,7 +58,7 @@ class SettingsSearchTest {
         assertTrue(R.string.audio_focus_title in titles)
         assertTrue(R.string.audio_output_reset in titles)
         val audioOutput = availableSettingsSearchItems(availability()).single { it.titleRes == R.string.settings_section_volume }
-        assertEquals(R.string.audio_output_title, settingsSearchAnchorResource(audioOutput, availability()))
+        assertEquals(R.string.settings_section_volume, settingsSearchAnchorResource(audioOutput, availability()))
         assertFalse(R.string.settings_lyrics_sync_tools in titles)
         assertFalse(R.string.settings_connect_pc in titles)
         assertFalse(R.string.accessibility_lyrics_motion in titles)
@@ -150,24 +150,31 @@ class SettingsSearchTest {
             R.string.settings_track_fade, R.string.settings_track_fade_duration,
             R.string.settings_smart_transition, R.string.manual_fade_title,
             R.string.listening_interruption, R.string.settings_replay_gain,
-            R.string.settings_replay_gain_mode, R.string.eq_preamp).forEach { title ->
-            assertTrue(items.single { it.titleRes == title }.opensAudioSettings)
+            R.string.settings_replay_gain_mode, R.string.eq_preamp,
+            R.string.audio_behavior_title, R.string.audio_reset_section,
+            R.string.settings_pause_on_disconnect, R.string.settings_resume_on_reconnect).forEach { title ->
+            val item = items.single { it.titleRes == title }
+            assertTrue(item.opensAudioSettings)
+            assertFalse(item.anchorRes in usbAudioSettingsSearchAnchors)
         }
-        listOf(R.string.settings_shuffle_mode, R.string.settings_pause_on_disconnect,
+        listOf(R.string.settings_shuffle_mode,
             R.string.settings_lyrics_source_order).forEach { title ->
             assertFalse(items.single { it.titleRes == title }.opensAudioSettings)
         }
     }
 
     @Test
-    fun usbControlsSearchOpensTheirIndependentPageWithoutAConnectedDac() {
+    fun usbControlsSearchOpensSignalAudioSettingsWithoutAConnectedDac() {
         val state = availability()
         val items = availableSettingsSearchItems(state)
         listOf(R.string.settings_usb_exclusive, R.string.settings_usb_bitperfect,
-            R.string.settings_usb_auto_request, R.string.settings_test_usb).forEach { title ->
+            R.string.settings_usb_auto_request, R.string.settings_test_usb,
+            R.string.diag_sample_rate, R.string.path_output_bits, R.string.diag_channels,
+            R.string.usb_param_volume, R.string.usb_param_buffer, R.string.usb_param_keep_alive).forEach { title ->
             val item = items.single { it.titleRes == title }
-            assertEquals(SettingsCategory.Usb, item.category)
+            assertTrue(item.opensAudioSettings)
             assertEquals(title, settingsSearchAnchorResource(item, state))
+            assertTrue(settingsSearchAnchorResource(item, state) in usbAudioSettingsSearchAnchors)
         }
     }
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_orientation_lock">保持播放器方向</string>
+    <string name="player_orientation_lock_hint">仅在手机前台播放页面保持当前方向，退出或进入后台后恢复原来的方向设置。</string>
+    <string name="pause_on_mute">静音时自动暂停</string>
+    <string name="pause_on_mute_hint">系统媒体或应用静音时暂停；恢复音量只续播由此选项暂停的内容。手动操作会取消自动续播，USB 独占不跟随系统音量。</string>
+</resources>

@@ -20,6 +20,14 @@ class EchoLibraryLayoutTest {
         assertEquals(listOf(EchoLibraryCategory.Folders), layout.visibleCategories())
     }
 
+    @Test fun normalizationPreservesHiddenActionOrderAndAppendsMissingActions() {
+        val layout = EchoLibraryLayout(trackActionOrder = listOf(EchoTrackMenuAction.Delete, EchoTrackMenuAction.Delete),
+            hiddenTrackActions = setOf(EchoTrackMenuAction.Delete)).normalized()
+        assertEquals(EchoTrackMenuAction.Delete, layout.trackActionOrder.first())
+        assertEquals(EchoTrackMenuAction.entries.size, layout.trackActionOrder.size)
+        assertEquals(setOf(EchoTrackMenuAction.Delete), layout.hiddenTrackActions)
+    }
+
     @Test fun movingAndRestoringVisibilityPreserveOtherChoices() {
         val layout = EchoLibraryLayout(hidden = setOf(EchoLibraryCategory.Artists))
         val moved = layout.move(EchoLibraryCategory.Albums, -1)

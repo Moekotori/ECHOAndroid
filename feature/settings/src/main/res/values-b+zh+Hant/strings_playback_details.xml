@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="manual_fade_title">手動播放／暫停漸變</string>
-    <string name="manual_fade_detail">手動操作時使用 180 毫秒短漸變。來電、輸出中斷與定時停止仍立即暫停，嚴格直通不使用漸變。</string>
+    <string name="manual_fade_title">播放／暫停漸變</string>
+    <string name="manual_fade_detail">手動播放、暫停時平滑過渡，直通時不生效。</string>
     <string name="mix_status_title">實際執行狀態</string>
     <string name="mix_status_idle">閒置</string>
     <string name="mix_status_bypassed">一般播放</string>

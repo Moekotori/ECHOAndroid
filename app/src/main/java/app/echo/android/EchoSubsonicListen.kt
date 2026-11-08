@@ -20,16 +20,22 @@ internal object EchoSubsonicListen {
     fun configure(context: android.content.Context) { outbox = navidromeOutbox(context) }
     fun onCredentialsReady() {
         recoveryJob?.cancel()
-        val endpoint = EchoSubsonicEndpointRef.get() ?: return
+        val endpoints = EchoSubsonicEndpoints.value
         val store = outbox ?: return
         recoveryJob = EchoPlaybackProcessRuntime.scope.launch(Dispatchers.IO) {
             val owner = currentCoroutineContext()
-            store.flushPending(endpoint) { owner.isActive && EchoSubsonicEndpointRef.get()?.sourceId == endpoint.sourceId }
+            for (endpoint in endpoints) {
+                if (!owner.isActive) break
+                store.flushPending(endpoint) { owner.isActive && EchoSubsonicEndpoints.value.any {
+                    it.sourceId == endpoint.sourceId && it.password == endpoint.password
+                } }
+            }
         }
     }
     private val controller = SubsonicListenController(
         scope = EchoPlaybackProcessRuntime.scope,
         endpointRef = EchoSubsonicEndpointRef,
+        endpointForTrack = ::subsonicEndpointForTrack,
         submitListen = { endpoint, songId, submission, timestamp ->
             val store = outbox
             if (submission && store != null && timestamp != null) store.submit(endpoint, songId, timestamp)

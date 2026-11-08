@@ -25,6 +25,7 @@ data class TrackFingerprint(
     val relativePath: String? = null,
     val durationMs: Long = 0L,
     val fileName: String? = null,
+    val embeddedRating: Int? = 0,
 )
 
 data class TrackAlbumKeyRow(
@@ -50,6 +51,24 @@ data class TrackIdPathRow(
 
 @Dao
 interface LibraryTrackDao {
+    @Query("""SELECT * FROM library_tracks WHERE id IN (
+        SELECT MIN(id) FROM library_tracks WHERE source IN ('mediastore', 'saf') AND
+        (id IN (SELECT trackId FROM library_track_artists WHERE artistKey = :artistKey) OR normalizedAlbumArtist = :name)
+        GROUP BY COALESCE(relativePath, albumKey) ORDER BY MIN(id) LIMIT 3)""")
+    suspend fun artistArtworkTracks(artistKey: String, name: String): List<LibraryTrackEntity>
+    @Query("UPDATE library_tracks SET localRating = :rating, rating = COALESCE(:rating, embeddedRating, 0) WHERE id = :id AND source IN ('mediastore', 'saf')")
+    suspend fun setLocalRating(id: String, rating: Int?): Int
+
+    @Query("UPDATE library_tracks SET embeddedRating = :rating, localRating = NULL, rating = :rating WHERE id = :id AND source IN ('mediastore', 'saf')")
+    suspend fun useEmbeddedRating(id: String, rating: Int): Int
+
+    @Query("""UPDATE library_tracks SET
+        localRating = COALESCE(localRating, (SELECT localRating FROM library_tracks WHERE id = :oldId)),
+        embeddedRating = COALESCE(embeddedRating, (SELECT embeddedRating FROM library_tracks WHERE id = :oldId)),
+        rating = COALESCE(localRating, (SELECT localRating FROM library_tracks WHERE id = :oldId), embeddedRating,
+            (SELECT embeddedRating FROM library_tracks WHERE id = :oldId), 0)
+        WHERE id = :targetId""")
+    suspend fun mergeRatings(oldId: String, targetId: String)
     @Query("SELECT * FROM library_tracks WHERE source = :source AND (:query = '' OR title LIKE '%' || :query || '%' ESCAPE '\\' OR artist LIKE '%' || :query || '%' ESCAPE '\\') ORDER BY title COLLATE NOCASE, id")
     fun pageRemoteWritebackCandidates(source: String, query: String): PagingSource<Int, LibraryTrackEntity>
 
@@ -944,7 +963,7 @@ interface LibraryTrackDao {
     @Query("SELECT COUNT(*) FROM library_tracks WHERE source = :source")
     suspend fun countTracksFromSource(source: String): Int
 
-    @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
+    @Query("SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName, embeddedRating FROM library_tracks WHERE id LIKE 'saf:%' AND source IN ('saf', 'mediastore')")
     suspend fun getDocumentFingerprints(): List<TrackFingerprint>
 
     @Query("SELECT DISTINCT artworkUri FROM library_tracks WHERE artworkUri LIKE 'file:%'")
@@ -952,7 +971,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName, embeddedRating
         FROM library_tracks
         WHERE source = :source
         """,
@@ -961,7 +980,7 @@ interface LibraryTrackDao {
 
     @Query(
         """
-        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName
+        SELECT id, contentUri, sampleRateHz, fingerprint, sizeBytes, dateModifiedSeconds, relativePath, durationMs, fileName, embeddedRating
         FROM library_tracks
         WHERE source = :source
           AND relativePath LIKE :relativePathLike ESCAPE '\'
@@ -1073,7 +1092,8 @@ interface LibraryTrackDao {
     @Transaction
     suspend fun upsertBatch(tracks: List<LibraryTrackEntity>) {
         if (tracks.isEmpty()) return
-        upsertTrackRows(tracks)
+        val previous = tracks.map { it.id }.chunked(400).flatMap { getTracksByIds(it) }.associateBy { it.id }
+        upsertTrackRows(tracks.map { it.withPreservedRating(previous[it.id]) })
         deleteArtistMemberships(tracks.map { it.id })
         val memberships = tracks.flatMap(LibraryArtistPolicy::memberships)
         memberships.chunked(500).forEach { insertArtistMemberships(it) }
@@ -1416,6 +1436,7 @@ interface LibraryTrackDao {
         insertMergedBookmarks(bookmarks.moves.map { it.destination })
         deleteMergedBookmarks(oldId)
         upsertScanBatch(listOf(merged))
+        mergeRatings(oldId, targetId)
         deleteScanBatch(listOf(oldId))
         return true
     }

@@ -72,6 +72,7 @@ internal fun EchoLibraryPage(
     val shortcutContext = androidx.compose.ui.platform.LocalContext.current
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val playbackMetadata by viewModel.playbackMetadata.collectAsStateWithLifecycle()
+    val playbackControls by viewModel.playbackControls.collectAsStateWithLifecycle()
     val visiblePlayingId by remember(viewModel, playbackMetadata.track?.id) {
         viewModel.duplicateLibrary.displayTrackId(playbackMetadata.track?.id)
     }.collectAsStateWithLifecycle(initialValue = playbackMetadata.track?.id)
@@ -93,11 +94,14 @@ internal fun EchoLibraryPage(
         playlistCoverTarget = null
         if (uri != null && id != null) viewModel.playlistTools.setArtwork(id, uri)
     }
-    val playlistManagement = remember(viewModel, playlistCoverPicker) {
+    val filePlaylistDocuments = rememberFilePlaylistCreation(viewModel, onOpenPlaylist)
+    val playlistManagement = remember(viewModel, playlistCoverPicker, filePlaylistDocuments) {
         val tools = viewModel.playlistTools
         app.echo.android.feature.library.PlaylistManagementActions(
             order = tools::order, stats = tools::stats, sort = tools::sort, candidates = tools::candidates,
             memberships = tools::memberships,
+            createFilePlaylist = filePlaylistDocuments.create,
+            appendFilePlaylist = filePlaylistDocuments.append,
             add = tools::add, remove = tools::remove, move = tools::move, copy = tools::copy,
             moveTo = tools::moveTo, removeUndoable = tools::removeUndoable,
             pickArtwork = { id -> playlistCoverTarget = id; playlistCoverPicker.launch(arrayOf("image/*")) },
@@ -108,9 +112,11 @@ internal fun EchoLibraryPage(
         val endpoint = app.echo.android.subsonicEndpointFrom(appSettings)
         viewModel.remoteLibraryTools.actions(endpoint, endpoint?.let { viewModel.navidromeTools.actions(it) })
     }
+    val exportPlaylist = rememberPlaylistExport(viewModel)
     val playlistImportState by viewModel.playlistTools.importState.collectAsStateWithLifecycle()
     app.echo.android.feature.library.PlaylistImportDialog(playlistImportState,
         onConfirm = viewModel.playlistTools::confirm, onDismiss = viewModel.playlistTools::dismiss,
+        searchCandidates = viewModel.playlistTools::importCandidates, onCorrect = viewModel.playlistTools::correctImport,
         onOpen = onOpenPlaylist)
     val batchContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
     var batchConsent by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<Boolean>?>(null) }
@@ -180,20 +186,10 @@ internal fun EchoLibraryPage(
     val playlistDetailTracks = selectedPlaylistId?.let { playlistId ->
         remember(playlistId) { viewModel.playlistTrackPaging(playlistId) }.collectAsLazyPagingItems()
     }
-    var pendingM3uExportPlaylist by remember { mutableStateOf<EchoPlaylist?>(null) }
     val importM3uLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
         uri?.let(viewModel::importM3uPlaylist)
-    }
-    val exportM3uLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("audio/x-mpegurl"),
-    ) { uri ->
-        val playlist = pendingM3uExportPlaylist
-        pendingM3uExportPlaylist = null
-        if (uri != null && playlist != null) {
-            viewModel.exportM3uPlaylist(playlist.id, uri)
-        }
     }
 
     val savedRadioStations by viewModel.radioController.stations.collectAsStateWithLifecycle()
@@ -208,7 +204,7 @@ internal fun EchoLibraryPage(
     val openAlbumArtist = remember(selectedAlbum, onOpenArtist) {
         val album = selectedAlbum
         val target = album?.let {
-            viewModel.artistNavigationTarget(it.albumArtist ?: it.artist.orEmpty(), it.artworkUri)
+            app.echo.android.data.albumArtistNavigationTarget(it)
         }
         if (album != null && target != null) {
             { onOpenArtist(target) }
@@ -234,7 +230,9 @@ internal fun EchoLibraryPage(
         app.echo.android.feature.library.LibraryHiddenTrackActions(viewModel.observeHiddenTracksCount(), viewModel::hiddenTracks,
             viewModel::hideLibraryTracks, viewModel::restoreLibraryTracks, viewModel::restoreAllLibraryTracks)
     }, showFileNames = appSettings.libraryLayout.showFileNames, hiddenTrackActions = appSettings.libraryLayout.hiddenTrackActions,
-        showPlayNext = appSettings.libraryLayout.showPlayNext, mediaTools = rememberLibraryMediaTools(viewModel)) {
+        trackActionOrder = appSettings.libraryLayout.trackActionOrder,
+        showPlayNext = appSettings.libraryLayout.showPlayNext, mediaTools = rememberLibraryMediaTools(viewModel),
+        artistArtworkActions = rememberArtistArtworkActions(viewModel)) {
     app.echo.android.feature.library.LibraryDuplicatesProvider(
         viewModel.duplicateLibrary.state, viewModel.duplicateLibrary::analyze, viewModel.duplicateLibrary::cancel,
         viewModel.duplicateLibrary::setEnabled,
@@ -319,6 +317,7 @@ internal fun EchoLibraryPage(
             playingTrackId = if (remotePlayback) null else if (selectedAlbum == null && selectedArtist == null &&
                 selectedGenre == null && selectedFolder == null && selectedPlaylist == null) visiblePlayingId else playbackMetadata.track?.id,
             onFindPlayingSongIndex = { id -> viewModel.localTrackIndex(id, libraryQuery, libraryTrackSortMode, libraryTrackFilter) },
+            isPlaying = playbackControls.isPlaying,
             onAlbumSortModeChange = viewModel::updateLibraryAlbumSortMode,
             onArtistSortModeChange = viewModel::updateLibraryArtistSortMode,
             onFolderSortModeChange = viewModel::updateLibraryFolderSortMode,
@@ -360,7 +359,7 @@ internal fun EchoLibraryPage(
             onImportLyricsForTrack = onImportLyricsForTrack,
             onPickTrackArtwork = onPickTrackArtwork,
             albumArtistAlbums = { album ->
-                viewModel.artistNavigationTarget(album.albumArtist ?: album.artist.orEmpty(), album.artworkUri)
+                app.echo.android.data.albumArtistNavigationTarget(album)
                     ?.let { viewModel.artistAlbumPaging(it.artistKey) }
             },
             onPinPlaylistShortcut = { playlist, play -> app.echo.android.library.EchoLibraryShortcuts.pin(shortcutContext,
@@ -446,11 +445,7 @@ internal fun EchoLibraryPage(
                     ),
                 )
             },
-            onExportM3uPlaylist = { playlist ->
-                pendingM3uExportPlaylist = playlist
-                val fileName = playlist.name.trim().ifBlank { "playlist" }.replace(Regex("[\\\\/:*?\"<>|]"), "-")
-                exportM3uLauncher.launch("$fileName.m3u")
-            },
+            onExportM3uPlaylist = exportPlaylist,
         )
     }
     }

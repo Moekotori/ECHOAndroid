@@ -2,11 +2,11 @@
 <resources>
     <string name="effects_panel_title">系統音效</string>
     <string name="effects_panel_open">開啟系統音效面板</string>
-    <string name="effects_panel_ready">使用目前 AudioTrack 工作階段；具體音效與支援情況由系統及已安裝的音效應用程式決定。</string>
-    <string name="effects_panel_usb">USB 獨佔輸出繞過系統音效工作階段，切回系統輸出後可使用此入口。</string>
-    <string name="effects_panel_offloaded">目前硬體卸載輸出尚未確認支援系統音效。</string>
-    <string name="effects_panel_no_session">開始本機播放後建立音訊工作階段。</string>
-    <string name="effects_panel_no_output">等待實際建立系統 AudioTrack 輸出。</string>
+    <string name="effects_panel_ready">調整目前輸出的系統音效。</string>
+    <string name="effects_panel_usb">切回系統輸出後可用。</string>
+    <string name="effects_panel_offloaded">硬體卸載下的音效支援未確認。</string>
+    <string name="effects_panel_no_session">請先開始本機播放。</string>
+    <string name="effects_panel_no_output">等待系統音訊輸出。</string>
     <string name="decoder_runtime_title">解碼器執行資訊</string>
     <string name="decoder_runtime_note">來自 Media3 執行事件。計數屬於目前音訊渲染週期，並非逐首統計；平台解碼器可能採用硬體或軟體實作。</string>
     <string name="decoder_runtime_name">實際回報的解碼器名稱</string>
@@ -53,7 +53,7 @@
     <string name="conversion_depth_requested">PCM 表示變化來自使用者指定的輸出位元深度。</string>
     <string name="conversion_depth_compatible">PCM 表示變化來自端點相容協商。</string>
     <string name="conversion_channels">聲道數已轉換為要求的輸出配置。</string>
-    <string name="effects_panel_remote">此面板控制本機音訊工作階段，不適用於遠端播放。</string>
+    <string name="effects_panel_remote">僅支援本機播放。</string>
     <string name="decoder_failure_unspecified">編解碼器錯誤，具體階段未明確</string>
     <string name="conversion_channels_compatible">聲道數變化來自目前 USB 輸出配置的相容選擇。</string>
 </resources>

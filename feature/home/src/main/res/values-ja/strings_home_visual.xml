@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_greeting_morning">おはようございます</string>
+    <string name="home_greeting_morning_sub">軽やかに一日を始めませんか？</string>
+    <string name="home_greeting_noon">こんにちは</string>
+    <string name="home_greeting_noon_sub">お昼に音楽はいかが？</string>
+    <string name="home_greeting_afternoon">こんにちは</string>
+    <string name="home_greeting_evening">こんばんは</string>
+    <string name="home_greeting_ask_sub">今日は何を聴きますか？</string>
+    <string name="home_greeting_night">夜更けですね</string>
+    <string name="home_greeting_night_sub">静かな曲はいかが？</string>
+</resources>

@@ -25,6 +25,7 @@ internal data class RemotePlaybackCredentialSnapshot(
     val smbServerUrl: String? = null,
     val smbUsername: String? = null,
     val smbPassword: String? = null,
+    val subsonicConnections: List<SubsonicEndpoint> = emptyList(),
 )
 
 internal fun EchoAppSettings.remotePlaybackCredentialSnapshot(): RemotePlaybackCredentialSnapshot =
@@ -40,9 +41,20 @@ internal fun EchoAppSettings.remotePlaybackCredentialSnapshot(): RemotePlaybackC
         smbServerUrl = smbServerUrl,
         smbUsername = smbUsername,
         smbPassword = smbPassword,
+        subsonicConnections = subsonicConnections,
     )
 
 internal val EchoSubsonicEndpointRef = AtomicReference<SubsonicEndpoint?>(null)
+internal val EchoSubsonicEndpoints = kotlinx.coroutines.flow.MutableStateFlow<List<SubsonicEndpoint>>(emptyList())
+
+internal fun subsonicEndpointForTrack(trackId: String?): SubsonicEndpoint? =
+    subsonicEndpointForTrack(trackId, EchoSubsonicEndpoints.value)
+
+internal fun subsonicEndpointForTrack(trackId: String?, endpoints: List<SubsonicEndpoint>): SubsonicEndpoint? {
+    if (trackId == null || !trackId.startsWith("subsonic:") || !trackId.contains(":song:")) return null
+    val source = trackId.substringBefore(":song:")
+    return endpoints.firstOrNull { it.sourceId == source }
+}
 
 internal fun applyRemotePlaybackCredentials(
     settings: EchoAppSettings,
@@ -58,7 +70,10 @@ internal fun applyRemotePlaybackCredentials(
     ) {
         EchoRemotePlaybackAuthRegistry.replaceWebDavCredentials(webDav)
     }
-    val subsonic = listOfNotNull(subsonicPlaybackCredential(settings))
+    val endpoints = (listOfNotNull(subsonicEndpointFrom(settings)) + settings.subsonicConnections).distinctBy { it.sourceId }
+    val subsonic = endpoints.map { server ->
+        EchoSubsonicPlaybackCredential(server.normalizedBaseUrl, server.username, server.password, server.sourceId)
+    }
     if (
         shouldReplaceRegisteredRemoteCredentials(
             incomingEmpty = subsonic.isEmpty(),
@@ -66,6 +81,7 @@ internal fun applyRemotePlaybackCredentials(
             allowClearIfEmpty = allowClearIfEmpty,
         )
     ) {
+        EchoSubsonicEndpoints.value = endpoints
         EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(subsonic)
         EchoArtworkUrlRewriteRegistry.notifyChanged()
     }
@@ -137,5 +153,6 @@ private fun subsonicPlaybackCredential(settings: EchoAppSettings): EchoSubsonicP
         baseUrl = serverUrl,
         username = username,
         password = password,
+        sourceId = SubsonicEndpoint(serverUrl, username, password).sourceId,
     )
 }

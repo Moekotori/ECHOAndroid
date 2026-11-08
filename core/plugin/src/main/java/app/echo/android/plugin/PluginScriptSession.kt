@@ -53,6 +53,28 @@ internal class PluginScriptSession(
         }
     }
 
+    fun searchLyrics(request: PluginLyricsRequest, timeoutMs: Long, onResult: (List<String>) -> Unit): ScriptFault? = invoke(timeoutMs) {
+        if (!granted(PluginCapability.LyricsProvider)) return@invoke
+        val function = ScriptableObject.getProperty(scope, "onLyricsSearch") as? Function ?: return@invoke
+        val result = function.call(Context.getCurrentContext(), scope, scope, arrayOf(toJs(mapOf(
+            "title" to request.title.take(200), "artist" to request.artist.take(200),
+            "album" to request.album.take(200), "durationMs" to request.durationMs.coerceIn(0, MaxPositionMs),
+        )))) as? Scriptable ?: return@invoke
+        val count = (member(result, "length") as? Number)?.toInt() ?: return@invoke
+        require(count in 0..8) { "Too many lyric candidates" }
+        val texts = ArrayList<String>(count)
+        var total = 0
+        for (index in 0 until count) {
+            val item = ScriptableObject.getProperty(result, index)
+            val text = jsString(item) ?: stringMember(item as? Scriptable, "text") ?: continue
+            require(text.length <= 65_536) { "Lyric candidate too large" }
+            total += text.length
+            require(total <= 131_072) { "Lyric result too large" }
+            if (text.isNotBlank()) texts += text
+        }
+        if (granted(PluginCapability.LyricsProvider)) onResult(texts)
+    }
+
     fun invoke(function: Function): ScriptFault? = invoke {
         function.call(Context.getCurrentContext(), scope, scope, emptyArray())
     }
@@ -68,9 +90,9 @@ internal class PluginScriptSession(
         }
     } as String
 
-    private fun invoke(block: () -> Unit): ScriptFault? = try {
+    private fun invoke(timeoutMs: Long = 2_000, block: () -> Unit): ScriptFault? = try {
         factory.call { context ->
-            arm(context)
+            arm(context, timeoutMs)
             try {
                 block()
                 if (context.getThreadLocal(TimedOut) == true) throw PluginTimeoutError()
@@ -289,7 +311,7 @@ internal class PluginContextFactory : ContextFactory() {
 
     override fun observeInstructionCount(cx: Context, instructionCount: Int) {
         val deadline = cx.getThreadLocal(Deadline) as? Long ?: return
-        if (System.nanoTime() > deadline) {
+        if (Thread.currentThread().isInterrupted || System.nanoTime() > deadline) {
             cx.putThreadLocal(TimedOut, true)
             throw PluginTimeoutError()
         }
@@ -309,12 +331,14 @@ private class PluginSandboxError : Error("sandbox")
 private const val Deadline = "echo.deadline"
 private const val TimedOut = "echo.timedOut"
 
-private fun arm(context: Context) {
-    context.putThreadLocal(Deadline, System.nanoTime() + 2_000_000_000L)
+private fun arm(context: Context, timeoutMs: Long = 2_000) {
+    PluginExecutionBudget.enter(timeoutMs)
+    context.putThreadLocal(Deadline, System.nanoTime() + timeoutMs * 1_000_000)
     context.removeThreadLocal(TimedOut)
 }
 
 private fun disarm(context: Context) {
+    PluginExecutionBudget.leave()
     context.removeThreadLocal(Deadline)
     context.removeThreadLocal(TimedOut)
 }

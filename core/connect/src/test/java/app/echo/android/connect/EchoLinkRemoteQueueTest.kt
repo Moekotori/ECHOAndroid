@@ -8,6 +8,116 @@ import org.junit.Test
 
 class EchoLinkRemoteQueueTest {
     @Test
+    fun aShrunkQueueRepairsAnOutOfRangeAnchorWithOneRequest() = runBlocking {
+        val endpoint = EchoRemoteEndpoint("pc", "PC", "127.0.0.1", 26789, "token")
+        val pages = mutableListOf<Int>()
+        var total = 1500
+        var revision = 1L
+        val transport = object : EchoLinkTransport by FakeEchoLinkTransport() {
+            override suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int): EchoRemoteQueueState {
+                pages += page
+                val offset = (page - 1) * 100
+                val rows = (offset until minOf(offset + 100, total)).map { index ->
+                    EchoRemoteTrack("song-$index", "Song", "Artist", null, null, 1000, queueIndex = index)
+                }
+                return EchoRemoteQueueState(items = rows, totalCount = total, revision = revision, offset = offset)
+            }
+        }
+        val browser = EchoLinkRemoteQueue(this, transport, { endpoint }, { EchoRemotePlaybackQueue() }, { it.message.orEmpty() })
+        try {
+            browser.startWatching(); browser.refresh()
+            kotlinx.coroutines.withTimeout(1_000) { while (browser.state.value.isLoading) delay(1) }
+            browser.setVisibleAnchor(650); total = 125; revision = 2
+            browser.observe(revision, "current")
+            kotlinx.coroutines.withTimeout(1_000) { while (browser.state.value.isLoading) delay(1) }
+            assertEquals(listOf(1, 7, 2), pages)
+            assertEquals(100, browser.state.value.offset)
+            assertEquals(25, browser.state.value.items.size)
+            assertNull(browser.state.value.error)
+        } finally { browser.stopWatching() }
+    }
+
+    @Test
+    fun aLegacyQueueClearedDuringPagingRemovesAllPreviouslyLoadedRows() = runBlocking {
+        val endpoint = EchoRemoteEndpoint("pc", "PC", "127.0.0.1", 26789, "token")
+        val pages = mutableListOf<Int>()
+        val transport = object : EchoLinkTransport by FakeEchoLinkTransport() {
+            override suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int): EchoRemoteQueueState {
+                pages += page
+                return if (page == 1) EchoRemoteQueueState(totalCount = 150,
+                    items = listOf(EchoRemoteTrack("song", "Song", "Artist", null, null, 1000)))
+                else EchoRemoteQueueState(totalCount = 0, offset = 100)
+            }
+        }
+        val browser = EchoLinkRemoteQueue(this, transport, { endpoint }, { EchoRemotePlaybackQueue() }, { it.message.orEmpty() })
+        try {
+            browser.refresh()
+            kotlinx.coroutines.withTimeout(1_000) { while (browser.state.value.isLoading) delay(1) }
+            browser.loadMore()
+            kotlinx.coroutines.withTimeout(1_000) { while (browser.state.value.isLoadingMore) delay(1) }
+            assertEquals(listOf(1, 2), pages)
+            assertTrue(browser.state.value.items.isEmpty())
+            assertEquals(0, browser.state.value.offset)
+            assertEquals(0, browser.state.value.totalCount)
+        } finally { browser.stopWatching() }
+    }
+
+    @Test
+    fun anEmptyVisiblePageStopsWithAnErrorInsteadOfRequestingItForever() = runBlocking {
+        val endpoint = EchoRemoteEndpoint("pc", "PC", "127.0.0.1", 26789, "token")
+        val pages = mutableListOf<Int>()
+        var revision = 1L
+        var incomplete = true
+        val transport = object : EchoLinkTransport by FakeEchoLinkTransport() {
+            override suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int): EchoRemoteQueueState {
+                pages += page
+                // Bound the broken implementation too: fail without a request storm or stack overflow.
+                if (pages.size > 3) kotlinx.coroutines.awaitCancellation()
+                kotlinx.coroutines.yield()
+                val offset = (page - 1) * 100
+                val rows = if (revision == 2L && incomplete) emptyList() else listOf(
+                    EchoRemoteTrack("song", "Song", "Artist", null, null, 1000, queueIndex = offset))
+                return EchoRemoteQueueState(items = rows, totalCount = 1500, revision = revision, offset = offset)
+            }
+        }
+        val browser = EchoLinkRemoteQueue(this, transport, { endpoint }, { EchoRemotePlaybackQueue() }, { it.message.orEmpty() })
+        suspend fun awaitResult(condition: () -> Boolean) {
+            kotlinx.coroutines.withTimeout(1_000) { while (!condition()) delay(1) }
+        }
+        try {
+            browser.startWatching(); browser.refresh()
+            awaitResult { browser.state.value.items.isNotEmpty() }
+            val previous = browser.state.value.items
+            browser.setVisibleAnchor(650); revision = 2
+            browser.observe(revision, "current")
+            awaitResult { browser.state.value.error != null || pages.size > 3 }
+            assertEquals(listOf(1, 7), pages)
+            assertEquals(previous, browser.state.value.items)
+            assertNotNull(browser.state.value.error)
+            repeat(10) { browser.observe(revision, "current") }
+            assertEquals(2, pages.size)
+            incomplete = false
+            browser.refresh()
+            awaitResult { browser.state.value.revision == revision && !browser.state.value.isLoading }
+            assertNull(browser.state.value.error)
+        } finally { browser.stopWatching() }
+    }
+
+    @Test
+    fun anEmptyFirstPageCannotLookLikeASuccessfullyLoadedNonemptyQueue() = runBlocking {
+        val endpoint = EchoRemoteEndpoint("pc", "PC", "127.0.0.1", 26789, "token")
+        val transport = object : EchoLinkTransport by FakeEchoLinkTransport() {
+            override suspend fun fetchPlaybackQueue(endpoint: EchoRemoteEndpoint, page: Int) = EchoRemoteQueueState(totalCount = 10)
+        }
+        val browser = EchoLinkRemoteQueue(this, transport, { endpoint }, { EchoRemotePlaybackQueue() }, { it.message.orEmpty() })
+        try {
+            browser.refresh()
+            kotlinx.coroutines.withTimeout(1_000) { while (browser.state.value.isLoading) delay(1) }
+            assertNotNull(browser.state.value.error)
+        } finally { browser.stopWatching() }
+    }
+
+    @Test
     fun sparsePcQueuePagesAdvanceUsingThePageNumberInsteadOfTheSurvivingRowCount() = runBlocking {
         val endpoint = EchoRemoteEndpoint("pc", "PC", "127.0.0.1", 26789, "token")
         val pages = mutableListOf<Int>()

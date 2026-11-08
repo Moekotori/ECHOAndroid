@@ -56,6 +56,7 @@ internal fun SmartPlaylistEditor(playlist: EchoPlaylist?, actions: LibraryExperi
             if (!loaded) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             item { OutlinedTextField(name, { name = it.take(100) }, label = { Text(stringResource(R.string.smart_name)) },
                 singleLine = true, enabled = loaded && !saving, modifier = Modifier.fillMaxWidth()) }
+            item { MinimumRatingControl(rule.minimumRating) { rule = rule.copy(minimumRating = it) } }
             item { OutlinedTextField(rule.artist, { rule = rule.copy(artist = it.take(120)) },
                 label = { Text(stringResource(R.string.smart_artist)) }, singleLine = true, modifier = Modifier.fillMaxWidth()) }
             item { OutlinedTextField(rule.genre, { rule = rule.copy(genre = it.take(120)) },

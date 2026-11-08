@@ -10,4 +10,5 @@ data class LibraryScanOptions(
     val excludedRelativePaths: Set<String> = emptySet(),
     /** Allowed filename extensions without a dot; empty means all supported formats. */
     val allowedExtensions: Set<String> = emptySet(),
+    val excludedNameKeywords: Set<String> = emptySet(),
 ) : java.io.Serializable

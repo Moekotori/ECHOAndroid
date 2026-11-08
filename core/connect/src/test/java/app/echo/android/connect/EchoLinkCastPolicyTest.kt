@@ -123,6 +123,15 @@ class EchoLinkCastPolicyTest {
     }
 
     @Test
+    fun rangeParsingRejectsMalformedIntervalsAndAcceptsCaseInsensitiveUnits() {
+        assertEquals(10L to 19L, EchoLinkCastPolicy.parseRange("BYTES=10-19", 100))
+        for (range in listOf("bytes=10", "bytes=10-nope", "bytes=10-19,30-39", "bytes=+10-19",
+            "bytes=10-+19", "bytes=10-9223372036854775808", "bytes=10--19", "bytes=-10")) {
+            assertNull(range, EchoLinkCastPolicy.parseRange(range, 100))
+        }
+    }
+
+    @Test
     fun tokenShape() {
         val token = EchoLinkCastPolicy.newToken()
         assertEquals(32, token.length)

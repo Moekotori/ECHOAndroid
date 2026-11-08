@@ -23,4 +23,5 @@
     <string name="player_appearance_dither">Tramage</string>
     <string name="player_appearance_glyph_field">Art de caractères</string>
     <string name="player_appearance_full_cover">Pochette plein écran</string>
+    <string name="player_appearance_groove_spiral">Spirale du sillon</string>
 </resources>

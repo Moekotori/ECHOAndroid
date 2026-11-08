@@ -196,7 +196,10 @@ internal fun PlaylistDetailPage(
                 PlaylistDetailToolbar(playlist, order, editing, busy,
                     onSort = management?.let { actions -> { next -> perform { actions.sort(playlist.id, next) } } },
                     onEdit = management?.takeIf { playlist.canRemoveTracks }?.let { { editing = !editing } },
-                    onAdd = management?.takeIf { playlist.canEdit }?.let { { adding = true } })
+                    onAdd = management?.takeIf { playlist.canEdit }?.let { { adding = true } },
+                    onAddFiles = management?.appendFilePlaylist?.takeIf { playlist.isFilePlaylist }?.let { append ->
+                        { folder -> append(playlist, folder) }
+                    })
                 if (actionFailed) PlaylistDetailNotice(stringResource(L10nR.string.playlist_action_error))
                 if (reorder) Text(stringResource(L10nR.string.playlist_drag_hint), style = MaterialTheme.typography.bodySmall)
                 addedCount?.let { PlaylistDetailNotice(pluralStringResource(L10nR.plurals.playlist_added, it, it)) }
@@ -214,7 +217,11 @@ internal fun PlaylistDetailPage(
                 }
                 else -> items(
                     count = tracks.itemCount,
-                    key = { index -> tracks.peek(index)?.id ?: "playlist-track-$index" },
+                    key = { index ->
+                        val id = tracks.peek(index)?.id
+                        if (playlist.source.startsWith("subsonic:")) "playlist-track-$index:${id.orEmpty()}"
+                        else id ?: "playlist-track-$index"
+                    },
                     contentType = { "track" },
                 ) { index ->
                     val track = tracks[index]
@@ -377,6 +384,7 @@ internal fun playlistCaption(playlist: EchoPlaylist): String {
         playlist.isCustomSmartPlaylist -> pluralStringResource(L10nR.plurals.smart_preview_count, count, count)
         playlist.isLikedSongs -> stringResource(L10nR.string.feature_library_count_tracks_liked_songs_e36fb7, (count).toString())
         playlist.isSmartPlaylist -> stringResource(L10nR.string.feature_library_count_tracks_smart, count.toString())
+        playlist.isFilePlaylist -> stringResource(L10nR.string.file_playlist_label) + " · " + libraryTrackCountLabel(count)
         playlist.canEdit -> stringResource(L10nR.string.feature_library_count_tracks_local_playlist_352a0d, (count).toString())
         else -> stringResource(L10nR.string.feature_library_count_tracks_navidrome_294a65, (count).toString())
     }

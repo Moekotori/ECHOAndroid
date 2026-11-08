@@ -1,5 +1,6 @@
 package app.echo.android.feature.library
 
+import app.echo.android.design.echoSharedCover
 import app.echo.android.feature.library.R as L10nR
 import androidx.compose.ui.res.stringResource
 
@@ -76,6 +77,7 @@ internal fun LocalPlaylistPanel(
 ) {
     var remoteVisible by remember { mutableStateOf(false) }
     var createVisible by remember { mutableStateOf(false) }
+    var fileCreateVisible by remember { mutableStateOf(false) }
     var smartEditorVisible by remember { mutableStateOf(false) }
     var editingSmart by remember { mutableStateOf<EchoPlaylist?>(null) }
     val toolsScope = rememberCoroutineScope()
@@ -95,6 +97,9 @@ internal fun LocalPlaylistPanel(
     val sort = PlaylistCatalogSort.entries.firstOrNull { it.name == sortName } ?: PlaylistCatalogSort.Updated
     val sections by rememberPlaylistCatalog(playlists, query, sort)
 
+    if (fileCreateVisible) FilePlaylistCreateDialog(onCreate = { name, folder ->
+        fileCreateVisible = false; management?.createFilePlaylist?.invoke(name, folder)
+    }, onDismiss = { fileCreateVisible = false })
     Box(modifier.fillMaxWidth()) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
@@ -113,6 +118,7 @@ internal fun LocalPlaylistPanel(
                 if (remoteManagement != null) TextButton(onClick = { remoteVisible = true }) {
                     Text(stringResource(L10nR.string.nav_manage))
                 }
+                if (management?.createFilePlaylist != null) TextButton(onClick = { fileCreateVisible = true }) { Text(stringResource(L10nR.string.file_playlist_create)) }
             }
             if (sections.isEmpty() && query.isNotBlank()) {
                 item { EmptyState(stringResource(L10nR.string.playlist_no_search_results)) }
@@ -344,7 +350,7 @@ private fun LocalPlaylistRow(
 ) {
     Row(Modifier.fillMaxWidth().echoClickable(onClick = onOpen).padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        ArtworkTile(playlist.artworkUri, Modifier.size(56.dp), accent = rememberLibraryArtworkAccent(), cornerRadius = 4.dp)
+        ArtworkTile(playlist.artworkUri, Modifier.echoSharedCover("playlist", playlist.id).size(56.dp), accent = rememberLibraryArtworkAccent(), cornerRadius = 4.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(playlistDisplayName(playlist), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -46,6 +46,7 @@ internal fun EchoNowPlayingHost(
     onOpenArtist: (ArtistSummary) -> Unit = {},
 ) {
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
+    EchoPlayerOrientationEffect(appSettings.playerOrientationLocked, presentationExpanded)
     val playbackPosition = positionFlow.collectAsStateWithLifecycle()
     val smartTransition = app.echo.android.playback.EchoPlaybackProcessRuntime.smartTransitionVisual.collectAsStateWithLifecycle()
     var artistPickerTrack by remember { mutableStateOf<app.echo.android.model.playback.EchoTrackRef?>(null) }
@@ -148,6 +149,8 @@ internal fun EchoNowPlayingHost(
         smartTransitionState = smartTransition,
         lyricsState = lyricsState,
         bluetoothLyricsDelayMs = if (castActive) 0 else appSettings.lyricsOptions.bluetoothDelayMs,
+        translationCurrentOnly = appSettings.lyricsOptions.translationCurrentOnly,
+        onTranslationCurrentOnlyChange = { viewModel.setLyricsOptions(appSettings.lyricsOptions.copy(translationCurrentOnly = it)) },
         lyricsTranslationScale = appSettings.lyricsOptions.translationScale,
         lyricsRomanizationScale = appSettings.lyricsOptions.romanizationScale,
         onLyricsTranslationScaleChange = { viewModel.setLyricsOptions(appSettings.lyricsOptions.copy(translationScale = it)) },
@@ -157,6 +160,7 @@ internal fun EchoNowPlayingHost(
         playerTextScale = appSettings.playerTextScale,
         playerArtworkScale = appSettings.playerArtworkScale,
         onPlayerAppearanceChange = viewModel::setPlayerAppearance,
+        appearancePacks = { app.echo.android.appearance.EchoAppearancePacks() },
         lyricsFontFamily = lyricsFontFamily,
         lyricsPageStyle = appSettings.lyricsPageStyle,
         lyricsBackdrop = appSettings.lyricsBackdrop,

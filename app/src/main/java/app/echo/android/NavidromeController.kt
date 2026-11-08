@@ -38,6 +38,7 @@ internal class NavidromeController(
         suspend fun write(block: suspend (SubsonicEndpoint) -> Unit) = mutation.withLock { read(block) }
         return NavidromeActions(
             sourceId = captured.sourceId,
+            invalidateBrowse = library::invalidateBrowse,
             load = { query -> read { library.read(it, query) } },
             information = { entry -> read { library.information(it, entry) } },
             execute = { command -> write { library.execute(it, command) } },
@@ -69,7 +70,7 @@ internal class NavidromeController(
                     val uri = java.net.URI(entry.url)
                     require(uri.scheme?.lowercase() in listOf("http", "https") && !uri.host.isNullOrBlank() && uri.userInfo == null)
                     play(EchoTrack("radio:navidrome:${captured.sourceId}:${entry.id}", entry.url, entry.name,
-                        "Navidrome", source = LibrarySource("radio")), 0)
+                        "Navidrome", artworkUri = entry.artworkUri, source = LibrarySource("radio")), 0)
                 } else entry.track?.let { play(it, entry.positionMs) }
             },
             receipts = { read { server -> withContext(Dispatchers.IO) { outbox.receipts(server.sourceId) } } },

@@ -13,20 +13,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Button
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +50,9 @@ fun EchoSheetOrderRow(
     onVisibleChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     switchEnabled: Boolean = true,
+    dragState: EchoOrderDragState,
+    itemKey: String,
+    enabled: Boolean = true,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val dim by animateFloatAsState(
@@ -59,7 +61,22 @@ fun EchoSheetOrderRow(
         label = "echo-order-row-dim",
     )
     Row(
-        modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 10.dp),
+        modifier.fillMaxWidth().heightIn(min = 60.dp)
+            .zIndex(if (dragState.source == itemKey) 1f else 0f)
+            .graphicsLayer {
+                translationY = if (dragState.source == itemKey) {
+                    val offset = dragState.list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == itemKey }?.offset ?: 0
+                    dragState.y - dragState.grabOffset - offset
+                } else 0f
+            }
+            .background(if (dragState.source == itemKey) MaterialTheme.colorScheme.surface else if (dragState.target == itemKey && dragState.source != null && dragState.source != itemKey)
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else androidx.compose.ui.graphics.Color.Transparent)
+            .semantics {
+                customActions = if (!enabled) emptyList() else buildList {
+                    if (canMoveUp) add(CustomAccessibilityAction(moveUpDescription) { onMoveUp(); true })
+                    if (canMoveDown) add(CustomAccessibilityAction(moveDownDescription) { onMoveDown(); true })
+                }
+            }.padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -85,16 +102,11 @@ fun EchoSheetOrderRow(
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
-        IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-            EchoIcon(Icons.Rounded.KeyboardArrowUp, moveUpDescription)
-        }
-        IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-            EchoIcon(Icons.Rounded.KeyboardArrowDown, moveDownDescription)
-        }
         EchoSwitch(
-            checked = visible, onCheckedChange = onVisibleChange, enabled = switchEnabled,
+            checked = visible, onCheckedChange = onVisibleChange, enabled = switchEnabled && enabled,
             modifier = Modifier.semantics { contentDescription = label },
         )
+        if (enabled) EchoOrderDragHandle(itemKey, dragState)
     }
 }
 

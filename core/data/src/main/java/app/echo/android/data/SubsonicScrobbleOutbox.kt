@@ -18,7 +18,7 @@ class SubsonicScrobbleOutbox(private val directory: File,
 
     fun submit(endpoint: SubsonicEndpoint, songId: String, timestampMs: Long) = lock.withLock {
         require(songId.isNotBlank() && timestampMs > 0)
-        val rows = read().toMutableList()
+        val rows = readUnconfirmed().toMutableList()
         val key = key(endpoint.sourceId, songId, timestampMs)
         if (confirmed().contains(key)) return@withLock
         // Repeated ticks and process recovery must never blindly replay an uncertain submission.
@@ -31,13 +31,13 @@ class SubsonicScrobbleOutbox(private val directory: File,
     }
 
     fun receipts(source: String): List<NavidromeReceipt> = lock.withLock {
-        read().filter { it.source == source }.map { row ->
+        readUnconfirmed().filter { it.source == source }.map { row ->
             row.receipt.let { if (it.state == NavidromeReceiptState.Sending) it.copy(state = NavidromeReceiptState.Unknown) else it }
         }.sortedByDescending { it.timestampMs }
     }
 
     fun resolve(endpoint: SubsonicEndpoint, key: String, resolution: NavidromeReceiptResolution) = lock.withLock {
-        val rows = read().toMutableList()
+        val rows = readUnconfirmed().toMutableList()
         val row = rows.firstOrNull { it.source == endpoint.sourceId && it.receipt.key == key } ?: return@withLock
         if (resolution == NavidromeReceiptResolution.Retry) deliver(endpoint, row, rows)
         else { rememberConfirmed(key); rows.remove(row); write(rows) }
@@ -45,7 +45,7 @@ class SubsonicScrobbleOutbox(private val directory: File,
 
     /** Bounded event-driven retry of requests known not to have been sent before a process exit. */
     fun flushPending(endpoint: SubsonicEndpoint, shouldContinue: () -> Boolean = { true }) = lock.withLock {
-        val rows = read().toMutableList()
+        val rows = readUnconfirmed().toMutableList()
         for (row in rows.filter { it.source == endpoint.sourceId && it.receipt.state == NavidromeReceiptState.Pending }.take(8)) {
             if (!shouldContinue()) break
             deliver(endpoint, row, rows)
@@ -75,13 +75,20 @@ class SubsonicScrobbleOutbox(private val directory: File,
         MessageDigest.getInstance("SHA-256").digest("$source\u0000$songId\u0000$timestampMs".toByteArray())
             .joinToString("") { "%02x".format(it) }
 
+    private fun readUnconfirmed(): List<Row> {
+        val known = confirmed().toHashSet()
+        return read().filterNot { it.receipt.key in known }
+    }
+
     private fun read(): List<Row> {
         val file = File(directory, "pending.json")
         if (!file.exists()) return emptyList()
         check(file.length() <= 1_000_000) { "Invalid Navidrome receipt storage" }
         val array = JSONArray(file.readText())
         check(array.length() <= 1000)
-        return array.objectList().map { row -> Row(row.getString("source"), NavidromeReceipt(row.getString("key"),
+        val objects = array.objectList()
+        check(objects.size == array.length()) { "Malformed Navidrome receipt storage" }
+        return objects.map { row -> Row(row.getString("source"), NavidromeReceipt(row.getString("key"),
             row.getString("songId"), row.getLong("timestamp"), NavidromeReceiptState.valueOf(row.getString("state")), row.getInt("attempts"))) }
     }
 
@@ -96,7 +103,7 @@ class SubsonicScrobbleOutbox(private val directory: File,
 
     private fun rememberConfirmed(key: String) {
         val file = File(directory, "confirmed.json")
-        atomicWrite(file, JSONArray((confirmed() + key).takeLast(2000)).toString())
+        atomicWrite(file, JSONArray((confirmed().filterNot { it == key } + key).takeLast(2000)).toString())
     }
 
     private fun confirmed(): List<String> {
@@ -111,6 +118,11 @@ class SubsonicScrobbleOutbox(private val directory: File,
     private fun atomicWrite(file: File, value: String) {
         val temporary = File(directory, file.name + ".tmp")
         temporary.outputStream().use { output -> output.write(value.toByteArray()); output.fd.sync() }
-        check(temporary.renameTo(file)) { "Cannot store Navidrome receipts" }
+        try {
+            java.nio.file.Files.move(temporary.toPath(), file.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+            java.nio.file.Files.move(temporary.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
     }
 }

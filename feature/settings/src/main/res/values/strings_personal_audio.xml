@@ -1,0 +1,16 @@
+<resources>
+    <string name="personal_hrtf_title">HRTF headphone soundstage</string>
+    <string name="personal_hrtf_detail">Hear stereo through two virtual speakers using measured SADIE II responses. Use headphones; crossfeed is disabled when this is on. HRTF supports PCM up to 96 kHz; higher rates bypass it.</string>
+    <string name="personal_stereo_only">Stereo PCM · bypassed for USB bit-perfect</string>
+    <string name="personal_narrow">Narrow</string>
+    <string name="personal_standard">Standard</string>
+    <string name="personal_wide">Wide</string>
+    <string name="personal_hrtf_amount">Soundstage mix</string>
+    <string name="personal_hrtf_listen">Compare the three speaker angles with music already playing. These are generic responses; choose the one that sounds natural to you.</string>
+    <string name="personal_loudness_title">Dynamic equal loudness</string>
+    <string name="personal_loudness_detail">Restore bass and treble balance when you lower the app PCM volume.</string>
+    <string name="personal_reference">Reference app volume</string>
+    <string name="personal_bass">Maximum bass compensation</string>
+    <string name="personal_treble">Maximum treble compensation</string>
+    <string name="personal_loudness_note">Compensation is zero at the reference volume and reaches its maximum 20 dB below it. Uses the app volume control, independently of Android and DAC hardware volume. This is not a calibrated sound-pressure measurement. Output peak protection is active.</string>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_artwork_title">藝人頭像</string>
+    <string name="artist_artwork_manual">頭像來源：手動指定</string>
+    <string name="artist_artwork_local">頭像來源：本機人物圖片</string>
+    <string name="artist_artwork_automatic">頭像來源：伺服器或專輯封面</string>
+    <string name="artist_artwork_choose">選擇頭像</string>
+    <string name="artist_artwork_match">比對本機</string>
+    <string name="artist_artwork_reset">恢復自動</string>
+    <string name="artist_artwork_processing">正在處理頭像…</string>
+    <string name="artist_artwork_error">無法更新頭像。請選擇小於 8 MiB 的 JPG、PNG 或 WebP 圖片。本機比對會尋找所選資料夾中的 artist_藝人名.jpg/png/webp；手動指定的頭像始終優先。</string>
+</resources>

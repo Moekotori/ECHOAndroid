@@ -8,6 +8,7 @@ import app.echo.android.EchoAndroidViewModel
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.feature.settings.AudioSettingsContent
 import app.echo.android.feature.settings.DiagnosticsScreen
+import app.echo.android.feature.settings.UsbAudioSettingsContent
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.model.playback.EchoPlaybackStatus
 
@@ -33,12 +34,13 @@ internal fun EchoDiagnosticsHost(
     val opraState by viewModel.opraState.collectAsStateWithLifecycle()
     val replayGainScan by viewModel.replayGainScanState.collectAsStateWithLifecycle()
     val volumeSettings by viewModel.volumeSettings.collectAsStateWithLifecycle()
+    val usbTestResult by viewModel.usbExclusiveTestResult.collectAsStateWithLifecycle()
     DiagnosticsScreen(
         isActive = isActive,
         soundRequestId = soundRequestId,
         audioSettingsRequested = audioSettingsRequested,
         audioSettingsAnchor = audioSettingsAnchor,
-        audioSettingsContent = {
+        audioSettingsContent = { onOpenUsbOutput ->
             AudioSettingsContent(
                 compactMode = appSettings.compactModeEnabled,
                 audioFocusEnabled = appSettings.audioFocusEnabled,
@@ -50,7 +52,9 @@ internal fun EchoDiagnosticsHost(
                 replayGainEnabled = appSettings.replayGainEnabled,
                 replayGainMode = appSettings.replayGainMode,
                 replayGainPreampDb = appSettings.replayGainPreampDb,
-                audioDiagnostics = playbackStatus.diagnostics,
+                status = playbackStatus,
+                pauseOnDisconnect = appSettings.pauseOnAudioDisconnect,
+                resumeOnReconnect = appSettings.resumeOnAudioReconnect,
                 systemEffectsLocalPlayback = systemEffectsLocalPlayback,
                 onAudioFocusEnabledChange = viewModel::setAudioFocusEnabled,
                 onAudioInterruptionPolicyChange = viewModel::setAudioInterruptionPolicy,
@@ -59,6 +63,26 @@ internal fun EchoDiagnosticsHost(
                 onReplayGainModeChange = viewModel::setReplayGainMode,
                 onResetAudioOutput = viewModel::resetAudioOutputSettings,
                 onOpenSystemAudioEffects = onOpenSystemAudioEffects,
+                onOpenUsbOutput = onOpenUsbOutput,
+                onPauseOnDisconnect = viewModel::setPauseOnAudioDisconnect,
+                onResumeOnReconnect = viewModel::setResumeOnAudioReconnect,
+            )
+        },
+        usbOutputContent = { onOpenSound ->
+            UsbAudioSettingsContent(
+                compactMode = appSettings.compactModeEnabled,
+                status = playbackStatus,
+                usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
+                usbBitPerfectEnabled = appSettings.usbBitPerfectEnabled,
+                options = appSettings.usbOutputOptions,
+                onOptionsChange = viewModel::setUsbOutputOptions,
+                usbExclusiveAutoRequestOnStartup = appSettings.usbExclusiveAutoRequestOnStartup,
+                usbExclusiveTestResult = usbTestResult,
+                onUsbExclusiveEnabledChange = viewModel::setUsbExclusiveEnabled,
+                onUsbBitPerfectEnabledChange = viewModel::setUsbBitPerfectEnabled,
+                onUsbExclusiveAutoRequestOnStartupChange = viewModel::setUsbExclusiveAutoRequestOnStartup,
+                onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
+                onOpenSound = onOpenSound,
             )
         },
         onSwipeToConnect = onSwipeToConnect,
@@ -83,6 +107,9 @@ internal fun EchoDiagnosticsHost(
         onEqualizerBandGainChange = viewModel::setEqualizerBandGain,
         onEqualizerReset = viewModel::resetEqualizer,
         onEqualizerPreampChange = viewModel::setEqualizerPreamp,
+        onEqualizerOptionsChange = viewModel::setEqualizerOptions, onEqualizerOptionsPreview = viewModel::previewEqualizerOptions,
+        onEqualizerAudition = viewModel::auditionEqualizerBand,
+        onHeadphoneCorrectionEnabledChange = viewModel::setHeadphoneCorrectionEnabled,
         onMsebChange = viewModel::setMseb,
         msebPersonal = viewModel.msebPresets(appSettings.msebUserPresets),
         onChannelBalanceChange = viewModel::setChannelBalance,

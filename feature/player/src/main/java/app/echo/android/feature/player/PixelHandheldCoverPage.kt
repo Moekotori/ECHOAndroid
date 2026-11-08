@@ -38,7 +38,7 @@ import app.echo.android.model.playback.EchoPlaybackStatus
 
 @Composable
 internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<Long>, duration: State<Long>,
-                                   actions: ExpressivePlayerActions, isFavorite: Boolean, castActive: Boolean,
+                                   actions: ExpressivePlayerActions, isFavorite: Boolean,
                                    artworkScale: Float, modifier: Modifier = Modifier) {
     val ink = ExpressivePlayerStyle.PixelInk
     val paper = ExpressivePlayerStyle.PixelPaper
@@ -82,7 +82,7 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
                         fontSize = 18.sp, lineHeight = 22.sp, maxLines = 1,
                         modifier = Modifier.horizontalScroll(rememberScrollState()))
                 }
-                IconButton(actions.favorite, enabled = track != null, modifier = Modifier.size(48.dp)
+                if (status.track.supportsMusicFavorite()) IconButton(actions.favorite, enabled = track != null, modifier = Modifier.size(48.dp)
                     .background(if (isFavorite) ink.copy(alpha = 0.15f) else Color.Transparent, PixelFrameShape)
                     .semantics { selected = isFavorite }) {
                     EchoIcon(PixelPlayerIcons.Star,
@@ -93,7 +93,7 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
             Spacer(Modifier.height(16.dp))
             ExpressiveTransport(true, status.isPlaying, actions)
             Spacer(Modifier.height(12.dp))
-            ExpressiveUtilities(true, status, castActive, actions)
+            ExpressiveUtilities(true, status, actions)
             Spacer(Modifier.height(6.dp))
         },
     )

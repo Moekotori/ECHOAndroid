@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="manual_fade_title">手动播放／暂停渐变</string>
-    <string name="manual_fade_detail">手动操作时使用 180 毫秒短渐变。来电、输出断开和定时停止仍立即暂停，严格直通不使用渐变。</string>
+    <string name="manual_fade_title">播放／暂停渐变</string>
+    <string name="manual_fade_detail">手动播放、暂停时平滑过渡，直通时不生效。</string>
     <string name="mix_status_title">实际运行状态</string>
     <string name="mix_status_idle">空闲</string>
     <string name="mix_status_bypassed">普通播放</string>

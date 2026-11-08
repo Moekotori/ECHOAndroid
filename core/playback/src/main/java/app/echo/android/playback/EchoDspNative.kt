@@ -11,6 +11,15 @@ internal object EchoDspNative {
     val available: Boolean = runCatching { System.loadLibrary("echo_dsp") }.isSuccess
     private var linkFailed = false
 
+    fun processPersonal(samples: ByteBuffer, frames: Int, coefficients: FloatArray,
+        history: FloatArray, cursor: IntArray, state: FloatArray, params: FloatArray): Boolean =
+        available && !linkFailed && samples.isDirect && samples.order() == ByteOrder.nativeOrder() && call {
+            nativeProcessPersonal(samples, samples.position(), frames, coefficients, history, cursor, state, params)
+        }
+
+    @JvmStatic private external fun nativeProcessPersonal(samples: ByteBuffer, offset: Int, frames: Int,
+        coefficients: FloatArray, history: FloatArray, cursor: IntArray, state: FloatArray, params: FloatArray): Boolean
+
     fun processEq(
         input: ByteBuffer,
         output: ByteBuffer,

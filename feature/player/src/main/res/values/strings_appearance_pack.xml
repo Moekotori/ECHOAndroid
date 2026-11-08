@@ -1,0 +1,19 @@
+<resources>
+    <string name="appearance_pack_dynamic_colors">Dynamic colors will follow the wallpaper on this device.</string>
+    <string name="appearance_pack_title">Appearance packs</string>
+    <string name="appearance_pack_detail">Share player style, lyric layout and colors together with a static background and lyric font. Video backgrounds are omitted. Packs use the Android format.</string>
+    <string name="appearance_pack_import">Import pack</string>
+    <string name="appearance_pack_export">Export current appearance</string>
+    <string name="appearance_pack_name">Pack name</string>
+    <string name="appearance_pack_apply">Apply appearance</string>
+    <string name="appearance_pack_cancel">Cancel</string>
+    <string name="appearance_pack_undo">Restore previous appearance</string>
+    <string name="appearance_pack_preview_line">Let the music stay a little longer</string>
+    <string name="appearance_pack_preview_note">Layout and palette sample; player scenes, motion and imported fonts render in the player after applying. Your previous appearance will be available to restore.</string>
+    <string name="appearance_pack_exported">Appearance pack exported.</string>
+    <string name="appearance_pack_applied">Appearance applied. You can restore the previous appearance.</string>
+    <string name="appearance_pack_restored">Previous appearance restored.</string>
+    <string name="appearance_pack_read_failed">Cannot read this pack. Use an Android appearance pack up to 12 MiB, with an image up to 8 MiB and a font up to 4 MiB.</string>
+    <string name="appearance_pack_write_failed">Cannot export this appearance. Check that its image and font are accessible and within the size limits, then choose a writable destination.</string>
+    <string name="appearance_pack_apply_failed">Cannot apply the appearance. Check available storage and try again.</string>
+</resources>

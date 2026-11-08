@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_behavior_title">Playback behavior</string>
+    <string name="audio_output_pending">Output will be confirmed during playback.</string>
+    <string name="audio_usb_output_summary">%1$s · Exclusive, passthrough and format</string>
+    <string name="audio_mix_usb_blocked">Saved; unavailable in USB exclusive or bit-perfect mode.</string>
+    <string name="audio_mix_lightweight_blocked">Saved; unavailable in lightweight mode.</string>
+    <string name="audio_reset_section">Reset</string>
+    <string name="audio_reset_scope">Reset focus, loudness and transitions. Keep USB and sound presets.</string>
+    <string name="audio_reset_confirmation">Restore audio focus, loudness and fade defaults?\nConnection preferences, USB options, EQ and sound presets will be kept.</string>
+</resources>

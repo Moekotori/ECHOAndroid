@@ -4,6 +4,9 @@ import app.echo.android.design.EchoModalSheet
 import app.echo.android.design.EchoSheetActionBar
 import app.echo.android.design.EchoSheetHeader
 import app.echo.android.design.EchoSheetOrderRow
+import app.echo.android.design.rememberEchoOrderDragState
+import app.echo.android.design.echoOrderDrag
+import androidx.compose.foundation.lazy.rememberLazyListState
 import app.echo.android.design.echoItemMotion
 import app.echo.android.design.EchoIcon
 
@@ -14,8 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
@@ -24,8 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.settings.EchoLibraryLayout
 import app.echo.android.model.settings.EchoLibraryCategory
@@ -35,8 +34,10 @@ private val LibraryLayoutDraftSaver = listSaver<EchoLibraryLayout, String>(
         if (section in layout.hidden) "-${section.id}" else section.id
     } + (if (layout.showFileNames) listOf("@fileNames") else emptyList()) +
         (if (layout.showPlayNext) listOf("@playNext") else emptyList()) +
-        (if (layout.showAlbumArtists) listOf("@albumArtists") else emptyList()) + layout.hiddenTrackActions.map { "@menu:${it.id}" } },
+        (if (layout.showAlbumArtists) listOf("@albumArtists") else emptyList()) + layout.hiddenTrackActions.map { "@menu:${it.id}" } +
+        layout.trackActionOrder.map { "@menuOrder:${it.id}" } },
     restore = { saved -> EchoLibraryLayout(
+        trackActionOrder = saved.filter { it.startsWith("@menuOrder:") }.mapNotNull { app.echo.android.model.settings.EchoTrackMenuAction.fromId(it.removePrefix("@menuOrder:")) },
         showFileNames = "@fileNames" in saved,
         showPlayNext = "@playNext" in saved,
         showAlbumArtists = "@albumArtists" in saved,
@@ -57,6 +58,11 @@ internal fun LibraryLayoutEditor(
     // The sheet owns a single editing session; cancel never modifies persisted settings.
     var draft by rememberSaveable(stateSaver = LibraryLayoutDraftSaver) { mutableStateOf(layout.normalized()) }
     val maxHeight = minOf(520.dp, (LocalConfiguration.current.screenHeightDp * 0.85f).dp)
+    val listState = rememberLazyListState()
+    val keys = remember(draft.order) { draft.order.map { it.id }.toSet() }
+    val drag = rememberEchoOrderDragState(listState, true, keys)
+    val menuKeys = remember(draft.trackActionOrder) { draft.trackActionOrder.map { "menu:${it.id}" }.toSet() }
+    val menuDrag = rememberEchoOrderDragState(listState, true, menuKeys)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     EchoModalSheet(
         onDismissRequest = onDismiss,
@@ -72,7 +78,23 @@ internal fun LibraryLayoutEditor(
                 title = stringResource(R.string.library_layout_title),
                 subtitle = stringResource(R.string.library_layout_detail),
             )
-            LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp).echoOrderDrag(drag, true, keys) { from, to ->
+                val order = draft.order.toMutableList()
+                val source = order.indexOfFirst { it.id == from }
+                val target = order.indexOfFirst { it.id == to }
+                if (source >= 0 && target >= 0) {
+                    order.add(target, order.removeAt(source))
+                    draft = draft.copy(order = order)
+                }
+            }.echoOrderDrag(menuDrag, true, menuKeys) { from, to ->
+                val order = draft.trackActionOrder.toMutableList()
+                val source = order.indexOfFirst { "menu:${it.id}" == from }
+                val target = order.indexOfFirst { "menu:${it.id}" == to }
+                if (source >= 0 && target >= 0) {
+                    order.add(target, order.removeAt(source))
+                    draft = draft.copy(trackActionOrder = order)
+                }
+            }, state = listState, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 item(key = "duplicate-versions") { LibraryDuplicatesSettingsEntry() }
                 item(key = "file-names") {
                     Row(Modifier.fillMaxWidth().toggleable(value = draft.showFileNames, role = Role.Switch,
@@ -94,7 +116,7 @@ internal fun LibraryLayoutEditor(
                         app.echo.android.design.EchoSwitch(draft.showPlayNext, onCheckedChange = null)
                     }
                 }
-                item(key = "track-menu") { TrackMenuEditorRows(draft) { draft = it } }
+                trackMenuEditorRows(draft, menuDrag) { draft = it }
                 item(key = "album-artists") {
                     Row(Modifier.fillMaxWidth().toggleable(value = draft.showAlbumArtists, role = Role.Switch,
                         onValueChange = { draft = draft.copy(showAlbumArtists = it) }).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -108,6 +130,7 @@ internal fun LibraryLayoutEditor(
                 itemsIndexed(draft.order, key = { _, section -> section.id }) { index, section ->
                     val label = section.viewMode().label()
                     EchoSheetOrderRow(
+                        dragState = drag, itemKey = section.id,
                         position = index + 1,
                         label = label,
                         visible = section !in draft.hidden,

@@ -23,6 +23,7 @@ import app.echo.android.model.playback.EchoLinkPlaybackUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +43,7 @@ internal class LyricsController(
     private val onlineLyricsResolver: OnlineLyricsResolver,
     private val importedLyricsStore: ImportedLyricsStore,
     private val scope: CoroutineScope,
-    private val subsonicLyricsLoader: (LibraryTrackEntity) -> EchoLyrics? = { null },
+    private val subsonicLyricsLoader: suspend (LibraryTrackEntity) -> EchoLyrics? = { null },
     private val onSelectionChanged: suspend (String, Boolean) -> Unit = { _, _ -> },
     private val onLoaded: suspend (LibraryTrackEntity, Long) -> Unit = { _, _ -> },
 ) {
@@ -55,6 +56,10 @@ internal class LyricsController(
     private var originalLyrics: EchoLyrics? = null
     private var searchTrackId: String? = null
     private var searchGeneration = 0L
+    @Volatile private var pluginLyricsSearch: (suspend (EchoLyricsSearchRequest) -> List<EchoLyricsCandidate>)? = null
+    fun setPluginLyricsSearch(search: (suspend (EchoLyricsSearchRequest) -> List<EchoLyricsCandidate>)?) {
+        pluginLyricsSearch = search
+    }
     private val _candidates = MutableStateFlow<List<EchoLyricsCandidate>>(emptyList())
     val candidates = _candidates.asStateFlow()
     private val _searching = MutableStateFlow(false)
@@ -220,7 +225,18 @@ internal class LyricsController(
                 val results = withContext(Dispatchers.IO) {
                     val track = trackForLyrics(trackId) ?: return@withContext emptyList()
                     val context = coroutineContext
-                    onlineLyricsResolver.search(track.toLyricsSearchRequest()) { context.ensureActive() }
+                    val request = track.toLyricsSearchRequest()
+                    kotlinx.coroutines.coroutineScope {
+                        val plugins = async { pluginLyricsSearch?.invoke(request).orEmpty() }
+                        var onlineFailure: Exception? = null
+                        val online = try {
+                            onlineLyricsResolver.search(request) { context.ensureActive() }
+                        } catch (cancelled: CancellationException) { throw cancelled
+                        } catch (error: Exception) { onlineFailure = error; emptyList() }
+                        val results = (plugins.await() + online).take(64)
+                        if (results.isEmpty()) onlineFailure?.let { throw it }
+                        results
+                    }
                 }
                 if (generation == searchGeneration && trackId == lastLyricsTrackId && searchTrackId == trackId) _candidates.value = results
             } catch (error: Exception) {
@@ -350,7 +366,9 @@ internal class LyricsController(
                             val localLyrics = selected ?: importedLyrics ?: runCatching { lyricsResolver.loadForTrack(track, sourceOrder) }.getOrNull()
                                 ?.takeIf { it.lines.any { line -> line.text.isNotBlank() } }
                             val serverLyrics = if (localLyrics == null) {
-                                LyricsContentPolicy.readable(runCatching { subsonicLyricsLoader(track) }.getOrNull())
+                                LyricsContentPolicy.readable(try { subsonicLyricsLoader(track) }
+                                    catch (cancelled: CancellationException) { throw cancelled }
+                                    catch (_: Exception) { null })
                             } else {
                                 null
                             }

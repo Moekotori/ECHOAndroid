@@ -58,8 +58,7 @@ internal fun ClassicCoverPage(
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     onOpenQueue: () -> Unit,
-    onCast: (() -> Unit)?,
-    castActive: Boolean,
+    onMore: () -> Unit,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onOpenLyrics: () -> Unit,
@@ -124,7 +123,7 @@ internal fun ClassicCoverPage(
                                 }
                             }
                         }
-                        PlayerControlButton(
+                        if (status.track.supportsMusicFavorite()) PlayerControlButton(
                             if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                             stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                             touchSize = 48.dp, iconSize = 24.dp,
@@ -155,7 +154,7 @@ internal fun ClassicCoverPage(
                     onPlayPause = onPlayPause,
                     onNext = { previousRequestedFrom = null; onNext() },
                     onPrevious = { previousRequestedFrom = track?.id; onPrevious() },
-                    onOpenQueue = onOpenQueue, onCast = onCast, castActive = castActive,
+                    onOpenQueue = onOpenQueue, onMore = onMore,
                 )
             }
         },

@@ -485,7 +485,7 @@
     <string name="eq_show_filters">Show filter parameters</string>
     <string name="eq_hide_filters">Hide filter parameters</string>
     <string name="settings_gapless">Gapless playback</string>
-    <string name="settings_gapless_detail">On by default. Fades, sample-rate changes, or a thin network can still gap.</string>
+    <string name="settings_gapless_detail">On by default; fades, format changes or slow networks may leave gaps.</string>
     <string name="settings_track_fade">Track fade in / out</string>
     <string name="settings_track_fade_detail">Fades in and out without overlapping tracks</string>
     <string name="settings_track_fade_bypass">Saved, unused in bit-perfect</string>

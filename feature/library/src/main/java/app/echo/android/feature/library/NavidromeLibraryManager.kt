@@ -43,6 +43,10 @@ fun NavidromeLibraryManager(actions: RemoteLibraryWritebackActions, onDismiss: (
     var confirmRestore by remember(server) { mutableStateOf(false) }
     var bookmark by remember(server) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    DisposableEffect(server) {
+        server.invalidateBrowse()
+        onDispose { server.invalidateBrowse() }
+    }
     fun perform(operation: suspend () -> Unit) {
         if (busy) return
         busy = true; failed = false; saved = false
@@ -68,7 +72,7 @@ fun NavidromeLibraryManager(actions: RemoteLibraryWritebackActions, onDismiss: (
         Column(Modifier.fillMaxWidth().fillMaxHeight(.92f).padding(horizontal = 20.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Navidrome", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                TextButton(onClick = { revision++ }, enabled = !busy && !loading) { Text(stringResource(R.string.nav_refresh)) }
+                TextButton(onClick = { server.invalidateBrowse(); revision++ }, enabled = !busy && !loading) { Text(stringResource(R.string.nav_refresh)) }
                 TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.remote_playlist_close)) }
             }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

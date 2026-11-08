@@ -28,6 +28,9 @@ internal class PlaylistManagementController(
     val importState = mutableImport.asStateFlow()
     private var documentJob: Job? = null
     private val documentIo = Mutex()
+    private val corrections = Mutex()
+    private var importSession = 0L
+    private var correctionJob: Job? = null
 
     fun order(id: String) = repository.observePlaylistOrder(id)
     fun memberships(trackId: String) = repository.observeTrackPlaylistIds(trackId)
@@ -44,6 +47,17 @@ internal class PlaylistManagementController(
     suspend fun move(id: String, trackId: String, direction: Int) = repository.movePlaylistTrack(id, trackId, direction)
     suspend fun moveTo(id: String, trackId: String, targetId: String) = repository.movePlaylistTrackTo(id, trackId, targetId)
     suspend fun removeUndoable(id: String, trackId: String): (suspend () -> Boolean)? {
+        if (FilePlaylistStore.owns(id)) {
+            val rows = repository.filePlaylists.read(id)
+            val at = rows.indexOfFirst { it.id == trackId }
+            if (at < 0 || !repository.filePlaylists.remove(id, trackId)) return null
+            val track = rows[at]; val nextId = rows.getOrNull(at + 1)?.id
+            return {
+                val added = repository.filePlaylists.add(id, listOf(track)) > 0
+                if (added && nextId != null) repository.filePlaylists.move(id, track.id, nextId)
+                added
+            }
+        }
         if (id == EchoPlaylist.LikedSongsId) {
             if (!remove(id, trackId)) return null
             return {
@@ -68,6 +82,7 @@ internal class PlaylistManagementController(
     private val applicationContext = context.applicationContext
 
     fun prepare(uri: Uri) {
+        importSession++
         documentJob?.cancel()
         documentJob = scope.launch {
             mutableImport.value = PlaylistImportUiState.Reading
@@ -84,12 +99,35 @@ internal class PlaylistManagementController(
         }
     }
 
+    suspend fun importCandidates(query: String): List<PlaylistImportCandidate> = withContext(Dispatchers.IO) {
+        repository.searchLocalLibrary(query.trim()).tracks.map {
+            PlaylistImportCandidate(it.id, it.title, it.artist, it.relativePath.orEmpty() + it.fileName.orEmpty())
+        }
+    }
+
+    fun correctImport(index: Int, candidate: PlaylistImportCandidate?) {
+        if (documentJob?.isActive == true) return
+        val session = importSession
+        correctionJob = scope.launch { corrections.withLock {
+            if (session != importSession) return@withLock
+            val preview = mutableImport.value as? PlaylistImportUiState.Preview ?: return@withLock
+            if (preview.saving || index !in preview.result.entries.indices) return@withLock
+            val corrected = withContext(Dispatchers.Default) { preview.result.corrected(index, candidate) }
+            if (mutableImport.value === preview && session == importSession) mutableImport.value = preview.copy(result = corrected)
+        } }
+    }
+
     fun confirm(name: String) {
-        val preview = mutableImport.value as? PlaylistImportUiState.Preview ?: return
-        if (preview.saving || name.isBlank() || preview.result.trackIds.isEmpty()) return
-        mutableImport.value = preview.copy(saving = true)
+        if (documentJob?.isActive == true || name.isBlank()) return
+        val session = importSession
+        val pendingCorrection = correctionJob
         documentJob = scope.launch {
             try {
+                pendingCorrection?.join()
+                if (session != importSession) return@launch
+                val preview = mutableImport.value as? PlaylistImportUiState.Preview ?: return@launch
+                if (preview.saving || preview.result.trackIds.isEmpty()) return@launch
+                mutableImport.value = preview.copy(saving = true)
                 val created = repository.createImportedPlaylist(name, preview.result)
                 mutableImport.value = if (created != null) PlaylistImportUiState.Imported(created)
                     else PlaylistImportUiState.Failed(PlaylistImportFailure.Save)
@@ -98,18 +136,24 @@ internal class PlaylistManagementController(
         }
     }
 
-    fun dismiss() { documentJob?.cancel(); documentJob = null; mutableImport.value = null }
+    fun dismiss() { importSession++; documentJob?.cancel(); documentJob = null; mutableImport.value = null }
 
     suspend fun importImmediately(uri: Uri): EchoPlaylist? {
         val (name, text) = read(uri)
         return repository.importM3uPlaylist(name, text)
     }
 
-    fun export(id: String, uri: Uri) {
+    fun export(id: String, uri: Uri, format: PlaylistExportFormat = PlaylistExportFormat.M3u) {
+        importSession++
         documentJob?.cancel()
         documentJob = scope.launch {
             try {
-                val text = repository.exportM3uPlaylist(id) ?: throw IllegalStateException("Empty playlist")
+                val text = if (format == PlaylistExportFormat.M3u) repository.exportM3uPlaylist(id) ?: throw IllegalStateException("Empty playlist")
+                    else withContext(Dispatchers.IO) {
+                        val tracks = repository.playlistTracksForPlayback(id, 10_001)
+                        require(tracks.size <= 10_000) { "Playlist exceeds 10,000 tracks" }
+                        exportPlaylistText(tracks.map { it.toEchoTrack() }, format)
+                    }
                 documentIo.withLock { withContext(Dispatchers.IO) {
                     val output = resolver.openOutputStream(uri, "wt") ?: throw IllegalStateException("No output stream")
                     output.use { it.write(text.toByteArray(StandardCharsets.UTF_8)) }

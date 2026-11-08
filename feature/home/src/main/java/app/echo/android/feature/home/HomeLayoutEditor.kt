@@ -4,6 +4,9 @@ import app.echo.android.design.EchoModalSheet
 import app.echo.android.design.EchoSheetActionBar
 import app.echo.android.design.EchoSheetHeader
 import app.echo.android.design.EchoSheetOrderRow
+import app.echo.android.design.rememberEchoOrderDragState
+import app.echo.android.design.echoOrderDrag
+import androidx.compose.foundation.lazy.rememberLazyListState
 import app.echo.android.design.echoItemMotion
 import app.echo.android.design.EchoIcon
 
@@ -11,8 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
@@ -21,8 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.settings.EchoHomeLayout
 import app.echo.android.model.settings.EchoHomeSection
@@ -48,6 +47,9 @@ internal fun HomeLayoutEditor(
     // The sheet owns a single editing session; cancel never modifies persisted settings.
     var draft by rememberSaveable(stateSaver = HomeLayoutDraftSaver) { mutableStateOf(layout.normalized()) }
     val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.85f).dp
+    val listState = rememberLazyListState()
+    val keys = remember(draft.order) { draft.order.map { it.id }.toSet() }
+    val drag = rememberEchoOrderDragState(listState, true, keys)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     EchoModalSheet(
         onDismissRequest = onDismiss,
@@ -63,10 +65,19 @@ internal fun HomeLayoutEditor(
                 title = stringResource(R.string.home_layout_title),
                 subtitle = stringResource(R.string.home_layout_detail),
             )
-            LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp).echoOrderDrag(drag, true, keys) { from, to ->
+                val order = draft.order.toMutableList()
+                val source = order.indexOfFirst { it.id == from }
+                val target = order.indexOfFirst { it.id == to }
+                if (source >= 0 && target >= 0) {
+                    order.add(target, order.removeAt(source))
+                    draft = draft.copy(order = order)
+                }
+            }, state = listState, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 itemsIndexed(draft.order, key = { _, section -> section.id }) { index, section ->
                     val label = stringResource(section.titleResource())
                     EchoSheetOrderRow(
+                        dragState = drag, itemKey = section.id,
                         position = index + 1,
                         label = label,
                         visible = section !in draft.hidden,

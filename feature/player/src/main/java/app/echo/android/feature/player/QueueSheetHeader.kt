@@ -1,11 +1,12 @@
 package app.echo.android.feature.player
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.ClearAll
@@ -36,6 +37,7 @@ import app.echo.android.design.EchoDropdownMenuItem
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.echoIconColor
 import app.echo.android.model.playback.EchoPlaybackStatus
+import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoSleepTimerMode
 import app.echo.android.model.playback.PlaybackQueueState
 
@@ -52,17 +54,20 @@ internal fun QueueSheetHeader(
     onTogglePrevious: () -> Unit,
     onSetSleepTimerEndOfTrack: (() -> Unit)?,
     onCancelSleepTimer: (() -> Unit)?,
+    onSetRepeatMode: (EchoRepeatMode) -> Unit,
+    onToggleShuffle: () -> Unit,
 ) {
     val ink = echoIconColor()
     var expanded by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
     val stopAfterCurrent = status.sleepTimerMode == EchoSleepTimerMode.EndOfTrack
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.feature_player_queue_37fa6a), color = ink,
-                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
             )
+            Spacer(Modifier.width(10.dp))
             Text(
                 if (queueState.isEmpty) status.track?.title ?: stringResource(R.string.feature_player_nothing_playing_3beac0)
                 else stringResource(
@@ -72,49 +77,58 @@ internal fun QueueSheetHeader(
                 color = ink.copy(alpha = 0.55f), style = MaterialTheme.typography.bodySmall,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
-            if (stopAfterCurrent) Text(
-                stringResource(R.string.queue_stop_after_current), color = ink.copy(alpha = 0.7f),
-                style = MaterialTheme.typography.labelSmall,
+        }
+        if (stopAfterCurrent) Text(
+            stringResource(R.string.queue_stop_after_current), color = ink.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.labelSmall,
+        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            QueuePlaybackModeControl(
+                repeatMode = status.repeatMode,
+                shuffleEnabled = status.shuffleEnabled,
+                onSetRepeatMode = onSetRepeatMode,
+                onToggleShuffle = onToggleShuffle,
+                modifier = Modifier.weight(1f),
             )
-        }
-        if (!queueState.isEmpty) Box {
-            IconButton(onClick = { expanded = true }) {
-                EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.queue_actions), Modifier.size(22.dp), tint = ink)
+            if (!queueState.isEmpty) Box {
+                IconButton(onClick = { expanded = true }) {
+                    EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.queue_actions), Modifier.size(22.dp), tint = ink)
+                }
+                EchoDropdownMenu(expanded, onDismissRequest = { expanded = false }) {
+                    if (queueState.currentItem != null) EchoDropdownMenuItem(
+                        text = { Text(stringResource(R.string.queue_locate_current)) }, selected = false,
+                        leadingIcon = { EchoIcon(Icons.Rounded.MyLocation, null) },
+                        onClick = { expanded = false; onLocateCurrent() },
+                    )
+                    if (sections.previous.isNotEmpty()) EchoDropdownMenuItem(
+                        text = { Text(stringResource(if (showPrevious) R.string.queue_hide_previous else R.string.queue_show_previous)) },
+                        selected = showPrevious, leadingIcon = { EchoIcon(Icons.Rounded.History, null) },
+                        onClick = { expanded = false; onTogglePrevious() },
+                    )
+                    if (queueState.currentItem != null && onSetSleepTimerEndOfTrack != null && onCancelSleepTimer != null) EchoDropdownMenuItem(
+                        text = { Text(stringResource(R.string.queue_stop_after_current)) }, selected = stopAfterCurrent,
+                        leadingIcon = { EchoIcon(Icons.Rounded.Bedtime, null) },
+                        onClick = {
+                            expanded = false
+                            if (stopAfterCurrent) onCancelSleepTimer() else onSetSleepTimerEndOfTrack()
+                        },
+                    )
+                    EchoDropdownMenuDivider()
+                    if (sections.nextUp.isNotEmpty()) EchoDropdownMenuItem(
+                        text = { Text(stringResource(R.string.queue_clear_next_up)) }, selected = false,
+                        leadingIcon = { EchoIcon(Icons.Rounded.ClearAll, null) },
+                        onClick = { expanded = false; onClearNextUp() },
+                    )
+                    EchoDropdownMenuItem(
+                        text = { Text(stringResource(R.string.feature_player_clear_queue_eae952)) }, selected = false,
+                        leadingIcon = { EchoIcon(Icons.Rounded.DeleteOutline, null) },
+                        onClick = { expanded = false; confirmClear = true },
+                    )
+                }
             }
-            EchoDropdownMenu(expanded, onDismissRequest = { expanded = false }) {
-                if (queueState.currentItem != null) EchoDropdownMenuItem(
-                    text = { Text(stringResource(R.string.queue_locate_current)) }, selected = false,
-                    leadingIcon = { EchoIcon(Icons.Rounded.MyLocation, null) },
-                    onClick = { expanded = false; onLocateCurrent() },
-                )
-                if (sections.previous.isNotEmpty()) EchoDropdownMenuItem(
-                    text = { Text(stringResource(if (showPrevious) R.string.queue_hide_previous else R.string.queue_show_previous)) },
-                    selected = showPrevious, leadingIcon = { EchoIcon(Icons.Rounded.History, null) },
-                    onClick = { expanded = false; onTogglePrevious() },
-                )
-                if (queueState.currentItem != null && onSetSleepTimerEndOfTrack != null && onCancelSleepTimer != null) EchoDropdownMenuItem(
-                    text = { Text(stringResource(R.string.queue_stop_after_current)) }, selected = stopAfterCurrent,
-                    leadingIcon = { EchoIcon(Icons.Rounded.Bedtime, null) },
-                    onClick = {
-                        expanded = false
-                        if (stopAfterCurrent) onCancelSleepTimer() else onSetSleepTimerEndOfTrack()
-                    },
-                )
-                EchoDropdownMenuDivider()
-                if (sections.nextUp.isNotEmpty()) EchoDropdownMenuItem(
-                    text = { Text(stringResource(R.string.queue_clear_next_up)) }, selected = false,
-                    leadingIcon = { EchoIcon(Icons.Rounded.ClearAll, null) },
-                    onClick = { expanded = false; onClearNextUp() },
-                )
-                EchoDropdownMenuItem(
-                    text = { Text(stringResource(R.string.feature_player_clear_queue_eae952)) }, selected = false,
-                    leadingIcon = { EchoIcon(Icons.Rounded.DeleteOutline, null) },
-                    onClick = { expanded = false; confirmClear = true },
-                )
+            IconButton(onClick = onDismiss) {
+                EchoIcon(Icons.Rounded.Close, stringResource(R.string.feature_player_close_queue_a65caf), Modifier.size(22.dp), tint = ink)
             }
-        }
-        IconButton(onClick = onDismiss) {
-            EchoIcon(Icons.Rounded.Close, stringResource(R.string.feature_player_close_queue_a65caf), Modifier.size(22.dp), tint = ink)
         }
     }
     if (confirmClear) AlertDialog(

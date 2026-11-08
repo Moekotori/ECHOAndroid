@@ -23,6 +23,7 @@ internal class EchoScrobbleOutbox<C>(
     private val store: ScrobbleOutboxStore,
     private val submit: suspend (C, PendingScrobble) -> Result<Unit>,
     private val status: (PendingScrobble?, Int, Throwable?) -> Unit,
+    private val shouldRetry: (Throwable) -> Boolean = { true },
 ) {
     // Null means settings have not loaded yet; a configured null account means signed out.
     private val configuration = MutableStateFlow<ScrobbleConfiguration<C>?>(null)
@@ -56,9 +57,15 @@ internal class EchoScrobbleOutbox<C>(
                         } else {
                             val error = result.exceptionOrNull()!!
                             if (error is CancellationException) throw error
-                            store.fail(next, System.currentTimeMillis())
-                            lastFailure = error
-                            status(next, pending.size, error)
+                            if (shouldRetry(error)) {
+                                store.fail(next, System.currentTimeMillis())
+                                lastFailure = error
+                                status(next, pending.size, error)
+                            } else {
+                                store.acknowledge(next.key)
+                                lastFailure = error
+                                status(next, pending.size - 1, error)
+                            }
                         }
                     } catch (error: CancellationException) {
                         throw error

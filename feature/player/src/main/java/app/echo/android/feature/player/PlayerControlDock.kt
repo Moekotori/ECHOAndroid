@@ -21,8 +21,7 @@ internal fun NowPlayingControlDock(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onOpenQueue: () -> Unit,
-    onCast: (() -> Unit)? = null,
-    castActive: Boolean = false,
+    onMore: () -> Unit,
 ) {
     val haptics = rememberEchoHapticPerformer()
     Column(Modifier.fillMaxWidth()) {
@@ -59,24 +58,17 @@ internal fun NowPlayingControlDock(
                 leadingIcon, leadingDescription, onLeadingAction,
                 touchSize = 48.dp, iconSize = 22.dp, tint = OnArtMuted,
             )
-            if (onCast != null) {
-                PlayerControlButton(
-                    PlayerControlIcons.Cast,
-                    stringResource(
-                        if (castActive) L10nR.string.feature_player_cast_active
-                        else L10nR.string.feature_player_cast,
-                    ),
-                    onClick = { haptics.tick(); onCast() },
-                    touchSize = 48.dp,
-                    iconSize = 23.dp,
-                    tint = if (castActive) MaterialTheme.colorScheme.primary else OnArtMuted,
-                )
-            }
             PlayerControlButton(
                 PlayerControlIcons.Queue,
                 stringResource(L10nR.string.feature_player_queue_37fa6a),
                 onOpenQueue,
                 touchSize = 48.dp, iconSize = 22.dp, tint = OnArtMuted,
+            )
+            PlayerControlButton(
+                PlayerControlIcons.More,
+                stringResource(L10nR.string.feature_player_expand_playback_settings_cf64a0),
+                onClick = { haptics.tick(); onMore() },
+                touchSize = 48.dp, iconSize = 23.dp, tint = OnArtMuted,
             )
         }
     }

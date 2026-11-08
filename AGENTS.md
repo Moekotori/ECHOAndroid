@@ -30,6 +30,8 @@ PC 端是独立产品 **ECHOSteam**，仓库永远是 [https://github.com/moekot
 
 ## 本地与 CI
 
+用户要求生成 APK 时，默认运行 `scripts/build-release.cmd`，在本地生成原正式证书签名的 Release APK。签名配置使用本机忽略的 `keystore.properties`，keystore 可放仓库外；缺少配置时先说明缺什么，不默认改用 Debug、新证书或触发云端构建。云端 release workflow 用于用户明确要求的云端构建或发布。
+
 ```bat
 git config core.hooksPath .githooks
 git config core.autocrlf false

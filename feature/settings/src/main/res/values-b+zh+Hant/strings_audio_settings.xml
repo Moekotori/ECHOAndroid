@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_behavior_title">播放行為</string>
+    <string name="audio_output_pending">開始播放後確認實際輸出。</string>
+    <string name="audio_usb_output_summary">%1$s · 獨佔、直通與格式</string>
+    <string name="audio_mix_usb_blocked">設定已保留，USB 獨佔或直通時無法使用。</string>
+    <string name="audio_mix_lightweight_blocked">設定已保留，輕量模式下無法使用。</string>
+    <string name="audio_reset_section">重設</string>
+    <string name="audio_reset_scope">重設焦點、音量平衡和切歌，保留 USB 與音效預設。</string>
+    <string name="audio_reset_confirmation">恢復音訊焦點、音量平衡和漸變的預設值？\n連接偏好、USB 參數、等化器和音效預設保留。</string>
+</resources>

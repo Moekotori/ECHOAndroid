@@ -9,12 +9,14 @@ import app.echo.android.model.settings.EchoLibraryLayout
 internal object LibraryLayoutPreferences {
     private val AlbumArtists = androidx.datastore.preferences.core.booleanPreferencesKey("library_show_album_artists")
     private val PlayNext = androidx.datastore.preferences.core.booleanPreferencesKey("library_show_play_next")
+    private val TrackActionOrder = stringPreferencesKey("library_track_action_order")
     private val TrackActions = stringPreferencesKey("library_hidden_track_actions")
     private val FileNames = androidx.datastore.preferences.core.booleanPreferencesKey("library_show_file_names")
     private val Order = stringPreferencesKey("library_category_order")
     private val Hidden = stringPreferencesKey("library_hidden_categories")
 
     fun read(preferences: Preferences): EchoLibraryLayout = EchoLibraryLayout(
+        trackActionOrder = preferences[TrackActionOrder]?.split(',')?.mapNotNull(app.echo.android.model.settings.EchoTrackMenuAction::fromId).orEmpty(),
         showAlbumArtists = preferences[AlbumArtists] ?: false,
         showPlayNext = preferences[PlayNext] ?: false,
         showFileNames = preferences[FileNames] ?: false,
@@ -28,6 +30,7 @@ internal object LibraryLayoutPreferences {
         preferences[AlbumArtists] = layout.showAlbumArtists
         preferences[PlayNext] = layout.showPlayNext
         preferences[FileNames] = layout.showFileNames
+        preferences[TrackActionOrder] = layout.trackActionOrder.joinToString(",") { it.id }
         preferences[TrackActions] = layout.hiddenTrackActions.joinToString(",") { it.id }
         preferences[Order] = layout.order.joinToString(",") { it.id }
         preferences[Hidden] = layout.order.filter { it in layout.hidden }.joinToString(",") { it.id }

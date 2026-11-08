@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_artwork_title">Artist picture</string>
+    <string name="artist_artwork_manual">Picture: your selection</string>
+    <string name="artist_artwork_local">Picture: matched local image</string>
+    <string name="artist_artwork_automatic">Picture: server or album fallback</string>
+    <string name="artist_artwork_choose">Choose picture</string>
+    <string name="artist_artwork_match">Match local folder</string>
+    <string name="artist_artwork_reset">Use automatic</string>
+    <string name="artist_artwork_processing">Preparing artist picture…</string>
+    <string name="artist_artwork_error">Could not update the picture. Choose a JPG, PNG or WebP under 8 MiB. Local matching expects artist_NAME.jpg/png/webp in the selected folder. Manual selections always take priority.</string>
+</resources>

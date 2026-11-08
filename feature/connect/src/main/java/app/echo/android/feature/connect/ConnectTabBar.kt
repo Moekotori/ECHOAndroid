@@ -37,7 +37,8 @@ internal fun ConnectTabBar(
                     val selected = pagerState.currentPage == index
                     Box(
                         Modifier.weight(1f).height(44.dp)
-                            .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(index) }),
+                            .selectable(selected = selected, interactionSource = null, indication = null,
+                                role = Role.Tab, onClick = { onSelect(index) }),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(label, Modifier.padding(horizontal = 6.dp), style = MaterialTheme.typography.labelLarge,

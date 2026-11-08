@@ -14,6 +14,7 @@ import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibraryPlaybackSupport
 import app.echo.android.model.playback.EchoDsdRates
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
+import app.echo.android.model.playback.withSoundEffectRuntime
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
@@ -58,7 +59,7 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
 fun EchoTrackRef.toMediaItem(): MediaItem =
     MediaItem.Builder()
         .setMediaId(id)
-        .setUri(Uri.parse(CueSheetPolicy.playbackUri(uri)))
+        .setUri(Uri.parse(CueSheetPolicy.playbackUri(accountScopedSubsonicUri(uri, id))))
         .apply { applyClip(clipStartMs, clipEndMs) }
         .setMediaMetadata(
             androidx.media3.common.MediaMetadata.Builder()
@@ -66,7 +67,7 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                 .setArtist(artist)
                 .setAlbumTitle(album)
                 .setAlbumArtist(albumArtist)
-                .setArtworkUri(artworkUri?.let(Uri::parse))
+                .setArtworkUri(artworkUri?.let { Uri.parse(accountScopedSubsonicUri(it, id)) })
                 .also { builder ->
                     if (durationMs > 0L) builder.setDurationMs(durationMs)
                     trackNumber?.takeIf { it > 0 }?.let(builder::setTrackNumber)
@@ -111,7 +112,7 @@ fun EchoTrack.toMediaItem(): MediaItem {
     val persistUri = EchoLinkPlaybackUri.persistableUri(id, uri)
     return MediaItem.Builder()
         .setMediaId(id)
-        .setUri(Uri.parse(CueSheetPolicy.playbackUri(uri)))
+        .setUri(Uri.parse(CueSheetPolicy.playbackUri(accountScopedSubsonicUri(uri, id))))
         .apply { applyClip(clipStartMs, clipEndMs) }
         .setMediaMetadata(
             androidx.media3.common.MediaMetadata.Builder()
@@ -119,7 +120,7 @@ fun EchoTrack.toMediaItem(): MediaItem {
                 .setArtist(artist)
                 .setAlbumTitle(album)
                 .setAlbumArtist(albumArtist)
-                .setArtworkUri(artworkUri?.let(Uri::parse))
+                .setArtworkUri(artworkUri?.let { Uri.parse(accountScopedSubsonicUri(it, id)) })
                 .also { builder ->
                     if (durationMs > 0L) builder.setDurationMs(durationMs)
                     trackNumber?.takeIf { it > 0 }?.let(builder::setTrackNumber)
@@ -292,6 +293,7 @@ fun Player.toPlaybackDiagnosticsState(
         lastCommand = if (isPlaying) "play" else "idle",
     ).withUsbAudioStatus(usbAudioStatus).withOutputRoute(outputRoute)
         .withAudioPipeline(audioPipeline)
+        .withSoundEffectRuntime(EchoSoundEffectRuntime.status.value)
     return PlaybackDiagnosticsState(
         diagnostics = diagnostics,
         lastError = diagnostics.lastError,

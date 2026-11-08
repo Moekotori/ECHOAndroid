@@ -51,6 +51,30 @@ class EchoRemotePlaybackAuthTest {
     }
 
     @Test
+    fun legacySavedQueueUsesItsMediaIdentityRatherThanTheSelectedAccount() {
+        val scoped = accountScopedSubsonicUri("https://server/rest/stream.view?id=one", "subsonic:alice:song:one")
+        assertTrue(scoped.contains("echoSource=subsonic%3Aalice"))
+        assertEquals(scoped, accountScopedSubsonicUri(scoped, "subsonic:bob:song:one"))
+        assertEquals("file:///song.flac", accountScopedSubsonicUri("file:///song.flac", "subsonic:alice:song:one"))
+    }
+
+    @Test
+    fun resourceSourceChoosesTheCorrectAccountOnTheSameServer() {
+        EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(listOf(
+            EchoSubsonicPlaybackCredential("https://server", "alice", "one", "subsonic:a"),
+            EchoSubsonicPlaybackCredential("https://server", "bob", "two", "subsonic:b"),
+        ))
+        val resource = "https://server/rest/getCoverArt.view?id=cover&echoSource=subsonic%3Ab"
+        val signed = EchoRemotePlaybackAuthRegistry.resolveSubsonicUrl(resource)
+        assertTrue(signed.contains("u=bob"))
+        assertFalse(signed.contains("echoSource"))
+        assertTrue(EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(listOf(resource)))
+        val missing = resource.replace("subsonic%3Ab", "subsonic%3Amissing")
+        assertFalse(EchoRemotePlaybackAuthRegistry.isSubsonicAuthReadyForUris(listOf(missing)))
+        assertEquals(missing, EchoRemotePlaybackAuthRegistry.resolveSubsonicUrl(missing))
+    }
+
+    @Test
     fun resolveSignsUnsignedStreamWithCurrentCredentials() {
         EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(
             listOf(
@@ -144,6 +168,19 @@ class EchoRemotePlaybackAuthTest {
                 listOf("https://other.example/rest/stream.view?id=s1"),
             ),
         )
+    }
+
+    @Test
+    fun navidromeCastingNeverInheritsWebDavBasicAuthFromTheSameNas() {
+        EchoRemotePlaybackAuthRegistry.replaceWebDavCredentials(listOf(EchoWebDavPlaybackCredential("https://nas.example", "dav", "dav-pass")))
+        EchoRemotePlaybackAuthRegistry.replaceSubsonicCredentials(listOf(EchoSubsonicPlaybackCredential("https://nas.example/music", "navidrome", "nav-pass")))
+        val music = EchoRemotePlaybackAuthRegistry.playbackRequest(" https://nas.example/music/rest/stream.view?id=s ")
+        assertTrue(music.headers.isEmpty())
+        assertEquals("navidrome", queryMap(music.url)["u"])
+        val ordinaryFile = EchoRemotePlaybackAuthRegistry.playbackRequest("https://nas.example/files/song.flac")
+        assertTrue(ordinaryFile.headers["Authorization"]!!.startsWith("Basic "))
+        val unknownSource = EchoRemotePlaybackAuthRegistry.playbackRequest("https://nas.example/music/rest/stream.view?id=s&echoSource=unknown")
+        assertTrue(unknownSource.headers.isEmpty())
     }
 
     @Test

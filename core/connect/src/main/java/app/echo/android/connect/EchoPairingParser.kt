@@ -2,6 +2,7 @@ package app.echo.android.connect
 
 import app.echo.android.model.connect.EchoProtocolVersion
 import app.echo.android.model.connect.EchoRemoteEndpoint
+import okhttp3.HttpUrl
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -26,6 +27,9 @@ object EchoPairingParser {
                 pairingSecret = null,
             )
         }
+        // An invalid embedded pairing link must never become an unpaired direct request.
+        val rawFragment = runCatching { URI(rawAddress).rawFragment }.getOrNull()
+        if (queryParams(rawFragment).containsKey("pair")) return null
         val safeToken = token.trim()
         if (safeToken.isNotEmpty() && safeToken.length < 8) return null
         val explicitScheme = rawAddress.contains("://")
@@ -67,13 +71,15 @@ object EchoPairingParser {
             return null
         }
         val params = queryParams(uri.rawQuery ?: uri.query)
-        val endpointHost = params["host"]?.takeIf { it.isNotBlank() } ?: return null
-        val endpointPort = params["port"]?.toIntOrNull() ?: DefaultPort
+        val rawHost = params["host"]?.takeIf { it.isNotBlank() } ?: return null
+        val endpointPort = params["port"]?.let { it.toIntOrNull() ?: return null } ?: DefaultPort
+        if (endpointPort !in 1..65535) return null
         val name = params["name"]?.takeIf { it.isNotBlank() } ?: "ECHO PC"
-        val scheme = params["scheme"]
-            ?.lowercase(Locale.ROOT)
-            ?.takeIf { it == "http" || it == "https" }
-            ?: "http"
+        val scheme = params["scheme"]?.lowercase(Locale.ROOT) ?: "http"
+        if (scheme != "http" && scheme != "https") return null
+        val endpointHost = runCatching {
+            HttpUrl.Builder().scheme(scheme).host(rawHost).port(endpointPort).build().host
+        }.getOrNull() ?: return null
         val pairingId = params["pairingId"]?.takeIf { it.isNotBlank() }
         val pairingSecret = params["secret"]?.takeIf { it.isNotBlank() }
         val token = params["token"]?.takeIf { it.length >= 16 }

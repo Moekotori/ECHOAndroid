@@ -479,7 +479,7 @@
     <string name="eq_show_filters">查看滤波器参数</string>
     <string name="eq_hide_filters">收起滤波器参数</string>
     <string name="settings_gapless">无缝播放</string>
-    <string name="settings_gapless_detail">默认开启。淡化、改采样率或网络不足时仍可能有缝。</string>
+    <string name="settings_gapless_detail">默认开启；渐变、格式变化或网络不足时可能有间隔。</string>
     <string name="settings_track_fade">曲首淡入 / 曲尾淡出</string>
     <string name="settings_track_fade_detail">曲首渐强、曲尾渐弱，两曲不重叠</string>
     <string name="settings_track_fade_bypass">已保存，bit-perfect 下不生效</string>

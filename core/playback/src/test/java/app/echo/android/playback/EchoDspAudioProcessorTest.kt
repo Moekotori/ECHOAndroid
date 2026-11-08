@@ -13,6 +13,46 @@ import kotlin.math.*
 
 @UnstableApi
 class EchoDspAudioProcessorTest {
+    @Test fun unsupportedHrtfRateBypassesWithoutQuantizingThirtyTwoBitPcm() {
+        clear()
+        EchoPlaybackProcessRuntime.setDspSettings(EchoDspSettings(hrtfEnabled = true))
+        val raw = ByteArray(16) { (it * 31).toByte() }
+        for (rate in listOf(6000, 192000)) {
+            val input = ByteBuffer.allocateDirect(raw.size).put(raw).also { it.flip() }
+            val processor = EchoDspAudioProcessor(emptyArray())
+            processor.configure(AudioProcessor.AudioFormat(rate, 2, C.ENCODING_PCM_32BIT))
+            processor.flush(AudioProcessor.StreamMetadata.DEFAULT); processor.queueInput(input)
+            val actual = ByteArray(raw.size); processor.output.get(actual)
+            assertArrayEquals(raw, actual)
+            processor.reset()
+        }
+    }
+    @Test fun personalAudioRunsInThePcmChainAndKeepsPeakProtection() {
+        EchoPlaybackProcessRuntime.setVolumeSettings(EchoVolumeSettings(levelDb = -12f, gainDb = 12f))
+        EchoPlaybackProcessRuntime.setDspSettings(EchoDspSettings(hrtfEnabled = true, equalLoudnessEnabled = true))
+        try {
+            val processor = EchoDspAudioProcessor(emptyArray())
+            processor.configure(AudioProcessor.AudioFormat(48000, 2, C.ENCODING_PCM_FLOAT))
+            processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
+            val input = ByteBuffer.allocateDirect(4096 * 8).order(ByteOrder.nativeOrder())
+            repeat(4096) { input.putFloat(0.99f).putFloat(0f) }; input.flip()
+            var crossed = false
+            while (input.hasRemaining()) {
+                processor.queueInput(input)
+                val out = processor.output.order(ByteOrder.nativeOrder())
+                while (out.hasRemaining()) {
+                    val l = out.float; val r = out.float
+                    assertTrue(l.isFinite() && r.isFinite() && abs(l) <= 0.891252f && abs(r) <= 0.891252f)
+                    if (abs(r) > 0.001f) crossed = true
+                }
+            }
+            assertTrue(crossed)
+            processor.reset()
+        } finally {
+            EchoPlaybackProcessRuntime.setVolumeSettings(EchoVolumeSettings())
+            clear()
+        }
+    }
     @After fun clear() { EchoPlaybackProcessRuntime.setDspSettings(EchoDspSettings()); EchoPlaybackProcessRuntime.dspReplayGainDb = 0f }
 
     @Test fun limiterBoundsAllPresetsWithAdditionalReplayGainWithoutEarlyClipping() {

@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.echo.android.data.update.GithubUpdate
 import app.echo.android.data.update.GithubUpdateRepository
+import app.echo.android.model.update.GithubUpdateSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,11 +23,12 @@ import java.io.File
 
 data class EchoUpdateState(val visible: Boolean = false, val busy: Boolean = false,
     val update: GithubUpdate? = null, val progress: Int? = null, val apk: File? = null,
-    val error: UpdateProblem? = null, val checked: Boolean = false)
+    val error: UpdateProblem? = null, val checked: Boolean = false,
+    val source: GithubUpdateSource = GithubUpdateSource.Direct)
 
 class EchoUpdateViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = GithubUpdateRepository(application)
-    private val mutableState = MutableStateFlow(EchoUpdateState())
+    private val mutableState = MutableStateFlow(EchoUpdateState(source = repository.source))
     val state = mutableState.asStateFlow()
     private var autoInstallRequested = false
     private var mayPrompt = true
@@ -56,16 +58,23 @@ class EchoUpdateViewModel(application: Application) : AndroidViewModel(applicati
         repository.cancelPendingRequests()
         super.onCleared()
     }
+    fun selectSource(source: GithubUpdateSource) {
+        if (mutableState.value.busy || mutableState.value.source == source) return
+        repository.source = source
+        mutableState.update { it.copy(source = source) }
+        check()
+    }
     fun check(manual: Boolean = true) {
         if (mutableState.value.busy) { if (manual) show(); return }
         mayPrompt = true
-        mutableState.value = EchoUpdateState(visible = manual, busy = true)
+        val source = mutableState.value.source
+        mutableState.value = EchoUpdateState(visible = manual, busy = true, source = source)
         operation = viewModelScope.launch {
             try {
-                val update = repository.check(BuildConfig.VERSION_CODE.toLong(), manual)
-                mutableState.value = EchoUpdateState(visible = mayPrompt && (mutableState.value.visible || update != null), update = update, checked = true)
+                val update = repository.check(BuildConfig.VERSION_CODE.toLong(), manual, source)
+                mutableState.value = EchoUpdateState(visible = mayPrompt && (mutableState.value.visible || update != null), update = update, checked = true, source = source)
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { mutableState.value = EchoUpdateState(visible = mutableState.value.visible && mayPrompt, error = UpdateProblem.Check) }
+            catch (_: Exception) { mutableState.value = EchoUpdateState(visible = mutableState.value.visible && mayPrompt, error = UpdateProblem.Check, source = source) }
         }
     }
 
@@ -73,11 +82,12 @@ class EchoUpdateViewModel(application: Application) : AndroidViewModel(applicati
         val update = mutableState.value.update ?: return
         if (mutableState.value.busy) return
         autoInstallRequested = false
+        val source = mutableState.value.source
         mutableState.value = mutableState.value.copy(busy = true, error = null, progress = 0)
         operation = viewModelScope.launch {
             var verifying = false
             try {
-                val apk = repository.download(update) { percent ->
+                val apk = repository.download(update, source) { percent ->
                     mutableState.update { it.copy(progress = percent) }
                 }
                 verifying = true

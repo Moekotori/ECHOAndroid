@@ -6,8 +6,9 @@ import org.json.JSONObject
 
 data class SubsonicLyricsContent(val document: EchoLyrics? = null, val text: String? = null)
 
-fun fetchSubsonicLyrics(endpoint: SubsonicEndpoint, songId: String, artist: String, title: String): SubsonicLyricsContent? {
-    val client = SubsonicClient(endpoint)
+fun fetchSubsonicLyrics(endpoint: SubsonicEndpoint, songId: String, artist: String, title: String,
+    cancellationJob: kotlinx.coroutines.Job? = null): SubsonicLyricsContent? {
+    val client = SubsonicClient(endpoint, cancellationJob = cancellationJob)
     if (songId.isNotBlank()) {
         val document = try {
             parseSubsonicStructuredLyrics(client.request("getLyricsBySongId.view", listOf("id" to songId)))
@@ -21,6 +22,11 @@ fun fetchSubsonicLyrics(endpoint: SubsonicEndpoint, songId: String, artist: Stri
     return text?.let { SubsonicLyricsContent(text = it) }
 }
 
+internal fun subsonicLyricStartMs(start: Long, offset: Long): Long {
+    if (offset >= 0) return if (start <= offset) 0 else start - offset
+    return if (start > Long.MAX_VALUE + offset) Long.MAX_VALUE else (start - offset).coerceAtLeast(0)
+}
+
 /** Select one primary version. Merge only different languages with the same effective line time. */
 internal fun parseSubsonicStructuredLyrics(root: JSONObject): EchoLyrics? {
     data class Version(val language: String, val synced: Boolean, val lines: List<EchoLyricLine>)
@@ -31,7 +37,9 @@ internal fun parseSubsonicStructuredLyrics(root: JSONObject): EchoLyrics? {
             block.jsonObjects("line").take(20_000).mapNotNull { line ->
                 val value = if (line.isNull("value")) "" else line.optString("value")
                 if (value.isBlank()) null else EchoLyricLine(
-                    startMs = if (synced && line.has("start")) (line.optLong("start") + offset).coerceAtLeast(0) else -1,
+                    startMs = line.optLong("start", -1).let { start ->
+                        if (synced && start >= 0) subsonicLyricStartMs(start, offset) else -1
+                    },
                     text = value)
             })
     }.filter { it.lines.isNotEmpty() }

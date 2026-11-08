@@ -14,6 +14,15 @@ internal val echoProjectLicense = OpenSourceNotice(
 )
 
 internal val bundledOpenSourceNotices = listOf(
+    OpenSourceNotice("Signalsmith Audio / STFX", "MIT / BSL-1.0",
+        listOf("audio/sound-effects/NOTICE.txt", "audio/sound-effects/signalsmith-basics-LICENSE.txt",
+            "audio/sound-effects/signalsmith-dsp-LICENSE.txt", "audio/sound-effects/signalsmith-stfx-LICENSE.txt")),
+    OpenSourceNotice("Airwindows sound effects", "MIT",
+        listOf("audio/sound-effects/airwindows-tape-LICENSE.txt", "audio/sound-effects/airwindows-colors-LICENSE.txt",
+            "audio/sound-effects/airwindows-modulation-LICENSE.txt", "audio/sound-effects/airwindows-character-LICENSE.txt")),
+    OpenSourceNotice("SADIE II HRTF data", "Apache-2.0",
+        listOf("audio/sadie-hrtf-NOTICE.txt", "audio/sadie-hrtf-LICENSE.txt"),
+        "https://github.com/kcat/openal-soft/blob/b7463649fd73188146e3b1467a91e7f0926a6d04/hrtf/Default%20HRTF.mhr"),
     OpenSourceNotice("FFmpeg", "LGPL-2.1-or-later",
         listOf("audio/FFmpeg-NOTICE.txt", "audio/FFmpeg-LGPL-2.1.txt"),
         "https://ffmpeg.org/releases/ffmpeg-6.1.6.tar.xz"),

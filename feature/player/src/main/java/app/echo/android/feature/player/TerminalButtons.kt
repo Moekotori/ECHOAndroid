@@ -30,7 +30,6 @@ import app.echo.android.model.playback.EchoRepeatMode
 internal fun TerminalButtons(
     status: EchoPlaybackStatus,
     isFavorite: Boolean,
-    castActive: Boolean,
     actions: ExpressivePlayerActions,
 ) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -56,18 +55,12 @@ internal fun TerminalButtons(
                 status.repeatMode != EchoRepeatMode.Off, actions.repeat,
             )
             Command("= queue", stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
-            Command(
+            if (status.track.supportsMusicFavorite()) Command(
                 "* fav",
                 stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                 isFavorite, actions.favorite,
             )
-            actions.cast?.let {
-                Command(
-                    "# cast",
-                    stringResource(if (castActive) R.string.feature_player_cast_active else R.string.feature_player_cast),
-                    castActive, it,
-                )
-            }
+            Command("...", stringResource(R.string.feature_player_expand_playback_settings_cf64a0), false, actions.more)
         }
     }
 }

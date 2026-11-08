@@ -638,6 +638,8 @@ internal object AudioFileTagRewriter {
             }
         return AudioTagFields(
             title = text("TIT2").orEmpty(),
+            rating = frames.asSequence().filter { it.id == "POPM" }.mapNotNull { readableId3Payload(it, majorVersion)?.let(AudioTagRating::popm) }.firstOrNull()
+                ?: AudioTagRating.fields(custom.associate { it.first.uppercase(java.util.Locale.ROOT) to it.second }) ?: 0,
             artist = names("TPE1").orEmpty(),
             album = text("TALB"),
             albumArtist = names("TPE2"),

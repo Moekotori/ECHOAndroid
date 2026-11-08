@@ -24,6 +24,7 @@ import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
+import app.echo.android.model.settings.EchoPlayerPageStyle
 import app.echo.android.feature.player.R as L10nR
 
 @Composable
@@ -193,6 +194,13 @@ internal fun NowPlayingLyricsPage(
                                             artist = app.echo.android.design.displayArtist(status.track?.artist),
                                         )
                                     }
+                                } else if (LocalPlayerPageStyle.current == EchoPlayerPageStyle.GrooveSpiral && syncedLyrics) {
+                                    GrooveSpiralLyrics(
+                                        lyrics = lyricsState.lyrics, position = displayPosition,
+                                        durationMs = durationMsState.value, artworkUri = status.track?.artworkUri,
+                                        playing = status.isPlaying, showTranslation = lyricsShowTranslation,
+                                        visible = animationsVisible, modifier = Modifier.fillMaxSize(),
+                                    )
                                 } else ordinaryLyrics()
                             }
                         }
@@ -265,6 +273,7 @@ internal fun NowPlayingLyricsPage(
                                     onNext = onNext,
                                     onPrevious = onPrevious,
                                     onOpenQueue = onOpenQueue,
+                                    onMore = onOpenLyricsSettings,
                                 )
                             }
                         }

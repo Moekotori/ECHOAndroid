@@ -15,8 +15,26 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LibraryPlaylistDao {
+    @Query("SELECT * FROM library_playlists WHERE id = :id")
+    fun observePlaylist(id: String): Flow<LibraryPlaylistEntity?>
+    @Query("SELECT playlistId FROM file_playlist_entries WHERE uriKey = :uriKey")
+    fun observePrivateMemberships(uriKey: String): Flow<List<String>>
+    @Query("SELECT * FROM file_playlist_entries WHERE playlistId = :id ORDER BY position LIMIT 2001")
+    suspend fun fileEntries(id: String): List<FilePlaylistEntryEntity>
+    @Query("SELECT * FROM file_playlist_entries WHERE id = :id LIMIT 1")
+    suspend fun fileEntry(id: String): FilePlaylistEntryEntity?
+    @Query("SELECT * FROM file_playlist_entries WHERE id IN (:ids)")
+    suspend fun fileEntriesByIds(ids: List<String>): List<FilePlaylistEntryEntity>
+    @Query("SELECT p.id, p.name, p.source FROM library_playlists p JOIN file_playlist_entries f ON f.playlistId = p.id WHERE f.uriKey = :uriKey")
+    fun observePrivateContainingPlaylists(uriKey: String): Flow<List<TrackPlaylistMembershipRow>>
+    @Query("SELECT COUNT(*) AS trackCount, COALESCE(SUM(durationMs), 0) AS durationMs FROM file_playlist_entries WHERE playlistId = :id")
+    fun observeFileStats(id: String): Flow<app.echo.android.model.library.PlaylistStats>
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFileEntries(rows: List<FilePlaylistEntryEntity>)
+    @Query("DELETE FROM file_playlist_entries WHERE playlistId = :id")
+    suspend fun deleteFileEntries(id: String)
     @Query("""
-        SELECT p.id, p.name, p.source FROM library_playlists p
+        SELECT DISTINCT p.id, p.name, p.source FROM library_playlists p
         JOIN library_playlist_tracks m ON m.playlistId = p.id
         WHERE m.trackId = :trackId AND p.id != 'local:liked'
         UNION ALL

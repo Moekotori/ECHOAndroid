@@ -14,7 +14,7 @@ class EchoCustomThemeTest {
             echoThemeTokens(EchoColorTheme.Echo, dark = true),
             echoThemeTokens(EchoColorTheme.Echo, dark = true, custom = RedGreenBlue),
         )
-        assertEquals(0xFF080B12.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = true, RedGreenBlue))
+        assertEquals(0xFF161316.toInt(), echoStartupWindowColor(EchoColorTheme.Echo, dark = true, RedGreenBlue))
     }
 
     @Test

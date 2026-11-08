@@ -22,6 +22,8 @@ data class EchoTrack(
     val clipStartMs: Long = 0L,
     val clipEndMs: Long = 0L,
     val fileName: String? = null,
+    val rating: Int = 0,
+    val remoteAlbumId: String? = null,
 )
 
 /** Display only: never changes tags, playback identity, search or ordering. No URI decoding or I/O. */

@@ -45,7 +45,6 @@ internal fun TerminalCoverPage(
     duration: State<Long>,
     actions: ExpressivePlayerActions,
     isFavorite: Boolean,
-    castActive: Boolean,
     artworkScale: Float,
     animate: Boolean,
     modifier: Modifier = Modifier,
@@ -111,7 +110,7 @@ internal fun TerminalCoverPage(
             TerminalPrompt("spectrum")
             TerminalSpectrum(running = animate && status.isPlaying)
             TerminalPrompt("ctl")
-            TerminalButtons(status, isFavorite, castActive, actions)
+            TerminalButtons(status, isFavorite, actions)
             Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)) {
                 Text("$ ", color = green.copy(alpha = 0.5f), fontFamily = TerminalStyle.Mono, fontSize = 12.5.sp)
                 Text("▌", color = green, fontFamily = TerminalStyle.Mono, fontSize = 12.5.sp)

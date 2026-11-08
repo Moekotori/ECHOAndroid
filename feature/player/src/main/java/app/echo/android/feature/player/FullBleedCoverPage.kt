@@ -61,7 +61,6 @@ internal fun FullBleedCoverPage(
     duration: State<Long>,
     actions: ExpressivePlayerActions,
     isFavorite: Boolean,
-    castActive: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val track = status.track
@@ -121,9 +120,12 @@ internal fun FullBleedCoverPage(
                 }
                 GlyphKey(PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904), actions.next)
             }
+            // "More" is pinned to the right edge; only the text toggles scroll, so it can never be scrolled out of view.
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 10.dp, bottom = 6.dp),
+                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Toggle(stringResource(R.string.feature_player_shuffle), status.shuffleEnabled, actions.shuffle)
                 Toggle(
@@ -137,11 +139,24 @@ internal fun FullBleedCoverPage(
                     status.repeatMode != EchoRepeatMode.Off, actions.repeat,
                 )
                 Toggle(stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
-                Toggle(
+                if (status.track.supportsMusicFavorite()) Toggle(
                     stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                     isFavorite, actions.favorite,
                 )
-                actions.cast?.let { Toggle(stringResource(if (castActive) R.string.feature_player_cast_active else R.string.feature_player_cast), castActive, it) }
+            }
+            Box(
+                Modifier.size(48.dp).clip(CircleShape).clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.feature_player_expand_playback_settings_cf64a0),
+                    onClick = actions.more,
+                ),
+                contentAlignment = Alignment.Center,
+            ) {
+                EchoIcon(
+                    PlayerControlIcons.More, stringResource(R.string.feature_player_expand_playback_settings_cf64a0),
+                    tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(24.dp),
+                )
+            }
             }
         },
     )

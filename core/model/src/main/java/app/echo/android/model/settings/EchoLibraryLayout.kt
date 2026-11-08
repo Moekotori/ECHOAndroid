@@ -21,13 +21,15 @@ data class EchoLibraryLayout(
     val hiddenTrackActions: Set<EchoTrackMenuAction> = emptySet(),
     val showPlayNext: Boolean = false,
     val showAlbumArtists: Boolean = false,
+    val trackActionOrder: List<EchoTrackMenuAction> = EchoTrackMenuAction.entries.toList(),
 ) {
     fun normalized(): EchoLibraryLayout {
         val unique = order.distinct()
         val complete = unique + EchoLibraryCategory.entries.filterNot { it in unique }
         // Corrupt or old preferences must never leave the category bar empty.
         val safeHidden = if (complete.all { it in hidden }) hidden - complete.first() else hidden
-        return copy(order = complete, hidden = safeHidden)
+        return copy(order = complete, hidden = safeHidden,
+            trackActionOrder = trackActionOrder.distinct() + EchoTrackMenuAction.entries.filterNot { it in trackActionOrder })
     }
 
     /** A source may support fewer categories; keep an accessible fallback for that source. */

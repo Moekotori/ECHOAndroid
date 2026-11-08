@@ -18,8 +18,9 @@ data class EchoSmartPlaylistRule(
     val minimumDurationSeconds: Int = 0,
     val maximumDurationSeconds: Int = 0,
     val excludeText: String = "",
+    val minimumRating: Int = 0,
 ) {
-    val isValid: Boolean get() = artist.length <= 120 && genre.length <= 120 &&
+    val isValid: Boolean get() = minimumRating in 0..5 && artist.length <= 120 && genre.length <= 120 &&
         notPlayedDays in 0..36500 && minimumYear in 0..9999 && maximumYear in 0..9999 &&
         (minimumYear == 0 || maximumYear == 0 || minimumYear <= maximumYear) &&
         listOf(album, folder, format, excludeText).all { it.length <= 120 } &&

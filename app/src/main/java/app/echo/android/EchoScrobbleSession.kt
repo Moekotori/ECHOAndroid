@@ -16,6 +16,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import app.echo.android.data.lastFmCredentialsOrNull
 import kotlinx.coroutines.flow.map
 
 /** Application-owned scrobblers keep the same listen when the activity is recreated. */
@@ -24,7 +26,13 @@ internal class EchoScrobbleSession(
     scope: CoroutineScope,
     private val surface: StateFlow<EchoPlaybackSurfaceSnapshot>,
 ) {
-    val lastFm = LastFmScrobbleController(scope, ScrobbleOutboxStore(File(context.noBackupFilesDir, "lastfm-listens.json")))
+    private val settingsStore = app.echo.android.data.EchoSettingsStore(context)
+    val library = LastFmLibrarySession(scope, settingsStore.appSettings, settingsStore,
+        app.echo.android.data.EchoLibraryDatabase.create(context), File(context.noBackupFilesDir, "lastfm-loves.json"))
+    val lastFm = LastFmScrobbleController(scope, ScrobbleOutboxStore(File(context.noBackupFilesDir, "lastfm-listens.json")),
+        invalidSession = { credentials ->
+            if (settingsStore.appSettings.first().lastFmCredentialsOrNull() == credentials) settingsStore.clearLastFmSession(credentials.sessionKey)
+        })
     val listenBrainz = ListenBrainzScrobbleController(scope, ScrobbleOutboxStore(File(context.noBackupFilesDir, "listenbrainz-listens.json")))
     init {
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
@@ -32,6 +40,7 @@ internal class EchoScrobbleSession(
             override fun onAvailable(network: Network) {
                 lastFm.retryPendingWhenConnected()
                 listenBrainz.retryPendingWhenConnected()
+                library.retry()
             }
         }
         connectivity?.registerDefaultNetworkCallback(callback)

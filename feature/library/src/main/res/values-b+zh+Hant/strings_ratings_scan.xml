@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_rating">本機星級</string>
+    <string name="track_rating_stars">%1$d 星</string>
+    <string name="track_rating_unrated">不評分</string>
+    <string name="track_rating_file">使用檔案星級</string>
+    <string name="track_rating_minimum">最低星級</string>
+    <string name="track_rating_at_least">%1$d 星以上</string>
+    <string name="library_sort_rating_desc">星級：高到低</string>
+    <string name="library_sort_rating_asc">星級：低到高</string>
+    <string name="scan_name_keywords">檔名排除關鍵字</string>
+    <string name="scan_name_keywords_hint">每行一個關鍵字，最多 50 個、每個 64 字元，不區分大小寫比對檔名。下次完整掃描會移除符合的音樂庫項目，保留原始檔案和獨立檔案清單。</string>
+    <string name="scan_details">掃描明細</string>
+    <string name="scan_details_count">%1$s：%2$d</string>
+    <string name="scan_details_sample_hint">以下最多顯示本次掃描的 40 個範例；讀取失敗的項目會保留原資訊，等待重試。</string>
+    <string name="scan_details_unreadable_item">無法讀取的音訊項目</string>
+    <string name="scan_reason_duration">短於時長門檻</string>
+    <string name="scan_reason_size">小於檔案大小門檻</string>
+    <string name="scan_reason_format">格式規則排除</string>
+    <string name="scan_reason_directory">資料夾規則排除</string>
+    <string name="scan_reason_name">檔名關鍵字排除</string>
+    <string name="scan_reason_read">讀取失敗／等待重試</string>
+</resources>

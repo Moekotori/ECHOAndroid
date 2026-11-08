@@ -19,7 +19,7 @@ internal data class LibraryTrackFilterDraft(
     val conditionCount: Int get() = (if (filter.favoritesOnly) 1 else 0) +
         (if (filter.played != LibraryPlayedFilter.Any) 1 else 0) +
         (if (filter.artwork != LibraryPresenceFilter.Any) 1 else 0) + (if (filter.duplicatesOnly) 1 else 0) +
-        (if (filter.lyrics != LibraryPresenceFilter.Any) 1 else 0)
+        (if (filter.lyrics != LibraryPresenceFilter.Any) 1 else 0) + (if (filter.minimumRating > 0) 1 else 0)
     val tagCount: Int get() = listOf(filter.artist, filter.album, filter.genre, filter.composer, filter.folder).count(String::isNotBlank)
     val rangeCount: Int get() = ranges.chunked(2).count { bounds -> bounds.any(String::isNotEmpty) }
 
@@ -52,17 +52,18 @@ internal val LibraryTrackFilterDraftSaver = Saver<LibraryTrackFilterDraft, List<
     save = { draft ->
         with(draft.filter) {
             listOf(artist, album, genre, composer, folder, formats.joinToString { it.name },
-                favoritesOnly.toString(), played.name, artwork.name, duplicatesOnly.toString()) + draft.ranges + lyrics.name
+                favoritesOnly.toString(), played.name, artwork.name, duplicatesOnly.toString()) + draft.ranges + lyrics.name + minimumRating.toString()
         }
     },
     restore = { values ->
-        if (values.size !in 18..19) null else runCatching { LibraryTrackFilterDraft(
+        if (values.size !in 18..20) null else runCatching { LibraryTrackFilterDraft(
             LibraryTrackFilter(
                 artist = values[0], album = values[1], genre = values[2], composer = values[3], folder = values[4],
                 formats = values[5].split(", ").filter(String::isNotBlank).map { LibraryFileFormat.valueOf(it) }.toSet(),
                 favoritesOnly = values[6].toBoolean(), played = LibraryPlayedFilter.valueOf(values[7]),
                 artwork = LibraryPresenceFilter.valueOf(values[8]), duplicatesOnly = values[9].toBoolean(),
                 lyrics = values.getOrNull(18)?.let { LibraryPresenceFilter.valueOf(it) } ?: LibraryPresenceFilter.Any,
+                minimumRating = values.getOrNull(19)?.toIntOrNull()?.coerceIn(0, 5) ?: 0,
             ),
             ranges = values.subList(10, 18),
         ) }.getOrNull()

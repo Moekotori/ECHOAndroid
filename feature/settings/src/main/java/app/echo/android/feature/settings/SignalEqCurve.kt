@@ -344,9 +344,10 @@ internal fun SignalEqFader(
     enabled: Boolean,
     onGainChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    preciseFrequencyHz: Float = frequencyHz.toFloat(),
 ) {
     val scheme = MaterialTheme.colorScheme
-    val frequency = formatEqFrequency(frequencyHz)
+    val frequency = if (preciseFrequencyHz == 31.5f) "31.5" else formatEqFrequency(frequencyHz)
     val active = if (enabled) scheme.primary else scheme.onSurface.copy(alpha = 0.38f)
     var dragging by remember { mutableStateOf(false) }
     var localGain by remember { mutableFloatStateOf(gainDb) }

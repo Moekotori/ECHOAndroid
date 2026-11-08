@@ -1,0 +1,16 @@
+<resources>
+    <string name="personal_hrtf_title">HRTF 耳机声场</string>
+    <string name="personal_hrtf_detail">使用 SADIE II 实测响应，将立体声呈现为两只虚拟音箱。适合耳机，开启时关闭交叉馈送。HRTF 支持不超过 96 kHz 的 PCM，更高采样率旁路。</string>
+    <string name="personal_stereo_only">立体声 PCM · USB 位完美时旁路</string>
+    <string name="personal_narrow">窄声场</string>
+    <string name="personal_standard">标准</string>
+    <string name="personal_wide">宽声场</string>
+    <string name="personal_hrtf_amount">声场混合比例</string>
+    <string name="personal_hrtf_listen">用正在播放的音乐比较三个音箱角度，选择听起来自然的方案。这些是通用响应，不是个人耳形测量。</string>
+    <string name="personal_loudness_title">动态等响补偿</string>
+    <string name="personal_loudness_detail">调低应用 PCM 音量时，适度补偿低频和高频的听感。</string>
+    <string name="personal_reference">参考应用音量</string>
+    <string name="personal_bass">最大低频补偿</string>
+    <string name="personal_treble">最大高频补偿</string>
+    <string name="personal_loudness_note">在参考音量处不补偿，低于参考 20 dB 时达到最大补偿。跟随应用音量控制，独立于 Android 与 DAC 硬件音量，不代表耳边声压校准。启用时保留输出峰值保护。</string>
+</resources>

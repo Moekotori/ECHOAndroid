@@ -1,6 +1,7 @@
 package app.echo.android.data.update
 
 import android.content.Context
+import app.echo.android.model.update.GithubUpdateSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -27,6 +28,10 @@ class GithubUpdateRepository(context: Context) {
 
     @Volatile private var activeCall: Call? = null
 
+    var source: GithubUpdateSource
+        get() = GithubUpdateSource.fromId(prefs.getString("source", null))
+        set(value) { prefs.edit().putString("source", value.id).apply() }
+
     fun cancelPendingRequests() { activeCall?.cancel() }
 
     private suspend fun execute(call: Call): okhttp3.Response {
@@ -35,23 +40,25 @@ class GithubUpdateRepository(context: Context) {
         return call.execute()
     }
 
-    suspend fun check(currentCode: Long, manual: Boolean): GithubUpdate? = withContext(Dispatchers.IO) {
+    suspend fun check(currentCode: Long, manual: Boolean, source: GithubUpdateSource = this.source): GithubUpdate? = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val elapsed = now - prefs.getLong("checked", 0)
         if (!manual && elapsed in 0 until TimeUnit.HOURS.toMillis(12)) return@withContext null
         // Persist attempts as well as successes, so offline launches do not repeatedly connect.
         prefs.edit().putLong("checked", now).apply()
         // The public download endpoint avoids the anonymous API quota shared by an IP.
-        val metadata = getText("https://github.com/moekotori/echoandroid/releases/latest/download/update.json", true)
+        // A proxy's 404 may be a routing failure, so do not report it as "no updates".
+        val metadata = getText(source.resolveUpdateUrl(UPDATE_METADATA_URL), source == GithubUpdateSource.Direct)
             ?: return@withContext null
         val update = parseUpdate(metadata, JSONObject(metadata).optString("releaseNotes"))
         update.takeIf { it.versionCode > currentCode }
     }
 
     private suspend fun getText(url: String, allowMissing: Boolean = false): String? {
-        val request = Request.Builder().url(url).header("User-Agent", "ECHOAndroid-Updater").build()
+        val request = Request.Builder().url(url).header("User-Agent", "ECHOAndroid-Updater")
+            .header("Cache-Control", "no-cache").build()
         val call = client.newCall(request)
-        call.timeout().timeout(30, TimeUnit.SECONDS)
+        call.timeout().timeout(15, TimeUnit.SECONDS)
         return execute(call).use { response ->
             if (allowMissing && response.code == 404) return@use null
             check(response.isSuccessful) { "HTTP ${response.code}" }
@@ -62,7 +69,7 @@ class GithubUpdateRepository(context: Context) {
         }
     }
 
-    suspend fun download(update: GithubUpdate, progress: (Int) -> Unit): File = withContext(Dispatchers.IO) {
+    suspend fun download(update: GithubUpdate, source: GithubUpdateSource = this.source, progress: (Int) -> Unit): File = withContext(Dispatchers.IO) {
         require(isReleaseAssetUrl(update.url))
         directory.mkdirs()
         directory.listFiles()?.forEach { it.delete() }
@@ -70,7 +77,8 @@ class GithubUpdateRepository(context: Context) {
         val target = File(directory, "update.apk")
         try {
             val digest = MessageDigest.getInstance("SHA-256")
-            val request = Request.Builder().url(update.url).build()
+            val request = Request.Builder().url(source.resolveUpdateUrl(update.url))
+                .header("User-Agent", "ECHOAndroid-Updater").build()
             execute(client.newCall(request)).use { response ->
                 check(response.isSuccessful) { "HTTP ${response.code}" }
                 requireNotNull(response.body).byteStream().use { input ->

@@ -40,6 +40,7 @@ internal fun LibraryTrackFilter.toSql(): LibraryTrackFilterSql {
     text("composer", composer)
     text("relativePath", folder)
     range("year", minYear, maxYear)
+    if (minimumRating > 0) range("rating", minimumRating, null)
     range("durationMs", minDurationMs, maxDurationMs)
     range("sizeBytes", minSizeBytes, maxSizeBytes)
     range("sampleRateHz", minSampleRateHz, maxSampleRateHz)

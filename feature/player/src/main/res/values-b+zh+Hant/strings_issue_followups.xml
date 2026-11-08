@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="queue_search">搜尋目前佇列</string>
+    <string name="queue_search_clear">清空</string>
+    <string name="queue_search_empty">沒有符合的佇列項目</string>
+    <string name="queue_search_position">佇列位置 %1$d</string>
+    <string name="lyrics_translation_current_only">僅目前句顯示譯文</string>
+    <string name="lyrics_translation_current_only_hint">手動瀏覽歌詞時顯示譯文；切換目前句時保留版面空間。</string>
+</resources>

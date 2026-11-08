@@ -19,12 +19,14 @@ class SubsonicUserLibrary(private val database: EchoLibraryDatabase, context: Co
     constructor(repository: EchoLibraryRepository) : this(repository.database, repository.appContext)
     private val context = context.applicationContext
     private val reads = Semaphore(2)
-    private fun client(endpoint: SubsonicEndpoint) = SubsonicClient(endpoint, appContext = context)
+    private val snapshots = SubsonicBrowseSnapshots()
+    private suspend fun client(endpoint: SubsonicEndpoint, browse: Boolean = false) = SubsonicClient(endpoint, appContext = context,
+        cancellationJob = currentCoroutineContext()[kotlinx.coroutines.Job], snapshots = snapshots.takeIf { browse })
 
     suspend fun read(endpoint: SubsonicEndpoint, query: NavidromeQuery): NavidromePage = withContext(Dispatchers.IO) {
         reads.withPermit {
             currentCoroutineContext().ensureActive()
-            val result = client(endpoint).readUserLibrary(endpoint, query)
+            val result = client(endpoint, browse = true).readUserLibrary(endpoint, query)
             currentCoroutineContext().ensureActive()
             index(endpoint, result.entries.mapNotNull { it.track })
             result
@@ -42,14 +44,19 @@ class SubsonicUserLibrary(private val database: EchoLibraryDatabase, context: Co
         withContext(Dispatchers.IO) { client(endpoint).information(endpoint, entry) }
 
     suspend fun playlist(endpoint: SubsonicEndpoint, id: String): NavidromePlaylistSettings =
-        withContext(Dispatchers.IO) {
-            val result = client(endpoint).playlistSettings(endpoint, id)
-            currentCoroutineContext().ensureActive()
-            persistPlaylist(endpoint, result)
-            result
-        }
+        withContext(Dispatchers.IO) { subsonicUserStateGate.withLock { refreshPlaylistLocked(endpoint, id) } }
 
-    suspend fun refreshPlaylistCatalog(endpoint: SubsonicEndpoint) = withContext(Dispatchers.IO) {
+    internal suspend fun refreshPlaylistLocked(endpoint: SubsonicEndpoint, id: String): NavidromePlaylistSettings {
+        val result = client(endpoint).playlistSettings(endpoint, id)
+        currentCoroutineContext().ensureActive()
+        persistPlaylist(endpoint, result)
+        return result
+    }
+
+    fun invalidateBrowse() = snapshots.clear()
+
+    suspend fun refreshPlaylistCatalog(endpoint: SubsonicEndpoint) = withContext(Dispatchers.IO) { subsonicUserStateGate.withLock {
+        snapshots.clear()
         val client = client(endpoint)
         val rows = client.fetchPlaylists()
         currentCoroutineContext().ensureActive()
@@ -66,13 +73,14 @@ class SubsonicUserLibrary(private val database: EchoLibraryDatabase, context: Co
             }
             existing.keys.filterNot(seen::contains).forEach { dao.deletePlaylist(it) }
         }
-    }
+    } }
 
     suspend fun execute(endpoint: SubsonicEndpoint, command: NavidromeCommand) = withContext(Dispatchers.IO) {
         subsonicUserStateGate.withLock {
+            snapshots.clear()
             val client = client(endpoint)
             if (command is NavidromeCommand.Playlist) require(client.playlistSettings(endpoint, command.id).writable)
-            client.executeUserCommand(command)
+            try { client.executeUserCommand(command) } finally { snapshots.clear() }
             currentCoroutineContext().ensureActive()
             if (command is NavidromeCommand.Favorite && command.kind == NavidromeKind.Track) {
                 val id = "${endpoint.sourceId}:song:${command.id}"
@@ -90,7 +98,7 @@ class SubsonicUserLibrary(private val database: EchoLibraryDatabase, context: Co
 
     private suspend fun persistPlaylist(endpoint: SubsonicEndpoint, playlist: NavidromePlaylistSettings) {
         index(endpoint, playlist.songs.mapNotNull { it.track })
-        val ids = playlist.songs.map { requireNotNull(it.track).id }.distinct()
+        val ids = playlist.songs.map { requireNotNull(it.track).id }
         database.playlistDao().replacePlaylist(LibraryPlaylistEntity(
             "${endpoint.sourceId}:playlist:${playlist.id}", playlist.name, endpoint.sourceId,
             playlist.songs.firstOrNull()?.artworkUri, ids.size, System.currentTimeMillis()),
@@ -98,10 +106,14 @@ class SubsonicUserLibrary(private val database: EchoLibraryDatabase, context: Co
     }
 
     suspend fun saveQueue(endpoint: SubsonicEndpoint, ids: List<String>, currentIndex: Int, positionMs: Long) =
-        withContext(Dispatchers.IO) { client(endpoint).saveQueue(ids, currentIndex, positionMs) }
+        withContext(Dispatchers.IO) {
+            snapshots.clear()
+            try { client(endpoint).saveQueue(ids, currentIndex, positionMs) } finally { snapshots.clear() }
+        }
 
     /** Only reconcile this account's songs, and only after a validated server snapshot. */
     suspend fun syncFavorites(endpoint: SubsonicEndpoint) = withContext(Dispatchers.IO) {
+        snapshots.clear()
         subsonicUserStateGate.withLock {
             val desired = client(endpoint).request("getStarred2.view").requiredUserObject("starred2")
                 .validUserRows("song", 50_000).map { "${endpoint.sourceId}:song:${it.getString("id")}" }.toHashSet()
@@ -120,7 +132,7 @@ class SubsonicUserLibrary(private val database: EchoLibraryDatabase, context: Co
     }
 
     /** A search page becomes playable without forcing a whole-library sync. Preserve edited tags. */
-    private suspend fun index(endpoint: SubsonicEndpoint, tracks: List<EchoTrack>) {
+    internal suspend fun index(endpoint: SubsonicEndpoint, tracks: List<EchoTrack>) {
         if (tracks.isEmpty()) return
         val dao = database.trackDao()
         val now = System.currentTimeMillis()
@@ -128,19 +140,23 @@ class SubsonicUserLibrary(private val database: EchoLibraryDatabase, context: Co
             currentCoroutineContext().ensureActive()
             database.withTransaction {
                 val existing = dao.getTracksByIds(chunk.map { it.id }).associateBy { it.id }
-                val rows = chunk.filterNot { it.id in existing }.map { track ->
-                    LibraryTrackEntity(
-                        id = track.id, contentUri = track.uri, title = track.title, artist = track.artist,
-                        album = track.album, albumArtist = track.albumArtist, artworkUri = track.artworkUri,
-                        durationMs = track.durationMs, trackNumber = track.trackNumber, discNumber = track.discNumber,
-                        year = track.year, mimeType = track.mimeType, sizeBytes = track.sizeBytes,
-                        sampleRateHz = track.sampleRateHz, source = endpoint.sourceId, dateModifiedSeconds = now / 1000,
-                        genre = track.genre, composer = track.composer,
-                        fileName = track.fileName,
-                    ).withScanMetadata(now)
-                }
+                val rows = chunk.map { track -> mergeSubsonicBrowseTrack(track, existing[track.id], endpoint, now) }
+                    .filter { existing[it.id]?.fingerprint != it.fingerprint }
                 dao.upsertScanBatch(rows)
             }
         }
     }
+}
+
+/** Refresh server tags without reconstructing and losing independently owned local columns. */
+internal fun mergeSubsonicBrowseTrack(track: EchoTrack, old: LibraryTrackEntity?, endpoint: SubsonicEndpoint, now: Long): LibraryTrackEntity {
+    val base = old ?: track.toLibraryTrackEntity()
+    return base.copy(contentUri = track.uri, title = track.title, artist = track.artist,
+        album = track.album, albumArtist = track.albumArtist, artworkUri = track.artworkUri,
+        durationMs = track.durationMs, trackNumber = track.trackNumber, discNumber = track.discNumber,
+        year = track.year, mimeType = track.mimeType, sizeBytes = track.sizeBytes,
+        sampleRateHz = track.sampleRateHz, source = endpoint.sourceId, dateModifiedSeconds = 0,
+        genre = track.genre, composer = track.composer,
+        fileName = track.fileName ?: old?.fileName, remoteAlbumId = track.remoteAlbumId ?: old?.remoteAlbumId,
+    ).withPreservedUserMetadata(old).withScanMetadata(now)
 }

@@ -15,5 +15,6 @@ internal fun rememberLibraryMediaTools(viewModel: EchoAndroidViewModel): Library
         previewFolder = { track, charset -> tools.encoding.previewFolder(track.id, charset) },
         applyFolder = tools.encoding::applyFolder,
         containingPlaylists = { track -> viewModel.playlistTools.containingPlaylists(track.id) },
+        setRating = { track, rating -> viewModel.setTrackRating(track.id, rating) },
     )
 }

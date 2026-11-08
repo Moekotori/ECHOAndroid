@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.echo.android.model.update.GithubUpdateSource
 
 enum class UpdateProblem { Check, Download, Verification, Permission, Install }
 
@@ -30,6 +31,7 @@ fun SettingsUpdateRow(onCheck: () -> Unit) {
 @Composable
 fun SettingsUpdateDialog(currentVersion: String, version: String?, sizeBytes: Long?, notes: String,
     busy: Boolean, progress: Int?, ready: Boolean, error: UpdateProblem?, onDismiss: () -> Unit,
+    source: GithubUpdateSource, onSourceSelected: (GithubUpdateSource) -> Unit,
     onCheck: () -> Unit, onCancel: () -> Unit, onDownload: () -> Unit, onInstall: () -> Unit) {
     AlertDialog(shape = SettingsShape, onDismissRequest = onDismiss,
         title = { Text(stringResource(if (version != null) R.string.update_available else R.string.update_title)) },
@@ -38,6 +40,7 @@ fun SettingsUpdateDialog(currentVersion: String, version: String?, sizeBytes: Lo
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.update_version_current, currentVersion),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SettingsUpdateSourcePicker(source, onSourceSelected, enabled = !busy)
                 if (version != null) {
                     Text(version, style = MaterialTheme.typography.headlineSmall)
                     if (sizeBytes != null) Text(stringResource(R.string.update_package_size,

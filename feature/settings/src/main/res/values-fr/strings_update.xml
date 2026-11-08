@@ -27,4 +27,7 @@
     <string name="update_retry">Réessayer</string>
     <string name="update_done">Terminé</string>
     <string name="update_hide_download">Masquer le téléchargement</string>
+    <string name="update_route">Connexion de mise à jour</string>
+    <string name="update_route_direct">Connexion directe à GitHub</string>
+    <string name="update_route_hint">Si GitHub est inaccessible en Chine continentale, essayez une connexion accélérée. Elle sert à vérifier et télécharger ; tout changement relance la vérification.</string>
 </resources>

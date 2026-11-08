@@ -7,6 +7,8 @@ import java.util.concurrent.atomic.AtomicReference
 
 object EchoArtworkUrlRewriteRegistry {
     private val rewrite = AtomicReference<(String) -> String>({ it })
+    private val resolved = object : LinkedHashMap<String, String>(128, .75f, true) {}
+    private val lock = Any()
     var revision by mutableIntStateOf(0)
         private set
 
@@ -16,12 +18,18 @@ object EchoArtworkUrlRewriteRegistry {
     }
 
     fun notifyChanged() {
+        synchronized(lock) { resolved.clear() }
         revision += 1
     }
 
     fun rewrite(url: String?): String? {
         val raw = url?.takeIf { it.isNotBlank() } ?: return url
-        return rewrite.get().invoke(raw)
+        return synchronized(lock) {
+            resolved[raw] ?: rewrite.get().invoke(raw).also { value ->
+                resolved[raw] = value
+                while (resolved.size > 512) resolved.remove(resolved.keys.first())
+            }
+        }
     }
 }
 

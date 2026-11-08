@@ -12,6 +12,8 @@ data class LibraryScanProgress(
     val error: String? = null,
     val unmatchedCueCount: Int = 0,
     val isCompleted: Boolean = false,
+    val skipReasons: Map<LibraryScanSkipReason, Int> = emptyMap(),
+    val skippedSamples: List<LibraryScanSkippedItem> = emptyList(),
 ) {
     val isScanning: Boolean
         get() = when (phase) {

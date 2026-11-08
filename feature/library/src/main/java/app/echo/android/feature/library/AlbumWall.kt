@@ -75,7 +75,7 @@ internal fun AlbumWall(
             ) { index: Int ->
                 val album = albums[index]
                 if (album != null) {
-                    AlbumWallCard(album = album, onClick = { onOpenAlbum(album) })
+                    AlbumWallCard(album = album, onClick = { onOpenAlbum(album) }, sharedCover = true)
                 } else {
                     // Unloaded rows need a size so distant letter jumps can land before loading finishes.
                     Column {

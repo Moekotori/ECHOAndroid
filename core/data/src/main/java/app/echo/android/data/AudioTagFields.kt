@@ -20,6 +20,7 @@ data class AudioTagFields(
     val genreModified: Boolean = false,
     val composerModified: Boolean = false,
     val musicRelations: app.echo.android.model.library.EchoMusicRelationMetadata = app.echo.android.model.library.EchoMusicRelationMetadata(),
+    val rating: Int? = null,
 )
 
 fun readLocalAudioTags(input: InputStream): AudioTagFields? =
@@ -54,6 +55,7 @@ internal fun LibraryTrackEntity.toAudioTagFields(): AudioTagFields =
         composer = composer,
         genre = genre,
         musicRelations = decodeMusicRelationTags(musicRelationsJson),
+        rating = embeddedRating,
     )
 
 internal fun AudioTagFields.isBlank(): Boolean =
@@ -65,7 +67,7 @@ internal fun AudioTagFields.isBlank(): Boolean =
         discNumber == null &&
         year == null &&
         composer.isNullOrBlank() && genre.isNullOrBlank() && musicRelations.encoded() == null &&
-        lyrics.isNullOrBlank() && (artworkBytes == null || artworkBytes.isEmpty()) && replayGainTrackGainDb == null
+        lyrics.isNullOrBlank() && (artworkBytes == null || artworkBytes.isEmpty()) && replayGainTrackGainDb == null && rating == null
 
 internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields?): AudioTagFields? {
     if (preferred == null || preferred.isBlank()) return fallback?.takeUnless { it.isBlank() }
@@ -85,6 +87,7 @@ internal fun mergeAudioTags(preferred: AudioTagFields?, fallback: AudioTagFields
         replayGainTrackGainDb = preferred.replayGainTrackGainDb ?: fallback.replayGainTrackGainDb,
         genre = preferred.genre?.takeIf { it.isNotBlank() } ?: fallback.genre,
         musicRelations = preferred.musicRelations.withFallback(fallback.musicRelations),
+        rating = preferred.rating ?: fallback.rating,
     )
 }
 
@@ -100,12 +103,13 @@ internal fun LibraryTrackEntity.withAudioTags(tags: AudioTagFields?): LibraryTra
         next.trackNumber == trackNumber &&
         next.discNumber == discNumber &&
         next.year == year &&
-        next.composer == composer && next.genre == genre && next.musicRelations.encoded() == musicRelationsJson
+        next.composer == composer && next.genre == genre && next.musicRelations.encoded() == musicRelationsJson && next.rating == embeddedRating
     ) {
         return this
     }
     return copy(
         title = nextTitle,
+        embeddedRating = next.rating, rating = localRating ?: next.rating ?: rating,
         artist = nextArtist,
         album = next.album,
         albumArtist = next.albumArtist,

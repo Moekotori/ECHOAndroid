@@ -45,6 +45,7 @@ import app.echo.android.data.JellyfinEndpoint
 import app.echo.android.data.SubsonicEndpoint
 import app.echo.android.data.trackVersions
 import app.echo.android.data.setPreferredTrackVersion
+import app.echo.android.data.setLocalTrackRating
 import app.echo.android.lyrics.EchoLrcFormatter
 import android.content.IntentSender
 import java.util.concurrent.atomic.AtomicLong
@@ -160,6 +161,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
     internal val mediaInspection by lazy { MediaInspectionController(getApplication(), repository) }
     internal val libraryExperience = LibraryExperienceController(repository, application, remoteLibraryTools::setFavorite)
+    internal suspend fun setTrackRating(id: String, rating: Int?) = repository.setLocalTrackRating(id, rating)
+    internal val filePlaylists get() = repository.filePlaylists
     internal val playlistTools = PlaylistManagementController(application, repository, viewModelScope, remoteLibraryTools::setFavorite)
     internal val unifiedSearch = UnifiedSearchController(repository, viewModelScope, EchoSearchHistoryStore(application))
     internal val librarySync = LibrarySyncController(repository)
@@ -251,12 +254,15 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
     internal val diagnosticCapture get() = (getApplication<android.app.Application>() as EchoApplication).diagnosticCapture
-    private val lastFmClient = LastFmClient()
     private val lastFmController = (application as EchoApplication).scrobbleSession.lastFm
     private val listenBrainzClient = ListenBrainzClient()
     private val listenBrainzController = (application as EchoApplication).scrobbleSession.listenBrainz
 
-    private var pendingLastFmAuthToken: String? = null
+    internal val lastFmLibrary get() = (getApplication<android.app.Application>() as EchoApplication).scrobbleSession.library
+    private val lastFmAuth = LastFmAuthController(
+        viewModelScope, settingsStore,
+        app.echo.android.data.LastFmPendingAuthStore(app.echo.android.data.EchoSecretStore(application)), lastFmController,
+    )
     private var usbStartupPolicyApplied = false
     private var effectivePerformanceMode: EchoEffectivePerformanceMode = EchoEffectivePerformanceMode.Balanced
     private var playbackProgressUiVisibility: PlaybackProgressUiVisibility = PlaybackProgressUiVisibility.MiniPlayer
@@ -354,6 +360,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun searchLyrics() = lyricsController.refreshLyrics(playbackController.currentTrackId)
     fun cancelLyricsSearch() = lyricsController.cancelSearch()
+    internal fun setPluginLyricsSearch(search: (suspend (app.echo.android.lyrics.EchoLyricsSearchRequest) -> List<app.echo.android.model.lyrics.EchoLyricsCandidate>)?) =
+        lyricsController.setPluginLyricsSearch(search)
     fun selectLyricsCandidate(id: String) = lyricsController.selectCandidate(id, playbackController.currentTrackId)
     internal suspend fun selectPlayerLyrics(id: String, trackId: String): Boolean =
         lyricsController.selectCandidateAndAwait(id, trackId)
@@ -367,6 +375,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private val _backupNotice = MutableStateFlow<app.echo.android.model.backup.EchoBackupNotice?>(null)
     val backupNotice: StateFlow<app.echo.android.model.backup.EchoBackupNotice?> = _backupNotice.asStateFlow()
     val lastFmState: StateFlow<LastFmUiState> = lastFmController.uiState
+    internal val lastFmActivity get() = lastFmController.activity
     val listenBrainzState: StateFlow<ListenBrainzUiState> = listenBrainzController.uiState
     val errorLogRecords: Flow<List<EchoErrorRecord>> = errorLog.records
     val errorLogCount: Flow<Int> = errorLog.count
@@ -464,9 +473,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                     !usbAlreadyActive
                 ) {
                     playbackController.setUsbExclusiveEnabled(false)
-                }
-                if (settings.lastFmEnabled && !settings.lastFmUsername.isNullOrBlank()) {
-                    lastFmController.setConnected(settings.lastFmUsername.orEmpty())
                 }
                 if (settings.listenBrainzEnabled && !settings.listenBrainzToken.isNullOrBlank()) {
                     listenBrainzController.setConnected(listenBrainzController.uiState.value.userName)
@@ -648,6 +654,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         preferredPlayback.launch {
             // A listening-history entry is an explicit track request, independent of song-page filters.
             val track = repository.trackById(trackId) ?: return@launch
+            if (app.echo.android.data.FilePlaylistStore.ownsTrack(trackId)) {
+                playPreferredQueue(listOf(track.toEchoTrack()), 0)
+                return@launch
+            }
             val source = if (LibraryPlaybackQueuePolicy.isLocalTrackSource(track.source))
                 EchoLibrarySelectedSource.Local else EchoLibrarySelectedSource.Cloud
             val queue = libraryController.queueAroundTrack(trackId, source, LibrarySongQuery())
@@ -936,9 +946,20 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     internal suspend fun createPlayerPlaylist(name: String, trackId: String): Boolean =
-        repository.createOrderedLocalPlaylist(name, listOf(trackId)) != null
+        if (app.echo.android.data.FilePlaylistStore.ownsTrack(trackId)) {
+            val track = repository.trackById(trackId)
+            if (track == null) false else {
+                repository.filePlaylists.createFromTracks(name, listOf(track))
+                true
+            }
+        } else repository.createOrderedLocalPlaylist(name, listOf(trackId)) != null
 
     internal suspend fun addPlayerSongToPlaylist(playlistId: String, trackId: String): Boolean {
+        if (app.echo.android.data.FilePlaylistStore.owns(playlistId)) {
+            val track = repository.trackById(trackId) ?: return false
+            if (repository.filePlaylists.add(playlistId, listOf(track)) > 0) return true
+            return repository.filePlaylists.read(playlistId).any { it.contentUri == track.contentUri }
+        }
         if (playlistId == EchoPlaylist.LikedSongsId && trackId.startsWith("subsonic:"))
             return remoteLibraryTools.setFavorite(trackId, true)
         if (libraryController.addTrackToLocalPlaylist(playlistId, trackId)) return true
@@ -1086,6 +1107,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun createLocalPlaylist(name: String, addTrackId: String? = null) {
         viewModelScope.launch {
+            if (addTrackId != null && app.echo.android.data.FilePlaylistStore.ownsTrack(addTrackId)) {
+                try { createPlayerPlaylist(name, addTrackId) }
+                catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                catch (_: Exception) { android.widget.Toast.makeText(getApplication(), app.echo.android.feature.library.R.string.file_playlist_failed, android.widget.Toast.LENGTH_LONG).show() }
+                return@launch
+            }
             val created = libraryController.createLocalPlaylist(name) ?: return@launch
             val trackId = addTrackId?.takeIf { it.isNotBlank() } ?: return@launch
             libraryController.addTrackToLocalPlaylist(created.id, trackId)
@@ -1515,6 +1542,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setPlayerOrientationLocked(value: Boolean) { updateSettings { setPlayerOrientationLocked(value) } }
+    fun setPauseOnMute(value: Boolean) { updateSettings { setPauseOnMute(value) } }
+
     fun setLyricsOptions(value: app.echo.android.model.settings.EchoLyricsOptions) {
         updateSettings { setLyricsOptions(value) }
     }
@@ -1638,6 +1668,20 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         EchoPlaybackProcessRuntime.equalizerController().setMseb(state)
     }
 
+    fun setHeadphoneCorrectionEnabled(enabled: Boolean) {
+        val controller = EchoPlaybackProcessRuntime.equalizerController()
+        val value = controller.state.value.headphoneCorrection.copy(enabled = enabled)
+        controller.setHeadphoneCorrection(value)
+        updateSettings { setHeadphoneCorrection(value) }
+    }
+
+    fun setEqualizerOptions(value: app.echo.android.model.playback.EchoEqOptions) {
+        EchoPlaybackProcessRuntime.equalizerController().setOptions(value)
+        updateSettings { setEqualizerOptions(value) }
+    }
+    fun previewEqualizerOptions(value: app.echo.android.model.playback.EchoEqOptions) = EchoPlaybackProcessRuntime.equalizerController().setOptions(value)
+    fun auditionEqualizerBand(active: Boolean, frequency: Float, q: Float) = EchoPlaybackProcessRuntime.equalizerController().setAudition(active, frequency, q)
+
     fun setEqualizerPreamp(gainDb: Float) {
         playbackController.setEqualizerPreamp(gainDb)
         updateSettings { setEqualizerPreamp(gainDb) }
@@ -1682,6 +1726,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.resetEqualizer()
         val selected = playbackController.equalizerState.value
         updateSettings {
+            setEqualizerOptions(app.echo.android.model.playback.EchoEqOptions())
             if (selected.parametric) {
                 setEqualizerParametricConfig(selected.gainsDb, selected.preampDb, selected.filters,
                     selected.sourceLabel, enabled = selected.enabled)
@@ -1727,30 +1772,24 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     fun applySelectedOpraPreset() {
         val preset = opraState.value.selectedPreset ?: return
         if (opraState.value.loading) return
-        playbackController.applyOpraPreset(preset)
+        if (playbackController.applyOpraPreset(preset).isEmpty()) {
+            opraSearch.message(getApplication<Application>().getString(app.echo.android.feature.settings.R.string.eq_pc_correction_invalid))
+            return
+        }
         val equalizer = playbackController.equalizerState.value
         val query = opraState.value.query.trim()
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                settingsStore.setEqualizerParametricConfig(
-                    equalizer.gainsDb,
-                    equalizer.preampDb,
-                    equalizer.filters,
-                    equalizer.sourceLabel,
-                )
+                settingsStore.setHeadphoneCorrection(equalizer.headphoneCorrection)
                 if (query.isNotBlank()) settingsStore.setOpraLastQuery(query)
-                val starredId = settingsStore.appSettings.first()
-                    .equalizerUserPresets
-                    .firstOrNull { it.opraEqId == preset.eqId }
-                    ?.id
-                settingsStore.setEqualizerActiveUserPresetId(starredId)
+
             }
         }
         opraSearch.message(
             if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
-                getApplication<Application>().getString(R.string.opra_saved_bypassed)
+                getApplication<Application>().getString(app.echo.android.feature.settings.R.string.eq_pc_correction_saved_bypassed)
             } else {
-                getApplication<Application>().getString(R.string.opra_saved_eq, preset.displayName)
+                getApplication<Application>().getString(app.echo.android.feature.settings.R.string.eq_pc_correction_saved, preset.displayName)
             },
         )
     }
@@ -1845,8 +1884,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         withContext(Dispatchers.IO) { settingsStore.importEqualizerBundle(presets, conflict) }
 
     fun importEqualizerShareCode(code: String) {
-        val parsed = EchoEqualizerShareCodec.decode(code, UUID.randomUUID().toString()) ?: return
         viewModelScope.launch {
+            val parsed = withContext(Dispatchers.Default) { EchoEqualizerShareCodec.decode(code, UUID.randomUUID().toString()) } ?: return@launch
             val saved = withContext(Dispatchers.IO) { settingsStore.upsertEqualizerUserPreset(parsed) }
             if (!saved) return@launch
             if (!playbackController.applyEqualizerUserPreset(parsed)) return@launch
@@ -2133,8 +2172,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun setLastFmEnabled(enabled: Boolean) {
-        updateSettings {
-            setLastFmEnabled(enabled)
+        viewModelScope.launch {
+            if (!enabled) lastFmAuth.cancelPending()
+            settingsStore.setLastFmEnabled(enabled)
         }
     }
 
@@ -2212,8 +2252,19 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             username = username,
             password = password,
         )
-        libraryController.refreshSubsonic(endpoint) { resolved ->
-            saveSubsonicCredentials(resolved.normalizedBaseUrl, resolved.username, resolved.password)
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                settingsStore.setSubsonicCredentials(endpoint.normalizedBaseUrl, endpoint.username, endpoint.password)
+            }
+            applyRemotePlaybackCredentials(settingsStore.appSettings.first(), allowClearIfEmpty = true)
+            libraryController.refreshSubsonic(endpoint, onResolved = { resolved ->
+                withContext(Dispatchers.IO) {
+                    settingsStore.setSubsonicCredentials(resolved.normalizedBaseUrl, resolved.username, resolved.password)
+                }
+                withContext(Dispatchers.Main.immediate) {
+                    applyRemotePlaybackCredentials(settingsStore.appSettings.first(), allowClearIfEmpty = true)
+                }
+            })
         }
     }
 
@@ -2382,127 +2433,29 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun connectLastFm(
-        apiKey: String,
-        sharedSecret: String,
-        username: String,
-        password: String,
-    ) {
-        viewModelScope.launch {
-            val resolvedApiKey = apiKey.ifBlank { LastFmApiConfig.API_KEY }
-            val resolvedSharedSecret = sharedSecret.ifBlank { LastFmApiConfig.SHARED_SECRET }
-            if (resolvedApiKey.isBlank()) {
-                lastFmController.setError("Missing Last.fm API key")
-                return@launch
-            }
-            if (resolvedSharedSecret.isBlank()) {
-                lastFmController.setError("Missing Last.fm shared secret")
-                return@launch
-            }
-            lastFmController.setConnecting()
-            val result = withContext(Dispatchers.IO) {
-                lastFmClient.authenticate(
-                    apiKey = resolvedApiKey,
-                    sharedSecret = resolvedSharedSecret,
-                    username = username,
-                    password = password,
-                )
-            }
-            result
-                .onSuccess { session ->
-                    withContext(Dispatchers.IO) {
-                        settingsStore.setLastFmCredentials(
-                            apiKey = resolvedApiKey,
-                            sharedSecret = resolvedSharedSecret,
-                            username = session.username,
-                            sessionKey = session.sessionKey,
-                        )
-                    }
-                    lastFmController.setConnected(session.username)
-                }
-                .onFailure { error ->
-                    lastFmController.setError(error.message ?: "Unknown Last.fm auth error")
-                }
-        }
-    }
+    fun startLastFmWebAuth(apiKey: String, secret: String, onOpenAuthUrl: (String) -> Unit) =
+        lastFmAuth.start(apiKey, secret, onOpenAuthUrl)
 
-    fun startLastFmWebAuth(onOpenAuthUrl: (String) -> Unit) {
-        viewModelScope.launch {
-            val resolvedApiKey = LastFmApiConfig.API_KEY
-            val resolvedSharedSecret = LastFmApiConfig.SHARED_SECRET
-            if (resolvedApiKey.isBlank()) {
-                lastFmController.setError("Missing Last.fm API key")
-                return@launch
-            }
-            if (resolvedSharedSecret.isBlank()) {
-                lastFmController.setError("Missing Last.fm shared secret")
-                return@launch
-            }
-            lastFmController.setConnecting()
-            val result = withContext(Dispatchers.IO) {
-                lastFmClient.createWebAuthToken(
-                    apiKey = resolvedApiKey,
-                    sharedSecret = resolvedSharedSecret,
-                )
-            }
-            result
-                .onSuccess { auth ->
-                    pendingLastFmAuthToken = auth.token
-                    lastFmController.setWebAuthPending()
-                    onOpenAuthUrl(auth.url)
-                }
-                .onFailure { error ->
-                    lastFmController.setError(error.message ?: "Unable to start Last.fm web auth")
-                }
-        }
-    }
-
-    fun completeLastFmWebAuth() {
-        viewModelScope.launch {
-            val token = pendingLastFmAuthToken
-            if (token.isNullOrBlank()) {
-                lastFmController.setError("Open the Last.fm authorization page first")
-                return@launch
-            }
-            val resolvedApiKey = LastFmApiConfig.API_KEY
-            val resolvedSharedSecret = LastFmApiConfig.SHARED_SECRET
-            if (resolvedApiKey.isBlank() || resolvedSharedSecret.isBlank()) {
-                lastFmController.setError("Missing Last.fm app credentials")
-                return@launch
-            }
-            lastFmController.setConnecting()
-            val result = withContext(Dispatchers.IO) {
-                lastFmClient.completeWebAuth(
-                    apiKey = resolvedApiKey,
-                    sharedSecret = resolvedSharedSecret,
-                    token = token,
-                )
-            }
-            result
-                .onSuccess { session ->
-                    pendingLastFmAuthToken = null
-                    withContext(Dispatchers.IO) {
-                        settingsStore.setLastFmCredentials(
-                            apiKey = resolvedApiKey,
-                            sharedSecret = resolvedSharedSecret,
-                            username = session.username,
-                            sessionKey = session.sessionKey,
-                        )
-                    }
-                    lastFmController.setConnected(session.username)
-                }
-                .onFailure { error ->
-                    lastFmController.setWebAuthError(error.message ?: "Last.fm authorization has not been approved yet")
-                }
-        }
-    }
+    fun completeLastFmWebAuth() = lastFmAuth.complete()
+    fun resumeLastFmAuthorization() = lastFmAuth.complete(automatic = true)
 
     fun disconnectLastFm() {
-        pendingLastFmAuthToken = null
-        lastFmController.setDisconnected()
-        updateSettings {
-            clearLastFmCredentials()
+        viewModelScope.launch {
+            lastFmAuth.cancelPending()
+            lastFmLibrary.cancelImport()
+            lastFmController.setDisconnected()
+            settingsStore.clearLastFmCredentials()
         }
+    }
+
+    fun setLastFmOptions(options: app.echo.android.model.settings.LastFmOptions) {
+        updateSettings { setLastFmOptions(options) }
+    }
+
+    fun refreshLastFm() {
+        lastFmController.retryPendingWhenConnected()
+        lastFmLibrary.retry()
+        resumeLastFmAuthorization()
     }
 
     private fun updateSettings(block: suspend EchoSettingsStore.() -> Unit) {

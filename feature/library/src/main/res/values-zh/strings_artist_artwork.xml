@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="artist_artwork_title">艺术家头像</string>
+    <string name="artist_artwork_manual">头像来源：手动指定</string>
+    <string name="artist_artwork_local">头像来源：本地人物图片</string>
+    <string name="artist_artwork_automatic">头像来源：服务端或专辑封面</string>
+    <string name="artist_artwork_choose">选择头像</string>
+    <string name="artist_artwork_match">匹配本地</string>
+    <string name="artist_artwork_reset">恢复自动</string>
+    <string name="artist_artwork_processing">正在处理头像…</string>
+    <string name="artist_artwork_error">无法更新头像。请选择小于 8 MiB 的 JPG、PNG 或 WebP 图片。本地匹配会查找所选文件夹中的 artist_艺术家名.jpg/png/webp；手动指定的头像始终优先。</string>
+</resources>

@@ -176,9 +176,11 @@ class EchoRemoteClient internal constructor(
     suspend fun searchTracksPage(query: String, page: Int, pageSize: Int): Pair<List<EchoRemoteTrack>, Int> {
         require(page > 0 && pageSize in 1..100)
         val target = checkNotNull(endpoint)
+        val connection = connectGeneration
         check(status.value.connectionState == EchoRemoteConnectionState.Connected)
         val result = transport.fetchTracks(target, query.trim(), page, pageSize)
-        check(endpoint == target && status.value.connectionState == EchoRemoteConnectionState.Connected)
+        check(connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target) &&
+            status.value.connectionState == EchoRemoteConnectionState.Connected)
         return result.tracks to result.totalCount
     }
     fun librarySyncSession(): EchoLibrarySyncSession {
@@ -278,7 +280,7 @@ class EchoRemoteClient internal constructor(
         }
         authRejected = false
         bridgeFolders.reset()
-        refreshOnForeground = false
+        refreshOnForeground = refreshLibraryOnConnect
         pollFailures = 0
         if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, nextEndpoint)) {
             _library.value = EchoRemoteLibraryState()
@@ -363,10 +365,7 @@ class EchoRemoteClient internal constructor(
                         return@launch
                     }
                     applyStatus(resolvedTarget, response)
-                    refreshOnForeground = refreshLibraryOnConnect && !foreground
-                    if (refreshLibraryOnConnect && foreground) {
-                        refreshLibrary()
-                    } else {
+                    if (!refreshLibraryOnConnect) {
                         _library.value = EchoRemoteLibraryState()
                     }
                     startRealtimeStatus()
@@ -1173,9 +1172,11 @@ class EchoRemoteClient internal constructor(
         while (true) {
             val batch = transport.fetchAlbumTracks(target, id, page, PcPlaylistTrackPageSize)
             items += batch.tracks
-            if (batch.tracks.isEmpty() || items.size >= batch.totalCount) {
+            if (items.size >= batch.totalCount) {
                 return EchoLinkTrackPage(items, batch.totalCount.coerceAtLeast(items.size))
             }
+            if (batch.tracks.isEmpty()) throw EchoLinkHttpException(
+                text(R.string.connect_library_partial, items.size, batch.totalCount))
             check(page++ < MaxLibraryPages) { "PC album exceeds the supported page limit" }
         }
     }
@@ -1186,9 +1187,11 @@ class EchoRemoteClient internal constructor(
         while (true) {
             val batch = transport.fetchPlaylistTracks(target, id, page, PcPlaylistTrackPageSize)
             items += batch.tracks
-            if (batch.tracks.isEmpty() || items.size >= batch.totalCount) {
-                return EchoLinkTrackPage(items, batch.totalCount)
+            if (items.size >= batch.totalCount) {
+                return EchoLinkTrackPage(items, batch.totalCount.coerceAtLeast(items.size))
             }
+            if (batch.tracks.isEmpty()) throw EchoLinkHttpException(
+                text(R.string.connect_library_partial, items.size, batch.totalCount))
             check(page++ < MaxLibraryPages) { "PC playlist exceeds the supported page limit" }
         }
     }
@@ -1404,6 +1407,12 @@ class EchoRemoteClient internal constructor(
         if (playback.queueIdentityAvailable) {
             queueBrowser.observe(playback.queue.revision, playback.queue.currentQueueId)
         }
+        // Initial status attempts may fail before polling or SSE restores the connection.
+        // Consume the pending library request on that recovery too, once the UI is visible.
+        if (foreground && refreshOnForeground) {
+            refreshOnForeground = false
+            refreshLibrary()
+        }
     }
 
     private fun markReconnecting(target: EchoRemoteEndpoint, error: Throwable?) {
@@ -1450,9 +1459,11 @@ class EchoRemoteClient internal constructor(
 
     suspend fun resolveSearchTrackOnPhone(track: EchoRemoteTrack): EchoTrack {
         val target = checkNotNull(endpoint)
+        val connection = connectGeneration
         check(status.value.connectionState == EchoRemoteConnectionState.Connected)
         val stream = resolveCachedStream(target, checkNotNull(track.id).also { check(it.isNotBlank()) })
-        check(endpoint == target && status.value.connectionState == EchoRemoteConnectionState.Connected)
+        check(connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target) &&
+            status.value.connectionState == EchoRemoteConnectionState.Connected)
         return track.toPhonePlaybackTrack(checkNotNull(stream.streamUrl).also { check(it.isNotBlank()) }, stream.sourceRange)
     }
 
@@ -1482,9 +1493,10 @@ class EchoRemoteClient internal constructor(
             )
         }
         val stream = transport.resolveStream(target, trackId)
-        if (connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
-            rememberStream(key, stream)
+        check(connection == connectGeneration && !authRejected && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
+            "PC connection changed while resolving a stream"
         }
+        rememberStream(key, stream)
         return stream
     }
 
@@ -1507,8 +1519,10 @@ class EchoRemoteClient internal constructor(
 
     suspend fun fetchLyrics(trackId: String): EchoRemoteLyrics? {
         val target = endpoint ?: return null
+        val connection = connectGeneration
         if (trackId.isBlank()) return null
         return runSuspendCatching { transport.fetchLyrics(target, trackId) }.getOrNull()
+            ?.takeIf { connection == connectGeneration && !authRejected && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target) }
     }
 
     private fun Throwable.userMessage(): String = when {

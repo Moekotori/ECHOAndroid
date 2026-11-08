@@ -100,7 +100,8 @@ internal fun SignalSoundModeRow(
                         Modifier
                             .weight(1f)
                             .heightIn(min = 44.dp)
-                            .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(index) })
+                            .selectable(selected = selected, interactionSource = null, indication = null,
+                                role = Role.Tab, onClick = { onSelect(index) })
                             .padding(horizontal = 8.dp, vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {

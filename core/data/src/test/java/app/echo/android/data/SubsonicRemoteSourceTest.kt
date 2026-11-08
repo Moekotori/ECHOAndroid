@@ -262,8 +262,8 @@ class SubsonicRemoteSourceTest {
         )
         val text = client.fetchLyricsText("s1", "A", "Hello")
         assertNotNull(text)
-        assertTrue(text!!.contains("[00:00.00]Hello"))
-        assertTrue(text.contains("[00:01.40]World"))
+        assertTrue(text!!.contains("[00:00.10]Hello"))
+        assertTrue(text.contains("[00:01.60]World"))
     }
 
     @Test
@@ -370,8 +370,8 @@ class SubsonicRemoteSourceTest {
         assertEquals(listOf("s9"), client.fetchPlaylistSongs("p1").map { it.id })
     }
 
-    @Test
-    fun blankSongIdsAreDroppedFromAlbumFetch() {
+    @Test(expected = IllegalArgumentException::class)
+    fun malformedAlbumCannotAuthorizeMissingSongDeletion() {
         val client = SubsonicClient(
             endpoint = SubsonicEndpoint(
                 baseUrl = "https://navidrome.example",
@@ -382,11 +382,9 @@ class SubsonicRemoteSourceTest {
                 """{"subsonic-response":{"status":"ok","version":"1.16.1","album":{"id":"a1","song":[{"id":"","title":"Missing"},{"id":"s2","title":"Keep","artist":"A","duration":1,"size":1}]}}}"""
             },
         )
-        val songs = client.fetchAlbumSongs(
+        client.fetchAlbumSongs(
             SubsonicAlbum(id = "a1", name = "Album", artist = "A", coverArt = null, year = null, songCount = 2),
         )
-        assertEquals(1, songs.size)
-        assertEquals("s2", songs[0].id)
     }
 
     @Test

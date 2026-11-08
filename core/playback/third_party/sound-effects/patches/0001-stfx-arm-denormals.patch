@@ -1,0 +1,43 @@
+--- a/third_party/signalsmith/basics/include/stfx/stfx-library.h
++++ b/third_party/signalsmith/basics/include/stfx/stfx-library.h
+@@ -10,6 +10,7 @@
+ #ifndef STFX_LIBRARY_H
+ #define STFX_LIBRARY_H
+ 
++#include <cstdint>
+ #include <vector>
+ #include <string>
+ #include <cmath>
+@@ -364,14 +365,26 @@
+ 			uintptr_t status;
+ 		public:
+ 			StopDenormals() {
+-				uintptr_t asmStatus;
+-				asm volatile("mrs %0, fpcr" : "=r"(asmStatus));
+-				status = asmStatus = asmStatus|0x01000000U; // Flush to Zero
+-				asm volatile("msr fpcr, %0" : : "ri"(asmStatus));
++				// Android adaptation: ARM32 has FPSCR, AArch64 has FPCR.
++				// Retain the original register, not the modified FTZ value.
++#if defined(__aarch64__)
++				asm volatile("mrs %0, fpcr" : "=r"(status));
++#else
++				asm volatile("vmrs %0, fpscr" : "=r"(status));
++#endif
++				uintptr_t flush = status|0x01000000U;
++#if defined(__aarch64__)
++				asm volatile("msr fpcr, %0" : : "r"(flush));
++#else
++				asm volatile("vmsr fpscr, %0" : : "r"(flush));
++#endif
+ 			}
+ 			~StopDenormals() {
+-				uintptr_t asmStatus = status;
+-				asm volatile("msr fpcr, %0" : : "ri"(asmStatus));
++#if defined(__aarch64__)
++				asm volatile("msr fpcr, %0" : : "r"(status));
++#else
++				asm volatile("vmsr fpscr, %0" : : "r"(status));
++#endif
+ 			}
+ 		};
+ #else

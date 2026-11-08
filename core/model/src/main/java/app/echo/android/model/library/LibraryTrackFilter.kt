@@ -21,6 +21,7 @@ data class LibraryTrackFilter(
     val artwork: LibraryPresenceFilter = LibraryPresenceFilter.Any,
     val duplicatesOnly: Boolean = false,
     val lyrics: LibraryPresenceFilter = LibraryPresenceFilter.Any,
+    val minimumRating: Int = 0,
 ) {
     val activeCount: Int get() = listOf(
         artist.isNotBlank(), album.isNotBlank(), genre.isNotBlank(), composer.isNotBlank(), folder.isNotBlank(),
@@ -29,6 +30,7 @@ data class LibraryTrackFilter(
         minSampleRateHz != null || maxSampleRateHz != null, favoritesOnly,
         played != LibraryPlayedFilter.Any, artwork != LibraryPresenceFilter.Any, duplicatesOnly,
         lyrics != LibraryPresenceFilter.Any,
+        minimumRating > 0,
     ).count { it }
 
     val isActive: Boolean get() = activeCount > 0
@@ -37,6 +39,7 @@ data class LibraryTrackFilter(
         artist = artist.trim().take(200), album = album.trim().take(200), genre = genre.trim().take(200),
         composer = composer.trim().take(200), folder = folder.trim().take(500), formats = formats.toSet(),
     ).also {
+        require(minimumRating in 0..5)
         require(validRange(minYear?.toLong(), maxYear?.toLong()))
         require(validRange(minDurationMs, maxDurationMs))
         require(validRange(minSizeBytes, maxSizeBytes))

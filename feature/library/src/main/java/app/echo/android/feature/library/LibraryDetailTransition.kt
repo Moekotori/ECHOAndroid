@@ -12,7 +12,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.paging.compose.LazyPagingItems
+import app.echo.android.design.EchoMotion
 import app.echo.android.design.EchoPageBack
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.EchoPageContent
 import app.echo.android.design.rememberEchoContentMotion
 import app.echo.android.model.connect.EchoRemotePlaylist
@@ -53,6 +55,22 @@ private val LibraryDetailTransitionTarget.pageKey: String
         is LibraryDetailTransitionTarget.LinkedPlaylist -> "linked-playlist:${playlist.id}"
     }
 
+/** Album, artist and playlist pages open from a cover card, so their cover can fly between card and hero. */
+private val LibraryDetailTransitionTarget.hasSharedCover: Boolean
+    get() = this is LibraryDetailTransitionTarget.AlbumDetail ||
+        this is LibraryDetailTransitionTarget.ArtistDetail ||
+        this is LibraryDetailTransitionTarget.PlaylistDetail ||
+        this is LibraryDetailTransitionTarget.LinkedAlbum ||
+        this is LibraryDetailTransitionTarget.LinkedArtist
+
+private fun isLibraryDetailBackward(
+    initial: LibraryDetailTransitionTarget,
+    target: LibraryDetailTransitionTarget,
+): Boolean =
+    target == LibraryDetailTransitionTarget.Browser ||
+        (initial is LibraryDetailTransitionTarget.AlbumDetail && target is LibraryDetailTransitionTarget.ArtistDetail) ||
+        (initial is LibraryDetailTransitionTarget.LinkedAlbum && target is LibraryDetailTransitionTarget.LinkedArtist)
+
 @Composable
 internal fun LibraryDetailTransition(
     targetState: LibraryDetailTransitionTarget,
@@ -63,6 +81,9 @@ internal fun LibraryDetailTransition(
     content: @Composable (LibraryDetailTransitionTarget) -> Unit,
 ) {
     val motion = rememberEchoContentMotion()
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    // Cross-tab and split layouts keep their own movement; only the plain browser <-> detail trip flies a cover.
+    val coverFlights = !split && !outerNavigationOwnsTransition && !lightweight
     val savedState = rememberSaveableStateHolder()
     var retainedKeys by rememberSaveable { mutableStateOf(emptyMap<String, String>()) }
     LaunchedEffect(targetState.pageKey) {
@@ -77,11 +98,7 @@ internal fun LibraryDetailTransition(
     EchoPageContent(
         targetState = targetState,
         contentKey = { it.pageKey },
-        isBackward = { initial, target ->
-            target == LibraryDetailTransitionTarget.Browser ||
-                (initial is LibraryDetailTransitionTarget.AlbumDetail && target is LibraryDetailTransitionTarget.ArtistDetail) ||
-                (initial is LibraryDetailTransitionTarget.LinkedAlbum && target is LibraryDetailTransitionTarget.LinkedArtist)
-        },
+        isBackward = ::isLibraryDetailBackward,
         // Cross-tab navigation already moves the whole library page. Keep its detail
         // ready underneath, without a second slide, scale, or staggered reveal.
         fadeOnly = split || outerNavigationOwnsTransition,
@@ -95,7 +112,19 @@ internal fun LibraryDetailTransition(
                     motion.pageFade()
                 }
             }
+        } else if (coverFlights) {
+            {
+                val browserToCover = initialState == LibraryDetailTransitionTarget.Browser && this.targetState.hasSharedCover
+                val coverToBrowser = this.targetState == LibraryDetailTransitionTarget.Browser && initialState.hasSharedCover
+                when {
+                    browserToCover -> EchoMotion.pagePushCover()
+                    coverToBrowser -> EchoMotion.pagePopCover()
+                    isLibraryDetailBackward(initialState, this.targetState) -> motion.pagePop()
+                    else -> motion.pagePush()
+                }
+            }
         } else null,
+        sharedElements = coverFlights,
         modifier = modifier,
         back = back,
         label = "library-detail-transition",

@@ -16,7 +16,7 @@ class EchoPlayerPageStyleTest {
 
     @Test fun brightnessMatchesEachSurface() {
         assertEquals(
-            listOf(false, true, true, true, true, false, false, true, true, true, false, false, false, false, false, false),
+            listOf(false, true, true, true, true, false, false, true, true, true, false, false, false, false, false, false, false),
             listOf(
                 EchoPlayerPageStyle.Classic, EchoPlayerPageStyle.RecordSleeve, EchoPlayerPageStyle.PixelHandheld,
                 EchoPlayerPageStyle.TypePoster, EchoPlayerPageStyle.AfterglowMist, EchoPlayerPageStyle.AfterglowNight,
@@ -24,6 +24,7 @@ class EchoPlayerPageStyleTest {
                 EchoPlayerPageStyle.MetroLine, EchoPlayerPageStyle.ChatThread, EchoPlayerPageStyle.Halftone,
                 EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
                 EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField, EchoPlayerPageStyle.FullCover,
+                EchoPlayerPageStyle.GrooveSpiral,
             ).map { it.isLight },
         )
     }
@@ -39,5 +40,6 @@ class EchoPlayerPageStyleTest {
         assertEquals(EchoLyricsPageStyle.Mist, EchoPlayerPageStyle.Dither.lyricsPreset)
         assertEquals(EchoLyricsPageStyle.Mist, EchoPlayerPageStyle.GlyphField.lyricsPreset)
         assertEquals(EchoLyricsPageStyle.Mist, EchoPlayerPageStyle.FullCover.lyricsPreset)
+        assertEquals(EchoLyricsPageStyle.Mist, EchoPlayerPageStyle.GrooveSpiral.lyricsPreset)
     }
 }

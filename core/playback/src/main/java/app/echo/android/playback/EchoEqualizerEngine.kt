@@ -14,40 +14,40 @@ data class EchoEqualizerRuntime(
     val preampDb: Float = 0f,
     val filters: List<OpraEqBand> = emptyList(),
     val msebActive: Boolean = false,
+    val audition: app.echo.android.model.playback.EchoEqAudition = app.echo.android.model.playback.EchoEqAudition(),
+    val preserveParameters: Boolean = false,
 ) {
     val preampLinear: Float
         get() = 10.0.pow((preampDb / 20.0)).toFloat()
 
     val shouldProcess: Boolean
-        get() = enabled && (msebActive || EchoEqualizerEngine.shouldProcess(enabled, preampDb, filters))
+        get() = enabled && (audition.active || msebActive || EchoEqualizerEngine.shouldProcess(enabled, preampDb, filters))
 }
 
 object EchoEqualizerEngine {
     fun responseCurve(filters: List<OpraEqBand>, preampDb: Float = 0f, sampleRateHz: Float = DefaultEqSampleRateHz): List<EchoEqResponsePoint> {
-        val stages = filters.flatMap { EchoBiquadMath.stages(it, sampleRateHz) }
+        val stages = filters.flatMap { EchoBiquadMath.stages(it.atPcCurveRate(sampleRateHz), sampleRateHz) }
         return List(160) { index ->
             val frequency = (20.0 * 1000.0.pow(index / 159.0)).toFloat()
             EchoEqResponsePoint(frequency, preampDb + stages.sumOf { it.responseDb(frequency, sampleRateHz).toDouble() }.toFloat())
         }
     }
 
-    const val GraphicBandQ = 1f
+    const val GraphicBandQ = EchoEqualizerPresets.GraphicQ
     const val GainEpsilonDb = 0.05f
 
     fun graphicFilters(
         gainsDb: List<Float>,
         frequenciesHz: List<Int> = EchoEqualizerPresets.defaultFrequenciesHz,
     ): List<OpraEqBand> =
-        frequenciesHz.mapIndexedNotNull { index, frequencyHz ->
+        (if (gainsDb.size == 5 && frequenciesHz == EchoEqualizerPresets.defaultFrequenciesHz) EchoEqualizerPresets.legacyFrequenciesHz else frequenciesHz).mapIndexedNotNull { index, frequencyHz ->
             val gainDb = gainsDb.getOrElse(index) { 0f }
-            if (abs(gainDb) < GainEpsilonDb) {
-                null
-            } else {
+            run {
                 OpraEqBand(
                     type = EchoEqFilterType.PeakDip,
-                    frequencyHz = frequencyHz.toFloat(),
+                    frequencyHz = if (gainsDb.size != 5 && frequenciesHz == EchoEqualizerPresets.defaultFrequenciesHz) EchoEqualizerPresets.preciseFrequenciesHz[index] else frequencyHz.toFloat(),
                     gainDb = gainDb,
-                    q = GraphicBandQ,
+                    q = if (gainsDb.size == 5) 1f else GraphicBandQ,
                     slope = null,
                 )
             }

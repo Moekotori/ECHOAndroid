@@ -33,6 +33,30 @@ class SubsonicListenControllerTest {
     }
 
     @Test
+    fun archivedAccountReceivesItsOwnLyricsRoutingAndListenReports() {
+        val alice = SubsonicEndpoint("https://navidrome.example", "alice", "one")
+        val bob = alice.copy(username = "bob", password = "two")
+        val endpoints = listOf(bob, alice)
+        val aliceId = "${alice.sourceId}:song:shared-song"
+        assertEquals(alice, subsonicEndpointForTrack(aliceId, endpoints))
+        assertEquals(null, subsonicEndpointForTrack("subsonic:unknown:song:shared-song", endpoints))
+        val reports = mutableListOf<Pair<String, Boolean>>()
+        val now = AtomicLong(1_000)
+        val controller = SubsonicListenController(CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            AtomicReference(bob), nowEpochMs = now::get,
+            endpointForTrack = { subsonicEndpointForTrack(it, endpoints) }, ioDispatcher = Dispatchers.Unconfined,
+            submitListen = { endpoint, _, submission, _ -> reports += endpoint.username to submission })
+        val status = playing(200_000).let { it.copy(track = it.track!!.copy(id = aliceId)) }
+        controller.onPlayback(status, position(0, 200_000))
+        now.set(101_000)
+        controller.onPlayback(status, position(100_000, 200_000))
+        assertEquals(listOf("alice" to false, "alice" to true), reports)
+        val next = status.copy(track = status.track!!.copy(id = "${bob.sourceId}:song:shared-song"))
+        controller.onPlayback(next, position(0, 200_000))
+        assertEquals("bob" to false, reports.last())
+    }
+
+    @Test
     fun scrobbleSendsListenTimeInMilliseconds() {
         val submitted = ArrayList<SubmittedListen>()
         val now = AtomicLong(1_700_000_000_000L)

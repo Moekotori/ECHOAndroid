@@ -27,4 +27,13 @@
     <string name="update_retry">Retry</string>
     <string name="update_done">Done</string>
     <string name="update_hide_download">Hide download</string>
+    <string name="update_route">Update route</string>
+    <string name="update_route_direct">GitHub direct</string>
+    <string name="update_route_hint">If GitHub is unreachable in mainland China, try an accelerated route. Used for checks and downloads; switching checks again.</string>
+    <string name="update_route_ghfast" translatable="false">ghfast.top</string>
+    <string name="update_route_ghproxy_net" translatable="false">ghproxy.net</string>
+    <string name="update_route_ghproxy" translatable="false">gh-proxy.org</string>
+    <string name="update_route_ghproxy_hk" translatable="false">hk.gh-proxy.org</string>
+    <string name="update_route_ghproxy_cdn" translatable="false">cdn.gh-proxy.org</string>
+    <string name="update_route_ghproxy_edgeone" translatable="false">edgeone.gh-proxy.org</string>
 </resources>

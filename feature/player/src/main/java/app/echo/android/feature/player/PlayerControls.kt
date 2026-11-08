@@ -58,10 +58,10 @@ internal fun PlayerControlButton(
             targetState = icon,
             transitionSpec = {
                 ContentTransform(
-                    targetContentEnter = fadeIn(tween(if (lightweight) 0 else 180)) +
+                    targetContentEnter = fadeIn(tween(if (lightweight) 0 else 180, easing = EchoMotion.Silk)) +
                         scaleIn(initialScale = if (lightweight) 1f else 0.78f,
                             animationSpec = EchoMotion.silkFloat(240)),
-                    initialContentExit = fadeOut(tween(if (lightweight) 0 else 90)) +
+                    initialContentExit = fadeOut(tween(if (lightweight) 0 else 90, easing = EchoMotion.SilkExit)) +
                         scaleOut(targetScale = if (lightweight) 1f else 0.88f,
                             animationSpec = EchoMotion.silkFloat(180)),
                     sizeTransform = null,

@@ -13,11 +13,14 @@ internal object OutputAudioProfilePreferences {
     private const val MaxBytes = 524288
     private val booleans = listOf("equalizer_enabled", "equalizer_parametric", "replay_gain_enabled",
         "channel_balance_enabled", "channel_balance_swap", "channel_balance_constant_power",
-        "channel_balance_invert_left", "channel_balance_invert_right", "track_fade_enabled", "track_smart_transition")
+        "channel_balance_invert_left", "channel_balance_invert_right", "track_fade_enabled", "track_smart_transition",
+        "dsp_hrtf_enabled", "dsp_equal_loudness_enabled", "dsp_crossfeed_enabled", "dsp_limiter_enabled", "dsp_sound_effect_enabled")
     private val floats = listOf("equalizer_preamp_db", "replay_gain_preamp_db", "channel_balance",
-        "channel_balance_left_gain_db", "channel_balance_right_gain_db", "channel_balance_left_delay_ms", "channel_balance_right_delay_ms")
+        "channel_balance_left_gain_db", "channel_balance_right_gain_db", "channel_balance_left_delay_ms", "channel_balance_right_delay_ms",
+        "equalizer_strength_percent", "equalizer_tilt_db", "dsp_hrtf_amount", "dsp_equal_loudness_reference", "dsp_equal_loudness_bass", "dsp_equal_loudness_treble", "dsp_crossfeed_amount", "dsp_limiter_ceiling")
     private val strings = listOf("equalizer_preset", "equalizer_band_gains", "equalizer_source_label", "equalizer_filters",
-        "equalizer_active_user_preset_id", "mseb", "replay_gain_mode", "channel_balance_mono", "channel_balance_left_bands", "channel_balance_right_bands")
+        "headphone_correction_v1", "equalizer_active_user_preset_id", "mseb", "replay_gain_mode", "channel_balance_mono", "channel_balance_left_bands", "channel_balance_right_bands", "dsp_compressor", "dsp_sound_effect_preset")
+    private val optionalInts = listOf("dsp_hrtf_profile")
     private val names = booleans + floats + strings + "track_fade_duration_ms"
 
     fun keys(preferences: Preferences): Set<String> = decode(preferences[profilesKey]).keys().asSequence().take(EchoOutputDspPolicy.MaxBindings).toSet()
@@ -75,16 +78,18 @@ internal object OutputAudioProfilePreferences {
 
     private fun capture(prefs: Preferences): JSONObject {
         val values = prefs.asMap().entries.associate { it.key.name to it.value }
-        return JSONObject().apply { names.forEach { put(it, values[it] ?: JSONObject.NULL) } }
+        return JSONObject().apply { (names + optionalInts).forEach { put(it, values[it] ?: JSONObject.NULL) } }
     }
 
-    private fun valid(json: JSONObject) = names.all(json::has) &&
+    private fun valid(json: JSONObject) = names.filterNot { it.startsWith("dsp_") || it == "equalizer_strength_percent" || it == "equalizer_tilt_db" || it == "headphone_correction_v1" }.all(json::has) &&
         booleans.all { json.isNull(it) || json.opt(it) is Boolean } &&
         floats.all { json.isNull(it) || (json.opt(it) is Number && json.optDouble(it).isFinite()) } &&
         strings.all { json.isNull(it) || json.opt(it) is String } &&
         (json.isNull("track_fade_duration_ms") || json.opt("track_fade_duration_ms") is Number)
 
     private fun apply(prefs: MutablePreferences, json: JSONObject) {
+        optionalInts.forEach { name -> val key = intPreferencesKey(name)
+            if (json.isNull(name)) prefs.remove(key) else prefs[key] = json.optInt(name, 1).coerceIn(0, 2) }
         booleans.forEach { name -> val key = booleanPreferencesKey(name)
             if (json.isNull(name)) prefs.remove(key) else prefs[key] = json.getBoolean(name) }
         floats.forEach { name -> val key = floatPreferencesKey(name)

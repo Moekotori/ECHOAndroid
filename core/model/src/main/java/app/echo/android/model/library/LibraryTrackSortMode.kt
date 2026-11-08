@@ -35,4 +35,6 @@ enum class LibraryTrackSortMode {
     FolderDescending,
     FormatDescending,
     TrackNumberDescending,
+    RatingDescending,
+    RatingAscending,
 }

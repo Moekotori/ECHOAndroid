@@ -1,6 +1,11 @@
 package app.echo.android.feature.settings
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import app.echo.android.design.EchoMotion
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -136,9 +142,21 @@ private fun ThemePreviewCard(
     val scheme = MaterialTheme.colorScheme
     val tokens = remember(theme, dark, customColors) { echoThemeTokens(theme, dark, customColors) }
     val label = stringResource(colorThemeLabelRes(theme))
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val border by animateColorAsState(
         targetValue = if (selected) scheme.primary else scheme.outlineVariant,
+        animationSpec = if (lightweight) snap() else tween(EchoMotion.FadeMs, easing = EchoMotion.Silk),
         label = "themeCardBorder",
+    )
+    val labelColor by animateColorAsState(
+        targetValue = if (selected) scheme.primary else scheme.onSurface,
+        animationSpec = if (lightweight) snap() else tween(EchoMotion.FadeMs, easing = EchoMotion.Silk),
+        label = "themeCardLabel",
+    )
+    val checkProgress = animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = if (lightweight) snap() else EchoMotion.silkFloat(260),
+        label = "themeCardCheck",
     )
     Column(
         modifier = modifier
@@ -154,24 +172,28 @@ private fun ThemePreviewCard(
                 .border(if (selected) 2.dp else 1.dp, border, CardShape),
         ) {
             Canvas(Modifier.fillMaxSize()) { drawThemePreview(tokens) }
-            if (selected) {
-                EchoIcon(
-                    Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = scheme.onPrimary,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(7.dp)
-                        .background(scheme.primary, RoundedCornerShape(7.dp))
-                        .padding(3.dp)
-                        .size(13.dp),
-                )
-            }
+            EchoIcon(
+                Icons.Rounded.Check,
+                contentDescription = null,
+                tint = scheme.onPrimary,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .graphicsLayer {
+                        val shown = checkProgress.value
+                        alpha = shown
+                        scaleX = 0.6f + 0.4f * shown
+                        scaleY = scaleX
+                    }
+                    .padding(7.dp)
+                    .background(scheme.primary, RoundedCornerShape(7.dp))
+                    .padding(3.dp)
+                    .size(13.dp),
+            )
         }
         Text(
             label,
             modifier = Modifier.fillMaxWidth(),
-            color = if (selected) scheme.primary else scheme.onSurface,
+            color = labelColor,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,

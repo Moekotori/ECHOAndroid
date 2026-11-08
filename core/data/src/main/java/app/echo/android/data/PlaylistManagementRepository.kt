@@ -19,7 +19,8 @@ import kotlin.coroutines.coroutineContext
 
 fun EchoLibraryRepository.observePlaylistOrder(id: String) = playlistOrderStore.observe(id)
 
-fun EchoLibraryRepository.observePlaylistStats(id: String) = database.playlistDao().observeStats(playlistStatsQuery(id)).distinctUntilChanged()
+fun EchoLibraryRepository.observePlaylistStats(id: String) = (if (FilePlaylistStore.owns(id)) database.playlistDao().observeFileStats(id)
+    else database.playlistDao().observeStats(playlistStatsQuery(id))).distinctUntilChanged()
 
 internal fun playlistStatsQuery(id: String): SupportSQLiteQuery {
     val base = playlistTrackQuery(id, PlaylistTrackOrder())
@@ -43,6 +44,10 @@ internal fun playlistTrackQuery(id: String, order: PlaylistTrackOrder, limit: In
 @OptIn(ExperimentalCoroutinesApi::class)
 internal fun EchoLibraryRepository.orderedPlaylistPaging(id: String) =
     observePlaylistOrder(id).flatMapLatest { order ->
+        if (FilePlaylistStore.owns(id)) return@flatMapLatest Pager(
+            androidx.paging.PagingConfig(pageSize = 80, initialLoadSize = 80, maxSize = 400, enablePlaceholders = true)) {
+            filePlaylists.pagingSource(id, order)
+        }.flow
         Pager(config = androidx.paging.PagingConfig(pageSize = 80, initialLoadSize = 80,
             prefetchDistance = 24, maxSize = 400, enablePlaceholders = true),
             pagingSourceFactory = {
@@ -97,12 +102,20 @@ suspend fun EchoLibraryRepository.createOrderedLocalPlaylist(name: String, ids: 
 
 suspend fun EchoLibraryRepository.copyPlaylist(id: String, name: String): EchoPlaylist? = withContext(Dispatchers.IO) {
     val order = observePlaylistOrder(id).first()
+    if (FilePlaylistStore.owns(id)) return@withContext filePlaylists.copy(id, name, order)
     val tracks = database.trackDao().queryTracks(playlistTrackQuery(id, order, 10_001))
     require(tracks.size <= 10_000) { "Playlist exceeds 10,000 tracks" }
     createOrderedLocalPlaylist(name, tracks.map { it.id })
 }
 
 suspend fun EchoLibraryRepository.addTracksToPlaylist(id: String, trackIds: List<String>): Int = withContext(Dispatchers.IO) {
+    if (FilePlaylistStore.owns(id)) {
+        require(trackIds.size <= PlaylistImportLimits.MaxEntries)
+        val privateRows = filePlaylists.tracks(trackIds.filter(FilePlaylistStore::ownsTrack))
+        val normal = trackIds.filterNot(FilePlaylistStore::ownsTrack).chunked(400).flatMap { database.trackDao().getTracksByIds(it) }
+        val byId = (normal + privateRows).associateBy { it.id }
+        return@withContext filePlaylists.add(id, trackIds.mapNotNull(byId::get))
+    }
     require(trackIds.size <= PlaylistImportLimits.MaxEntries)
     val ids = trackIds.distinct()
     database.withTransaction {
@@ -124,6 +137,7 @@ suspend fun EchoLibraryRepository.addTracksToPlaylist(id: String, trackIds: List
 suspend fun EchoLibraryRepository.movePlaylistTrack(id: String, trackId: String, direction: Int): Boolean = withContext(Dispatchers.IO) {
     require(direction == -1 || direction == 1)
     if (!observePlaylistOrder(id).first().isManual) return@withContext false
+    if (FilePlaylistStore.owns(id)) return@withContext filePlaylists.move(id, trackId, direction = direction)
     database.withTransaction {
         val dao = database.playlistDao()
         val playlist = dao.getPlaylist(id) ?: return@withTransaction false

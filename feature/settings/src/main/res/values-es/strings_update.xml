@@ -27,4 +27,7 @@
     <string name="update_retry">Reintentar</string>
     <string name="update_done">Listo</string>
     <string name="update_hide_download">Ocultar descarga</string>
+    <string name="update_route">Ruta de actualización</string>
+    <string name="update_route_direct">Conexión directa a GitHub</string>
+    <string name="update_route_hint">Si GitHub no es accesible desde China continental, prueba una ruta acelerada. Se usa para buscar y descargar; al cambiar se vuelve a buscar.</string>
 </resources>

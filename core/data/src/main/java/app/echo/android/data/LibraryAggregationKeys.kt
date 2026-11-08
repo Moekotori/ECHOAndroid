@@ -5,6 +5,8 @@ internal const val UnknownArtistKey = "未知艺术家"
 internal const val UnknownTrackTitle = "未知曲目"
 internal const val VariousArtistsKey = "various artists"
 
+internal fun subsonicAlbumKey(id: String): String = "subsonic-album:$id"
+
 internal fun libraryAlbumKey(
     normalizedAlbum: String?,
     normalizedAlbumArtist: String?,

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_layout_title">Startseite anpassen</string>
-    <string name="home_layout_detail">Mit den Pfeilen umsortieren und ungenutzte Bereiche ausblenden. Leere Bereiche erscheinen, sobald Inhalte verfügbar sind.</string>
+    <string name="home_layout_detail">Ziehe die Griffe zum Sortieren. Mit den Schaltern kannst du Bereiche ausblenden oder wieder anzeigen. Leere Bereiche erscheinen, sobald Inhalte verfügbar sind.</string>
     <string name="home_layout_move_up">%1$s nach oben verschieben</string>
     <string name="home_layout_move_down">%1$s nach unten verschieben</string>
     <string name="home_layout_reset">Standard wiederherstellen</string>

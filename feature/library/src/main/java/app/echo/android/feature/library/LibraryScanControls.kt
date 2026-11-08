@@ -46,6 +46,7 @@ internal fun LibraryScanFilters(
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        ScanNameKeywords(options, enabled, onChange)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ScanRulesHeading(stringResource(R.string.scan_rules_folder_filters))
             AddMusicToggle(stringResource(R.string.scan_rules_non_music), stringResource(R.string.scan_rules_non_music_hint),

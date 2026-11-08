@@ -287,9 +287,12 @@ internal fun SettingsChoiceGroupRow(
     options: List<SettingsChoiceOption>,
     selectedValue: String,
     onOptionSelected: (String) -> Unit,
+    enabled: Boolean = true,
 ) {
     Column(
-        modifier = Modifier.settingsSearchAnchor(title).fillMaxWidth().padding(vertical = if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
+        modifier = Modifier.settingsSearchAnchor(title).fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.5f)
+            .padding(vertical = if (LocalSettingsCompactMode.current) 10.dp else 14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -311,6 +314,7 @@ internal fun SettingsChoiceGroupRow(
                     label = option.label,
                     selected = selectedValue == option.value,
                     onClick = { onOptionSelected(option.value) },
+                    enabled = enabled,
                 )
             }
         }
@@ -322,6 +326,7 @@ internal fun SettingsOptionChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
+    enabled: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val dark = LocalEchoDarkTheme.current
@@ -330,7 +335,7 @@ internal fun SettingsOptionChip(
         modifier = Modifier
             .heightIn(min = 48.dp)
             .clip(shape)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),

@@ -38,7 +38,7 @@ suspend fun EchoLibraryRepository.saveSmartPlaylist(id: String?, name: String, r
             database.experienceDao().saveRule(LibrarySmartRuleEntity(key, rule.artist.trim(), rule.genre.trim(),
                 rule.favoriteOnly, rule.notPlayedDays, rule.minimumYear, rule.maximumYear, rule.sort.name, pinned,
                 rule.matchAny, rule.album.trim(), rule.folder.trim(), rule.format.trim(),
-                rule.minimumDurationSeconds, rule.maximumDurationSeconds, rule.excludeText.trim()))
+                rule.minimumDurationSeconds, rule.maximumDurationSeconds, rule.excludeText.trim(), rule.minimumRating))
         }
         EchoPlaylist(key, name.trim(), updatedAtEpochMs = now)
     }
@@ -59,10 +59,10 @@ suspend fun EchoLibraryRepository.previewSmartPlaylist(rule: EchoSmartPlaylistRu
     withContext(Dispatchers.IO) {
         require(rule.isValid)
         // A bound one-row relation previews an unsaved rule without writing to the library.
-        val relation = "(SELECT ? AS artist, ? AS genre, ? AS favoriteOnly, ? AS notPlayedDays, ? AS minimumYear, ? AS maximumYear, ? AS sort, ? AS matchAny, ? AS album, ? AS folder, ? AS format, ? AS minimumDurationSeconds, ? AS maximumDurationSeconds, ? AS excludeText) r"
+        val relation = "(SELECT ? AS artist, ? AS genre, ? AS favoriteOnly, ? AS notPlayedDays, ? AS minimumYear, ? AS maximumYear, ? AS sort, ? AS matchAny, ? AS album, ? AS folder, ? AS format, ? AS minimumDurationSeconds, ? AS maximumDurationSeconds, ? AS excludeText, ? AS minimumRating) r"
         val args = arrayOf<Any>(rule.artist.trim(), rule.genre.trim(), if (rule.favoriteOnly) 1 else 0,
             rule.notPlayedDays, rule.minimumYear, rule.maximumYear, rule.sort.name, if (rule.matchAny) 1 else 0,
-            rule.album.trim(), rule.folder.trim(), rule.format.trim(), rule.minimumDurationSeconds, rule.maximumDurationSeconds, rule.excludeText.trim())
+            rule.album.trim(), rule.folder.trim(), rule.format.trim(), rule.minimumDurationSeconds, rule.maximumDurationSeconds, rule.excludeText.trim(), rule.minimumRating)
         val from = "FROM visible_library_tracks t CROSS JOIN $relation LEFT JOIN library_playback_stats s ON s.trackId = t.id WHERE $SmartRuleMatchSql"
         val count = database.openHelper.readableDatabase.query(SimpleSQLiteQuery("SELECT COUNT(*) $from", args)).use {
             if (it.moveToFirst()) it.getInt(0) else 0

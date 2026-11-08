@@ -109,9 +109,11 @@ internal fun RemoteMusicPicker(
                 }
                 IconButton(onDismiss) { EchoIcon(Icons.Rounded.Close, stringResource(R.string.remote_close)) }
             }
-            SecondaryTabRow(selectedTabIndex = if (showQueue) 1 else 0) {
-                Tab(selected = !showQueue, onClick = { showQueue = false }, text = { Text(stringResource(R.string.remote_pc_library)) })
-                Tab(selected = showQueue, onClick = { showQueue = true }, text = { Text(stringResource(R.string.feature_connect_pc_queue_2e91c4)) })
+            CompositionLocalProvider(LocalRippleConfiguration provides null) {
+                SecondaryTabRow(selectedTabIndex = if (showQueue) 1 else 0) {
+                    Tab(selected = !showQueue, onClick = { showQueue = false }, text = { Text(stringResource(R.string.remote_pc_library)) })
+                    Tab(selected = showQueue, onClick = { showQueue = true }, text = { Text(stringResource(R.string.feature_connect_pc_queue_2e91c4)) })
+                }
             }
             OutlinedTextField(
                 value = query, onValueChange = { query = it }, singleLine = true,

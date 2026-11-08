@@ -73,10 +73,14 @@ fun AddToPlaylistDialog(
     error: String? = null,
     awaitResult: Boolean = false,
     containingPlaylistIds: Set<String> = emptySet(),
+    fileOnly: Boolean = false,
+    allowFilePlaylists: Boolean = true,
 ) {
     var creating by rememberSaveable { mutableStateOf(false) }
     var draftName by rememberSaveable { mutableStateOf("") }
-    val editablePlaylists = remember(playlists) { playlists.filter { it.canEdit || it.isLikedSongs } }
+    val editablePlaylists = remember(playlists, fileOnly, allowFilePlaylists) {
+        playlists.filter { (it.canEdit || it.isLikedSongs) && (!fileOnly || it.isFilePlaylist) && (allowFilePlaylists || !it.isFilePlaylist) }
+    }
     val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
 
     EchoModalSheet(

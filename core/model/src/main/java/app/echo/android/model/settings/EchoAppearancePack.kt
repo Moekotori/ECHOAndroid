@@ -1,0 +1,33 @@
+package app.echo.android.model.settings
+
+/** Portable presentation only. No playback, account, library or device settings. */
+data class EchoAppearancePack(
+    val name: String = "ECHO",
+    val playerStyle: String = "classic",
+    val textScale: Float = 1f,
+    val artworkScale: Float = 1f,
+    val lyricsBackdrop: String = "fluid",
+    val fontFamily: String = "system",
+    val fontScale: Float = 1f,
+    val alignment: String = "start",
+    val lineSpacing: Float = 1f,
+    val backgroundDim: Float = 0f,
+    val wordStyle: String = "sweep",
+    val wordIntensity: Float = 1f,
+    val colorTheme: String = "echo",
+    val colors: EchoCustomColors = EchoCustomColors.Default,
+    val backgroundBlur: Float = 24f,
+    val backgroundBrightness: Float = 0.88f,
+    val backgroundGlass: Float = 0.42f,
+    val showTranslation: Boolean = true,
+    val showRomanization: Boolean = true,
+    val colorMode: String = "white",
+    val wordHighlightEnabled: Boolean = true,
+    val estimatedWordHighlightEnabled: Boolean = false,
+    val translationScale: Float = 1f,
+    val romanizationScale: Float = 1f,
+    val backgroundScale: Float = 1.05f,
+    val backgroundPositionX: Float = 0f,
+    val backgroundPositionY: Float = 0f,
+    val dynamicColorEnabled: Boolean = false,
+)

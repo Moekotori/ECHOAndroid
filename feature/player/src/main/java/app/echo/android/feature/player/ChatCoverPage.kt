@@ -3,7 +3,9 @@ package app.echo.android.feature.player
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import app.echo.android.design.rememberEchoHapticPerformer
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,7 +68,6 @@ internal fun ChatCoverPage(
     duration: State<Long>,
     actions: ExpressivePlayerActions,
     isFavorite: Boolean,
-    castActive: Boolean,
     artworkScale: Float,
     lyricsContent: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier,
@@ -78,7 +79,7 @@ internal fun ChatCoverPage(
         modifier = modifier,
         artwork = {
             ChatHeader(track, formats) {
-                ChatIconButton(
+                if (status.track.supportsMusicFavorite()) ChatIconButton(
                     if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                     isFavorite, actions.favorite, size = 40.dp,
@@ -86,13 +87,6 @@ internal fun ChatCoverPage(
                 ChatIconButton(
                     Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue, size = 40.dp,
                 )
-                actions.cast?.let {
-                    ChatIconButton(
-                        PlayerControlIcons.Cast,
-                        stringResource(if (castActive) R.string.feature_player_cast_active else R.string.feature_player_cast),
-                        castActive, it, size = 40.dp,
-                    )
-                }
             }
             SongCard(status, artworkScale, actions)
             lyricsContent(Modifier.fillMaxWidth().weight(1f).padding(top = 6.dp))
@@ -100,15 +94,18 @@ internal fun ChatCoverPage(
         details = {
             Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 VoiceMessage(track?.id, position, duration, status.isPlaying, actions)
+                // Six controls: shrink the buttons on narrow windows instead of pushing "more" off the bar.
+                BoxWithConstraints(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                val button = minOf(48.dp, (maxWidth - 12.dp) / 6)
                 Row(
-                    Modifier.fillMaxWidth().padding(bottom = 6.dp).shadow(4.dp, RoundedCornerShape(30.dp)).clip(RoundedCornerShape(30.dp))
+                    Modifier.fillMaxWidth().shadow(4.dp, RoundedCornerShape(30.dp)).clip(RoundedCornerShape(30.dp))
                         .background(Color.White).height(60.dp).padding(horizontal = 6.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    ChatIconButton(Icons.Rounded.Shuffle, stringResource(R.string.feature_player_shuffle), status.shuffleEnabled, actions.shuffle)
-                    ChatIconButton(PlayerControlIcons.Previous, stringResource(R.string.feature_player_previous_af0264), false, actions.previous)
+                    ChatIconButton(Icons.Rounded.Shuffle, stringResource(R.string.feature_player_shuffle), status.shuffleEnabled, actions.shuffle, button)
+                    ChatIconButton(PlayerControlIcons.Previous, stringResource(R.string.feature_player_previous_af0264), false, actions.previous, button)
                     Box(
-                        Modifier.size(48.dp).clip(CircleShape).background(ChatStyle.Accent)
+                        Modifier.size(button).clip(CircleShape).background(ChatStyle.Accent)
                             .clickable(role = Role.Button, onClickLabel = stringResource(R.string.feature_player_play_or_pause_37a70f), onClick = actions.playPause),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -117,7 +114,7 @@ internal fun ChatCoverPage(
                             stringResource(R.string.feature_player_play_or_pause_37a70f), tint = Color.White, modifier = Modifier.size(24.dp),
                         )
                     }
-                    ChatIconButton(PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904), false, actions.next)
+                    ChatIconButton(PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904), false, actions.next, button)
                     ChatIconButton(
                         if (status.repeatMode == EchoRepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                         stringResource(
@@ -127,8 +124,13 @@ internal fun ChatCoverPage(
                                 EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
                             },
                         ),
-                        status.repeatMode != EchoRepeatMode.Off, actions.repeat,
+                        status.repeatMode != EchoRepeatMode.Off, actions.repeat, button,
                     )
+                    ChatIconButton(
+                        PlayerControlIcons.More,
+                        stringResource(R.string.feature_player_expand_playback_settings_cf64a0), false, actions.more, button,
+                    )
+                }
                 }
             }
         },
@@ -169,9 +171,10 @@ private fun ChatIconButton(
     onClick: () -> Unit,
     size: androidx.compose.ui.unit.Dp = 48.dp,
 ) {
+    val haptics = rememberEchoHapticPerformer()
     Box(
         Modifier.size(size).clip(CircleShape).background(if (active) ChatStyle.Accent.copy(alpha = 0.16f) else Color.Transparent)
-            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+            .clickable(role = Role.Button, onClickLabel = label, onClick = { haptics.tick(); onClick() })
             .semantics { selected = active },
         contentAlignment = Alignment.Center,
     ) {

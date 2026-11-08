@@ -33,7 +33,7 @@ class SubsonicReferenceInformation(private val database: EchoLibraryDatabase, co
                 else artist != null && dao.hasSubsonicAlbum(server.sourceId, name.normalizedForSearch(), artist.normalizedForSearch())
             if (!owned) return@withLock null
             try {
-                val client = SubsonicClient(server, appContext = context)
+                val client = SubsonicClient(server, appContext = context, cancellationJob = currentCoroutineContext()[kotlinx.coroutines.Job])
                 val field = if (kind == NavidromeKind.Artist) "artist" else "album"
                 val root = client.request("search3.view", listOf("query" to name, "artistCount" to if (field == "artist") "25" else "0",
                     "albumCount" to if (field == "album") "25" else "0", "songCount" to "0"))
@@ -66,7 +66,8 @@ class SubsonicArtistOnlineInfoLoader(private val public: ArtistOnlineInfoLoader,
         val reference = try { public.loadProfile(query, language, refresh) }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { if (remote == null) throw failure else null }
-        return reference?.copy(artworkUri = remote?.artworkUri, serverDescription = remote?.serverDescription, serverUrl = remote?.serverUrl)
+        return reference?.copy(artworkUri = remote?.artworkUri ?: reference.artworkUri,
+            serverDescription = remote?.serverDescription ?: reference.serverDescription, serverUrl = remote?.serverUrl ?: reference.serverUrl)
             ?: remote
     }
 }

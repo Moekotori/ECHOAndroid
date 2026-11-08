@@ -6,6 +6,7 @@ import kotlinx.coroutines.CancellationException
 
 @Composable
 internal fun rememberServerArtistArtwork(query: ArtistOnlineQuery): String? {
+    app.echo.android.design.artistArtworkOverride(query.name)?.let { return it }
     val loader = LocalArtistOnlineInfoLoader.current
     val artwork by produceState<String?>(null, query, loader) {
         value = null

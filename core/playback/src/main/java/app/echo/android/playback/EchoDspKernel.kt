@@ -100,12 +100,13 @@ internal class EchoDspKernel {
     }
 
     fun setTarget(settings: EchoDspSettings, replayGainDb: Float,
-        volume: app.echo.android.model.playback.EchoVolumeSettings = app.echo.android.model.playback.EchoVolumeSettings()) {
+        volume: app.echo.android.model.playback.EchoVolumeSettings = app.echo.android.model.playback.EchoVolumeSettings(),
+        personalAudioActive: Boolean = false) {
         targetMix = if (settings.crossfeedEnabled) settings.crossfeedAmount else 0f
         targetLevel = if (volume.muted) 0f else 10.0.pow(volume.combinedGainDb(replayGainDb) / 20.0).toFloat()
         compressor.setMode(settings.compressor)
         compressorActive = settings.compressor != app.echo.android.model.playback.EchoCompressorMode.Off
-        requestedLimiting = settings.limiterEnabled
+        requestedLimiting = settings.limiterEnabled || personalAudioActive
         requestedCeiling = 10.0.pow(settings.limiterCeilingDb / 20.0).toFloat()
         limiting = requestedLimiting || compressorActive
         ceiling = if (compressorActive) minOf(requestedCeiling, 0.8912509f) else requestedCeiling

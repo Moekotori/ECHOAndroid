@@ -14,6 +14,7 @@ data class EchoPlaybackSurfaceSnapshot(
     val playUri: String? = null,
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
+    val hasNextTrack: Boolean = false,
 )
 
 fun Player.toPlaybackSurfaceSnapshot(): EchoPlaybackSurfaceSnapshot {
@@ -29,6 +30,7 @@ fun Player.toPlaybackSurfaceSnapshot(): EchoPlaybackSurfaceSnapshot {
         isPlaying = isPlaying,
         hasTrack = item != null,
         repeatMode = repeatMode,
+        hasNextTrack = hasNextMediaItem(),
         mediaId = item?.mediaId,
         artworkUri = metadata?.artworkUri?.toString(),
         playUri = playUri,

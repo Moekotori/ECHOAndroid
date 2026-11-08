@@ -39,7 +39,7 @@ internal fun PlayerCoverPage(
     onSeek: (Long) -> Unit,
     onOpenQueue: () -> Unit,
     onCast: (() -> Unit)?,
-    castActive: Boolean,
+    onMore: () -> Unit,
     onToggleShuffle: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     isCurrentTrackFavorite: Boolean,
@@ -52,37 +52,40 @@ internal fun PlayerCoverPage(
 ) {
     val density = LocalDensity.current
     val actions = ExpressivePlayerActions(onPlayPause, onNext, onPrevious, onSeek, onOpenQueue,
-        onCast, onToggleShuffle, onCycleRepeatMode, onToggleFavorite, onOpenLyrics, onOpenArtist)
+        onCast, onToggleShuffle, onCycleRepeatMode, onToggleFavorite, onOpenLyrics, onOpenArtist, onMore)
     // Only cover-page type scales. Lyrics, transport hit targets and the drawer do not.
     CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * appearance.textScale)) {
         if (appearance.style == EchoPlayerPageStyle.Terminal.id) {
             TerminalCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
-                castActive, appearance.artworkScale, presentationExpanded, modifier)
+                appearance.artworkScale, presentationExpanded, modifier)
         } else if (appearance.style.isFullBleedStyle()) {
             FullBleedCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
-                castActive, modifier)
+                modifier)
         } else if (appearance.style == EchoPlayerPageStyle.FullCover.id) {
             FullCoverCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
-                castActive, modifier)
+                modifier)
         } else if (appearance.style == EchoPlayerPageStyle.MetroLine.id) {
             MetroCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
-                castActive, appearance.artworkScale, presentationExpanded, modifier)
+                appearance.artworkScale, presentationExpanded, modifier)
         } else if (appearance.style == EchoPlayerPageStyle.ChatThread.id) {
             ChatCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
-                castActive, appearance.artworkScale, lyricsContent ?: {}, modifier)
+                appearance.artworkScale, lyricsContent ?: {}, modifier)
         } else if (appearance.style == EchoPlayerPageStyle.Scrapbook.id) {
             ScrapbookCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
-                castActive, appearance.artworkScale, modifier)
+                appearance.artworkScale, modifier)
+        } else if (appearance.style == EchoPlayerPageStyle.GrooveSpiral.id) {
+            GrooveSpiralCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
+                appearance.artworkScale, modifier)
         } else if (appearance.style == "pixel_handheld") {
             PixelHandheldCoverPage(status, positionMsState, durationMsState, actions,
-                isCurrentTrackFavorite, castActive, appearance.artworkScale, modifier)
+                isCurrentTrackFavorite, appearance.artworkScale, modifier)
         } else if (appearance.style == "type_poster") {
             TypePosterCoverPage(status, positionMsState, durationMsState, actions,
-                castActive, appearance.artworkScale, modifier)
+                appearance.artworkScale, modifier)
         } else if (appearance.isRecordSleeve) {
             RecordSleeveCoverPage(
                 status, positionMsState, durationMsState, onPlayPause, onNext, onPrevious,
-                onSeek, onOpenQueue, onCast, castActive, onToggleShuffle, onCycleRepeatMode,
+                onSeek, onOpenQueue, onMore, onToggleShuffle, onCycleRepeatMode,
                 isCurrentTrackFavorite, onToggleFavorite, onOpenLyrics,
                 onOpenArtist = onOpenArtist,
                 modifier = modifier, artworkScale = appearance.artworkScale,
@@ -90,7 +93,7 @@ internal fun PlayerCoverPage(
         } else {
             ClassicCoverPage(
                 status, palette, presentationExpanded, positionMsState, durationMsState,
-                onPlayPause, onNext, onPrevious, onSeek, onOpenQueue, onCast, castActive,
+                onPlayPause, onNext, onPrevious, onSeek, onOpenQueue, onMore,
                 isCurrentTrackFavorite, onToggleFavorite, onOpenLyrics,
                 onOpenArtist = onOpenArtist,
                 modifier = modifier, artworkScale = appearance.artworkScale,

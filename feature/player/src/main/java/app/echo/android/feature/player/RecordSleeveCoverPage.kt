@@ -55,8 +55,7 @@ internal fun RecordSleeveCoverPage(
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit,
     onOpenQueue: () -> Unit,
-    onCast: (() -> Unit)?,
-    castActive: Boolean,
+    onMore: () -> Unit,
     onToggleShuffle: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     isCurrentTrackFavorite: Boolean,
@@ -131,7 +130,7 @@ internal fun RecordSleeveCoverPage(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        RecordSleeveIconButton(
+                        if (status.track.supportsMusicFavorite()) RecordSleeveIconButton(
                             if (isCurrentTrackFavorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
                             stringResource(if (isCurrentTrackFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                             onClick = onToggleFavorite,
@@ -208,7 +207,7 @@ internal fun RecordSleeveCoverPage(
                 onNext = { previousRequestedFrom = null; onNext() },
             )
             Spacer(Modifier.height(if (landscape) 0.dp else 4.dp))
-            RecordSleeveUtilities(onOpenQueue, onCast, castActive)
+            RecordSleeveUtilities(onOpenQueue, onMore)
             Spacer(Modifier.height(if (landscape) 0.dp else 8.dp))
         },
     )

@@ -13,7 +13,6 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -40,11 +39,11 @@ class AlbumOnlineInfoRepository(
     override suspend fun load(album: AlbumSummary, language: String, refresh: Boolean): AlbumOnlineInfo? =
         withContext(Dispatchers.IO) {
             gate.withLock {
-                val artist = album.albumArtist?.takeIf { it.isNotBlank() } ?: album.artist
+                val artist = AlbumOnlineQueryPolicy.artist(album)
                 if (album.title.isBlank() || artist.isNullOrBlank()) return@withLock null
-                val lang = AlbumWikipediaLookup.wikiLanguage(language)
-                val variant = AlbumWikipediaLookup.chineseVariant(language)
-                val key = listOf("v2", album.title, artist, album.year, album.trackCount, lang, variant ?: "").joinToString("\u0000")
+                val lang = AlbumWikipediaMatch.wikiLanguage(language)
+                val variant = AlbumWikipediaMatch.chineseVariant(language)
+                val key = listOf("v4", album.title, artist, album.year, album.trackCount, lang, variant ?: "").joinToString("\u0000")
                 val hash = MessageDigest.getInstance("SHA-256").digest(key.toByteArray()).joinToString("") { "%02x".format(it) }
                 val file = File(cacheDirectory, "$hash.json")
                 val cachedJson = runCatching { if (file.length() in 1..512_000) JSONObject(file.readText()) else null }.getOrNull()
@@ -55,7 +54,7 @@ class AlbumOnlineInfoRepository(
                 if (!refresh && cachedJson != null && cachedJson.has("info") &&
                     (cachedJson.isNull("info") || cached != null) && age in 0 until ttl) return@withLock cached?.copy(cached = true)
                 try {
-                    val result = fetch(album.copy(albumArtist = artist), lang, variant)
+                    val result = AlbumOnlineLookup(::musicBrainz, ::json).fetch(album.copy(albumArtist = artist), lang, variant)
                     // Cache failures must not discard successfully fetched information.
                     runCatching {
                         cacheDirectory.mkdirs()
@@ -76,75 +75,6 @@ class AlbumOnlineInfoRepository(
                 }
             }
         }
-
-    private suspend fun fetch(album: AlbumSummary, language: String, variant: String?): AlbumOnlineInfo? {
-        val search = musicBrainz("release/", mapOf("query" to AlbumOnlineInfoParser.query(album), "limit" to "25"))
-        val id = AlbumOnlineInfoParser.selectRelease(search, album) ?: return null
-        val release = musicBrainz("release/$id", mapOf("inc" to
-            "artist-credits+labels+recordings+release-groups+url-rels+artist-rels+recording-level-rels+work-rels+work-level-rels"))
-        var result = AlbumOnlineInfoParser.release(release, System.currentTimeMillis())
-        try {
-            val groupId = release.optJSONObject("release-group")?.text("id")
-            val group = if (groupId?.matches(Regex("[a-fA-F0-9-]{36}")) == true)
-                musicBrainz("release-group/$groupId", mapOf("inc" to "url-rels")) else JSONObject()
-            val relations = group.objects("relations") + release.objects("relations")
-            val languages = listOf(language, "en", "ja", "zh").distinct()
-            val wikiPage = resolveWikipedia(relations, language) ?: AlbumWikipediaLookup(::json).find(
-                title = result.releaseTitle,
-                alternateTitles = listOf(album.title),
-                artistNames = AlbumWikipediaLookup.creditNames(release),
-                year = AlbumWikipediaLookup.releaseYear(result.date, album.year),
-                labels = result.labels,
-                releaseGroupId = groupId,
-                languages = languages,
-            )
-            if (wikiPage != null) {
-                val (lang, title) = wikiPage
-                val request = "https://$lang.wikipedia.org/w/api.php".toHttpUrl().newBuilder()
-                    .addQueryParameter("action", "query").addQueryParameter("format", "json")
-                    .addQueryParameter("formatversion", "2").addQueryParameter("prop", "extracts|info|pageprops")
-                    .addQueryParameter("explaintext", "1").addQueryParameter("exintro", "1")
-                    .addQueryParameter("exchars", "4000").addQueryParameter("inprop", "url")
-                    .addQueryParameter("redirects", "1").addQueryParameter("titles", title)
-                if (lang == "zh" && variant != null) request.addQueryParameter("variant", variant)
-                val page = json(request.build()).optJSONObject("query")?.objects("pages")?.firstOrNull()
-                if (page != null && !page.has("missing") && page.optJSONObject("pageprops")?.has("disambiguation") != true) {
-                    val description = page.text("extract")?.take(4000)
-                    val sourceUrl = page.text("fullurl")?.toHttpUrlOrNull()
-                    if (description != null && sourceUrl?.host == "$lang.wikipedia.org" && sourceUrl.isHttps) {
-                        result = result.copy(description = description, wikipediaUrl = sourceUrl.toString(), wikipediaLanguage = lang)
-                    }
-                }
-            }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            // A Wikipedia outage must not hide release details or credits already obtained.
-            result = result.copy(partial = true)
-        }
-        return result
-    }
-
-    private suspend fun resolveWikipedia(relations: List<JSONObject>, language: String): Pair<String, String>? {
-        val links = relations.mapNotNull { it.optJSONObject("url")?.text("resource")?.toHttpUrlOrNull() }
-        val wikidata = links.firstOrNull { it.host == "www.wikidata.org" || it.host == "wikidata.org" }
-        val entityId = wikidata?.pathSegments?.lastOrNull()?.takeIf { it.matches(Regex("Q[0-9]+")) }
-        if (entityId != null) {
-            val data = json("https://www.wikidata.org/w/api.php".toHttpUrl().newBuilder()
-                .addQueryParameter("action", "wbgetentities").addQueryParameter("format", "json")
-                .addQueryParameter("ids", entityId).addQueryParameter("props", "sitelinks")
-                .addQueryParameter("sitefilter", "${language}wiki|enwiki").build())
-            val sites = data.optJSONObject("entities")?.optJSONObject(entityId)?.optJSONObject("sitelinks")
-            for (lang in listOf(language, "en").distinct()) {
-                sites?.optJSONObject("${lang}wiki")?.text("title")?.let { return lang to it }
-            }
-        }
-        for (lang in listOf(language, "en", "ja", "zh").distinct()) {
-            val link = links.firstOrNull { it.host == "$lang.wikipedia.org" && it.encodedPath.startsWith("/wiki/") }
-            if (link != null) return lang to link.pathSegments.drop(1).joinToString("/")
-        }
-        return null
-    }
 
     private suspend fun musicBrainz(path: String, parameters: Map<String, String>): JSONObject = musicBrainzGate.run {
         val url = "https://musicbrainz.org/ws/2/$path".toHttpUrl().newBuilder().addQueryParameter("fmt", "json")

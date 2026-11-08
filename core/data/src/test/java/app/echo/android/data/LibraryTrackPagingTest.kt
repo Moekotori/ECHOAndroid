@@ -1,16 +1,57 @@
 package app.echo.android.data
 
 import androidx.paging.PagingConfig
+import androidx.paging.Pager
+import androidx.paging.PagingDataEvent
+import androidx.paging.PagingDataPresenter
 import androidx.paging.PagingSource.LoadParams
 import androidx.paging.PagingSource.LoadResult
 import androidx.paging.PagingState
 import app.echo.android.model.library.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import java.util.Collections
 import org.junit.Assert.*
 import org.junit.Test
 
 class LibraryTrackPagingTest {
+    @Test fun distantLocateLoadsTheDestinationWithoutWalkingInterveningPages() = runBlocking {
+        val config = libraryTrackPagingConfig()
+        val offsets = Collections.synchronizedList(mutableListOf<Int>())
+        val updates = Channel<Unit>(Channel.CONFLATED)
+        val presenter = object : PagingDataPresenter<String>(coroutineContext) {
+            override suspend fun presentPagingDataEvent(event: PagingDataEvent<String>) {
+                updates.trySend(Unit)
+            }
+        }
+        val pager = Pager(config) {
+            LibraryTrackPagingSource<String>(readWindow = { offset, limit, _ ->
+                offsets.add(offset)
+                LibraryTrackWindow((offset until minOf(offset + limit, 10_000)).map(Int::toString),
+                    count = 10_000, offset = offset)
+            })
+        }
+        val collection = launch { pager.flow.collectLatest { presenter.collectFrom(it) } }
+        try {
+            withTimeout(5_000) {
+                while (presenter.snapshot().items.isEmpty()) updates.receive()
+                presenter[9_000]
+                while (presenter.peek(9_000) != "9000") updates.receive()
+            }
+            assertTrue("Locate should skip the intervening pages: $offsets", offsets.size < 10)
+            assertTrue(offsets.any { it in (9_000 - config.initialLoadSize)..9_000 })
+            assertTrue(presenter.snapshot().items.size <= config.maxSize)
+        } finally {
+            collection.cancelAndJoin()
+            updates.close()
+        }
+    }
+
     @Test fun onlyTablesThatAffectTheCurrentResultInvalidatePaging() {
         val plain = trackPagingObservedTables(false, LibraryTrackSortMode.Title, LibraryTrackFilter())
         assertFalse(plain.contains("library_playback_stats"))

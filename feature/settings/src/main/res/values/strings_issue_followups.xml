@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_orientation_lock">Keep player orientation</string>
+    <string name="player_orientation_lock_hint">Locks the expanded player on phones while in the foreground. Leaving the player restores the previous orientation policy.</string>
+    <string name="pause_on_mute">Pause when muted</string>
+    <string name="pause_on_mute_hint">Pauses on system or app mute. Unmuting resumes only a pause owned by this option. Manual controls cancel automatic resume. USB exclusive output ignores system volume.</string>
+</resources>

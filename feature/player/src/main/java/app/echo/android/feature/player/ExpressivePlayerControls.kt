@@ -9,6 +9,7 @@ import androidx.compose.material.icons.sharp.Repeat
 import androidx.compose.material.icons.sharp.RepeatOne
 import androidx.compose.material.icons.sharp.Shuffle
 import app.echo.android.design.EchoIcon
+import app.echo.android.design.rememberEchoHapticPerformer
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,6 +40,8 @@ internal data class ExpressivePlayerActions(
     val favorite: () -> Unit,
     val lyrics: () -> Unit,
     val openArtist: ((trackId: String, artistName: String) -> Unit)? = null,
+    /** Opens playback settings; lives bottom-right on every cover style. */
+    val more: () -> Unit = {},
 )
 
 @Composable
@@ -90,7 +93,7 @@ private fun TransportTile(icon: ImageVector, label: String, click: () -> Unit, t
 }
 
 @Composable
-internal fun ExpressiveUtilities(pixel: Boolean, status: EchoPlaybackStatus, castActive: Boolean, actions: ExpressivePlayerActions) {
+internal fun ExpressiveUtilities(pixel: Boolean, status: EchoPlaybackStatus, actions: ExpressivePlayerActions) {
     val ink = if (pixel) ExpressivePlayerStyle.PixelInk else ExpressivePlayerStyle.PosterInk
     Row(Modifier.fillMaxWidth().height(62.dp), horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically) {
@@ -102,16 +105,15 @@ internal fun ExpressiveUtilities(pixel: Boolean, status: EchoPlaybackStatus, cas
                 EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
             }), ink, status.repeatMode != EchoRepeatMode.Off, actions.repeat)
         UtilityIcon(if (pixel) PixelPlayerIcons.Queue else Icons.AutoMirrored.Sharp.QueueMusic, stringResource(R.string.feature_player_queue_37fa6a), ink, false, actions.queue)
-        actions.cast?.let {
-            UtilityIcon(if (pixel) PixelPlayerIcons.Cast else PlayerControlIcons.Cast,
-                stringResource(if (castActive) R.string.feature_player_cast_active else R.string.feature_player_cast), ink, castActive, it)
-        }
+        UtilityIcon(if (pixel) PixelPlayerIcons.More else PlayerControlIcons.More,
+            stringResource(R.string.feature_player_expand_playback_settings_cf64a0), ink, false, actions.more)
     }
 }
 
 @Composable
 private fun UtilityIcon(icon: ImageVector, label: String, ink: Color, active: Boolean, onClick: () -> Unit) {
-    IconButton(onClick, modifier = Modifier.size(48.dp).semantics { selected = active }) {
+    val haptics = rememberEchoHapticPerformer()
+    IconButton({ haptics.tick(); onClick() }, modifier = Modifier.size(48.dp).semantics { selected = active }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             EchoIcon(icon, label, tint = ink, modifier = Modifier.size(30.dp))
             Box(Modifier.size(3.dp).background(if (active) ink else Color.Transparent))

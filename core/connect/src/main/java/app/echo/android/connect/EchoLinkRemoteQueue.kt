@@ -89,16 +89,26 @@ internal class EchoLinkRemoteQueue(
                 val result = transport.fetchPlaybackQueue(target, page)
                 if (request != generation || !EchoLinkRequestPolicy.isSameEndpoint(endpoint(), target)) return@launch
                 val current = state.value
+                if (result.totalCount == 0 && result.items.isEmpty()) {
+                    lastLoadedPage = 0
+                    mutableState.value = result.copy(offset = 0, error = requestError)
+                    return@launch
+                }
                 if (!replaceWindow && (page > 1 || prepend) &&
                     (result.revision != current.revision || result.pageSize != current.pageSize)) {
                     reloadWindow(errorMessage(EchoLinkHttpException("playback_queue_session_conflict"))); return@launch
                 }
                 if (replaceWindow && result.items.isEmpty() && result.totalCount > 0 && page > 1) {
-                    visibleAnchor = result.totalCount - 1
-                    load(visibleAnchor / result.pageSize + 1, replaceWindow = true, requestError = requestError)
-                    return@launch
+                    val lastPage = (result.totalCount - 1) / result.pageSize + 1
+                    // Only a genuinely out-of-range anchor can be repaired by moving back.
+                    // An empty page inside the declared range must stop with a retryable error.
+                    if (page > lastPage) {
+                        visibleAnchor = result.totalCount - 1
+                        load(lastPage, replaceWindow = true, requestError = requestError)
+                        return@launch
+                    }
                 }
-                if (page > 1 && result.items.isEmpty() && current.items.size < result.totalCount) {
+                if (result.items.isEmpty() && result.totalCount > 0) {
                     throw EchoLinkHttpException("PC returned an incomplete queue page")
                 }
                 val extending = !replaceWindow && (page > 1 || prepend)

@@ -94,12 +94,12 @@ internal fun SignalPeqEditor(
             IconButton(
                 onClick = {
                     val current = currentFilters()
-                    if (current.size < EchoParametricEq.MaxBands) {
+                    if (current.size < EchoParametricEq.EditorMaxBands) {
                         onSelectBand(current.size)
                         onChange(current + OpraEqBand(EchoEqFilterType.PeakDip, 1000f, 0f, 1f, null))
                     }
                 },
-                enabled = enabled && filters.size < EchoParametricEq.MaxBands,
+                enabled = enabled && filters.size < EchoParametricEq.EditorMaxBands,
                 modifier = Modifier.height(68.dp).semantics { contentDescription = addLabel },
             ) { EchoIcon(Icons.Outlined.Add, null) }
         }
@@ -109,6 +109,7 @@ internal fun SignalPeqEditor(
                     band = band,
                     enabled = enabled,
                     canDelete = filters.size > 1,
+                    dynamicAvailable = (band.enabled && band.dynamicMode != app.echo.android.model.playback.EchoEqDynamicMode.Off) || filters.count { it.enabled && it.dynamicMode != app.echo.android.model.playback.EchoEqDynamicMode.Off } < 4,
                     onCommit = { updated -> onChange(currentFilters().toMutableList().also { it[selectedBand] = updated }) },
                     onPreview = { updated -> onPreview(currentFilters().toMutableList().also { it[selectedBand] = updated }) },
                     onDelete = {
@@ -127,6 +128,7 @@ private fun PeqBandEditor(
     band: OpraEqBand,
     enabled: Boolean,
     canDelete: Boolean,
+    dynamicAvailable: Boolean,
     onCommit: (OpraEqBand) -> Unit,
     onPreview: (OpraEqBand) -> Unit,
     onDelete: () -> Unit,
@@ -160,7 +162,8 @@ private fun PeqBandEditor(
                             val nextPass = EchoParametricEq.isPass(value)
                             val hasGain = value == EchoEqFilterType.PeakDip || value == EchoEqFilterType.LowShelf || value == EchoEqFilterType.HighShelf
                             onCommit(band.copy(type = value, gainDb = if (hasGain) band.gainDb else 0f,
-                                q = if (nextPass) null else band.q ?: 0.707f,
+                                q = (band.q ?: 1f).coerceIn(.1f, if (value == EchoEqFilterType.BandStop) 24f else 12f),
+                                dynamicMode = if (hasGain) band.dynamicMode else app.echo.android.model.playback.EchoEqDynamicMode.Off,
                                 slope = if (nextPass) EchoParametricEq.snapSlope(band.slope) else null))
                         })
                     }
@@ -172,6 +175,7 @@ private fun PeqBandEditor(
             }
         }
         PeqBandControls(band, enabled, onCommit, onPreview)
+        SignalEqBandAdvanced(band, enabled, dynamicAvailable, onCommit, onPreview)
         if (pass) {
             Box {
                 TextButton(onClick = { slopeMenu = true }, enabled = enabled, contentPadding = PaddingValues(0.dp)) {

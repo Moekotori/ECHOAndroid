@@ -78,7 +78,8 @@ internal fun LibraryTextTabs(
                 )
                 Column(
                     Modifier.onSizeChanged { widths[index] = it.width }
-                        .selectable(selected, role = Role.Tab, onClick = { keyboard?.hide(); onSelect(index) })
+                        .selectable(selected, interactionSource = null, indication = null,
+                            role = Role.Tab, onClick = { keyboard?.hide(); onSelect(index) })
                         .heightIn(min = 48.dp).padding(top = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {

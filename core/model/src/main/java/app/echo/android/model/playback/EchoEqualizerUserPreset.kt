@@ -11,14 +11,15 @@ data class EchoEqualizerUserPreset(
     val filters: List<OpraEqBand> = emptyList(),
     val sourceLabel: String? = null,
     val opraEqId: String? = null,
+    val options: EchoEqOptions = EchoEqOptions(),
 ) {
     val fromOpra: Boolean
         get() = !opraEqId.isNullOrBlank()
 }
 
 object EchoEqualizerUserPresets {
-    const val MaxCount = 24
-    const val MaxNameLength = 40
+    const val MaxCount = 64
+    const val MaxNameLength = 80
 
     fun normalizeName(name: String): String? =
         name.trim().replace("\n", " ").take(MaxNameLength).takeIf { it.isNotEmpty() }
@@ -42,6 +43,7 @@ object EchoEqualizerUserPresets {
             filters = if (parametric) state.filters else emptyList(),
             sourceLabel = state.sourceLabel,
             opraEqId = opraEqId,
+            options = state.options,
         ).let(::normalize)
     }
 
@@ -111,7 +113,9 @@ object EchoEqualizerUserPresets {
     fun normalize(preset: EchoEqualizerUserPreset): EchoEqualizerUserPreset? {
         val safeName = normalizeName(preset.name) ?: return null
         if (preset.id.isBlank()) return null
-        val keepParametric = preset.parametric && preset.filters.isNotEmpty()
+        val legacy = !preset.parametric && preset.gainsDb.size == 5 && preset.gainsDb.any { kotlin.math.abs(it) >= 0.05f }
+        val legacyFilters = if (legacy) EchoEqualizerPresets.legacyFilters(preset.gainsDb) else emptyList()
+        val keepParametric = (preset.parametric && preset.filters.isNotEmpty()) || legacy
         val graphicId = if (keepParametric) {
             EchoEqualizerPreset.Custom
         } else {
@@ -123,11 +127,14 @@ object EchoEqualizerUserPresets {
             graphicPresetId = graphicId,
             gainsDb = if (keepParametric) {
                 preset.gainsDb.filter { it.isFinite() }
+            } else if (graphicId != EchoEqualizerPreset.Custom) {
+                EchoEqualizerPresets.gainsForPreset(graphicId)
             } else {
                 EchoEqualizerPresets.defaultBands(preset.gainsDb).map { it.gainDb }
             },
-            preampDb = preset.preampDb.takeIf { it.isFinite() }?.coerceIn(-24f, 12f) ?: 0f,
-            filters = if (keepParametric) preset.filters else emptyList(),
+            preampDb = preset.preampDb.takeIf { it.isFinite() }?.coerceIn(-60f, 24f) ?: 0f,
+            filters = if (legacy) legacyFilters else if (keepParametric) EchoParametricEq.sanitize(preset.filters) ?: return null else emptyList(),
+            options = preset.options.normalized,
             sourceLabel = preset.sourceLabel?.trim()?.takeIf { it.isNotEmpty() },
             opraEqId = preset.opraEqId?.trim()?.takeIf { it.isNotEmpty() },
         )

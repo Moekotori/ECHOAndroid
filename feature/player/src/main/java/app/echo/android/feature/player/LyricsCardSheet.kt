@@ -54,9 +54,17 @@ internal fun LyricsCardSheet(track: EchoTrack, lyrics: EchoLyrics, onDismiss: ()
             finally { exporting = false }
         }
     }
-    LaunchedEffect(track.artworkUri) {
+    val artworkRevision = app.echo.android.design.EchoArtworkUrlRewriteRegistry.revision
+    LaunchedEffect(track.artworkUri, artworkRevision) {
+        artwork = null
         if (track.artworkUri != null) try {
-            val request = ImageRequest.Builder(context).data(track.artworkUri).size(512).allowHardware(false).build()
+            val signed = app.echo.android.design.EchoArtworkUrlRewriteRegistry.rewrite(track.artworkUri)
+            if (signed == track.artworkUri && track.artworkUri.orEmpty().contains("/rest/", ignoreCase = true)) return@LaunchedEffect
+            val request = ImageRequest.Builder(context).data(signed).size(512).allowHardware(false)
+                .memoryCacheKey("lyrics-card:${track.artworkUri}")
+                .diskCacheKey("lyrics-card:${track.artworkUri}")
+                .apply { app.echo.android.design.EchoArtworkRequestHeadersRegistry.headersFor(track.artworkUri)
+                    .forEach { (name, value) -> setHeader(name, value) } }.build()
             val result = context.imageLoader.execute(request)
             artwork = (result as? SuccessResult)?.drawable?.toBitmap()
         } catch (e: CancellationException) { throw e } catch (_: Exception) { /* A card works without artwork. */ }

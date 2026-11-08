@@ -1,5 +1,6 @@
 package app.echo.android.feature.home
 
+import app.echo.android.design.EchoMotion
 import app.echo.android.design.displayArtist
 import app.echo.android.design.displayAlbum
 import app.echo.android.design.displayTrack
@@ -107,7 +108,7 @@ internal fun RoonRecentActivitySection(
             )
         } else {
             Crossfade(targetState = displayMode,
-                animationSpec = tween(if (LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180),
+                animationSpec = tween(if (LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 220, easing = EchoMotion.Silk),
                 label = "recent-activity",
             ) { mode ->
                 val visibleAlbums = if (mode == RecentActivityMode.Added) recentlyAddedAlbums else recentPlayedAlbums
@@ -179,7 +180,7 @@ private fun RecentActivityModeTab(
     val scheme = MaterialTheme.colorScheme
     val indicator by animateColorAsState(
         if (selected) scheme.primary else Color.Transparent,
-        animationSpec = tween(if (LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180),
+        animationSpec = tween(if (LocalEchoEffectivePerformanceMode.current.isLightweight) 0 else 180, easing = EchoMotion.Silk),
         label = "recent-tab",
     )
     Box(
@@ -189,7 +190,8 @@ private fun RecentActivityModeTab(
                 drawLine(indicator, Offset(12.dp.toPx(), size.height - stroke / 2),
                     Offset(size.width - 12.dp.toPx(), size.height - stroke / 2), stroke)
             }
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .selectable(selected = selected, interactionSource = null, indication = null,
+                role = Role.Tab, onClick = onClick)
             .defaultMinSize(minHeight = 48.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,

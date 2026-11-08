@@ -128,6 +128,8 @@ internal object LibraryTrackQueryBuilder {
 
     private fun trackSortOrder(sort: LibraryTrackSortMode): String =
         when (sort) {
+            LibraryTrackSortMode.RatingDescending -> "library_tracks.rating DESC, library_tracks.title COLLATE NOCASE"
+            LibraryTrackSortMode.RatingAscending -> "library_tracks.rating ASC, library_tracks.title COLLATE NOCASE"
             LibraryTrackSortMode.AlbumArtist -> tagSortOrder("albumArtist", descending = false, albumOrder = true)
             LibraryTrackSortMode.AlbumArtistDescending -> tagSortOrder("albumArtist", descending = true, albumOrder = true)
             LibraryTrackSortMode.Genre -> tagSortOrder("genre", descending = false)

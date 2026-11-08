@@ -26,6 +26,7 @@ import androidx.room.PrimaryKey
         Index(value = ["source", "albumKey"]),
         Index(value = ["genreKey"]),
         Index(value = ["composerKey"]),
+        Index(value = ["rating"]),
     ],
 )
 data class LibraryTrackEntity(
@@ -66,4 +67,8 @@ data class LibraryTrackEntity(
     val clipEndMs: Long = 0L,
     @ColumnInfo(defaultValue = "NULL") val fileName: String? = null,
     @ColumnInfo(defaultValue = "NULL") val musicRelationsJson: String? = null,
+    @ColumnInfo(defaultValue = "0") val rating: Int = 0,
+    @ColumnInfo(defaultValue = "NULL") val embeddedRating: Int? = null,
+    @ColumnInfo(defaultValue = "NULL") val localRating: Int? = null,
+    @ColumnInfo(defaultValue = "NULL") val remoteAlbumId: String? = null,
 )

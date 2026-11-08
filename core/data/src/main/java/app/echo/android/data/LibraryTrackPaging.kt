@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import androidx.paging.PagingConfig
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import androidx.room.InvalidationTracker
@@ -16,6 +17,15 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 internal data class LibraryTrackWindow<T : Any>(val data: List<T>, val count: Int, val offset: Int)
+
+/** A distant locate refreshes around its anchor instead of loading every intervening page. */
+internal fun libraryTrackPagingConfig(): PagingConfig = PagingConfig(
+    pageSize = 60,
+    maxSize = 600,
+    prefetchDistance = 20,
+    enablePlaceholders = true,
+    jumpThreshold = 180,
+)
 
 /** Count once per database snapshot; fetch bounded windows without Room's sorted COUNT subquery. */
 internal class LibraryTrackPagingSource<T : Any>(

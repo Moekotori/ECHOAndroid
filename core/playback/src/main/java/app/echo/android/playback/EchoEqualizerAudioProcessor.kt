@@ -10,8 +10,14 @@ import java.nio.ByteOrder
 
 @UnstableApi
 class EchoEqualizerAudioProcessor(
+    private val onProcessingStateChanged: (app.echo.android.model.playback.EchoEqProcessingState) -> Unit = {},
     private val onProcessingFormatChanged: (Int?) -> Unit = {},
 ) : BaseAudioProcessor() {
+    private var reportedState: app.echo.android.model.playback.EchoEqProcessingState? = null
+    private fun reportState(state: app.echo.android.model.playback.EchoEqProcessingState) {
+        if (reportedState != state) { reportedState = state; onProcessingStateChanged(state) }
+    }
+    private val pc = EchoPcEqRuntime(report = { rate, state -> reportProcessing(rate); reportState(state) })
     internal var preserveFloatHeadroom = false
 
     private var reportedSampleRate: Int? = null
@@ -50,20 +56,19 @@ class EchoEqualizerAudioProcessor(
             }
         }
         this.runtime = runtime
+        pc.update(runtime)
     }
 
-    override fun isActive(): Boolean = runtime.shouldProcess && super.isActive()
+    override fun isActive(): Boolean = (runtime.shouldProcess || pc.fading) && super.isActive()
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        if (!runtime.shouldProcess) {
-            return AudioProcessor.AudioFormat.NOT_SET
-        }
         if (!isSupportedEncoding(inputAudioFormat.encoding)) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         configuredSampleRateHz = 0
         configuredFilters = null
         preparationSampleRateHz = inputAudioFormat.sampleRate
+        pc.configure(inputAudioFormat.sampleRate, inputAudioFormat.channelCount)
         return inputAudioFormat
     }
 
@@ -73,12 +78,31 @@ class EchoEqualizerAudioProcessor(
         val output = replaceOutputBuffer(remaining)
         val format = inputAudioFormat
         val current = runtime
-        if (!current.shouldProcess) {
+        if (!current.shouldProcess && !pc.fading) {
             reportProcessing(null)
             output.put(inputBuffer)
             output.flip()
             return
         }
+        if (format.encoding == C.ENCODING_PCM_FLOAT && pc.available) {
+            output.order(ByteOrder.nativeOrder()); output.put(inputBuffer); output.flip()
+            val totalFrames = remaining / (format.channelCount * 4)
+            var offsetFrames = 0
+            while (offsetFrames < totalFrames) {
+                val frames = minOf(1024, totalFrames - offsetFrames)
+                output.position(offsetFrames * format.channelCount * 4)
+                pc.process(output, frames)
+                offsetFrames += frames
+            }
+            output.position(0)
+            if (!preserveFloatHeadroom) for (i in 0 until output.remaining() / 4) output.putFloat(i * 4, output.getFloat(i * 4).coerceIn(-1f, 1f))
+            return
+        }
+        if (current.filters.any { it.scope != app.echo.android.model.playback.EchoEqBandScope.Stereo || it.dynamicMode != app.echo.android.model.playback.EchoEqDynamicMode.Off } || current.audition.active) {
+            reportState(app.echo.android.model.playback.EchoEqProcessingState.Failed)
+            reportProcessing(null); output.put(inputBuffer); output.flip(); return
+        }
+        reportState(app.echo.android.model.playback.EchoEqProcessingState.Compatibility)
         ensureCoeffs(current.filters, format.sampleRate)
         reportProcessing(format.sampleRate)
         when (format.encoding) {
@@ -98,11 +122,13 @@ class EchoEqualizerAudioProcessor(
     }
 
     override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
+        pc.flush()
         reportProcessing(null)
         delayLine.fill(0f)
     }
 
     override fun onReset() {
+        pc.close()
         reportProcessing(null)
         delayLine = FloatArray(0)
         coeffs = emptyArray()
@@ -135,7 +161,7 @@ class EchoEqualizerAudioProcessor(
     }
 
     private fun prepareFilters(filters: List<OpraEqBand>, sampleRateHz: Int): PreparedFilters {
-        val coefficients = filters.flatMap { EchoBiquadMath.stages(it, sampleRateHz.toFloat()) }
+        val coefficients = filters.filter { it.enabled }.flatMap { EchoBiquadMath.stages(it, sampleRateHz.toFloat()) }
             .mapNotNull { it.normalizedOrNull() }.toTypedArray()
         val packed = FloatArray(coefficients.size * 5)
         coefficients.forEachIndexed { index, coeff ->

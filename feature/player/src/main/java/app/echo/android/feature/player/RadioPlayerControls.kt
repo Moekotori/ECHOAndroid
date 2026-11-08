@@ -75,14 +75,14 @@ internal fun RadioTransport(colors: RadioPlayerColors, isPlaying: Boolean,
 
 @Composable
 internal fun RadioUtilities(colors: RadioPlayerColors, onOpenQueue: () -> Unit,
-    onCast: (() -> Unit)?, castActive: Boolean) {
+    onMore: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically) {
         RadioTextAction(PlayerControlIcons.Queue, stringResource(R.string.radio_queue),
             colors.ink, onOpenQueue)
-        if (onCast != null) RadioTextAction(PlayerControlIcons.Cast,
-            stringResource(if (castActive) R.string.feature_player_cast_active else R.string.radio_cast),
-            if (castActive) colors.accent else colors.ink, onCast)
+        RadioTextAction(PlayerControlIcons.More,
+            stringResource(R.string.feature_player_expand_playback_settings_cf64a0),
+            colors.ink, onMore)
     }
 }
 

@@ -16,11 +16,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import app.echo.android.design.echoDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -274,19 +271,21 @@ private fun QueueSheetSurface(
     val sections = remember(queueState) { queueSections(queueState) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     var showPrevious by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val shortWindow = app.echo.android.design.LocalEchoLayout.current.heightDp < 600f
-    val compact = sections.nextUp.isEmpty() && sections.continuation.isEmpty() && !showPrevious
+    val compact = searchQuery.isBlank() && sections.nextUp.isEmpty() && sections.continuation.isEmpty() && !showPrevious
 
     Box(
         modifier = modifier
-            .widthIn(max = 560.dp)
+            .widthIn(max = 480.dp)
             .fillMaxWidth()
             .statusBarsPadding()
             .then(if (lightweight) Modifier else Modifier.animateContentSize(
                 animationSpec = EchoMotion.silkSize(360), alignment = Alignment.BottomCenter,
             ))
-            .then(if (empty) Modifier.wrapContentHeight() else Modifier.fillMaxHeight(if (shortWindow) 0.94f else if (compact) 0.42f else 0.74f))
+            .then(if (empty) Modifier.wrapContentHeight() else Modifier.fillMaxHeight(if (shortWindow) 0.86f else if (compact) 0.38f else 0.62f))
             .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             .background(queueSurfaceColor())
             .navigationBarsPadding(),
@@ -300,12 +299,12 @@ private fun QueueSheetSurface(
                     alpha = 0.6f + 0.4f * progress
                     translationY = if (lightweight) 0f else contentLiftPx * (1f - progress)
                 }
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         ) {
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .size(width = 72.dp, height = 32.dp)
+                    .size(width = 72.dp, height = 24.dp)
                     .queueSheetHandleDrag(
                         onDrag = onHandleDrag,
                         onDragEnd = onHandleDragEnd,
@@ -325,6 +324,8 @@ private fun QueueSheetSurface(
                 showPrevious = showPrevious,
                 onTogglePrevious = { showPrevious = !showPrevious },
                 onLocateCurrent = {
+                    searchQuery = ""
+                    focusManager.clearFocus()
                     scope.launch {
                         if (lightweight) listState.scrollToItem(0) else listState.animateScrollToItem(0)
                     }
@@ -332,26 +333,15 @@ private fun QueueSheetSurface(
                 onClearNextUp = onClearNextUp,
                 onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
                 onCancelSleepTimer = onCancelSleepTimer,
+                onSetRepeatMode = onSetRepeatMode,
+                onToggleShuffle = onToggleShuffle,
             )
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                QueuePlaybackModeControl(
-                    repeatMode = status.repeatMode,
-                    shuffleEnabled = status.shuffleEnabled,
-                    onSetRepeatMode = onSetRepeatMode,
-                    onToggleShuffle = onToggleShuffle,
-                )
-                if (sections.nextUp.size > 1 || sections.continuation.size > 1) Text(
-                    stringResource(L10nR.string.queue_reorder_hint), Modifier.weight(1f),
-                    color = app.echo.android.design.echoIconColor().copy(alpha = 0.4f),
-                    style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End,
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-            }
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f))
+            if (!empty) QueueSearchField(searchQuery) { searchQuery = it }
             if (queueState.items.isEmpty()) {
                 QueueEmptyState()
+            } else if (searchQuery.isNotBlank()) {
+                QueueSearchResults(queueState, searchQuery, onPlayItem)
             } else {
                 NextUpQueueList(
                     queueState, status.isPlaying, onPlayItem, onRemoveItem, onMoveItem,

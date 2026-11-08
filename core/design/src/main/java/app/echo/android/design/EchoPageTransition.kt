@@ -3,6 +3,9 @@ package app.echo.android.design
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.LinearEasing
@@ -27,7 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.CompositionLocalProvider
@@ -45,7 +50,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 class EchoPageBack<T>(val target: T, val progress: () -> Float)
 
 /** Page identity, rather than changing data, owns the transition and composition lifetime. */
-@OptIn(ExperimentalTransitionApi::class)
+@OptIn(ExperimentalTransitionApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun <T> EchoPageContent(
     targetState: T,
@@ -56,24 +61,43 @@ fun <T> EchoPageContent(
     label: String = "echo-page",
     transitionSpec: (AnimatedContentTransitionScope<T>.() -> ContentTransform)? = null,
     back: EchoPageBack<T>? = null,
+    /** Hosts [echoSharedCover] flights between pages. The caller sizes the host through [modifier]. */
+    sharedElements: Boolean = false,
     content: @Composable (T) -> Unit,
 ) {
     val motion = rememberEchoContentMotion()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    val seekable = remember { SeekableTransitionState(targetState) }
+    // The transition only ever sees one instance per page key (the anchor). A data refresh of
+    // the same page (a live summary, a late-loaded album list) therefore compares equal and
+    // cannot reset a flight in progress; SeekableTransitionState.animateTo restarts from zero
+    // whenever the target state is not equal to the previous one. Fresh data travels in
+    // [latest] instead, and is what [content] renders.
+    val pageKey = contentKey(targetState)
+    val anchors = remember { HashMap<String, T>() }
+    val latest = remember { mutableStateMapOf<String, T>() }
+    val anchor = anchors.getOrPut(pageKey) { targetState }
+    if (Snapshot.withoutReadObservation { latest[pageKey] } != targetState) latest[pageKey] = targetState
+    val seekable = remember { SeekableTransitionState(anchor) }
     // Navigation continues from wherever a back gesture left the transition.
-    LaunchedEffect(targetState) { seekable.animateTo(targetState) }
-    val backTarget = back?.target
+    LaunchedEffect(pageKey) {
+        seekable.animateTo(anchor)
+        // Settled: only the visible page needs its snapshot kept.
+        anchors.keys.retainAll { it == pageKey }
+        latest.keys.retainAll { it == pageKey }
+    }
+    val backKey = back?.let { contentKey(it.target) }
     val latestBack = rememberUpdatedState(back)
-    if (back != null) {
-        LaunchedEffect(backTarget, targetState) {
+    if (backKey != null) {
+        LaunchedEffect(backKey, pageKey) {
             val gesture = latestBack.value ?: return@LaunchedEffect
-            if (gesture.target == targetState) return@LaunchedEffect
+            if (backKey == pageKey) return@LaunchedEffect
             var scrubbing = false
             snapshotFlow { gesture.progress() }.collect { progress ->
                 if (progress > 0f) {
                     scrubbing = true
-                    seekable.seekTo(progress.coerceIn(0f, 1f), gesture.target)
+                    val destination = anchors.getOrPut(backKey) { gesture.target }
+                    if (latest[backKey] == null) latest[backKey] = gesture.target
+                    seekable.seekTo(progress.coerceIn(0f, 1f), destination)
                 } else if (scrubbing) {
                     scrubbing = false
                     // Cancelled gestures have already eased to zero; a committed one is
@@ -85,9 +109,10 @@ fun <T> EchoPageContent(
     }
     val navigation = rememberTransition(seekable, label = label)
     val returning = isBackward(navigation.currentState, navigation.targetState)
+    val pages: @Composable (Modifier) -> Unit = { pagesModifier ->
     navigation.AnimatedContent(
         contentKey = contentKey,
-        modifier = modifier,
+        modifier = pagesModifier,
         transitionSpec = transitionSpec ?: {
             when {
                 fadeOnly -> motion.pageFade()
@@ -109,8 +134,10 @@ fun <T> EchoPageContent(
         val slides = (transition.targetState == EnterExitState.PostExit) == returning
         val dark = LocalEchoDarkTheme.current
         val tint = MaterialTheme.colorScheme.primary
+        val pageScope: AnimatedVisibilityScope = this
+        CompositionLocalProvider(LocalEchoPageVisibilityScope provides pageScope) {
         EchoPageSurface(
-            active = contentKey(page) == contentKey(targetState),
+            active = contentKey(page) == pageKey,
             modifier = if (lightweight || fadeOnly) Modifier else Modifier
                 .graphicsLayer {
                     val cornerProgress = corners.value.coerceIn(0f, 1f)
@@ -128,8 +155,19 @@ fun <T> EchoPageContent(
                     dark = dark,
                 ),
         ) {
-            EchoPageRevealProvider(reveal, enabled = !lightweight && !fadeOnly) { content(page) }
+            EchoPageRevealProvider(reveal, enabled = !lightweight && !fadeOnly) {
+                content(latest[contentKey(page)] ?: page)
+            }
         }
+        }
+    }
+    }
+    if (sharedElements && !lightweight) {
+        SharedTransitionLayout(modifier) {
+            CompositionLocalProvider(LocalEchoPageSharedScope provides this) { pages(Modifier.fillMaxSize()) }
+        }
+    } else {
+        pages(modifier)
     }
 }
 

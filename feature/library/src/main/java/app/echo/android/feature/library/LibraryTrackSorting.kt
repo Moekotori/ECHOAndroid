@@ -39,6 +39,8 @@ internal fun LibraryTrackSortMode.label(): String = when (this) {
     LibraryTrackSortMode.FileNameDescending -> stringResource(R.string.library_sort_file_name_desc)
     LibraryTrackSortMode.FolderDescending -> stringResource(R.string.library_sort_folder_desc)
     LibraryTrackSortMode.FormatDescending -> stringResource(R.string.library_sort_format_desc)
+    LibraryTrackSortMode.RatingDescending -> stringResource(R.string.library_sort_rating_desc)
+    LibraryTrackSortMode.RatingAscending -> stringResource(R.string.library_sort_rating_asc)
     LibraryTrackSortMode.TrackNumberDescending -> stringResource(R.string.library_sort_track_number_desc)
 }
 
@@ -65,7 +67,7 @@ private val TrackSortGroups = linkedMapOf(
         LibraryTrackSortMode.GenreDescending, LibraryTrackSortMode.ComposerDescending,
         LibraryTrackSortMode.SizeDescending, LibraryTrackSortMode.SizeAscending,
         LibraryTrackSortMode.SampleRateDescending, LibraryTrackSortMode.SampleRateAscending,
-        LibraryTrackSortMode.Format, LibraryTrackSortMode.FormatDescending,
+        LibraryTrackSortMode.Format, LibraryTrackSortMode.FormatDescending, LibraryTrackSortMode.RatingDescending, LibraryTrackSortMode.RatingAscending,
     ),
 )
 

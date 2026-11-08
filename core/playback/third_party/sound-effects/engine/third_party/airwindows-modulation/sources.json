@@ -1,0 +1,30 @@
+{
+  "repository": "https://github.com/airwindows/airwindows",
+  "revision": "7fd5f5cae262a41e6dd7d9a83d60c46e84d3092a",
+  "license": "MIT",
+  "upstreamFiles": {
+    "AirwindowsTremolo": {
+      "Tremolo.h": "c99da287323b3ab81e34b25a6f09228ded969ec18fafc57786b92ef6facc4b2e",
+      "TremoloProc.cpp": "448b7baddea96915003a425e9e4c6eba8d559c799410175e395743032b25445f"
+    },
+    "AirwindowsPoint": {
+      "Point.h": "bff13bc0574036b2a824d85994ecb78b30e27d9eb36980f0baaaafba97ac4d07",
+      "PointProc.cpp": "3b358b939e6e9d11ff77ca60c8247f305fec1d3122c21866d0cefe07d1ecad02"
+    }
+  },
+  "adaptations": [
+    "Retain double signal loops/private histories only; omit VST SDK, UI and float path.",
+    "Deterministic zero histories/reset and RNG seeds; omit denormal-noise injection, retain disabled double-path audio dither.",
+    "Typed noexcept processing, native sample-rate accessor, pointer increments instead of discarded dereferences; LF line endings.",
+    "Fixed Tremolo A=.65, B=.18; its smoothing histories start at the chosen controls and phase pi/2.",
+    "Fixed Point A=.5, B=.62, C=.6; original alternating-envelope initialization retained."
+  ],
+  "files": {
+    ".gitattributes": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9",
+    "AirwindowsPoint.cpp": "1718a283f1e1e8324eb7fc233e4c2d5faae1b90484d7eae97ac84ee301fb1bd6",
+    "AirwindowsPoint.h": "1ec79977657247f15c7263a39f8dfbc519741797120c11574872521040ec6867",
+    "AirwindowsTremolo.cpp": "a5aabb9862926b5302e223fae2905e44bc8fbeea83cef15953ab5d07bcc61da7",
+    "AirwindowsTremolo.h": "7425c1f9c440378b6aafd8d6a9faffb144b0446c9435635f199fe4e18dfb31b8",
+    "LICENSE.txt": "b4f5719b00ba3fecf8c0ce651e843651bd80f08a10cf4cf1f00e673a5bcaf23b"
+  }
+}

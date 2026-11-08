@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,7 +61,6 @@ internal fun ScrapbookCoverPage(
     duration: State<Long>,
     actions: ExpressivePlayerActions,
     isFavorite: Boolean,
-    castActive: Boolean,
     artworkScale: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -105,7 +106,7 @@ internal fun ScrapbookCoverPage(
                             }
                         }
                     }
-                    Box(
+                    if (status.track.supportsMusicFavorite()) Box(
                         Modifier.align(Alignment.TopEnd).offset(20.dp, 18.dp).size(48.dp).sticker(ScrapbookStyle.Mint, -12f)
                             .clickable(
                                 enabled = track != null, role = Role.Button,
@@ -181,9 +182,7 @@ internal fun ScrapbookCoverPage(
                     status.repeatMode != EchoRepeatMode.Off, 1.5f, actions.repeat,
                 )
                 ChipButton(stringResource(R.string.feature_player_queue_37fa6a), false, -1f, actions.queue)
-                actions.cast?.let {
-                    ChipButton(stringResource(if (castActive) R.string.feature_player_cast_active else R.string.feature_player_cast), castActive, 1f, it)
-                }
+                ChipButton(stringResource(R.string.feature_player_expand_playback_settings_cf64a0), false, 1f, actions.more, visibleText = "···")
             }
         },
     )
@@ -205,8 +204,12 @@ private fun StickerButton(
 }
 
 @Composable
-private fun ChipButton(label: String, active: Boolean, degrees: Float, onClick: () -> Unit) {
-    Box(Modifier.clickable(role = Role.Button, onClick = onClick).padding(6.dp)) {
-        LabelChip(label.uppercase(java.util.Locale.ROOT), active, degrees)
+private fun ChipButton(label: String, active: Boolean, degrees: Float, onClick: () -> Unit, visibleText: String = label) {
+    Box(
+        Modifier.clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = label }
+            .padding(6.dp),
+    ) {
+        LabelChip(visibleText.uppercase(java.util.Locale.ROOT), active, degrees)
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 
+internal val LocalTrackActionOrder = staticCompositionLocalOf { app.echo.android.model.settings.EchoTrackMenuAction.entries.toList() }
 internal val LocalHiddenTrackActions = staticCompositionLocalOf { emptySet<app.echo.android.model.settings.EchoTrackMenuAction>() }
 internal val LocalLibraryFileNames = staticCompositionLocalOf { false }
 internal val LocalLibraryPlayNext = staticCompositionLocalOf { false }
@@ -14,9 +15,11 @@ fun LibraryPresentationProvider(actions: LibraryHiddenTrackActions, showFileName
     hiddenTrackActions: Set<app.echo.android.model.settings.EchoTrackMenuAction> = emptySet(),
     showPlayNext: Boolean = false,
     mediaTools: LibraryMediaTools? = null,
+    artistArtworkActions: ArtistArtworkActions? = null,
+    trackActionOrder: List<app.echo.android.model.settings.EchoTrackMenuAction> = app.echo.android.model.settings.EchoTrackMenuAction.entries.toList(),
     content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalLibraryFileNames provides showFileNames, LocalHiddenTrackActions provides hiddenTrackActions,
-        LocalLibraryPlayNext provides showPlayNext, LocalLibraryMediaTools provides mediaTools) {
+    CompositionLocalProvider(LocalTrackActionOrder provides trackActionOrder, LocalLibraryFileNames provides showFileNames, LocalHiddenTrackActions provides hiddenTrackActions,
+        LocalLibraryPlayNext provides showPlayNext, LocalLibraryMediaTools provides mediaTools, LocalArtistArtworkActions provides artistArtworkActions) {
         LibraryHiddenTracksProvider(actions, content = content)
     }
 }

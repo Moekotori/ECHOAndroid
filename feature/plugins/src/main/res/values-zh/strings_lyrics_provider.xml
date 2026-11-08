@@ -1,0 +1,7 @@
+<resources>
+    <string name="plugins_lyrics_sample_title">试用插件歌词源</string>
+    <string name="plugins_lyrics_sample_detail">安装 LRCLIB 示例，授权歌词候选与网络访问并启用，再到播放器的歌词管理中搜索、预览和选用。只有主动搜索时，才会向 lrclib.net 发送歌曲元数据。</string>
+    <string name="plugins_lyrics_sample_install">安装 LRCLIB 歌词源</string>
+    <string name="plugins_perm_lyrics">提供歌词候选</string>
+    <string name="plugins_perm_lyrics_detail">搜索歌词时，接收歌名、歌手、专辑和时长，返回供你预览的歌词候选。网络访问需单独授权；选用候选后才保存歌词。</string>
+</resources>

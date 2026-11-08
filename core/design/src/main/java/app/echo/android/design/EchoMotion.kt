@@ -88,6 +88,7 @@ object EchoMotion {
     const val OverlayFadeMs = 280
     const val PageMs = 460
     const val PageExitMs = 300
+    const val CoverPageFadeMs = 240
     const val TabMs = 380
     const val ExpandMs = 360
 
@@ -236,6 +237,32 @@ object EchoMotion {
             targetContentZIndex = 0f,
             sizeTransform = null,
         )
+    }
+
+    /**
+     * Push for a page whose cover flies in from the previous one (see [echoSharedCover]). The page
+     * only travels a short way, so the cover lands on a nearly settled hero instead of chasing a
+     * full-width slide.
+     */
+    fun pagePushCover(
+        enterMs: Int = PageMs,
+        exitMs: Int = PageExitMs,
+    ): ContentTransform {
+        val enter = slideInHorizontally(silkOffset(enterMs)) { it / 6 } + fadeIn(silkFloat(CoverPageFadeMs))
+        val exit = slideOutHorizontally(silkOffset(exitMs)) { -(it * PageParallax).toInt() } +
+            scaleOut(targetScale = PageDepthScale, animationSpec = silkFloat(exitMs))
+        return ContentTransform(enter, exit, targetContentZIndex = 1f, sizeTransform = null)
+    }
+
+    /** Mirror of [pagePushCover]: the cover flies back to its card while the page withdraws. */
+    fun pagePopCover(
+        enterMs: Int = PageMs,
+        exitMs: Int = PageMs,
+    ): ContentTransform {
+        val enter = slideInHorizontally(silkOffset(enterMs)) { -(it * PageParallax).toInt() } +
+            scaleIn(initialScale = PageDepthScale, animationSpec = silkFloat(enterMs))
+        val exit = slideOutHorizontally(silkOffset(exitMs)) { it / 6 } + fadeOut(silkFloat(CoverPageFadeMs))
+        return ContentTransform(enter, exit, targetContentZIndex = 0f, sizeTransform = null)
     }
 
     fun tabSwitch(

@@ -41,4 +41,28 @@ class SubsonicScrobbleOutboxTest {
         outbox.resolve(endpoint, receipt.key, NavidromeReceiptResolution.Confirmed)
         assertTrue(outbox.receipts(endpoint.sourceId).isEmpty())
     }
+    @Test fun durableAcknowledgementPreventsReplayAfterPendingCleanupWasInterrupted() {
+        var sent = 0
+        val directory = folder.newFolder()
+        val outbox = SubsonicScrobbleOutbox(directory) { _, _, _ -> sent++; throw IOException("response lost") }
+        outbox.submit(endpoint, "song", 1234)
+        val key = outbox.receipts(endpoint.sourceId).single().key
+        java.io.File(directory, "confirmed.json").writeText(org.json.JSONArray(listOf(key)).toString())
+        val restarted = SubsonicScrobbleOutbox(directory) { _, _, _ -> sent++ }
+        assertTrue(restarted.receipts(endpoint.sourceId).isEmpty())
+        restarted.resolve(endpoint, key, NavidromeReceiptResolution.Retry)
+        restarted.flushPending(endpoint)
+        restarted.submit(endpoint, "song", 1234)
+        assertEquals(1, sent)
+    }
+
+    @Test fun malformedPendingRowsCannotBeSilentlyDiscardedByTheNextWrite() {
+        val directory = folder.newFolder()
+        val pending = java.io.File(directory, "pending.json")
+        pending.writeText("[123]")
+        val outbox = SubsonicScrobbleOutbox(directory) { _, _, _ -> fail("Must not send") }
+        assertTrue(runCatching { outbox.submit(endpoint, "song", 1234) }.isFailure)
+        assertEquals("[123]", pending.readText())
+    }
+
 }

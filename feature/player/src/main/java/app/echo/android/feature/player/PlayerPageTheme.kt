@@ -42,6 +42,7 @@ internal fun playerPageTokens(style: EchoPlayerPageStyle): EchoThemeTokens {
         EchoPlayerPageStyle.Scrapbook -> ScrapbookStyle.Paper
         EchoPlayerPageStyle.MetroLine -> MetroStyle.Paper
         EchoPlayerPageStyle.ChatThread -> ChatStyle.Paper
+        EchoPlayerPageStyle.GrooveSpiral -> GrooveSpiralStyle.Ink
         EchoPlayerPageStyle.Halftone, EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
         EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField, EchoPlayerPageStyle.FullCover -> FullBleedStyle.Screen
         else -> Color(afterglow.background)
@@ -54,6 +55,7 @@ internal fun playerPageTokens(style: EchoPlayerPageStyle): EchoThemeTokens {
         EchoPlayerPageStyle.Scrapbook -> ScrapbookStyle.Ink
         EchoPlayerPageStyle.MetroLine -> MetroStyle.Ink
         EchoPlayerPageStyle.ChatThread -> ChatStyle.Ink
+        EchoPlayerPageStyle.GrooveSpiral -> GrooveSpiralStyle.Text
         EchoPlayerPageStyle.Halftone, EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
         EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField, EchoPlayerPageStyle.FullCover -> Color.White
         else -> Color(afterglow.foreground)
@@ -65,6 +67,7 @@ internal fun playerPageTokens(style: EchoPlayerPageStyle): EchoThemeTokens {
         EchoPlayerPageStyle.Scrapbook -> ScrapbookStyle.Navy
         EchoPlayerPageStyle.MetroLine -> MetroStyle.Line
         EchoPlayerPageStyle.ChatThread -> ChatStyle.Accent
+        EchoPlayerPageStyle.GrooveSpiral -> GrooveSpiralStyle.Accent
         EchoPlayerPageStyle.Halftone, EchoPlayerPageStyle.PixelMosaic, EchoPlayerPageStyle.Contours,
         EchoPlayerPageStyle.Dither, EchoPlayerPageStyle.GlyphField, EchoPlayerPageStyle.FullCover -> Color.White
         else -> Color(afterglow.accent)

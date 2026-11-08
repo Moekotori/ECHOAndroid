@@ -2,11 +2,11 @@
 <resources>
     <string name="effects_panel_title">系统音效</string>
     <string name="effects_panel_open">打开系统音效面板</string>
-    <string name="effects_panel_ready">使用当前 AudioTrack 会话；具体音效与支持情况由系统及已安装的音效应用决定。</string>
-    <string name="effects_panel_usb">USB 独占输出绕过系统音效会话，切回系统输出后可使用此入口。</string>
-    <string name="effects_panel_offloaded">当前硬件卸载输出尚未确认支持系统音效。</string>
-    <string name="effects_panel_no_session">开始本机播放后建立音频会话。</string>
-    <string name="effects_panel_no_output">等待实际建立系统 AudioTrack 输出。</string>
+    <string name="effects_panel_ready">调整当前输出的系统音效。</string>
+    <string name="effects_panel_usb">切回系统输出后可用。</string>
+    <string name="effects_panel_offloaded">硬件卸载下的音效支持未确认。</string>
+    <string name="effects_panel_no_session">请先开始本机播放。</string>
+    <string name="effects_panel_no_output">等待系统音频输出。</string>
     <string name="decoder_runtime_title">解码器运行信息</string>
     <string name="decoder_runtime_note">来自 Media3 运行事件。计数属于当前音频渲染周期，并非逐首统计；平台解码器可能采用硬件或软件实现。</string>
     <string name="decoder_runtime_name">实际报告的解码器名称</string>
@@ -53,7 +53,7 @@
     <string name="conversion_depth_requested">PCM 表示变化来自用户指定的输出位深。</string>
     <string name="conversion_depth_compatible">PCM 表示变化来自端点兼容协商。</string>
     <string name="conversion_channels">声道数已转换为请求的输出布局。</string>
-    <string name="effects_panel_remote">此面板控制本机音频会话，不适用于远端播放。</string>
+    <string name="effects_panel_remote">仅支持本机播放。</string>
     <string name="decoder_failure_unspecified">编解码器错误，具体阶段未明确</string>
     <string name="conversion_channels_compatible">声道数变化来自当前 USB 输出布局的兼容选择。</string>
 </resources>

@@ -115,7 +115,8 @@ internal fun VerticalLyricsList(
                             style = MaterialTheme.typography.bodyLarge.copy(fontSize = MaterialTheme.typography.bodyLarge.fontSize * LocalLyricsSecondaryText.current.romanization, lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * LocalLyricsSecondaryText.current.romanization))
                     }
                     if (showTranslation) line.translation?.takeIf(String::isNotBlank)?.let {
-                        Text(it, Modifier.widthIn(max = 160.dp).padding(top = 8.dp), color = color.copy(alpha = 0.7f),
+                        Text(it, Modifier.widthIn(max = 160.dp).padding(top = 8.dp)
+                            .lyricTranslationVisibility(!LocalTranslationCurrentOnly.current || index == focus || !following || !synced), color = color.copy(alpha = 0.7f),
                             style = MaterialTheme.typography.bodyLarge.copy(fontSize = MaterialTheme.typography.bodyLarge.fontSize * LocalLyricsSecondaryText.current.translation, lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * LocalLyricsSecondaryText.current.translation))
                     }
                 }

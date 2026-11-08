@@ -27,6 +27,8 @@ fun LibraryTrackEntity.toEchoTrack(): EchoTrack =
         clipStartMs = clipStartMs,
         clipEndMs = clipEndMs,
         fileName = fileName,
+        rating = rating,
+        remoteAlbumId = remoteAlbumId,
     )
 
 fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
@@ -56,6 +58,7 @@ fun EchoTrack.toLibraryTrackEntity(): LibraryTrackEntity =
         clipStartMs = clipStartMs,
         clipEndMs = clipEndMs,
         fileName = fileName,
+        remoteAlbumId = remoteAlbumId,
     ).withComputedSearchMetadata()
 
 internal fun LibraryTrackEntity.withFingerprint(): LibraryTrackEntity =
@@ -98,7 +101,8 @@ internal fun LibraryTrackEntity.withComputedSearchMetadata(): LibraryTrackEntity
         pinyinTitle = ChinesePinyin.toPinyin(title),
         pinyinArtist = ChinesePinyin.toPinyin(artist),
         pinyinAlbum = album?.let { ChinesePinyin.toPinyin(it) },
-        albumKey = libraryAlbumKey(
+        albumKey = remoteAlbumId?.takeIf { source.startsWith("subsonic:") && it.isNotBlank() }
+            ?.let(::subsonicAlbumKey) ?: libraryAlbumKey(
             normalizedAlbum = LibraryAlbumGrouping.albumNameForKey(nextNormalizedAlbum),
             normalizedAlbumArtist = nextNormalizedAlbumArtist,
             normalizedArtist = nextNormalizedArtist,
@@ -209,7 +213,10 @@ internal fun buildTrackFingerprint(track: LibraryTrackEntity): String =
         genre = track.genre,
         composer = track.composer,
         fileName = track.fileName,
-    ).let { CueScanState.preserveProvenance(track.fingerprint, it) }
+    ).let { value ->
+        val identity = track.remoteAlbumId?.let { "$value|remoteAlbum:$it" } ?: value
+        CueScanState.preserveProvenance(track.fingerprint, identity)
+    }
 
 internal fun LibraryTrackEntity.splitByCue(
     sheet: app.echo.android.model.library.CueSheet,

@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_page_title">我的音乐</string>
+    <string name="home_greeting_morning">早上好</string>
+    <string name="home_greeting_morning_sub">来点轻快的开始新的一天？</string>
+    <string name="home_greeting_noon">中午好</string>
+    <string name="home_greeting_noon_sub">吃饭时来点音乐？</string>
+    <string name="home_greeting_afternoon">下午好</string>
+    <string name="home_greeting_evening">晚上好</string>
+    <string name="home_greeting_ask_sub">今天想听点什么？</string>
+    <string name="home_greeting_night">夜深了</string>
+    <string name="home_greeting_night_sub">来点安静的？</string>
 </resources>

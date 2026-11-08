@@ -27,4 +27,7 @@
     <string name="update_retry">Повторить</string>
     <string name="update_done">Готово</string>
     <string name="update_hide_download">Скрыть загрузку</string>
+    <string name="update_route">Маршрут обновления</string>
+    <string name="update_route_direct">Прямое подключение к GitHub</string>
+    <string name="update_route_hint">Если GitHub недоступен в материковом Китае, попробуйте ускоренный маршрут. Он используется для проверки и загрузки; смена запускает проверку заново.</string>
 </resources>

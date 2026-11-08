@@ -98,6 +98,13 @@ internal object PlayerControlIcons {
             moveTo(3.5f, 10.5f); quadTo(11.5f, 10.5f, 11.5f, 18.5f)
         }
     }
+    val More = vector("PlayerMore") {
+        path(stroke = ink, strokeLineWidth = 2.6f, strokeLineCap = StrokeCap.Round) {
+            moveTo(5f, 12f); lineTo(5.02f, 12f)
+            moveTo(12f, 12f); lineTo(12.02f, 12f)
+            moveTo(19f, 12f); lineTo(19.02f, 12f)
+        }
+    }
     val Collapse = vector("PlayerCollapse") {
         path(stroke = ink, strokeLineWidth = stroke, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
             moveTo(6f, 9.5f); lineTo(10.6f, 14.1f)

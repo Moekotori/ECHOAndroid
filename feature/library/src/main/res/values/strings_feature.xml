@@ -115,7 +115,7 @@
     <string name="feature_library_new_cc6582">"New"</string>
     <string name="feature_library_new_playlist_22cdbd">"New playlist"</string>
     <string name="feature_library_import_m3u_2b9c10">"Import M3U"</string>
-    <string name="feature_library_export_m3u_6f18a4">"Export M3U"</string>
+    <string name="feature_library_export_m3u_6f18a4">Export playlist</string>
     <string name="feature_library_new_playlist_and_add_314ff2">"New playlist and add"</string>
     <string name="feature_library_no_liked_songs_yet_heart_a_track_from_ba96cc">"No liked songs yet. Heart a track from the player or a song menu."</string>
     <string name="feature_library_no_local_playlists_yet_create_one_from_the_e13a98">"No local playlists yet. Create one from the top-right, or add from a song menu."</string>

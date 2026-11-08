@@ -34,6 +34,8 @@ fun EchoLinkModeSwitch(
                 Column(
                     Modifier.weight(1f).selectable(
                         selected = selected,
+                        interactionSource = null,
+                        indication = null,
                         role = Role.RadioButton,
                         onClick = { onRemoteModeChange(remote) },
                     ),

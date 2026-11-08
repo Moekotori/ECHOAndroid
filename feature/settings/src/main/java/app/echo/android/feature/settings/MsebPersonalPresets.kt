@@ -1,5 +1,7 @@
 package app.echo.android.feature.settings
 
+import androidx.compose.foundation.layout.padding
+import app.echo.android.design.EchoExpand
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -74,7 +76,7 @@ internal fun MsebPersonalPresets(state: EchoMsebState, actions: MsebPresetAction
             }
         }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             TextButton(onClick = { expanded = !expanded }) {
                 Text(stringResource(R.string.mseb_personal_count, actions.presets.size, EchoMsebUserPresets.MaxCount))
@@ -82,7 +84,7 @@ internal fun MsebPersonalPresets(state: EchoMsebState, actions: MsebPresetAction
             TextButton(enabled = !busy && actions.presets.size < EchoMsebUserPresets.MaxCount,
                 onClick = { editor = null to "" }) { Text(stringResource(R.string.mseb_personal_save)) }
         }
-        if (expanded) {
+        EchoExpand(expanded) { Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             actions.presets.forEach { preset -> key(preset.id) {
                 val matches = preset.values == state.normalized.values
                 Column(Modifier.fillMaxWidth()) {
@@ -111,7 +113,7 @@ internal fun MsebPersonalPresets(state: EchoMsebState, actions: MsebPresetAction
                     Text(stringResource(R.string.mseb_personal_export))
                 }
             }
-        }
+        } }
     }
     editor?.let { (id, initial) ->
         var name by remember(id, initial) { mutableStateOf(initial) }

@@ -150,6 +150,7 @@ class EchoLibraryPlaybackCatalog(
                     return@withContext radioStationItem(mediaId)
                 }
                 if (database.hiddenTrackDao().hiddenIds(listOf(mediaId)).isNotEmpty()) null
+                else if (app.echo.android.data.FilePlaylistStore.ownsTrack(mediaId)) app.echo.android.data.FilePlaylistStore(context, database).track(mediaId)?.toBrowseItem()
                 else database.trackDao().getTrackById(mediaId)?.toBrowseItem()
             }
         }
@@ -227,6 +228,9 @@ class EchoLibraryPlaybackCatalog(
                         return@withContext listOfNotNull(radioStationItem(mediaId))
                     }
                     if (EchoPlaybackLibraryIds.isTrackMediaId(mediaId)) {
+                        if (app.echo.android.data.FilePlaylistStore.ownsTrack(mediaId)) {
+                            return@withContext listOfNotNull(app.echo.android.data.FilePlaylistStore(context, database).track(mediaId)?.toBrowseItem())
+                        }
                         if (database.hiddenTrackDao().hiddenIds(listOf(mediaId)).isNotEmpty()) return@withContext emptyList()
                         val track = database.trackDao().getTrackById(mediaId) ?: return@withContext emptyList()
                         val albumKey = track.albumKey.takeIf { it.isNotBlank() }
@@ -306,13 +310,13 @@ class EchoLibraryPlaybackCatalog(
 
     override suspend fun isFavorite(trackId: String): Boolean = withContext(Dispatchers.IO) {
         val id = trackId.trim()
-        if (id.isEmpty()) return@withContext false
+        if (id.isEmpty() || app.echo.android.data.FilePlaylistStore.ownsTrack(id)) return@withContext false
         database.playlistDao().isFavorite(id)
     }
 
     override suspend fun toggleFavorite(trackId: String): Boolean? = withContext(Dispatchers.IO) {
         val id = trackId.trim()
-        if (id.isEmpty()) return@withContext null
+        if (id.isEmpty() || app.echo.android.data.FilePlaylistStore.ownsTrack(id)) return@withContext null
         if (id.startsWith("subsonic:")) return@withContext try {
             remoteFavoriteMutation.withLock {
                 val settings = app.echo.android.data.EchoSettingsStore(context.applicationContext).appSettings.first()
@@ -425,6 +429,9 @@ class EchoLibraryPlaybackCatalog(
         limit: Int,
         offset: Int,
     ): List<EchoPlaybackBrowseItem>? {
+        if (app.echo.android.data.FilePlaylistStore.owns(playlistId)) {
+            return app.echo.android.data.FilePlaylistStore(context, database).readOrdered(playlistId).drop(offset).take(limit).map { it.toBrowseItem() }
+        }
         if (playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
             return database.trackDao().queryTracks(app.echo.android.data.smartPlaylistQuery(playlistId, limit, offset = offset)).map { it.toBrowseItem() }
         }

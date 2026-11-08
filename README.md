@@ -111,6 +111,10 @@ JSON 支持 ECHO 歌词存储文件、网易云及 LRCLIB 响应、逐行对象�
 
 Android 还支持导入带权限声明的沙箱脚本插件，详见 [Android 插件说明](./docs/plugins.md)。Android 插件与 Steam 创意工坊内容使用各自的机制。
 
+在播放器外观页可以导入、预览和导出**场景与外观包**，将内置样式、歌词排版、配色、静态背景和歌词字体一起分享，并恢复应用前的外观。插件教程可安装 LRCLIB 歌词源示例，授权后在歌词管理中主动搜索、预览和选用。
+
+信号页还提供默认关闭的 **HRTF 耳机声场**与**动态等响补偿**：HRTF 使用实测响应模拟双音箱，支持不超过 96 kHz 的普通立体声 PCM；动态等响跟随应用 PCM 音量。USB 位完美继续旁路，使用方式和边界见 [外观包与个人听音](./docs/appearance-packs-and-personal-audio.md)。
+
 <a id="与-pc-echo-联动"></a>
 <a id="echo-link"></a>
 
@@ -185,6 +189,14 @@ git config core.autocrlf false
 ```
 
 Linux / macOS 使用 `./gradlew assembleDebug`。APK 输出到 `app/build/outputs/apk/debug/`；首次构建会下载依赖并构建原生音频库。`local.properties`、签名配置和 keystore 留在本机。
+
+Windows 生成正式签名 Release APK：在本机 `keystore.properties` 配置 `storeFile`、`storePassword`、`keyAlias`、`keyPassword`，使用已分发正式版的原签名密钥，密钥文件可放在仓库外。然后运行：
+
+```powershell
+.\scripts\build-release.cmd
+```
+
+脚本只在本地执行 `:app:assembleRelease`，自动递增本机已有产物的当日构建号，并核验正式签名证书；不触发云端构建或发布。APK 输出到 `app/build/outputs/apk/release/`。可用 `-Version 26.11.8 -Revision 2` 指定版本和修订号；若同日另有云端或其他机器构建，需手动选择更大的修订号。
 
 <details>
 <summary>开发时自动构建与安装</summary>

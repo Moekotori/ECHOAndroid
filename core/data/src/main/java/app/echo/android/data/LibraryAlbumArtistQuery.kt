@@ -6,6 +6,7 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 internal object LibraryAlbumArtistQuery {
     private const val Prefix = "album-artist:"
     fun owns(key: String): Boolean = key.startsWith(Prefix)
+    fun key(normalizedName: String): String = "$Prefix$normalizedName"
 
     // BLOB slicing also preserves text after NUL separators (SQLite text length stops at NUL).
     private const val NameSeparator = "(CASE WHEN instr(rest, x'00') BETWEEN 1 AND instr(rest, x'3b') THEN instr(rest, x'00') ELSE instr(rest, x'3b') END)"

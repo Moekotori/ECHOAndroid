@@ -1,6 +1,14 @@
 package app.echo.android.data
 
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.library.AlbumSummary
+
+/** Album pages use album-artist memberships, including releases credited to different song artists. */
+fun albumArtistNavigationTarget(album: AlbumSummary): ArtistSummary? {
+    val name = album.albumArtist.takeUnlessUnknownMetadata() ?: album.artist.orEmpty()
+    val artist = artistNavigationTarget(name, album.artworkUri) ?: return null
+    return artist.copy(artistKey = LibraryAlbumArtistQuery.key(artist.artistKey))
+}
 
 /**
  * Resolves a display name to the same artist key the library index uses.
