@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import app.echo.android.model.playback.EchoEqFilterType
+import app.echo.android.model.playback.EchoEqualizerPresets
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerUserPreset
 import app.echo.android.model.playback.EchoEqualizerUserPresets
@@ -18,7 +19,7 @@ class EchoEqualizerUserPresetCodecTest {
             updatedAtEpochMs = 10L,
             parametric = false,
             graphicPresetId = EchoEqualizerPreset.Bass,
-            gainsDb = listOf(4f, 2.8f, 0.4f, -0.8f, -1.2f),
+            gainsDb = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Bass),
             preampDb = -2.5f,
         )
         val parametric = EchoEqualizerUserPreset(
@@ -59,7 +60,7 @@ class EchoEqualizerUserPresetCodecTest {
 
     @Test
     fun decodeDropsBrokenEntriesAndCapsCount() {
-        val many = (1..30).map { index ->
+        val many = (1..EchoEqualizerUserPresets.MaxCount + 5).map { index ->
             EchoEqualizerUserPreset(id = "id-$index", name = "Preset $index", updatedAtEpochMs = index.toLong())
         }
         val restored = EchoEqualizerUserPresetCodec.decode(EchoEqualizerUserPresetCodec.encode(many))

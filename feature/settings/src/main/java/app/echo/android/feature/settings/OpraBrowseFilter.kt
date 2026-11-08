@@ -1,5 +1,6 @@
 package app.echo.android.feature.settings
 
+import app.echo.android.model.playback.EchoParametricEq
 import app.echo.android.model.playback.OpraHeadphoneBrand
 import app.echo.android.model.playback.OpraHeadphoneCorrectionProduct
 import app.echo.android.model.playback.EchoEqualizerState
@@ -12,10 +13,14 @@ private fun compactOpraSearch(value: String): String =
     value.filter(Char::isLetterOrDigit).lowercase(Locale.ROOT)
 
 internal fun EchoEqualizerState.matchesCorrection(preset: OpraHeadphoneCorrectionPreset): Boolean =
-    headphoneCorrection.enabled && headphoneCorrection.id == preset.eqId
+    headphoneCorrection.enabled && headphoneCorrection.id == preset.eqId &&
+        abs(headphoneCorrection.preampDb - preset.preampDb) < 0.05f &&
+        EchoParametricEq.sanitize(headphoneCorrection.filters) == EchoParametricEq.sanitize(preset.bands)
 
 internal fun EchoEqualizerState.matchesCorrection(preset: EchoEqualizerUserPreset): Boolean =
-    headphoneCorrection.enabled && preset.fromOpra && headphoneCorrection.id == preset.opraEqId
+    headphoneCorrection.enabled && preset.fromOpra && headphoneCorrection.id == preset.opraEqId &&
+        abs(headphoneCorrection.preampDb - preset.preampDb) < 0.05f &&
+        EchoParametricEq.sanitize(headphoneCorrection.filters) == EchoParametricEq.sanitize(preset.filters)
 
 internal fun filterCorrectionFavorites(presets: List<EchoEqualizerUserPreset>, query: String): List<EchoEqualizerUserPreset> {
     val tokens = query.split(Regex("\\s+")).map(::compactOpraSearch).filter(String::isNotEmpty)

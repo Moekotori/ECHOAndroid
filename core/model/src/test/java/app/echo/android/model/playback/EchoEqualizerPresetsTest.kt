@@ -6,7 +6,7 @@ import org.junit.Test
 
 class EchoEqualizerPresetsTest {
     @Test
-    fun everyPresetHasFiveInRangeBands() {
+    fun everyPresetHasThirtyOneInRangeBands() {
         EchoEqualizerPresets.presets.forEach { preset ->
             assertEquals(preset.id, EchoEqualizerPresets.defaultFrequenciesHz.size, preset.gainsDb.size)
             preset.gainsDb.forEach { gain ->
@@ -18,11 +18,10 @@ class EchoEqualizerPresetsTest {
     @Test
     fun harmanLiftsBassAndTamesAir() {
         val gains = EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Harman)
-        assertEquals(5, gains.size)
-        assertTrue(gains[0] > 4f)
-        assertTrue(gains[0] > gains[1])
-        assertTrue(gains[3] > 1f)
-        assertTrue(gains[4] < 0f)
+        assertEquals(31, gains.size)
+        assertEquals(1.5f, gains[5], 0f)
+        assertTrue(gains[5] > gains[14])
+        assertEquals(-0.2f, gains[26], 0f)
     }
 
     @Test

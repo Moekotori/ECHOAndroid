@@ -56,7 +56,7 @@ class EchoEqualizerPresetAcceptanceTest(private val preset: EchoEqualizerPresetD
         val controller = EchoEqualizerController()
         controller.setPreset(preset.id)
         val selected = controller.state.value
-        assertEquals(selected.suggestedPreampDb, selected.preampDb, 0.001f)
+        assertEquals(preset.preampDb, selected.preampDb, 0.001f)
         val restored = EchoEqualizerController()
         restored.setConfig(false, selected.presetId, selected.gainsDb, selected.preampDb)
         assertEquals(selected.preampDb, restored.state.value.preampDb, 0.001f)

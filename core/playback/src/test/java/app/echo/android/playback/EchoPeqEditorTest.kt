@@ -49,7 +49,7 @@ class EchoPeqEditorTest {
         assertEquals(valid, c.state.value)
         c.setParametricFilters(listOf(band.copy(frequencyHz = 50000f, gainDb = 25f, q = 30f)))
         assertEquals(
-            band.copy(frequencyHz = 20000f, gainDb = EchoParametricEq.MaxGainDb, q = 30f),
+            band.copy(frequencyHz = 20000f, gainDb = 25f, q = 30f),
             c.state.value.filters.single(),
         )
         c.setPreset(EchoEqualizerPreset.Flat)

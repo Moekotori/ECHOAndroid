@@ -5,6 +5,7 @@ import app.echo.android.model.playback.OpraHeadphoneCorrectionPreset
 import app.echo.android.model.playback.OpraHeadphoneCorrectionProduct
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoEqualizerUserPreset
+import app.echo.android.model.playback.EchoHeadphoneCorrectionSettings
 import app.echo.android.model.playback.OpraEqBand
 import org.junit.Assert.*
 import org.junit.Test
@@ -12,12 +13,12 @@ import org.junit.Test
 class OpraBrowseFilterTest {
     @Test fun appliedIndicatorRequiresEnabledMatchingFiltersAndPreamp() {
         val preset = hd650.presets.single().copy(bands = listOf(OpraEqBand("peak_dip", 1000f, 3f, 1f, null)), preampDb = -6f)
-        val state = EchoEqualizerState(enabled = true, parametric = true, filters = preset.bands,
-            preampDb = preset.preampDb, sourceLabel = preset.displayName)
+        val correction = EchoHeadphoneCorrectionSettings.fromPreset(preset)
+        val state = EchoEqualizerState(headphoneCorrection = correction)
         assertTrue(state.matchesCorrection(preset))
-        assertFalse(state.copy(enabled = false).matchesCorrection(preset))
-        assertFalse(state.copy(preampDb = -3f).matchesCorrection(preset))
-        assertFalse(state.copy(filters = emptyList()).matchesCorrection(preset))
+        assertFalse(state.copy(headphoneCorrection = correction.copy(enabled = false)).matchesCorrection(preset))
+        assertFalse(state.copy(headphoneCorrection = correction.copy(preampDb = -3f)).matchesCorrection(preset))
+        assertFalse(state.copy(headphoneCorrection = correction.copy(filters = emptyList())).matchesCorrection(preset))
     }
 
     @Test fun favoritesCanBeFoundByModelAndMeasurementSource() {

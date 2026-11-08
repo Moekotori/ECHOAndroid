@@ -900,7 +900,9 @@ internal object AudioFileTagRewriter {
         return payload.copyOfRange(4, 4 + vendorLength).toString(StandardCharsets.UTF_8)
     }
 
-    private fun fieldsFromVorbis(payload: ByteArray): AudioTagFields {
+    private fun fieldsFromVorbis(payload: ByteArray): AudioTagFields? {
+        // Malformed counts must not turn into an apparent empty tag/rating update.
+        if (VorbisTagReader.commentsForRewrite(payload) == null) return null
         return VorbisTagReader.fields(payload)
     }
 

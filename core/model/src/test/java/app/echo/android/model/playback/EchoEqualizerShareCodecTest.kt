@@ -48,7 +48,7 @@ class EchoEqualizerShareCodecTest {
         assertEquals(EchoEqFilterType.LowShelf, restored.filters[0].type)
         assertEquals(12f, restored.filters[1].slope!!, 0.01f)
         assertEquals("Sennheiser / HD 650 / oratory1990", restored.sourceLabel)
-        assertNull(restored.opraEqId)
+        assertEquals("eq-local", restored.opraEqId)
     }
 
     @Test

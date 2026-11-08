@@ -29,20 +29,18 @@ class EchoEqualizerAudioProcessor(
     @Volatile
     private var runtime: EchoEqualizerRuntime = EchoEqualizerRuntime()
 
-    private var coeffs: Array<EchoBiquadNormalized> = emptyArray()
-    private var delayLine: FloatArray = FloatArray(0)
+    // Preserve low-frequency accuracy at high sample rates in the compatibility path.
+    private var coeffs = DoubleArray(0)
+    private var delayLine = DoubleArray(0)
     private var configuredSampleRateHz: Int = 0
     private var configuredFilters: List<OpraEqBand>? = null
-    private var packedCoeffs = FloatArray(0)
-    private var packedFrom: Array<EchoBiquadNormalized>? = null
     @Volatile private var preparationSampleRateHz = 0
     @Volatile private var preparedFilters: PreparedFilters? = null
 
     private data class PreparedFilters(
         val filters: List<OpraEqBand>,
         val sampleRateHz: Int,
-        val coefficients: Array<EchoBiquadNormalized>,
-        val packed: FloatArray,
+        val coefficients: DoubleArray,
     )
 
     fun setRuntime(runtime: EchoEqualizerRuntime) {
@@ -124,20 +122,18 @@ class EchoEqualizerAudioProcessor(
     override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
         pc.flush()
         reportProcessing(null)
-        delayLine.fill(0f)
+        delayLine.fill(0.0)
     }
 
     override fun onReset() {
         pc.close()
         reportProcessing(null)
-        delayLine = FloatArray(0)
-        coeffs = emptyArray()
+        delayLine = DoubleArray(0)
+        coeffs = DoubleArray(0)
         configuredSampleRateHz = 0
         configuredFilters = null
         preparationSampleRateHz = 0
         preparedFilters = null
-        packedCoeffs = FloatArray(0)
-        packedFrom = null
     }
 
     private fun ensureCoeffs(filters: List<OpraEqBand>, sampleRateHz: Int) {
@@ -151,28 +147,23 @@ class EchoEqualizerAudioProcessor(
                 previous[index].type == filters[index].type && previous[index].slope == filters[index].slope
             }
         coeffs = next.coefficients
-        packedCoeffs = next.packed
-        packedFrom = coeffs
         configuredSampleRateHz = sampleRateHz
         configuredFilters = filters
-        val required = inputAudioFormat.channelCount.coerceAtLeast(1) * coeffs.size * 2
+        val required = inputAudioFormat.channelCount.coerceAtLeast(1) * (coeffs.size / 5) * 2
         // Frequency/gain/Q drags retain filter history instead of restarting every buffer.
-        if (!sameTopology || delayLine.size != required) delayLine = FloatArray(required)
+        if (!sameTopology || delayLine.size != required) delayLine = DoubleArray(required)
     }
 
     private fun prepareFilters(filters: List<OpraEqBand>, sampleRateHz: Int): PreparedFilters {
-        val coefficients = filters.filter { it.enabled }.flatMap { EchoBiquadMath.stages(it, sampleRateHz.toFloat()) }
-            .mapNotNull { it.normalizedOrNull() }.toTypedArray()
-        val packed = FloatArray(coefficients.size * 5)
-        coefficients.forEachIndexed { index, coeff ->
+        val stages = filters.filter { it.enabled }.flatMap { EchoBiquadMath.stages(it, sampleRateHz.toFloat()) }
+            .filter { it.a0.isFinite() && it.a0 != 0.0 }
+        val packed = DoubleArray(stages.size * 5)
+        stages.forEachIndexed { index, c ->
             val at = index * 5
-            packed[at] = coeff.b0
-            packed[at + 1] = coeff.b1
-            packed[at + 2] = coeff.b2
-            packed[at + 3] = coeff.a1
-            packed[at + 4] = coeff.a2
+            packed[at] = c.b0 / c.a0; packed[at + 1] = c.b1 / c.a0; packed[at + 2] = c.b2 / c.a0
+            packed[at + 3] = c.a1 / c.a0; packed[at + 4] = c.a2 / c.a0
         }
-        return PreparedFilters(filters, sampleRateHz, coefficients, packed)
+        return PreparedFilters(filters, sampleRateHz, packed)
     }
 
     private fun processPcm16(
@@ -188,11 +179,10 @@ class EchoEqualizerAudioProcessor(
         val shortOut = output.asShortBuffer()
         val frameCount = shortIn.remaining() / channelCount
         ensureDelayLine(channelCount)
-        val filters = coeffs
         repeat(frameCount) {
             for (channel in 0 until channelCount) {
                 var sample = shortIn.get() / 32768f * preampLinear
-                sample = filterSample(channel, sample, filters)
+                sample = filterSample(channel, sample)
                 shortOut.put((sample.coerceIn(-1f, 1f) * 32767f).toInt().toShort())
             }
         }
@@ -208,13 +198,12 @@ class EchoEqualizerAudioProcessor(
     ) {
         val frameCount = inputBuffer.remaining() / (channelCount * 3)
         ensureDelayLine(channelCount)
-        val filters = coeffs
         val order = inputBuffer.order()
         output.order(order)
         repeat(frameCount) {
             for (channel in 0 until channelCount) {
                 var sample = inputBuffer.getPcm24(order) / 8_388_608f * preampLinear
-                sample = filterSample(channel, sample, filters)
+                sample = filterSample(channel, sample)
                 output.putPcm24(
                     (sample.coerceIn(-1f, 1f) * 8_388_607f).toInt().coerceIn(-8_388_608, 8_388_607),
                     order,
@@ -235,11 +224,10 @@ class EchoEqualizerAudioProcessor(
         val intOut = output.asIntBuffer()
         val frameCount = intIn.remaining() / channelCount
         ensureDelayLine(channelCount)
-        val filters = coeffs
         repeat(frameCount) {
             for (channel in 0 until channelCount) {
                 var sample = intIn.get() * (1.0f / 2_147_483_648f) * preampLinear
-                sample = filterSample(channel, sample, filters)
+                sample = filterSample(channel, sample)
                 intOut.put((sample.coerceIn(-1f, 1f) * 2_147_483_647f).toInt())
             }
         }
@@ -255,28 +243,12 @@ class EchoEqualizerAudioProcessor(
     ) {
         val frameCount = inputBuffer.remaining() / (Float.SIZE_BYTES * channelCount)
         ensureDelayLine(channelCount)
-        if (EchoDspNative.processEq(
-                input = inputBuffer,
-                output = output,
-                frames = frameCount,
-                channels = channelCount,
-                preamp = preampLinear,
-                clamp = !preserveFloatHeadroom,
-                coeffs = packedCoeffs(),
-                delay = delayLine,
-            )
-        ) {
-            inputBuffer.position(inputBuffer.limit())
-            output.position(output.position() + frameCount * channelCount * 4)
-            return
-        }
         val floatIn = inputBuffer.asFloatBuffer()
         val floatOut = output.asFloatBuffer()
-        val filters = coeffs
         repeat(frameCount) {
             for (channel in 0 until channelCount) {
                 var sample = floatIn.get() * preampLinear
-                sample = filterSample(channel, sample, filters)
+                sample = filterSample(channel, sample)
                 floatOut.put(if (preserveFloatHeadroom) sample else sample.coerceIn(-1f, 1f))
             }
         }
@@ -284,49 +256,26 @@ class EchoEqualizerAudioProcessor(
         output.position(output.position() + frameCount * channelCount * 4)
     }
 
-    private fun packedCoeffs(): FloatArray {
+    private fun filterSample(channel: Int, input: Float): Float {
+        var sample = input.toDouble()
         val filters = coeffs
-        if (packedFrom === filters) return packedCoeffs
-        val packed = FloatArray(filters.size * 5)
-        filters.forEachIndexed { index, coeff ->
+        val count = filters.size / 5
+        val base = channel * count * 2
+        for (index in 0 until count) {
             val at = index * 5
-            packed[at] = coeff.b0
-            packed[at + 1] = coeff.b1
-            packed[at + 2] = coeff.b2
-            packed[at + 3] = coeff.a1
-            packed[at + 4] = coeff.a2
-        }
-        packedCoeffs = packed
-        packedFrom = filters
-        return packed
-    }
-
-    private fun filterSample(
-        channel: Int,
-        input: Float,
-        filters: Array<EchoBiquadNormalized>,
-    ): Float {
-        var sample = input
-        val state = delayLine
-        val stride = filters.size * 2
-        val channelBase = channel * stride
-        for (index in filters.indices) {
-            val coeff = filters[index]
-            val stateIndex = channelBase + index * 2
-            val s1 = state[stateIndex]
-            val s2 = state[stateIndex + 1]
-            val y = coeff.b0 * sample + s1
-            state[stateIndex] = coeff.b1 * sample - coeff.a1 * y + s2
-            state[stateIndex + 1] = coeff.b2 * sample - coeff.a2 * y
+            val state = base + index * 2
+            val y = filters[at] * sample + delayLine[state]
+            delayLine[state] = filters[at + 1] * sample - filters[at + 3] * y + delayLine[state + 1]
+            delayLine[state + 1] = filters[at + 2] * sample - filters[at + 4] * y
             sample = y
         }
-        return sample
+        return sample.toFloat()
     }
 
     private fun ensureDelayLine(channelCount: Int) {
-        val required = channelCount.coerceAtLeast(1) * coeffs.size * 2
+        val required = channelCount.coerceAtLeast(1) * (coeffs.size / 5) * 2
         if (delayLine.size != required) {
-            delayLine = FloatArray(required)
+            delayLine = DoubleArray(required)
         }
     }
 

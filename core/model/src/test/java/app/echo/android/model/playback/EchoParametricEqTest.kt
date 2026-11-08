@@ -33,7 +33,7 @@ class EchoParametricEqTest {
             OpraEqBand(EchoEqFilterType.PeakDip, 50_000f, 25f, 30f, 12f),
         )
         assertEquals(20_000f, sanitized!!.frequencyHz, 0.01f)
-        assertEquals(EchoParametricEq.MaxGainDb, sanitized.gainDb, 0.01f)
+        assertEquals(25f, sanitized.gainDb, 0.01f)
         assertEquals(30f, sanitized.q!!, 0.01f)
         assertNull(sanitized.slope)
 

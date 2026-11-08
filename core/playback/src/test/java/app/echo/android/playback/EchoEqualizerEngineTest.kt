@@ -43,18 +43,16 @@ class EchoEqualizerEngineTest {
     }
 
     @Test
-    fun graphicFiltersDropNearZeroBands() {
+    fun graphicFiltersKeepSlotsAndFlatDoesNotProcess() {
         val filters = EchoEqualizerEngine.graphicFilters(
             EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Bass),
         )
-        assertTrue(filters.isNotEmpty())
-        assertTrue(filters.all { abs(it.gainDb) >= EchoEqualizerEngine.GainEpsilonDb })
+        assertEquals(31, filters.size)
         assertTrue(filters.all { it.type == EchoEqFilterType.PeakDip })
-        assertFalse(
-            EchoEqualizerEngine.graphicFilters(
-                EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat),
-            ).any(),
-        )
+        val flat = EchoEqualizerEngine.graphicFilters(EchoEqualizerPresets.gainsForPreset(EchoEqualizerPreset.Flat))
+        assertEquals(31, flat.size)
+        assertTrue(flat.all { it.gainDb == 0f })
+        assertFalse(EchoEqualizerEngine.shouldProcess(true, 0f, flat))
     }
 
     @Test
@@ -64,11 +62,12 @@ class EchoEqualizerEngineTest {
             OpraEqBand(EchoEqFilterType.PeakDip, 3_600f, -3f, 1.4f, null),
         )
         val gains = EchoEqualizerEngine.visualizationGainsDb(filters)
-        assertEquals(5, gains.size)
-        assertTrue(gains.first() > 2f)
-        assertTrue(gains[3] < -1f)
+        assertEquals(31, gains.size)
+        val bass = gains[EchoEqualizerPresets.defaultFrequenciesHz.indexOf(63)]
+        assertTrue(bass > 2f)
+        assertTrue(gains[EchoEqualizerPresets.defaultFrequenciesHz.indexOf(4000)] < -1f)
         val withPreamp = EchoBiquadMath.sampleCurveDb(filters, 60f, preampDb = -8f)
-        assertTrue(withPreamp < gains.first() - 6f)
+        assertTrue(withPreamp < bass - 6f)
     }
 
     @Test
@@ -80,8 +79,8 @@ class EchoEqualizerEngineTest {
             OpraEqBand(EchoEqFilterType.PeakDip, 7_619f, 3.3f, 4.48f, null),
             OpraEqBand(EchoEqFilterType.HighShelf, 10_000f, 2.2f, 0.7f, null),
         )
-        val visualized = EchoEqualizerEngine.visualizationGainsDb(opra)
-        val mapped = EchoEqualizerEngine.graphicFilters(visualized)
+        val visualized = EchoEqualizerEngine.visualizationGainsDb(opra, EchoEqualizerPresets.legacyFrequenciesHz)
+        val mapped = EchoEqualizerEngine.graphicFilters(visualized, EchoEqualizerPresets.legacyFrequenciesHz)
         val exactAtPeak = EchoBiquadMath.sampleCurveDb(opra, 7_619f)
         val mappedAtPeak = EchoBiquadMath.sampleCurveDb(mapped, 7_619f)
         assertTrue(abs(exactAtPeak - mappedAtPeak) > 0.75f)

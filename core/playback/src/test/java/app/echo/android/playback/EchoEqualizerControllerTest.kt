@@ -86,9 +86,13 @@ class EchoEqualizerControllerTest {
                 ),
             ),
         )
-        assertEquals(13, controller.state.value.filters.size)
-        assertEquals(-6f, controller.state.value.preampDb, 0.001f)
-        assertTrue(controller.state.value.enabled)
-        assertEquals("Wide correction", controller.state.value.sourceLabel)
+        val state = controller.state.value
+        assertEquals(13, state.headphoneCorrection.filters.size)
+        assertEquals(-6f, state.headphoneCorrection.preampDb, 0.001f)
+        assertTrue(state.headphoneCorrection.enabled)
+        assertEquals("Wide correction", state.headphoneCorrection.label)
+        assertFalse(state.enabled)
+        assertTrue(state.filters.isEmpty())
+        assertEquals(0f, state.preampDb, 0f)
     }
 }

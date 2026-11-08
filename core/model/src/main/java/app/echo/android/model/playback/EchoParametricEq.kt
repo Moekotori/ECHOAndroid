@@ -55,7 +55,7 @@ object EchoParametricEq {
             band = band,
             type = type,
             pass = pass,
-            q = q ?: if (pass) 0.707f else 1f,
+            q = if (pass && q == null && snapSlope(band.slope) != 12f) null else q ?: if (pass) 0.707f else 1f,
         )
     }
 

@@ -50,18 +50,19 @@ class HeadphoneCorrectionSignalTest {
         for ((preset, _) in profiles + profiles.reversed()) {
             controller.applyOpraPreset(preset)
             val state = controller.state.value
-            assertTrue(state.enabled && state.parametric)
-            assertEquals(preset.bands, state.filters)
-            assertEquals(preset.preampDb, state.preampDb, 0f)
-            assertEquals(preset.displayName, state.sourceLabel)
-            assertEquals(preset.bands, controller.processingRuntime().filters)
-            assertEquals(preset.preampDb, controller.processingRuntime().preampDb, 0f)
+            assertFalse(state.enabled)
+            assertTrue(state.filters.isEmpty())
+            assertTrue(state.headphoneCorrection.enabled)
+            assertEquals(preset.bands, state.headphoneCorrection.filters)
+            assertEquals(preset.preampDb, state.headphoneCorrection.preampDb, 0f)
+            assertEquals(preset.displayName, state.headphoneCorrection.label)
             val favorite = requireNotNull(EchoEqualizerUserPresets.captureOpra("favorite", "Correction", preset, 0))
             val restored = EchoEqualizerController()
             assertTrue(restored.applyUserPreset(favorite))
-            assertEquals(controller.processingRuntime(), restored.processingRuntime())
-            restored.setConfig(true, state.presetId, state.gainsDb, state.preampDb, state.filters, state.sourceLabel)
-            assertEquals(controller.processingRuntime(), restored.processingRuntime())
+            assertEquals(state.headphoneCorrection, restored.state.value.headphoneCorrection)
+            restored.setConfig(state.enabled, state.presetId, state.gainsDb, state.preampDb, state.filters,
+                state.sourceLabel, correction = state.headphoneCorrection)
+            assertEquals(state.headphoneCorrection, restored.state.value.headphoneCorrection)
         }
     }
 
@@ -73,7 +74,7 @@ class HeadphoneCorrectionSignalTest {
         EchoPlaybackProcessRuntime.dspReplayGainDb = 0f
         val controller = EchoEqualizerController()
         controller.applyOpraPreset(preset)
-        val processor = EchoDspAudioProcessor(arrayOf(controller.processor))
+        val processor = EchoDspAudioProcessor(arrayOf(controller.processor, controller.headphoneProcessor))
         assertEquals(encoding, processor.configure(AudioProcessor.AudioFormat(rate, 2, encoding)).encoding)
         processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
         val frames = rate * 2 / 5
@@ -123,7 +124,7 @@ class HeadphoneCorrectionSignalTest {
                 }
             }
             assertEquals(frames, frame)
-            assertEquals(rate, controller.state.value.processingSampleRateHz)
+            assertEquals(rate, controller.state.value.correctionSampleRateHz)
             return 20 * log10(sqrt(power / count) / (amplitude / sqrt(2.0)))
         } finally {
             processor.reset()
