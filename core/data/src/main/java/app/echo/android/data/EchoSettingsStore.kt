@@ -183,6 +183,7 @@ data class EchoAppSettings(
     val listenBrainzToken: String? = null,
     val homeLayout: EchoHomeLayout = EchoHomeLayout(),
     val libraryLayout: EchoLibraryLayout = EchoLibraryLayout(),
+    val playerMenuLayout: app.echo.android.model.settings.EchoPlayerMenuLayout = app.echo.android.model.settings.EchoPlayerMenuLayout(),
 )
 
 object EchoLyricsColorMode {
@@ -256,6 +257,7 @@ class EchoSettingsStore(
             EchoAppSettings(
                 homeLayout = HomeLayoutPreferences.read(preferences),
                 libraryLayout = LibraryLayoutPreferences.read(preferences),
+                playerMenuLayout = PlayerMenuPreferences.read(preferences),
                 preferOffload = preferences[Keys.PreferOffload] ?: true,
                 lastOutputRoute = preferences[Keys.LastOutputRoute] ?: "system",
                 dynamicArtworkEnabled = preferences[Keys.DynamicArtworkEnabled] ?: true,
@@ -282,6 +284,8 @@ class EchoSettingsStore(
                     statusOffsetXDp = preferences[Keys.LyricsStatusOffsetXDp] ?: 80,
                     statusOffsetYDp = preferences[Keys.LyricsStatusOffsetYDp] ?: 0,
                     bluetoothDelayMs = preferences[Keys.LyricsBluetoothDelayMs] ?: 0,
+                    translationScale = preferences[Keys.LyricsTranslationScale] ?: 1f,
+                    romanizationScale = preferences[Keys.LyricsRomanizationScale] ?: 1f,
                 ).normalized,
                 floatingLyrics = app.echo.android.model.settings.EchoFloatingLyricsSettings(
                     enabled = preferences[Keys.FloatingLyricsEnabled] ?: false,
@@ -296,6 +300,7 @@ class EchoSettingsStore(
                     mode = EchoShuffleMode.fromId(preferences[Keys.ShuffleMode]),
                     spreadArtists = preferences[Keys.ShuffleSpreadArtists] ?: true,
                     recentTrackCount = preferences[Keys.ShuffleRecentTrackCount] ?: 5,
+                    playNextBehavior = app.echo.android.model.playback.EchoPlayNextBehavior.fromId(preferences[Keys.PlayNextBehavior]),
                 ).normalized,
                 trackTransitions = app.echo.android.model.playback.EchoTrackTransitionOptions(
                     fadeEnabled = preferences[Keys.TrackFadeEnabled] ?: false,
@@ -480,6 +485,10 @@ class EchoSettingsStore(
     private fun currentStartupThemeSnapshot(): EchoStartupThemeSnapshot =
         cachedStartupThemeSnapshot ?: context.readEchoStartupThemeSnapshot()
 
+    suspend fun setPlayerMenuLayout(value: app.echo.android.model.settings.EchoPlayerMenuLayout) {
+        context.echoSettings.edit { PlayerMenuPreferences.write(it, value) }
+    }
+
     suspend fun setLibraryLayout(value: EchoLibraryLayout) {
         context.echoSettings.edit { LibraryLayoutPreferences.write(it, value) }
     }
@@ -555,6 +564,8 @@ class EchoSettingsStore(
             it[Keys.LyricsStatusOffsetXDp] = normalized.statusOffsetXDp
             it[Keys.LyricsStatusOffsetYDp] = normalized.statusOffsetYDp
             it[Keys.LyricsBluetoothDelayMs] = normalized.bluetoothDelayMs
+            it[Keys.LyricsTranslationScale] = normalized.translationScale
+            it[Keys.LyricsRomanizationScale] = normalized.romanizationScale
         }
     }
 
@@ -581,6 +592,7 @@ class EchoSettingsStore(
             it[Keys.ShuffleMode] = normalized.mode.id
             it[Keys.ShuffleSpreadArtists] = normalized.spreadArtists
             it[Keys.ShuffleRecentTrackCount] = normalized.recentTrackCount
+            it[Keys.PlayNextBehavior] = normalized.playNextBehavior.id
         }
     }
 
@@ -1739,6 +1751,7 @@ class EchoSettingsStore(
             backup.replayGainPreampDb?.let { prefs[Keys.ReplayGainPreampDb] = it }
             backup.volume?.let { EchoVolumePreferences.restore(prefs, it) }
             backup.shuffleMode?.let { prefs[Keys.ShuffleMode] = EchoShuffleMode.fromId(it).id }
+            backup.playNextBehavior?.let { prefs[Keys.PlayNextBehavior] = app.echo.android.model.playback.EchoPlayNextBehavior.fromId(it).id }
             backup.shuffleSpreadArtists?.let { prefs[Keys.ShuffleSpreadArtists] = it }
             backup.shuffleRecentTrackCount?.let { prefs[Keys.ShuffleRecentTrackCount] = it.coerceIn(0, EchoShuffleOptions.MaxRecentTracks) }
             backup.trackTransitions?.normalized()?.let { transitions ->
@@ -1788,6 +1801,8 @@ class EchoSettingsStore(
             }
             backup.lyricsFontFamily?.let { prefs[Keys.LyricsFontFamily] = it }
             backup.lyricsFontScale?.let { prefs[Keys.LyricsFontScale] = it }
+            backup.lyricsTranslationScale?.let { prefs[Keys.LyricsTranslationScale] = app.echo.android.model.settings.EchoLyricsOptions.secondaryScale(it) }
+            backup.lyricsRomanizationScale?.let { prefs[Keys.LyricsRomanizationScale] = app.echo.android.model.settings.EchoLyricsOptions.secondaryScale(it) }
             backup.lyricsColorMode?.let { prefs[Keys.LyricsColorMode] = it }
             backup.lyricsAlignment?.let { prefs[Keys.LyricsAlignment] = it }
             backup.lyricsLineSpacing?.let { prefs[Keys.LyricsLineSpacing] = it }
@@ -1832,6 +1847,8 @@ class EchoSettingsStore(
         val LyricsStatusOffsetXDp = intPreferencesKey("lyrics_status_offset_x_dp")
         val LyricsStatusOffsetYDp = intPreferencesKey("lyrics_status_offset_y_dp")
         val LyricsBluetoothDelayMs = intPreferencesKey("lyrics_bluetooth_delay_ms")
+        val LyricsTranslationScale = floatPreferencesKey("lyrics_translation_scale")
+        val LyricsRomanizationScale = floatPreferencesKey("lyrics_romanization_scale")
         val FloatingLyricsEnabled = booleanPreferencesKey("floating_lyrics_enabled")
         val FloatingLyricsLocked = booleanPreferencesKey("floating_lyrics_locked")
         val FloatingLyricsFontScale = floatPreferencesKey("floating_lyrics_font_scale")
@@ -1840,6 +1857,7 @@ class EchoSettingsStore(
         val UsbOutputOptions = stringPreferencesKey("usb_output_options")
         val UsbBitPerfectEnabled = booleanPreferencesKey("usb_bit_perfect_enabled")
         val ShuffleMode = stringPreferencesKey("shuffle_mode")
+        val PlayNextBehavior = stringPreferencesKey("play_next_behavior")
         val ShuffleSpreadArtists = booleanPreferencesKey("shuffle_spread_artists")
         val ShuffleRecentTrackCount = intPreferencesKey("shuffle_recent_track_count")
         val TrackFadeEnabled = booleanPreferencesKey("track_fade_enabled")
@@ -2114,6 +2132,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         replayGainPreampDb = replayGainPreampDb,
         volume = volume,
         shuffleMode = shuffleOptions.mode.id,
+        playNextBehavior = shuffleOptions.playNextBehavior.id,
         shuffleSpreadArtists = shuffleOptions.spreadArtists,
         shuffleRecentTrackCount = shuffleOptions.normalized.recentTrackCount,
         trackTransitions = trackTransitions,
@@ -2135,6 +2154,7 @@ fun EchoAppSettings.toBackupSettings(): app.echo.android.model.backup.EchoBackup
         lyricsPageStyle = lyricsPageStyle,
         lyricsFontFamily = lyricsFontFamily,
         lyricsFontScale = lyricsFontScale,
+        lyricsTranslationScale = lyricsOptions.translationScale, lyricsRomanizationScale = lyricsOptions.romanizationScale,
         lyricsColorMode = lyricsColorMode,
         lyricsAlignment = lyricsAlignment,
         lyricsLineSpacing = lyricsLineSpacing,
@@ -2202,6 +2222,7 @@ internal fun EchoSavedPlaybackSession.toPreferenceValue(): String =
                             track.sampleRateHz?.takeIf { it > 0 }?.let { put("sampleRateHz", it) }
                             track.trackNumber?.takeIf { it > 0 }?.let { put("trackNumber", it) }
                             track.discNumber?.takeIf { it > 0 }?.let { put("discNumber", it) }
+                            track.albumArtist?.let { put("albumArtist", it) }
                             track.sourceId?.takeIf { it.isNotBlank() }?.let { put("sourceId", it) }
                         },
                     )
@@ -2323,6 +2344,7 @@ internal fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
                         sampleRateHz = item.optInt("sampleRateHz").takeIf { it > 0 },
                         trackNumber = item.optInt("trackNumber").takeIf { it > 0 },
                         discNumber = item.optInt("discNumber").takeIf { it > 0 },
+                        albumArtist = item.optString("albumArtist").takeIf { it.isNotBlank() && it != "null" },
                         sourceId = item.optString("sourceId").takeIf { it.isNotBlank() },
                         clipStartMs = item.optLong("clipStartMs").coerceAtLeast(0L),
                         clipEndMs = item.optLong("clipEndMs").coerceAtLeast(0L),

@@ -34,6 +34,36 @@ class LibraryBatchActions(
 internal class LibraryBatchSelection {
     val selected = mutableStateMapOf<String, EchoTrack>()
     private val orderedIds = ArrayList<String>()
+    var rangeAnchor by mutableStateOf<LibraryRangeAnchor?>(null)
+        private set
+    var rangeNotice by mutableStateOf<Int?>(null)
+    fun beginRange(source: LibraryRangeSource, track: EchoTrack) {
+        if (locked) return
+        val index = source.indexOf(track.id)
+        if (index < 0) { rangeNotice = R.string.library_range_changed; return }
+        if (selected.size >= Limit && track.id !in selected) { rangeNotice = R.string.library_range_limit; return }
+        start(track)
+        val first = (index - Limit + 1).coerceAtLeast(0)
+        val last = (index + Limit - 1).coerceAtMost(source.count() - 1)
+        val known = (first..last).mapNotNull { at -> source.peek(at)?.id?.let { at to it } }.toMap()
+        rangeAnchor = LibraryRangeAnchor(source.token, index, track.id, known)
+    }
+    fun endRange(source: LibraryRangeSource, track: EchoTrack) {
+        if (locked) return
+        val anchor = rangeAnchor ?: return
+        when (val result = resolveLibraryRange(source, anchor, track.id, selected.keys)) {
+            LibraryRangeResult.Changed -> { rangeAnchor = null; rangeNotice = R.string.library_range_changed }
+            LibraryRangeResult.Unloaded -> rangeNotice = R.string.library_range_unloaded
+            LibraryRangeResult.TooLarge -> rangeNotice = R.string.library_range_limit
+            is LibraryRangeResult.Ready -> {
+                val ids = result.tracks.map { it.id }
+                orderedIds.removeAll(ids.toSet())
+                result.tracks.forEach { selected[it.id] = it }
+                orderedIds.addAll(ids)
+                rangeAnchor = null
+            }
+        }
+    }
     var active by mutableStateOf(false)
         private set
     var locked by mutableStateOf(false)
@@ -76,6 +106,7 @@ internal class LibraryBatchSelection {
     }
     fun clear() {
         if (locked) return
+        rangeAnchor = null
         selected.clear()
         orderedIds.clear()
     }
@@ -103,6 +134,9 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
     var deleting by remember { mutableStateOf<List<EchoTrack>?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val resources = LocalResources.current
+    LaunchedEffect(selection.rangeNotice) {
+        selection.rangeNotice?.let { snackbar.showSnackbar(resources.getString(it)); selection.rangeNotice = null }
+    }
     fun delete(tracks: List<EchoTrack>, deleteOriginals: Boolean) {
         val operation = actions.delete ?: return
         if (busy || tracks.isEmpty()) return

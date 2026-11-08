@@ -20,4 +20,17 @@ internal class EchoLaunchSplashState {
     var background by mutableStateOf<Bitmap?>(null)
 
     var finished by mutableStateOf(false)
+
+    fun start(background: Bitmap?, lightweight: Boolean) {
+        // A delayed platform callback must not revive an expired/backgrounded overlay.
+        if (finished) return
+        this.background = background
+        this.lightweight = lightweight
+        started = true
+    }
+
+    fun finish() {
+        finished = true
+        background = null
+    }
 }

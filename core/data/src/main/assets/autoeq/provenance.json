@@ -4,5 +4,6 @@
   "profiles": 8850,
   "numericalProfilesMatchedUpstreamGitBlobs": 8850,
   "uncompressedSha256": "5c15800d34b8a178e36481138e32b9447a8c3d33388396cecb49b24cb609542e",
-  "license": "MIT"
+  "license": "MIT",
+  "manufacturersSha256": "953a090e233633e94c7abf36707d397627d58aa67df8811a15861e1cf2f098d5"
 }

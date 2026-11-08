@@ -10,10 +10,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,9 +58,8 @@ fun LockLyricsScene(
         modifier
             .fillMaxSize()
             .background(Color.Black)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 28.dp, vertical = 24.dp),
+            .safeDrawingPadding(),
+        contentAlignment = Alignment.Center,
     ) {
         Box(
             Modifier
@@ -72,20 +70,12 @@ fun LockLyricsScene(
                     ),
                 ),
         )
-        Column(
-            Modifier
-                .fillMaxSize()
-                .widthIn(max = 560.dp)
-                .align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
+        LockLyricsLayout(metadata = { artworkSize ->
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 ArtworkTile(
                     artworkUri = artworkUri,
                     modifier = Modifier
-                        .fillMaxWidth(0.42f)
-                        .height(148.dp),
+                        .size(artworkSize),
                     accent = MaterialTheme.colorScheme.primary,
                     cornerRadius = 20.dp,
                 )
@@ -111,6 +101,7 @@ fun LockLyricsScene(
                     )
                 }
             }
+        }, lyrics = {
             Column(
                 Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -126,12 +117,15 @@ fun LockLyricsScene(
                 )
                 LockLyricSideLine(snapshot.next)
             }
+        }, hint = {
             Text(
                 text = stringResource(R.string.lock_lyrics_hint),
                 color = Color.White.copy(alpha = 0.38f),
                 style = MaterialTheme.typography.labelMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
-        }
+        })
     }
 }
 

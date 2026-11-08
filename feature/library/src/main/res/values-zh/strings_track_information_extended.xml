@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_playlists">所在歌单</string>
+    <string name="track_info_playlists_empty">尚未收录到本机已知的固定歌单。</string>
+    <string name="track_info_playlists_failed">歌单加载失败，请重试。</string>
+    <string name="track_info_playlists_scope">显示本机已知的固定收录关系，包含已同步歌单和喜欢的歌曲；动态智能歌单及未同步的服务端歌单不在此列。</string>
+    <string name="track_info_modified">文件修改时间</string>
+    <string name="track_info_clip_start">分轨起点</string>
+    <string name="track_info_clip_end">分轨终点</string>
+</resources>

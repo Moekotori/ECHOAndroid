@@ -21,6 +21,7 @@ internal class RegionalConcertFeeds(directory: File, private val transport: Arti
     private data class Feed(val key: String, val url: String, val parse: (String) -> List<RegionalConcertParser.Record>)
 
     suspend fun load(source: String, names: List<String>, refresh: Boolean, now: Instant, budgetMillis: Long, period: ArtistConcertPeriod): Result {
+        val matcher = ConcertArtistMatcher(names)
         val deadline = System.nanoTime() + budgetMillis.coerceAtLeast(1) * 1_000_000
         val feeds = when (source) {
             "拨弦记" -> listOf(Feed("boxianji", "https://boxianji.guitarkk.com/attention.json") { RegionalConcertParser.boxianji(JSONObject(it)) })
@@ -58,7 +59,7 @@ internal class RegionalConcertFeeds(directory: File, private val transport: Arti
                     saved?.takeIf { entry.age < 7 * 86400_000L }.orEmpty()
                 }
             }
-            events += records.asSequence().filter { RegionalConcertParser.matches(it, names) }.map { it.event }
+            events += records.asSequence().filter(matcher::matches).map { it.event }
                 .filter { (it.phase(now) == ArtistConcertPhase.Past) == (period == ArtistConcertPeriod.Past) }.toList()
         }
         val sorted = events.distinctBy { it.id }.sortedWith(compareBy({ it.date }, { it.time.orEmpty() }))

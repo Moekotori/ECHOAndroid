@@ -11,7 +11,6 @@ internal enum class SettingsSubPage(val category: SettingsCategory, @StringRes v
     AppearanceText(SettingsCategory.Appearance, R.string.settings_section_readability),
     AppearanceBackground(SettingsCategory.Appearance, R.string.settings_section_background),
 
-    PlaybackOutput(SettingsCategory.Playback, R.string.audio_output_title),
     PlaybackListening(SettingsCategory.Playback, R.string.settings_section_listening),
     PlaybackLyrics(SettingsCategory.Playback, R.string.settings_section_lyrics),
 
@@ -83,14 +82,9 @@ private val anchorPages: Map<Pair<SettingsCategory, Int>, SettingsSubPage> = lis
         R.string.settings_blur, R.string.settings_brightness, R.string.settings_glass, R.string.settings_scale,
         R.string.settings_startup_background, R.string.settings_section_background_adjustments),
 
-    anchors(SettingsSubPage.PlaybackOutput,
-        R.string.audio_output_title, R.string.audio_focus_title, R.string.audio_output_reset,
-        R.string.listening_interruption, R.string.manual_fade_title, R.string.effects_panel_title,
-        R.string.settings_replay_gain, R.string.settings_replay_gain_mode, R.string.eq_preamp,
-        R.string.settings_section_transition, R.string.settings_gapless, R.string.settings_track_fade,
-        R.string.settings_track_fade_duration, R.string.settings_smart_transition),
     anchors(SettingsSubPage.PlaybackListening,
         R.string.settings_section_listening, R.string.settings_shuffle_mode, R.string.settings_shuffle_rules,
+        R.string.settings_play_next_behavior, R.string.settings_shuffle_albums,
         R.string.settings_pause_on_disconnect, R.string.settings_resume_on_reconnect),
     anchors(SettingsSubPage.PlaybackLyrics,
         R.string.settings_section_lyrics, R.string.settings_lyrics_interface, R.string.settings_lyrics_source_order,

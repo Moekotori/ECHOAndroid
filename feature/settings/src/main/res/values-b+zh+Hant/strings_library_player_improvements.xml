@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_shuffle_albums">整張專輯隨機</string>
+    <string name="settings_shuffle_albums_detail">隨機專輯順序，專輯內保持碟號、音軌順序；目前專輯從目前曲目繼續，手動點播仍優先。</string>
+    <string name="settings_play_next_behavior">下一首已有歌曲</string>
+    <string name="settings_play_next_behavior_detail">當歌曲已在佇列後方時，選擇重複播放或提前已有項。保留目前播放和已播歷史。</string>
+    <string name="settings_play_next_repeat">再播一次</string>
+    <string name="settings_play_next_move">提前後續已有項</string>
+</resources>

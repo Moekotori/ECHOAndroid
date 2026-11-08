@@ -11,6 +11,8 @@ import android.provider.MediaStore
 import androidx.sqlite.db.SimpleSQLiteQuery
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.EchoTrack
+import app.echo.android.model.library.LibrarySource
+import app.echo.android.model.platform.EchoPlatformCapabilities
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -27,6 +29,11 @@ data class LibraryTrackDeletionResult(val removedIds: Set<String>, val cancelled
 
 object LibraryTrackDeletionPolicy {
     const val Limit = 200
+
+    fun requiresLegacyStoragePermission(sdkInt: Int, tracks: List<EchoTrack>): Boolean =
+        sdkInt <= EchoPlatformCapabilities.LegacyWriteExternalStorageMaxSdk && tracks.any {
+            it.source == LibrarySource.MediaStore || it.uri.startsWith("file:")
+        }
 
     fun canDeleteOriginal(track: EchoTrack): Boolean = track.source.isLocalAudioFile &&
         !CueSheetPolicy.isCueTrackId(track.id) && !track.uri.contains('#') &&

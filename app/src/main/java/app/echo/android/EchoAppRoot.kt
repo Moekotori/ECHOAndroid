@@ -442,6 +442,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     var openPcTabNonce by remember { mutableIntStateOf(0) }
     var openPcQueueNonce by remember { mutableIntStateOf(0) }
     var settingsSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
+    var audioSettingsRequested by rememberSaveable { mutableStateOf(false) }
+    var audioSettingsAnchor by rememberSaveable { mutableStateOf<String?>(null) }
     var localCastSetupError by remember { mutableStateOf<String?>(null) }
     val phoneCastIssueMessage = phoneCastTransferState.issue?.let { issue ->
         val resource = when (issue) {
@@ -1507,6 +1509,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onOpenPermissionSettings = context::openEchoPermissionSettings,
                                 onScanMusic = { addMusicVisible = true },
                                 onOpenSound = {
+                                    audioSettingsRequested = false
+                                    audioSettingsAnchor = null
+                                    settingsSoundRequestId++
+                                    navigateToPage(EchoPagerPage.Diagnostics)
+                                },
+                                onOpenAudioSettings = { anchor ->
+                                    audioSettingsAnchor = anchor
+                                    audioSettingsRequested = true
                                     settingsSoundRequestId++
                                     navigateToPage(EchoPagerPage.Diagnostics)
                                 },
@@ -1572,20 +1582,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 shuffleOptions = appSettings.shuffleOptions,
                                 trackTransitions = appSettings.trackTransitions,
                                 usbExclusiveAutoRequestOnStartup = appSettings.usbExclusiveAutoRequestOnStartup,
-                                audioFocusEnabled = appSettings.audioFocusEnabled,
-                                onAudioFocusEnabledChange = viewModel::setAudioFocusEnabled,
-                                onResetAudioOutput = viewModel::resetAudioOutputSettings,
-                                audioInterruptionPolicy = appSettings.audioInterruptionPolicy,
                                 sleepTimerFinishTrack = appSettings.sleepTimerFinishTrack,
                                 stopOnTaskRemoved = appSettings.stopOnTaskRemoved,
                                 onStopOnTaskRemovedChange = viewModel::setStopOnTaskRemoved,
-                                onAudioInterruptionPolicyChange = viewModel::setAudioInterruptionPolicy,
                                 onSleepTimerFinishTrackChange = viewModel::setSleepTimerFinishTrack,
                                 pauseOnAudioDisconnect = appSettings.pauseOnAudioDisconnect,
                                 resumeOnAudioReconnect = appSettings.resumeOnAudioReconnect,
                                 replayGainEnabled = appSettings.replayGainEnabled,
-                                replayGainMode = appSettings.replayGainMode,
-                                replayGainPreampDb = appSettings.replayGainPreampDb,
                                 usbExclusiveTestResult = usbExclusiveTestResult,
                                 customBackgroundMode = appSettings.customBackgroundMode,
                                 customBackgroundUri = appSettings.customBackgroundUri,
@@ -1647,14 +1650,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onUsbBitPerfectEnabledChange = viewModel::setUsbBitPerfectEnabled,
                                 onUsbOutputOptionsChange = viewModel::setUsbOutputOptions,
                                 onShuffleOptionsChange = viewModel::setShuffleOptions,
-                                onTrackTransitionsChange = viewModel::setTrackTransitions,
                                 onUsbExclusiveAutoRequestOnStartupChange = viewModel::setUsbExclusiveAutoRequestOnStartup,
                                 onPauseOnAudioDisconnectChange = viewModel::setPauseOnAudioDisconnect,
                                 onResumeOnAudioReconnectChange = viewModel::setResumeOnAudioReconnect,
-                                onReplayGainChange = viewModel::setReplayGain,
-                                onReplayGainModeChange = viewModel::setReplayGainMode,
-                                onOpenSystemAudioEffects = { app.echo.android.playback.EchoSystemAudioEffects.open(context, (context.applicationContext as EchoApplication).audioPipelineState, !echoLinkSession.castActive.value) },
-                                systemEffectsLocalPlayback = !castSessionActive,
                                 onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
                                 onPickImageBackground = { backgroundImageLauncher.launch(arrayOf("image/*")) },
                                 onPickStartupBackground = { startupBackgroundLauncher.launch(arrayOf("image/*")) },
@@ -1937,6 +1935,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                     playbackStatus = playbackStatus,
                                     isActive = appVisible && !shellOverlayOpen && tabPagerState.currentPage == EchoPagerPage.Diagnostics.ordinal,
                                     soundRequestId = settingsSoundRequestId,
+                                    audioSettingsRequested = audioSettingsRequested,
+                                    audioSettingsAnchor = audioSettingsAnchor,
+                                    onOpenSystemAudioEffects = { app.echo.android.playback.EchoSystemAudioEffects.open(context, (context.applicationContext as EchoApplication).audioPipelineState, !echoLinkSession.castActive.value) },
+                                    systemEffectsLocalPlayback = !castSessionActive,
                                     onSwipeToConnect = { navigateToPage(EchoPagerPage.Connect) },
                                     bluetoothCodecNeedsPermission = !hasBluetoothConnectPermission && playbackStatus.diagnostics.outputDeviceKind == EchoOutputDeviceKind.Bluetooth.id,
                                     onRequestBluetoothCodecPermission = {

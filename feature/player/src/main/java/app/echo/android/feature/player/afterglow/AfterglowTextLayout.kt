@@ -46,6 +46,8 @@ internal class AfterglowTextLayout(
             estimateWords: Boolean = false,
             composition: Int = 0,
             lightweight: Boolean = false,
+            translationScale: Float = 1f,
+            romanizationScale: Float = 1f,
         ): AfterglowTextLayout {
             val timingLine = if (estimateWords && line.words.isEmpty())
                 line.copy(words = estimatedLyricWords(line, endMs)) else line
@@ -60,10 +62,17 @@ internal class AfterglowTextLayout(
             val direction = AfterglowTypography.choose(sourceGlyphs.size, verticalSafe, composition, lightweight)
             val paragraphWidth = (width * direction.widthFraction).toInt().coerceAtLeast(1)
             val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply { this.typeface = typeface }
-            val captionText = listOfNotNull(
-                line.romanization?.takeIf { romanization && it.isNotBlank() },
-                line.translation?.takeIf { translation && it.isNotBlank() },
-            ).joinToString("\n")
+            val captionText = android.text.SpannableStringBuilder()
+            fun appendCaption(text: String?, scale: Float) {
+                if (text.isNullOrBlank()) return
+                if (captionText.isNotEmpty()) captionText.append('\n')
+                val start = captionText.length
+                captionText.append(text)
+                captionText.setSpan(android.text.style.RelativeSizeSpan(scale), start, captionText.length,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            if (romanization) appendCaption(line.romanization, romanizationScale)
+            if (translation) appendCaption(line.translation, translationScale)
             val captionPaint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
                 this.typeface = Typeface.DEFAULT
                 this.textSize = captionSize
@@ -129,7 +138,7 @@ internal class AfterglowTextLayout(
 
         // Layout and LineBreaker use the same break-strategy integers. LineBreaker is API 29.
         @SuppressLint("WrongConstant")
-        private fun paragraph(text: String, paint: TextPaint, width: Int, spacing: Float, alignment: Layout.Alignment): StaticLayout {
+        private fun paragraph(text: CharSequence, paint: TextPaint, width: Int, spacing: Float, alignment: Layout.Alignment): StaticLayout {
             val metrics = paint.fontMetrics
             val fontHeight = (metrics.descent - metrics.ascent + metrics.leading).coerceAtLeast(1f)
             val extra = paint.textSize * 0.24f

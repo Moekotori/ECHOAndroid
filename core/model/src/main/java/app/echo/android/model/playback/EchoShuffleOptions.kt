@@ -4,6 +4,7 @@ data class EchoShuffleOptions(
     val mode: EchoShuffleMode = EchoShuffleMode.PseudoRandom,
     val spreadArtists: Boolean = true,
     val recentTrackCount: Int = 5,
+    val playNextBehavior: EchoPlayNextBehavior = EchoPlayNextBehavior.Repeat,
 ) {
     val normalized: EchoShuffleOptions
         get() {

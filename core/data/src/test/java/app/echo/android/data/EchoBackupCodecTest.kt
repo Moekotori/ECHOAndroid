@@ -16,8 +16,26 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Assert.assertNull
 
 class EchoBackupCodecTest {
+    @Test fun secondaryLyricSizesAndQueueBehaviorRoundTripWithoutChangingOlderBackups() {
+        val settings = EchoAppSettings(
+            lyricsOptions = app.echo.android.model.settings.EchoLyricsOptions(translationScale = 1.5f, romanizationScale = 0.75f),
+            shuffleOptions = app.echo.android.model.playback.EchoShuffleOptions(
+                mode = app.echo.android.model.playback.EchoShuffleMode.Albums,
+                playNextBehavior = app.echo.android.model.playback.EchoPlayNextBehavior.MoveUpcoming),
+        ).toBackupSettings()
+        val restored = EchoBackupCodec.decode(EchoBackupCodec.encode(EchoBackupDocument(settings = settings))).settings
+        assertEquals(settings.lyricsTranslationScale, restored.lyricsTranslationScale)
+        assertEquals(settings.lyricsRomanizationScale, restored.lyricsRomanizationScale)
+        assertEquals("albums", restored.shuffleMode)
+        assertEquals("move_upcoming", restored.playNextBehavior)
+        val old = EchoBackupCodec.decode("{\"version\":1,\"settings\":{}}").settings
+        assertNull(old.lyricsTranslationScale); assertNull(old.lyricsRomanizationScale); assertNull(old.playNextBehavior)
+        val normalized = app.echo.android.model.settings.EchoLyricsOptions(translationScale = Float.NaN, romanizationScale = 8f).normalized
+        assertEquals(1f, normalized.translationScale); assertEquals(2f, normalized.romanizationScale)
+    }
     @Test fun backgroundPositionRoundTripsAndOldBackupsRemainReadable() {
         val settings = EchoAppSettings(
             customBackgroundPositionX = -0.5f, customBackgroundPositionY = 0.75f,

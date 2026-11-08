@@ -211,6 +211,8 @@ fun NowPlayingScreen(
     onOpenQueue: () -> Unit,
     onOpenTrackTools: () -> Unit = {},
     songActions: NowPlayingSongActions = NowPlayingSongActions(),
+    playerMenuLayout: app.echo.android.model.settings.EchoPlayerMenuLayout = app.echo.android.model.settings.EchoPlayerMenuLayout(),
+    onSavePlayerMenuLayout: suspend (app.echo.android.model.settings.EchoPlayerMenuLayout) -> Unit = {},
     onCast: (() -> Unit)? = null,
     castActive: Boolean = false,
     onSetRepeatMode: (app.echo.android.model.playback.EchoRepeatMode) -> Unit,
@@ -232,6 +234,10 @@ fun NowPlayingScreen(
     modifier: Modifier = Modifier,
     positionState: State<PlaybackPositionState>? = null,
     bluetoothLyricsDelayMs: Int = 0,
+    lyricsTranslationScale: Float = 1f,
+    lyricsRomanizationScale: Float = 1f,
+    onLyricsTranslationScaleChange: (Float) -> Unit = {},
+    onLyricsRomanizationScaleChange: (Float) -> Unit = {},
     smartTransitionState: State<app.echo.android.model.playback.EchoSmartTransitionVisual?>? = null,
     lyricsFontFamily: FontFamily? = null,
     lyricsPageStyle: String = EchoLyricsPageStyle.Mist.id,
@@ -308,7 +314,7 @@ fun NowPlayingScreen(
     // Full-bleed page styles always paint their own field, whatever the lyrics backdrop setting says.
     val shownBackdrop = if (fullBleedPage) EchoLyricsBackdrop.Halftone else backdropStyle
     val detailedGrid = fullBleedPage && appearance.style != EchoPlayerPageStyle.Halftone.id
-    val colorGrid = rememberArtworkColorGrid(track?.artworkUri, enabled = shownBackdrop.needsColorGrid, detailed = detailedGrid)
+    val colorGrid = rememberArtworkColorGrid(track?.artworkUri, detailed = detailedGrid)
     var splitNowPlaying by remember { mutableStateOf(false) }
     // The chat thread reads the lyrics in place; it has no lyrics page to swipe to.
     val inlineLyrics = !isRadio && appearance.style == EchoPlayerPageStyle.ChatThread.id
@@ -366,11 +372,14 @@ fun NowPlayingScreen(
     var lyricsSettingsVisible by rememberSaveable { mutableStateOf(false) }
     var playbackSettingsVisible by rememberSaveable { mutableStateOf(false) }
     var appearanceSettingsVisible by rememberSaveable { mutableStateOf(false) }
+    var menuEditorVisible by rememberSaveable { mutableStateOf(false) }
+    val fullSettingsPageVisible = appearanceSettingsVisible || menuEditorVisible
     LaunchedEffect(presentationExpanded) {
         if (!presentationExpanded) {
             playbackSettingsVisible = false
             lyricsSettingsVisible = false
             appearanceSettingsVisible = false
+            menuEditorVisible = false
         }
     }
     var handledLyricsRequestId by rememberSaveable { mutableIntStateOf(openLyricsRequestId) }
@@ -416,7 +425,7 @@ fun NowPlayingScreen(
     val dismissFlingPx = remember(density) { with(density) { 1080.dp.toPx() } }
     var playerHeightPx by remember { mutableFloatStateOf(0f) }
     val suppressArtworkFlight = rememberUpdatedState(onSuppressArtworkFlight)
-    val overlayBlocking = lyricsSettingsVisible || playbackSettingsVisible || appearanceSettingsVisible
+    val overlayBlocking = lyricsSettingsVisible || playbackSettingsVisible || fullSettingsPageVisible
     val dismissEnabledState = rememberUpdatedState(presentationExpanded && !overlayBlocking)
     LaunchedEffect(overlayBlocking) {
         if (overlayBlocking && dismissDrag.offsetPx > 0f) {
@@ -489,9 +498,9 @@ fun NowPlayingScreen(
     val fullCoverPage = appearance.style == EchoPlayerPageStyle.FullCover.id
     val drawLyricsBackdrop = !isRadio && (!appearance.usesFlatSurface || fullBleedPage || fullCoverPage)
     RecordSleeveSystemBars(
-        enabled = presentationExpanded && (!immersiveAfterglow || playbackSettingsVisible || appearanceSettingsVisible),
-        darkIcons = if (appearanceSettingsVisible || isRadio) !LocalEchoDarkTheme.current else sharedStyle.isLight,
-        navigationDarkIcons = if (playbackSettingsVisible || appearanceSettingsVisible || isRadio) {
+        enabled = presentationExpanded && (!immersiveAfterglow || playbackSettingsVisible || fullSettingsPageVisible),
+        darkIcons = if (fullSettingsPageVisible || isRadio) !LocalEchoDarkTheme.current else sharedStyle.isLight,
+        navigationDarkIcons = if (playbackSettingsVisible || fullSettingsPageVisible || isRadio) {
             !LocalEchoDarkTheme.current
         } else {
             sharedStyle.isLight
@@ -504,6 +513,7 @@ fun NowPlayingScreen(
     val settingsColorScheme = MaterialTheme.colorScheme
     val settingsTypography = MaterialTheme.typography
     CompositionLocalProvider(
+        LocalLyricsSecondaryText provides LyricsSecondaryText(secondaryLyricScale(lyricsTranslationScale), secondaryLyricScale(lyricsRomanizationScale)),
         LocalPlayerPageStyle provides sharedStyle,
         LocalLyricsWordHighlightStyle provides EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle),
     ) {
@@ -554,7 +564,7 @@ fun NowPlayingScreen(
         ) {
             Box(Modifier.fillMaxSize()
                 .echoSheetUnderlay(lyricsSettingsVisible || playbackSettingsVisible)
-                .echoPageUnderlay(appearanceSettingsVisible), contentAlignment = Alignment.TopCenter) {
+                .echoPageUnderlay(fullSettingsPageVisible), contentAlignment = Alignment.TopCenter) {
             if (immersiveAfterglow) {
                 app.echo.android.feature.player.afterglow.AfterglowImmersivePage(
                     status = status, lyricsState = lyricsState, style = lyricStyle,
@@ -860,6 +870,8 @@ fun NowPlayingScreen(
                 onLyricsFocusGlowChange = onLyricsFocusGlowChange,
                 onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
                 onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
+                lyricsTranslationScale = lyricsTranslationScale, lyricsRomanizationScale = lyricsRomanizationScale,
+                onLyricsTranslationScaleChange = onLyricsTranslationScaleChange, onLyricsRomanizationScaleChange = onLyricsRomanizationScaleChange,
                 modifier = Modifier.fillMaxSize(),
             )
             CompositionLocalProvider(
@@ -870,6 +882,8 @@ fun NowPlayingScreen(
                 MaterialTheme(colorScheme = settingsColorScheme, typography = settingsTypography) {
                     PlaybackSettingsDrawer(
                         songActions = songActions,
+                        menuLayout = playerMenuLayout,
+                        onEditMenu = { menuEditorVisible = true },
                         actionsEnabled = presentationExpanded,
                         onOpenTrackTools = onOpenTrackTools,
                         onOpenAppearance = { appearanceSettingsVisible = true },
@@ -893,6 +907,13 @@ fun NowPlayingScreen(
                         onDismiss = { playbackSettingsVisible = false },
                         modifier = Modifier.fillMaxSize(),
                     )
+                    EchoPageOverlay(visible = menuEditorVisible, modifier = Modifier.fillMaxSize()) {
+                        PlayerMenuEditorScreen(
+                            layout = playerMenuLayout,
+                            onSave = onSavePlayerMenuLayout,
+                            onBack = { menuEditorVisible = false },
+                        )
+                    }
                     EchoPageOverlay(visible = appearanceSettingsVisible, modifier = Modifier.fillMaxSize()) {
                         PlayerAppearanceScreen(
                             appearance = appearance,
@@ -1102,6 +1123,8 @@ private fun LyricsSettingsDrawer(
     onLyricsFocusGlowChange: (Boolean) -> Unit,
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
+    lyricsTranslationScale: Float, lyricsRomanizationScale: Float,
+    onLyricsTranslationScaleChange: (Float) -> Unit, onLyricsRomanizationScaleChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(enabled = visible, onBack = onDismiss)
@@ -1154,6 +1177,8 @@ private fun LyricsSettingsDrawer(
             onLyricsFocusGlowChange = onLyricsFocusGlowChange,
             onShowLyricsControlDeckChange = onShowLyricsControlDeckChange,
             onOnlineLyricsEnabledChange = onOnlineLyricsEnabledChange,
+            translationScale = lyricsTranslationScale, romanizationScale = lyricsRomanizationScale,
+            onTranslationScaleChange = onLyricsTranslationScaleChange, onRomanizationScaleChange = onLyricsRomanizationScaleChange,
         )
     }
 }

@@ -9,6 +9,22 @@ import org.junit.Test
 
 class LibraryTrackDeletionPolicyTest {
     @Test
+    fun legacyPermissionAppliesOnlyToSharedFilesOnAndroid8And9() {
+        val media = track()
+        val document = media.copy(source = LibrarySource.Saf, uri = "content://documents/audio/1")
+        val file = document.copy(uri = "file:///storage/emulated/0/Music/track.mp3")
+        listOf(26, 27, 28).forEach { sdk ->
+            assertTrue(LibraryTrackDeletionPolicy.requiresLegacyStoragePermission(sdk, listOf(media)))
+            assertTrue(LibraryTrackDeletionPolicy.requiresLegacyStoragePermission(sdk, listOf(file)))
+            assertFalse(LibraryTrackDeletionPolicy.requiresLegacyStoragePermission(sdk, listOf(document)))
+            assertFalse(LibraryTrackDeletionPolicy.requiresLegacyStoragePermission(sdk, emptyList()))
+        }
+        listOf(29, 30, 31, 33, 37).forEach { sdk ->
+            assertFalse(LibraryTrackDeletionPolicy.requiresLegacyStoragePermission(sdk, listOf(media, document, file)))
+        }
+    }
+
+    @Test
     fun originalDeletionRejectsRemoteAndSharedAudioSegments() {
         val local = track()
         assertTrue(LibraryTrackDeletionPolicy.canDeleteOriginal(local))

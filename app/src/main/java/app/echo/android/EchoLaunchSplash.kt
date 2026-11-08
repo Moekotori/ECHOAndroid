@@ -81,7 +81,7 @@ internal fun EchoLaunchSplash(state: EchoLaunchSplashState, dark: Boolean) {
     fx.density = LocalDensity.current.density
 
     LaunchedEffect(state.started, state.lightweight) {
-        if (state.started && state.lightweight == true) state.finished = true
+        if (state.started && state.lightweight == true) state.finish()
     }
     LaunchedEffect(running) {
         if (!running) return@LaunchedEffect
@@ -93,7 +93,7 @@ internal fun EchoLaunchSplash(state: EchoLaunchSplashState, dark: Boolean) {
             val time = fx.time.floatValue
             if (fx.exitAt.floatValue < 0f && time >= LaunchSplashTiming.HoldSeconds) fx.exitAt.floatValue = time
             if (fx.exitAt.floatValue >= 0f && time - fx.exitAt.floatValue >= LaunchSplashTiming.ExitSeconds) {
-                state.finished = true
+                state.finish()
                 return@LaunchedEffect
             }
         }

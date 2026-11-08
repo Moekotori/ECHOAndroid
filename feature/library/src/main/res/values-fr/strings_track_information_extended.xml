@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_playlists">Listes contenant ce morceau</string>
+    <string name="track_info_playlists_empty">Absent des listes fixes connues sur cet appareil.</string>
+    <string name="track_info_playlists_failed">Impossible de charger les listes. Réessayez.</string>
+    <string name="track_info_playlists_scope">Affiche les listes fixes connues, les listes synchronisées et les favoris. Les listes intelligentes dynamiques et celles du serveur non synchronisées sont exclues.</string>
+    <string name="track_info_modified">Fichier modifié</string>
+    <string name="track_info_clip_start">Début de l’extrait</string>
+    <string name="track_info_clip_end">Fin de l’extrait</string>
+</resources>

@@ -83,6 +83,8 @@ internal fun TrackActionSheet(
     onVersions: (() -> Unit)? = null,
     onHide: (() -> Unit)? = null,
     onShare: (() -> Unit)? = null,
+    onRangeStart: (() -> Unit)? = null,
+    onRangeEnd: (() -> Unit)? = null,
 ) {
     // Constrain content, not the ModalBottomSheet: its anchors need the full window height.
     // Short windows need more room for actions while retaining the handle and safe insets.
@@ -103,6 +105,8 @@ internal fun TrackActionSheet(
             if (onSelectForBatch != null) {
                 TrackActionRow(stringResource(L10nR.string.library_multiselect), Icons.Rounded.Checklist, enabled = true, onClick = onSelectForBatch)
             }
+            if (onRangeStart != null) TrackActionRow(stringResource(L10nR.string.library_range_start), Icons.Rounded.Checklist, true, onRangeStart)
+            if (onRangeEnd != null) TrackActionRow(stringResource(L10nR.string.library_range_end), Icons.Rounded.Checklist, true, onRangeEnd)
             TrackActionRow(stringResource(L10nR.string.feature_library_play_38419a), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
             if (canPlayOnPc) {
                 TrackActionRow(

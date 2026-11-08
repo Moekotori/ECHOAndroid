@@ -161,7 +161,7 @@ class EchoPlaybackService : MediaLibraryService() {
             .setMaxSeekToPreviousPositionMs(PREVIOUS_RESTART_THRESHOLD_MS)
             .build()
             .also {
-                nextUpQueue = NextUpQueueController(it)
+                nextUpQueue = NextUpQueueController(it, serviceScope)
                 serviceScope.launch {
                     EchoPlaybackRuntimeOptionsStore.options.map { options -> options.shuffleOptions }
                         .distinctUntilChanged().collect { options -> nextUpQueue?.setShuffleOptions(options) }

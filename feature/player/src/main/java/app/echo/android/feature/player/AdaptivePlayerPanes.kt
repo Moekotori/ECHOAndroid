@@ -38,7 +38,8 @@ internal fun AdaptivePlayerPanes(
     val panes = with(density) {
         playerPanePlacement(maxWidth.roundToPx(), maxHeight.roundToPx(), 18.dp.roundToPx(), fold, origin.x, origin.y,
             preferSplit = preferSplit, allowSplit = allowSplit,
-            minimumPaneWidth = ((if (fold?.horizontal == true) 480.dp else 280.dp) * fontScale.coerceAtLeast(1f)).roundToPx(),
+            minimumPaneWidth = (playerMinimumPaneWidth(maxHeight.value, fold?.horizontal == true, fold != null).dp *
+                fontScale.coerceAtLeast(1f)).roundToPx(),
             minimumPaneHeight = (180.dp * fontScale.coerceAtLeast(1f)).roundToPx(), rtl = rtl)
     }
     SideEffect { onSplitChanged(panes.isSplit) }

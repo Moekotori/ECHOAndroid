@@ -10,10 +10,6 @@ enum class EchoLyricsBackdrop(val id: String) {
     Iso("iso"),
     ;
 
-    /** Styles that paint straight from the cover's color grid instead of the three-color palette. */
-    val needsColorGrid: Boolean
-        get() = this != Fluid
-
     companion object {
         fun fromId(value: String?): EchoLyricsBackdrop = entries.firstOrNull { it.id == value } ?: Fluid
     }

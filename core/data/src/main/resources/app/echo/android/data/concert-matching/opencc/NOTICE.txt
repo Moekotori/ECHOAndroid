@@ -1,0 +1,17 @@
+OpenCC traditional-to-simplified dictionary data
+OpenCC project by BYVoid and contributors.
+Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
+
+Source: https://github.com/BYVoid/OpenCC
+Release: ver.1.1.9
+Commit: 556ed22496d650bd0b13b6c163be9814637970ae
+Included unchanged: data/dictionary/TSCharacters.txt, data/dictionary/TSPhrases.txt
+
+SHA-256:
+TSCharacters.txt 6b5a0a799bea2bb22c001f635eaa3fc2904310f0c08addbff275477a80ecf09a
+TSPhrases.txt 504169029c43f7f234b8e2ae470720af3657675c5574ff8aa0feb257e1dc5ce2
+
+ECHOAndroid uses these fixed dictionaries only to normalize concert artist
+matching keys. Source text, library tags and displayed names remain unchanged.
+The Kotlin reader is implemented in ECHOAndroid; no OpenCC native library,
+JavaScript implementation or network conversion service is bundled.

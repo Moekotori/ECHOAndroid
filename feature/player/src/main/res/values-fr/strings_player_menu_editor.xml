@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_menu_edit">Modifier le menu</string>
+    <string name="player_menu_detail">Choisissez les actions visibles, réordonnez-les avec les flèches et enregistrez. Les actions non prises en charge par la source restent masquées.</string>
+    <string name="player_menu_move_up">Monter %1$s</string>
+    <string name="player_menu_move_down">Descendre %1$s</string>
+    <string name="player_menu_save_failed">Échec de l’enregistrement. Réessayez.</string>
+    <string name="player_menu_empty">Toutes les actions sont masquées. Restaurez-les depuis le bouton de modification en haut.</string>
+</resources>

@@ -1,5 +1,8 @@
 package app.echo.android.feature.player
 
+import app.echo.android.model.settings.EchoPlayerMenuAction
+import app.echo.android.model.settings.EchoPlayerMenuLayout
+import androidx.compose.material.icons.rounded.Edit
 import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.feature.player.R as L10nR
@@ -147,6 +150,8 @@ internal fun playModeDetail(repeatLabel: String, shuffleEnabled: Boolean, shuffl
 internal fun PlaybackSettingsDrawer(
     onOpenTrackTools: () -> Unit = {},
     songActions: NowPlayingSongActions,
+    menuLayout: EchoPlayerMenuLayout,
+    onEditMenu: () -> Unit,
     actionsEnabled: Boolean = true,
     onOpenAppearance: () -> Unit,
     visible: Boolean,
@@ -179,6 +184,8 @@ internal fun PlaybackSettingsDrawer(
     }) {
         PlaybackSettingsSheet(
             songActions = songActions,
+            menuLayout = menuLayout,
+            onEditMenu = { onDismiss(); onEditMenu() },
             onSongAction = { action ->
                 if (visible && actionsEnabled && pendingAction == null) {
                     val selectedId = status.track?.id
@@ -219,6 +226,8 @@ private fun PlaybackSettingsSheet(
     onSongAction: (() -> Unit) -> Unit,
     onOpenTrackTools: () -> Unit = {},
     songActions: NowPlayingSongActions,
+    menuLayout: EchoPlayerMenuLayout,
+    onEditMenu: () -> Unit,
     onOpenAppearance: () -> Unit,
     status: EchoPlaybackStatus,
     onSetRepeatMode: (EchoRepeatMode) -> Unit,
@@ -238,17 +247,15 @@ private fun PlaybackSettingsSheet(
     onDismiss: () -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
-    val customActive = isCustomSleepTimer(status.sleepTimerMode, status.sleepTimerMinutes)
-    var timerExpanded by remember { mutableStateOf(false) }
-    var repeatExpanded by remember { mutableStateOf(false) }
     var moreExpanded by remember { mutableStateOf(false) }
-    var showCustomSleepTimer by remember { mutableStateOf(false) }
-    var customMinutes by remember {
-        mutableIntStateOf(status.sleepTimerMinutes?.takeIf { it !in SleepTimerPresetMinutes } ?: SleepTimerCustomDefaultMinutes)
-    }
     BackHandler(enabled = moreExpanded) { moreExpanded = false }
     val contentScrollState = remember(moreExpanded) { ScrollState(0) }
     val accent = echoAccentColor()
+    val visibleItems = remember(menuLayout, songActions, status.track?.id) {
+        menuLayout.normalized().let { layout ->
+            layout.order.filter { it !in layout.hidden && it.available(songActions, status.track != null) }
+        }
+    }
     val headerTitle = if (moreExpanded) stringResource(L10nR.string.playback_more_settings)
         else status.track?.let { displayTrack(it.title) }
             ?: stringResource(L10nR.string.feature_player_playback_settings_651436)
@@ -277,6 +284,14 @@ private fun PlaybackSettingsSheet(
                     onBack = { moreExpanded = false },
                     onClose = onDismiss,
                     compact = true,
+                    actions = {
+                        if (!moreExpanded) GlyphButton(
+                            icon = Icons.Rounded.Edit,
+                            description = stringResource(L10nR.string.player_menu_edit),
+                            touchSize = 48.dp, iconSize = 20.dp,
+                            tint = MaterialTheme.colorScheme.onSurface, background = settingsPlateColor(), onClick = onEditMenu,
+                        )
+                    },
                 ) {
                     ArtworkTile(
                         artworkUri = status.track?.artworkUri,
@@ -309,164 +324,36 @@ private fun PlaybackSettingsSheet(
                                 onDismiss = onDismiss,
                             )
                         } else {
-                            PlaybackActionRow(
-                                icon = Icons.Rounded.Palette,
-                                text = stringResource(L10nR.string.player_appearance_title),
-                                framed = false, compact = true, onClick = onOpenAppearance,
+                            NowPlayingSongActionStatus(songActions)
+                            if (visibleItems.isEmpty()) Text(
+                                stringResource(L10nR.string.player_menu_empty),
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            HorizontalDivider(Modifier.padding(vertical = 3.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            NowPlayingSongActionRows(songActions, onSongAction, onOpenQueue, status.track)
-                            HorizontalDivider(Modifier.padding(vertical = 3.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            PlaybackSettingsSection(
-                                icon = Icons.Rounded.Repeat,
-                                framed = false,
-                                compact = true,
-                                showDivider = false,
-                                revealOrder = 1,
-                                title = stringResource(L10nR.string.feature_player_playback_mode),
-                                detail = repeatModeLabel(status.repeatMode),
-                                expanded = repeatExpanded,
-                                onToggleExpanded = { repeatExpanded = !repeatExpanded },
-                            ) {
-                                Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    listOf(EchoRepeatMode.Off, EchoRepeatMode.All, EchoRepeatMode.One).forEach { mode ->
-                                        PlaybackIconChoice(
-                                            icon = if (mode == EchoRepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                                            description = repeatModeLabel(mode),
-                                            selected = status.repeatMode == mode,
-                                            slashed = mode == EchoRepeatMode.Off,
-                                            onClick = { onSetRepeatMode(mode) },
-                                            modifier = Modifier.weight(1f),
+                            visibleItems.forEach { item ->
+                                androidx.compose.runtime.key(item) {
+                                    when (item) {
+                                        EchoPlayerMenuAction.Appearance -> PlaybackActionRow(
+                                            item.icon(), stringResource(item.labelRes()), onOpenAppearance,
+                                            framed = false, compact = true,
                                         )
+                                        EchoPlayerMenuAction.Repeat -> PlaybackRepeatMenuControl(status, onSetRepeatMode)
+                                        EchoPlayerMenuAction.Shuffle -> PlaybackToggleRow(
+                                            item.icon(), stringResource(item.labelRes()), status.shuffleEnabled,
+                                            onCheckedChange = { onToggleShuffle() }, framed = false, compact = true,
+                                        )
+                                        EchoPlayerMenuAction.SleepTimer -> PlaybackSleepTimerMenuControl(
+                                            status, onSetSleepTimer, onSetSleepTimerEndOfTrack, onCancelSleepTimer,
+                                        )
+                                        EchoPlayerMenuAction.MoreSettings -> PlaybackActionRow(
+                                            item.icon(), stringResource(item.labelRes()), { moreExpanded = true },
+                                            framed = false, compact = true,
+                                        )
+                                        else -> NowPlayingSongActionRow(item, songActions, onSongAction, onOpenQueue, status.track)
                                     }
                                 }
                             }
-                            PlaybackToggleRow(
-                                icon = Icons.Rounded.Shuffle,
-                                title = stringResource(L10nR.string.feature_player_shuffle),
-                                checked = status.shuffleEnabled,
-                                framed = false,
-                                compact = true,
-                                revealOrder = 2,
-                                onCheckedChange = { onToggleShuffle() },
-                            )
-                            PlaybackSettingsSection(
-                                icon = Icons.Rounded.Bedtime,
-                                framed = false,
-                                compact = true,
-                                showDivider = false,
-                                revealOrder = 3,
-                                title = stringResource(L10nR.string.feature_player_sleep_timer_108738),
-                                detail = sleepTimerDetail(status),
-                                expanded = timerExpanded,
-                                onToggleExpanded = { timerExpanded = !timerExpanded },
-                                trailing = {
-                                    if (status.sleepTimerMode != EchoSleepTimerMode.Off) TextButton(onClick = onCancelSleepTimer) {
-                                        Text(stringResource(L10nR.string.playback_cancel_timer))
-                                    }
-                                },
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    PlaybackChoiceChip(
-                                        text = stringResource(L10nR.string.feature_player_off_12ac24),
-                                        selected = status.sleepTimerMode == EchoSleepTimerMode.Off,
-                                        onClick = {
-                                            showCustomSleepTimer = false
-                                            onCancelSleepTimer()
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    PlaybackChoiceChip(
-                                        text = stringResource(L10nR.string.feature_player_this_track_210ea7),
-                                        selected = status.sleepTimerMode == EchoSleepTimerMode.EndOfTrack,
-                                        onClick = {
-                                            showCustomSleepTimer = false
-                                            onSetSleepTimerEndOfTrack()
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    PlaybackChoiceChip(
-                                        text = if (customActive) {
-                                            "${status.sleepTimerMinutes}m"
-                                        } else {
-                                            stringResource(L10nR.string.feature_player_sleep_timer_custom)
-                                        },
-                                        selected = customActive,
-                                        onClick = {
-                                            customMinutes = status.sleepTimerMinutes
-                                                ?.takeIf { it !in SleepTimerPresetMinutes }
-                                                ?: SleepTimerCustomDefaultMinutes
-                                            showCustomSleepTimer = !showCustomSleepTimer
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    SleepTimerPresetMinutes.forEach { minutes ->
-                                        PlaybackChoiceChip(
-                                            text = "${minutes}m",
-                                            selected = status.sleepTimerMode == EchoSleepTimerMode.Timed &&
-                                                status.sleepTimerMinutes == minutes,
-                                            onClick = {
-                                                showCustomSleepTimer = false
-                                                onSetSleepTimer(minutes)
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                    }
-                                }
-                                EchoExpand(expanded = showCustomSleepTimer) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        PlaybackStepper(
-                                            valueLabel = stringResource(
-                                                L10nR.string.feature_player_sleep_timer_minutes_value,
-                                                customMinutes,
-                                            ),
-                                            decrementEnabled = customMinutes > SleepTimerMinMinutes,
-                                            incrementEnabled = customMinutes < SleepTimerMaxMinutes,
-                                            decrementDescription = stringResource(L10nR.string.feature_player_sleep_timer_custom),
-                                            incrementDescription = stringResource(L10nR.string.feature_player_sleep_timer_custom),
-                                            valueDescription = stringResource(
-                                                L10nR.string.feature_player_sleep_timer_minutes_value,
-                                                customMinutes,
-                                            ),
-                                            onDecrement = {
-                                                customMinutes = stepSleepTimerMinutes(customMinutes, -SleepTimerCustomStepMinutes)
-                                            },
-                                            onIncrement = {
-                                                customMinutes = stepSleepTimerMinutes(customMinutes, SleepTimerCustomStepMinutes)
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        PlaybackActionChip(
-                                            text = stringResource(L10nR.string.feature_player_sleep_timer_apply),
-                                            onClick = {
-                                                showCustomSleepTimer = false
-                                                onSetSleepTimer(customMinutes)
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-
-                            PlaybackActionRow(
-                                icon = Icons.Rounded.Settings,
-                                text = stringResource(L10nR.string.playback_more_settings),
-                                framed = false,
-                                compact = true,
-                                revealOrder = 3,
-                                onClick = { moreExpanded = true },
-                            )
                         }
                     }
                 }
@@ -493,7 +380,7 @@ private fun playbackSettingsSummary(status: EchoPlaybackStatus): String {
 }
 
 @Composable
-private fun sleepTimerDetail(status: EchoPlaybackStatus): String {
+internal fun sleepTimerDetail(status: EchoPlaybackStatus): String {
     if (status.sleepTimerMode == EchoSleepTimerMode.Off) {
         return stringResource(L10nR.string.feature_player_off_12ac24)
     }
@@ -518,7 +405,7 @@ private fun sleepTimerDetail(status: EchoPlaybackStatus): String {
 }
 
 @Composable
-private fun repeatModeLabel(mode: EchoRepeatMode): String = when (mode) {
+internal fun repeatModeLabel(mode: EchoRepeatMode): String = when (mode) {
     EchoRepeatMode.Off -> stringResource(L10nR.string.feature_player_repeat_off_e1d801)
     EchoRepeatMode.All -> stringResource(L10nR.string.feature_player_repeat_all_751078)
     EchoRepeatMode.One -> stringResource(L10nR.string.feature_player_repeat_one_3df94f)

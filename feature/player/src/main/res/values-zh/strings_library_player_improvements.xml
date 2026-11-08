@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_translation_size">译文字号</string>
+    <string name="lyrics_romanization_size">罗马音字号</string>
+    <string name="lyrics_translation_preview">译文预览</string>
+    <string name="lyrics_romanization_preview">Kimi to aruku kono michi</string>
+</resources>

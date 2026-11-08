@@ -130,6 +130,7 @@ internal fun TrackList(
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
 ) {
+    val rangeSource = rememberLibraryRangeSource(tracks)
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         state = listState,
@@ -142,6 +143,7 @@ internal fun TrackList(
         ) { index: Int ->
             tracks[index]?.let { track ->
                 TrackRow(
+                rangeSource = rangeSource,
                     modifier = libraryTrackItemMotion().then(
                         if (track.id == playingTrackId) Modifier.background(
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), RoundedCornerShape(8.dp),
@@ -193,6 +195,7 @@ internal fun TrackList(
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
 ) {
+    val rangeSource = rememberLibraryRangeSource(tracks)
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         state = listState,
@@ -205,6 +208,7 @@ internal fun TrackList(
         ) { index ->
             val track = tracks[index]
             TrackRow(
+                rangeSource = rangeSource,
                 modifier = libraryTrackItemMotion(),
                 track = track,
                 onClick = { onPlayTrack(track) },
@@ -234,6 +238,7 @@ internal fun TrackList(
 @Composable
 internal fun TrackRow(
     track: EchoTrack,
+    rangeSource: LibraryRangeSource? = null,
     onClick: () -> Unit,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
@@ -265,6 +270,7 @@ internal fun TrackRow(
     val hasTags = format != null || sampleRate != null
 
     TrackContextMenu(
+        rangeSource = rangeSource,
         track = track,
         onPlay = onClick,
         onUpdateTrackMetadata = onUpdateTrackMetadata,
@@ -382,6 +388,7 @@ private enum class TrackSheetMode {
 @Composable
 internal fun TrackContextMenu(
     track: EchoTrack,
+    rangeSource: LibraryRangeSource? = null,
     onPlay: () -> Unit,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
@@ -454,7 +461,7 @@ internal fun TrackContextMenu(
                     enabled = !selecting || canSelect,
                     role = if (selecting) Role.Checkbox else null,
                     onClick = { if (selecting) selection.toggle(track) else onPlay() },
-                    onLongClick = { if (selecting) selection.toggle(track) else sheetMode = TrackSheetMode.Actions },
+                    onLongClick = { sheetMode = TrackSheetMode.Actions },
                 ).then(if (selecting) Modifier.semantics {
                     toggleableState = if (selected) ToggleableState.On else ToggleableState.Off
                 } else Modifier))
@@ -557,6 +564,8 @@ internal fun TrackContextMenu(
             when (mode) {
                 TrackSheetMode.Actions -> TrackActionSheet(
                     track = track,
+                    onRangeStart = if (rangeSource != null && selection != null && !selection.locked) ({ sheetMode = null; selection.beginRange(rangeSource, track) }) else null,
+                    onRangeEnd = if (rangeSource != null && selection?.rangeAnchor != null && !selection.locked) ({ sheetMode = null; selection.endRange(rangeSource, track) }) else null,
                     canEditMetadata = canEditMetadata,
                     canImportLyrics = onImportLyrics != null,
                     canPickArtwork = onPickArtwork != null,

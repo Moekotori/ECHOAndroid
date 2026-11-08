@@ -29,6 +29,8 @@ import app.echo.android.model.playback.*
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+private const val DiagnosticsPanel = 6
+
 @Composable
 fun DiagnosticsScreen(
     status: EchoPlaybackStatus,
@@ -85,15 +87,20 @@ fun DiagnosticsScreen(
     onMsebPreview: ((EchoMsebState) -> Unit)? = null,
     volumeSettings: EchoVolumeSettings = EchoVolumeSettings(),
     onVolumeSettings: (EchoVolumeSettings) -> Unit = {},
+    audioSettingsRequested: Boolean = false,
+    audioSettingsAnchor: String? = null,
+    audioSettingsContent: @Composable () -> Unit,
 ) {
     val pagerState = rememberPagerState { 3 }
-    // -1 is the sound-tool list; controls are mounted only after choosing a tool.
+    // -1 is the tabbed page; sound editors and diagnostics open as child pages.
     var soundPanel by rememberSaveable { mutableIntStateOf(-1) }
     var handledSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
+    var audioSettingsFocus by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(soundRequestId) {
         if (soundRequestId != 0 && soundRequestId != handledSoundRequestId) {
             soundPanel = -1
-            pagerState.scrollToPage(1)
+            audioSettingsFocus = audioSettingsAnchor.takeIf { audioSettingsRequested }
+            pagerState.scrollToPage(if (audioSettingsRequested) 2 else 1)
             handledSoundRequestId = soundRequestId
         }
     }
@@ -104,12 +111,13 @@ fun DiagnosticsScreen(
     val innerNestedScroll = rememberContentPagerNestedScroll(pagerState, innerFling)
     fun selectTab(index: Int) {
         soundPanel = -1
+        audioSettingsFocus = null
         scope.launch { pagerState.animateSilkToPage(index, lightweight) }
     }
     val labels = listOf(
         stringResource(L10nR.string.feature_settings_signal_path_2fed34),
         stringResource(L10nR.string.feature_settings_sound_3f2864),
-        stringResource(L10nR.string.feature_settings_diagnostics_b6e487),
+        stringResource(L10nR.string.audio_settings_title),
     )
     val scheme = MaterialTheme.colorScheme
     val soundLabels = listOf(
@@ -129,14 +137,16 @@ fun DiagnosticsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(error, Modifier.weight(1f), color = scheme.error, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
-                TextButton(onClick = { selectTab(2) }) { Text(labels[2], color = scheme.error) }
+                TextButton(onClick = { soundPanel = DiagnosticsPanel }) {
+                    Text(stringResource(L10nR.string.feature_settings_diagnostics_b6e487), color = scheme.error)
+                }
             }
         }
     }
     CompositionLocalProvider(LocalContentColor provides scheme.onBackground) {
         SignalSoundNavigation(
             selectedPanel = soundPanel,
-            labels = soundLabels,
+            labels = soundLabels + stringResource(L10nR.string.feature_settings_diagnostics_b6e487),
             isActive = isActive,
             onBack = { soundPanel = -1 },
             scrollingTool = 1,
@@ -144,59 +154,64 @@ fun DiagnosticsScreen(
                 { onOpraBrandSelected(null) }
             } else null,
             tool = { panel ->
-                errorContent()
-                if (panel == 0) SignalEqualizer(
-                    state = equalizerState,
-                    bypassed = status.diagnostics.usbBitPerfectEnabled,
-                    playing = status.isPlaying,
-                    userPresets = userPresets,
-                    activeUserPresetId = activeUserPresetId,
-                    onPreampChange = onEqualizerPreampChange,
-                    onEnabledChange = onEqualizerEnabledChange,
-                    onPresetSelected = onEqualizerPresetSelected,
-                    onBandGainChange = onEqualizerBandGainChange,
-                    onReset = onEqualizerReset,
-                    onParametricChange = onParametricChange,
-                    onParametricPreview = onParametricPreview,
-                    onSaveUserPreset = onSaveUserPreset,
-                    onUpdateUserPreset = onUpdateUserPreset,
-                    onApplyUserPreset = onApplyUserPreset,
-                    onRenameUserPreset = onRenameUserPreset,
-                    onDeleteUserPreset = onDeleteUserPreset,
-                    onImportShareCode = onImportShareCode,
-                    onImportBundle = onImportBundle,
-                    outputDeviceLabel = outputDeviceLabel,
-                    outputBound = outputPresetBound,
-                    onBindToOutput = onBindPresetToOutput,
-                    onUnbindFromOutput = onUnbindPresetFromOutput,
-                )
-                else if (panel == 1) SignalHeadphoneCorrection(
-                    state = opraState,
-                    playing = status.isPlaying,
-                    equalizer = equalizerState,
-                    bypassed = status.diagnostics.usbBitPerfectEnabled,
-                    userPresets = userPresets,
-                    lastQuery = opraLastQuery,
-                    onBrandSelected = onOpraBrandSelected,
-                    onQueryChange = onOpraQueryChange,
-                    onSearch = onOpraSearch,
-                    onRefresh = onOpraRefresh,
-                    onPresetSelected = onOpraPresetSelected,
-                    onApplySelected = onOpraApplySelected,
-                    onToggleFavorite = onToggleOpraFavorite,
-                    onApplyUserPreset = onApplyUserPreset,
-                )
-                else if (panel == 2) SignalChannelBalance(
-                    state = channelBalanceState,
-                    bypassed = status.diagnostics.usbBitPerfectEnabled,
-                    playing = status.isPlaying,
-                    onStateChange = onChannelBalanceChange,
-                    onReset = onChannelBalanceReset,
-                )
-                else if (panel == 3) SignalDspPanel(dspSettings, status, replayGainScan, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
-                else if (panel == 4) SignalMsebPanel(equalizerState, status, onMsebChange, onMsebPreview, msebPersonal)
-                else SignalVolumePanel(volumeSettings, status, dspSettings, replayGainScan,
-                    onVolumeSettings, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan, outputDeviceLabel)
+                if (panel == DiagnosticsPanel) {
+                    SignalDiagnosticDetails(status, positionFlow, bluetoothCodecNeedsPermission,
+                        onRequestBluetoothCodecPermission)
+                } else {
+                    errorContent()
+                    if (panel == 0) SignalEqualizer(
+                        state = equalizerState,
+                        bypassed = status.diagnostics.usbBitPerfectEnabled,
+                        playing = status.isPlaying,
+                        userPresets = userPresets,
+                        activeUserPresetId = activeUserPresetId,
+                        onPreampChange = onEqualizerPreampChange,
+                        onEnabledChange = onEqualizerEnabledChange,
+                        onPresetSelected = onEqualizerPresetSelected,
+                        onBandGainChange = onEqualizerBandGainChange,
+                        onReset = onEqualizerReset,
+                        onParametricChange = onParametricChange,
+                        onParametricPreview = onParametricPreview,
+                        onSaveUserPreset = onSaveUserPreset,
+                        onUpdateUserPreset = onUpdateUserPreset,
+                        onApplyUserPreset = onApplyUserPreset,
+                        onRenameUserPreset = onRenameUserPreset,
+                        onDeleteUserPreset = onDeleteUserPreset,
+                        onImportShareCode = onImportShareCode,
+                        onImportBundle = onImportBundle,
+                        outputDeviceLabel = outputDeviceLabel,
+                        outputBound = outputPresetBound,
+                        onBindToOutput = onBindPresetToOutput,
+                        onUnbindFromOutput = onUnbindPresetFromOutput,
+                    )
+                    else if (panel == 1) SignalHeadphoneCorrection(
+                        state = opraState,
+                        playing = status.isPlaying,
+                        equalizer = equalizerState,
+                        bypassed = status.diagnostics.usbBitPerfectEnabled,
+                        userPresets = userPresets,
+                        lastQuery = opraLastQuery,
+                        onBrandSelected = onOpraBrandSelected,
+                        onQueryChange = onOpraQueryChange,
+                        onSearch = onOpraSearch,
+                        onRefresh = onOpraRefresh,
+                        onPresetSelected = onOpraPresetSelected,
+                        onApplySelected = onOpraApplySelected,
+                        onToggleFavorite = onToggleOpraFavorite,
+                        onApplyUserPreset = onApplyUserPreset,
+                    )
+                    else if (panel == 2) SignalChannelBalance(
+                        state = channelBalanceState,
+                        bypassed = status.diagnostics.usbBitPerfectEnabled,
+                        playing = status.isPlaying,
+                        onStateChange = onChannelBalanceChange,
+                        onReset = onChannelBalanceReset,
+                    )
+                    else if (panel == 3) SignalDspPanel(dspSettings, status, replayGainScan, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
+                    else if (panel == 4) SignalMsebPanel(equalizerState, status, onMsebChange, onMsebPreview, msebPersonal)
+                    else SignalVolumePanel(volumeSettings, status, dspSettings, replayGainScan,
+                        onVolumeSettings, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan, outputDeviceLabel)
+                }
             },
         ) {
             Column(
@@ -239,24 +254,26 @@ fun DiagnosticsScreen(
                                 .padding(top = 12.dp, bottom = 188.dp),
                             verticalArrangement = Arrangement.spacedBy(20.dp),
                         ) {
-                            if (tab != 2) errorContent()
+                            errorContent()
                             when (tab) {
-                                0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { selectTab(2) }, volume = volumeSettings)
+                                0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { soundPanel = DiagnosticsPanel }, volume = volumeSettings)
                                 1 -> {
                                     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                                        SignalSoundMenu(soundLabels, onSelect = { soundPanel = it })
+                                        SignalSoundMenu(soundLabels, states = signalSoundMenuStates(
+                                            equalizerState, channelBalanceState, dspSettings,
+                                            status.replayGainEnabled, volumeSettings,
+                                            status.diagnostics.usbBitPerfectEnabled,
+                                        ), onSelect = { soundPanel = it })
                                         OutputAudioProfileControl(outputDeviceLabel, outputAudioProfileBound,
                                             status.diagnostics.usbBitPerfectEnabled, onSaveOutputAudioProfile, onRemoveOutputAudioProfile)
                                     }
                                 }
                                 else -> {
-                                    HealthPanel(
-                                        status = status,
-                                        bluetoothCodecNeedsPermission = bluetoothCodecNeedsPermission,
-                                        onRequestBluetoothCodecPermission = onRequestBluetoothCodecPermission,
-                                    )
-                                    UsbOutputPanel(status)
-                                    CurrentStreamPanel(status, positionFlow)
+                                    CompositionLocalProvider(LocalSettingsSearchFocus provides audioSettingsFocus?.let {
+                                        SettingsSearchFocus(it, handledSoundRequestId)
+                                    }) {
+                                        audioSettingsContent()
+                                    }
                                 }
                             }
                         }

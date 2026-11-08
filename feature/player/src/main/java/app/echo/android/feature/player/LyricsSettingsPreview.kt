@@ -39,6 +39,8 @@ internal fun LyricsSettingsPreview(
     highlightIntensity: Float,
     motionMode: String,
     animateMotion: Boolean = false,
+    translationScale: Float = 1f,
+    romanizationScale: Float = 1f,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val previewScale = animateFloatAsState(
@@ -89,6 +91,12 @@ internal fun LyricsSettingsPreview(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            Text(stringResource(R.string.lyrics_translation_preview),
+                color = accent.copy(alpha = 0.75f), fontFamily = fontFamily,
+                fontSize = (12f * fontScale * translationScale).sp)
+            Text(stringResource(R.string.lyrics_romanization_preview),
+                color = accent.copy(alpha = 0.65f), fontFamily = fontFamily,
+                fontSize = (11f * fontScale * romanizationScale).sp)
         }
     }
 }

@@ -112,16 +112,5 @@ internal object RegionalConcertParser {
         return records
     }
 
-    fun matches(record: Record, names: List<String>): Boolean {
-        val keys = names.map(ArtistOnlineInfoParser::normalize).filter { it.length >= 2 }
-        if (record.event.details.lineup.isNotEmpty()) return record.event.details.lineup.any { ArtistOnlineInfoParser.normalize(it.name) in keys }
-        return record.titles.any { title ->
-            if (Regex("致敬|tribute", RegexOption.IGNORE_CASE).containsMatchIn(title)) false
-            else names.filter { it.trim().length >= 2 }.any { name ->
-                val suffix = if (name.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.HAN })
-                    "|演唱会|演唱會|音乐会|音樂會|独奏会|獨奏會|巡回|巡演|鋼琴|钢琴|小提琴|大提琴|吉他" else ""
-                Regex("(?<![\\p{L}\\p{N}])${Regex.escape(name.trim())}(?=$|[^\\p{L}\\p{N}]$suffix)", RegexOption.IGNORE_CASE).containsMatchIn(title)
-            }
-        }
-    }
+    fun matches(record: Record, names: List<String>): Boolean = ConcertArtistMatcher(names).matches(record)
 }

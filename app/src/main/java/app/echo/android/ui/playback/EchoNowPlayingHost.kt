@@ -2,6 +2,7 @@ package app.echo.android.ui.playback
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import app.echo.android.feature.player.LyricsManagerDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -56,15 +57,15 @@ internal fun EchoNowPlayingHost(
             onDismiss = { artistPickerTrack = null },
         )
     }
-    var showEqualizer by remember { mutableStateOf(false) }
+    var showEqualizer by rememberSaveable { mutableStateOf(false) }
     if (showEqualizer && presentationExpanded) {
         EchoEqualizerSheetHost(viewModel, appSettings, playbackStatus, onDismiss = { showEqualizer = false })
     }
     val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
     val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
-    var showLyricsManager by remember(playbackStatus.track?.id) { mutableStateOf(false) }
-    var lyricsSearchRequested by remember(playbackStatus.track?.id) { mutableStateOf(false) }
+    var showLyricsManager by rememberSaveable(playbackStatus.track?.id) { mutableStateOf(false) }
+    var lyricsSearchRequested by rememberSaveable(playbackStatus.track?.id) { mutableStateOf(false) }
     var showLyricsEditor by remember(playbackStatus.track?.id) { mutableStateOf(false) }
     if (showLyricsEditor) playbackStatus.track?.let { track ->
         val source = (lyricsState as? app.echo.android.model.lyrics.EchoLyricsLoadState.Ready)?.lyrics
@@ -140,11 +141,17 @@ internal fun EchoNowPlayingHost(
     }
     NowPlayingScreen(
         songActions = songActions,
+        playerMenuLayout = appSettings.playerMenuLayout,
+        onSavePlayerMenuLayout = viewModel::savePlayerMenuLayout,
         status = playbackStatus,
         positionState = playbackPosition,
         smartTransitionState = smartTransition,
         lyricsState = lyricsState,
         bluetoothLyricsDelayMs = if (castActive) 0 else appSettings.lyricsOptions.bluetoothDelayMs,
+        lyricsTranslationScale = appSettings.lyricsOptions.translationScale,
+        lyricsRomanizationScale = appSettings.lyricsOptions.romanizationScale,
+        onLyricsTranslationScaleChange = { viewModel.setLyricsOptions(appSettings.lyricsOptions.copy(translationScale = it)) },
+        onLyricsRomanizationScaleChange = { viewModel.setLyricsOptions(appSettings.lyricsOptions.copy(romanizationScale = it)) },
         showLyricsControlDeck = appSettings.showLyricsControlDeck,
         playerPageStyle = appSettings.playerPageStyle,
         playerTextScale = appSettings.playerTextScale,

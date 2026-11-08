@@ -132,12 +132,31 @@ class SettingsSearchTest {
         val unmapped = listOf(availability(), enabled).flatMap { state ->
             availableSettingsSearchItems(state)
                 .filter { it.category in split }
+                .filterNot { it.opensAudioSettings }
                 .map { it.category to settingsSearchAnchorResource(it, state) }
                 .filter { (category, anchor) ->
                     settingsSubPageForAnchor(category, anchor) == null && anchor !in onEntryList
                 }
         }.distinct()
         assertEquals(emptyList<Pair<SettingsCategory?, Int>>(), unmapped)
+    }
+
+    @Test
+    fun movedAudioControlsOpenAudioSettingsWhileListeningAndLyricsStayInSettings() {
+        val items = availableSettingsSearchItems(availability())
+        listOf(R.string.audio_settings_title, R.string.audio_output_title,
+            R.string.audio_focus_title, R.string.audio_output_reset,
+            R.string.effects_panel_open, R.string.settings_gapless,
+            R.string.settings_track_fade, R.string.settings_track_fade_duration,
+            R.string.settings_smart_transition, R.string.manual_fade_title,
+            R.string.listening_interruption, R.string.settings_replay_gain,
+            R.string.settings_replay_gain_mode, R.string.eq_preamp).forEach { title ->
+            assertTrue(items.single { it.titleRes == title }.opensAudioSettings)
+        }
+        listOf(R.string.settings_shuffle_mode, R.string.settings_pause_on_disconnect,
+            R.string.settings_lyrics_source_order).forEach { title ->
+            assertFalse(items.single { it.titleRes == title }.opensAudioSettings)
+        }
     }
 
     @Test

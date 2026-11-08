@@ -8,10 +8,14 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ShuffleOrder
 import app.echo.android.model.playback.EchoShuffleMode
 import app.echo.android.model.playback.EchoShuffleOptions
+import app.echo.android.model.playback.EchoPlayNextBehavior
+import kotlinx.coroutines.*
 
 /** Service-owned scheduling; Media3 still owns playback and gapless transitions. */
 @UnstableApi
-internal class NextUpQueueController(private val player: ExoPlayer) : Player.Listener {
+internal class NextUpQueueController(private val player: ExoPlayer, private val scope: CoroutineScope = EchoPlaybackProcessRuntime.scope) : Player.Listener {
+    private var albumPlan: Job? = null
+    private var albumRevision = 0L
     private var changing = false
     private var shuffleOptions = EchoPlaybackRuntimeOptionsStore.options.value.shuffleOptions
     private val shuffleMode get() = shuffleOptions.mode
@@ -24,8 +28,12 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
     fun setShuffleOptions(options: EchoShuffleOptions) {
         val next = options.normalized
         if (next == shuffleOptions) return
+        if (next.copy(playNextBehavior = shuffleOptions.playNextBehavior) == shuffleOptions) {
+            shuffleOptions = next
+            return
+        }
         if (next.mode != shuffleMode) pureRandom.reset()
-        reshuffle = next.mode != shuffleMode ||
+        reshuffle = reshuffle || next.mode != shuffleMode ||
             next.mode == EchoShuffleMode.PseudoRandom && next.spreadArtists != shuffleOptions.spreadArtists
         shuffleOptions = next
         reconcile()
@@ -44,7 +52,7 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
         player.repeatMode = Player.REPEAT_MODE_OFF
         player.setMediaItems(retained + items, retained.size + start, 0L)
         // Keep older albums in the previous section even when the new album is shuffled.
-        val albumOrder = if (shuffle) PseudoRandomQueuePolicy.order(
+        val albumOrder = if (shuffle && shuffleMode != EchoShuffleMode.Albums) PseudoRandomQueuePolicy.order(
             items.indices.toList(), start, items.map { it.mediaMetadata.artist?.toString() },
             shuffleOptions.spreadArtists && shuffleMode == EchoShuffleMode.PseudoRandom,
         )
@@ -53,6 +61,7 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
         player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L)
         reshuffle = false
         spreadUpcoming = false
+        if (shuffle && shuffleMode == EchoShuffleMode.Albums) spreadUpcoming = true
         player.prepare()
         player.play()
     }
@@ -62,6 +71,20 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
         val pending = manualIndices().filter { it != current }
         val at = NextUpQueuePolicy.insertionIndex(current, player.mediaItemCount, pending, first)
         val source = player.currentMediaItem?.queueContext()?.source
+        if (first && shuffleOptions.playNextBehavior == EchoPlayNextBehavior.MoveUpcoming) {
+            val order = if (player.shuffleModeEnabled) player.queueShuffleOrder() else (0 until player.mediaItemCount).toList()
+            val found = upcomingQueueMatch(order, current,
+                (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }, item.mediaId)
+            if (found != null) {
+                val original = player.getMediaItemAt(found)
+                val context = original.queueContext()
+                val moved = if (context != null) original.withQueueContext(context.copy(nextUp = true)) else original.asQueueEntry(nextUp = true, source = source)
+                player.replaceMediaItem(found, moved)
+                val destination = at - if (found < at) 1 else 0
+                if (found != destination) player.moveMediaItem(found, destination)
+                return@change
+            }
+        }
         player.addMediaItem(at, item.asQueueEntry(nextUp = true, source = source))
         if (player.mediaItemCount == 1) {
             player.prepare()
@@ -168,11 +191,12 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
     /** Called before AutoMix's seek so the normal transition reconciliation starts the next round. */
     fun prepareAutomaticAdvance(from: Int, to: Int) {
         if (player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_ALL &&
-            shuffleMode == EchoShuffleMode.PseudoRandom &&
+            shuffleMode != EchoShuffleMode.PureRandom &&
             NextUpQueuePolicy.startsShuffleRound(player.queueShuffleOrder(), from, to)) reshuffle = true
     }
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
         pureRandom.reset()
+        if (shuffleModeEnabled && shuffleMode == EchoShuffleMode.Albums) reshuffle = true
         if (shuffleModeEnabled && !changing) spreadUpcoming = true
         reconcile()
     }
@@ -199,6 +223,11 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
 
     private fun reconcile() {
         if (changing) return
+        val planningAlbums = albumPlan?.isActive == true
+        albumRevision++
+        albumPlan?.cancel()
+        albumPlan = null
+        if (planningAlbums && player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.Albums) spreadUpcoming = true
         if (player.mediaItemCount == 0) {
             pureRandom.reset()
             return
@@ -218,12 +247,36 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
             }
             val manual = manualIndices()
             if (manual.isEmpty() && (!player.shuffleModeEnabled ||
-                    shuffleMode == EchoShuffleMode.PseudoRandom && !reshuffle && !spreadUpcoming)) return
+                    shuffleMode != EchoShuffleMode.PureRandom && !reshuffle && !spreadUpcoming)) return
             // The base item before the manual block is the resume anchor, also while B/C plays.
             val current = player.currentMediaItemIndex
             val anchor = manual.firstOrNull()?.minus(1) ?: current
             val existing = player.queueShuffleOrder()
             var desired = NextUpQueuePolicy.shuffledOrder(existing, manual, anchor)
+            if (player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.Albums && (reshuffle || spreadUpcoming)) {
+                val entries = (0 until player.mediaItemCount).map { index ->
+                    val metadata = player.getMediaItemAt(index).mediaMetadata
+                    AlbumShuffleEntry(index, metadata.albumTitle?.toString(), metadata.artist?.toString(), metadata.albumArtist?.toString(),
+                        metadata.extras?.getString(EchoPlaybackSourceExtra), metadata.discNumber, metadata.trackNumber)
+                }
+                val revision = albumRevision
+                val manualSet = manual.toHashSet()
+                val base = desired.filter { it !in manualSet }
+                val current = player.currentMediaItemIndex
+                reshuffle = false; spreadUpcoming = false
+                albumPlan = scope.launch {
+                    val order = withContext(Dispatchers.Default) {
+                        NextUpQueuePolicy.shuffledOrder(AlbumShuffleQueuePolicy.order(base, anchor, entries) + manual, manual, anchor)
+                    }
+                    if (revision == albumRevision && player.currentMediaItemIndex == current &&
+                        player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.Albums && player.queueShuffleOrder() == existing) {
+                        changing = true
+                        try { player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L) }
+                        finally { changing = false }
+                    }
+                }
+                return
+            }
             if (player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.PureRandom) {
                 val items = (0 until player.mediaItemCount).map(player::getMediaItemAt)
                 desired = pureRandom.order(
@@ -242,7 +295,7 @@ internal class NextUpQueueController(private val player: ExoPlayer) : Player.Lis
                 ) +
                     manual.filter { it != current }
                 desired = NextUpQueuePolicy.shuffledOrder(desired, manual, current)
-            } else if (player.shuffleModeEnabled && shuffleOptions.spreadArtists && spreadUpcoming && current in desired) {
+            } else if (player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.PseudoRandom && shuffleOptions.spreadArtists && spreadUpcoming && current in desired) {
                 // Only spread the unplayed suffix; keep restored history and manual requests intact.
                 val at = desired.indexOf(current)
                 val upcoming = desired.drop(at + 1).filter { it !in manual }

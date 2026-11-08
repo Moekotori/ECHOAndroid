@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_range_start">Fijar inicio del intervalo</string>
+    <string name="library_range_end">Seleccionar hasta aquí</string>
+    <string name="library_range_changed">La lista cambió. Elige de nuevo el inicio.</string>
+    <string name="library_range_unloaded">Faltan canciones por cargar. Desplázate por el intervalo y vuelve a intentarlo.</string>
+    <string name="library_range_limit">Selecciona un máximo de 200 canciones en total.</string>
+</resources>

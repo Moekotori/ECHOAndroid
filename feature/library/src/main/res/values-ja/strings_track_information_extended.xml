@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_playlists">この曲を含むプレイリスト</string>
+    <string name="track_info_playlists_empty">この端末で確認できる固定プレイリストには未登録です。</string>
+    <string name="track_info_playlists_failed">プレイリストを読み込めません。再試行してください。</string>
+    <string name="track_info_playlists_scope">端末で確認できる登録先（同期済みリストやお気に入り）を表示します。動的なスマートリストと未同期のサーバー側リストは含みません。</string>
+    <string name="track_info_modified">ファイル更新日時</string>
+    <string name="track_info_clip_start">クリップ開始</string>
+    <string name="track_info_clip_end">クリップ終了</string>
+</resources>

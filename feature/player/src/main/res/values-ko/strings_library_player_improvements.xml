@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lyrics_translation_size">번역 글자 크기</string>
+    <string name="lyrics_romanization_size">로마자 글자 크기</string>
+    <string name="lyrics_translation_preview">번역 미리보기</string>
+    <string name="lyrics_romanization_preview">Kimi to aruku kono michi</string>
+</resources>

@@ -55,6 +55,7 @@ internal fun ArtistDetailPage(
     albumListState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
 ) {
+    val rangeSource = rememberLibraryRangeSource(tracks)
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
     val onlineQuery = ArtistOnlineQuery(artist.name, albums?.itemSnapshotList?.items?.take(3)?.map { it.title }.orEmpty())
     val serverArtwork = rememberServerArtistArtwork(onlineQuery)
@@ -106,6 +107,7 @@ internal fun ArtistDetailPage(
                                 .padding(horizontal = 24.dp),
                         ) {
                             TrackRow(
+                                rangeSource = rangeSource,
                                 track = track,
                                 showAudioInfoTags = false,
                                 onClick = { onPlayTrack(track) },
@@ -150,6 +152,7 @@ internal fun ArtistDetailListPage(
     onOpenTrackAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val rangeSource = rememberLibraryRangeSource(tracks)
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
     val onlineQuery = remember(artist.artistKey, artist.name, tracks) {
         ArtistOnlineQuery(artist.name, tracks.take(24).mapNotNull { it.album }.distinct().take(3))
@@ -198,6 +201,7 @@ internal fun ArtistDetailListPage(
                             .padding(horizontal = 24.dp),
                     ) {
                         TrackRow(
+                            rangeSource = rangeSource,
                             track = track,
                             showAudioInfoTags = false,
                             onClick = { onPlayTrack(track) },

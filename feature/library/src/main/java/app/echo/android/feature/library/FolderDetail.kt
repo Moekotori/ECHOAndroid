@@ -65,6 +65,7 @@ internal fun FolderDetailPage(
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val rangeSource = rememberLibraryRangeSource(tracks)
     val heroArtworkUri = folder.artworkUri?.takeIf { it.isNotBlank() }
         ?: tracks.itemSnapshotList.items.firstOrNull { !it.artworkUri.isNullOrBlank() }?.artworkUri
     val palette = rememberArtworkPalette(heroArtworkUri, seedKey = folder.folderKey)
@@ -141,6 +142,7 @@ internal fun FolderDetailPage(
                                 .padding(horizontal = 20.dp),
                         ) {
                             AlbumTrackRow(
+                                rangeSource = rangeSource,
                                 index = index,
                                 track = track,
                                 accent = palette.vibrant,

@@ -16,6 +16,8 @@ import android.os.PowerManager
 import android.view.animation.PathInterpolator
 import androidx.activity.ComponentActivity
 import androidx.core.splashscreen.SplashScreen
+import androidx.core.splashscreen.SplashScreenViewProvider
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import app.echo.android.data.EchoSettingsStore
@@ -26,6 +28,8 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,6 +37,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /** Longest the system splash waits for the performance mode and startup image before handing off. */
 private const val HandOffWaitMillis = 250L
+
+/** Independent of animation frames and the optional system exit callback. */
+private const val MaximumSplashMillis = 4_500L
 
 /**
  * Fade the system splash (a plain background) into the in-app [EchoLaunchSplash]. A null
@@ -48,10 +55,48 @@ internal fun SplashScreen.installEchoExitTransition(
         return
     }
 
+    var systemSplash: SplashScreenViewProvider? = null
+    var handOffJob: Job? = null
+    var timeoutJob: Job? = null
+    var settingsJob: Job? = null
+    var imageJob: Job? = null
+    var startupBackground: Bitmap? = null
+    var removed = false
+    fun removeSystemSplash() {
+        val provider = systemSplash ?: return
+        systemSplash = null
+        provider.view.animate().setListener(null).cancel()
+        provider.view.background = null
+        provider.remove()
+    }
+    lateinit var observer: DefaultLifecycleObserver
+    fun finish() {
+        if (removed) return
+        removed = true
+        launchSplash.finish()
+        handOffJob?.cancel()
+        timeoutJob?.cancel()
+        settingsJob?.cancel()
+        imageJob?.cancel()
+        startupBackground = null
+        removeSystemSplash()
+        activity.lifecycle.removeObserver(observer)
+    }
+    observer = object : DefaultLifecycleObserver {
+        override fun onStop(owner: androidx.lifecycle.LifecycleOwner) = finish()
+        override fun onDestroy(owner: androidx.lifecycle.LifecycleOwner) = finish()
+    }
+    activity.lifecycle.addObserver(observer)
+    timeoutJob = activity.lifecycleScope.launch {
+        // Some launches never dispatch the system exit listener. The in-app overlay
+        // must still disappear, even if no animation frames have advanced.
+        delay(MaximumSplashMillis)
+        finish()
+    }
+
     // Never hold the first frame for settings I/O. Until loaded, assume the lightest mode.
     var mode = EchoEffectivePerformanceMode.Lightweight
-    var startupBackground: Bitmap? = null
-    val imageJob = startupBackgroundUri?.let { uri ->
+    imageJob = startupBackgroundUri?.let { uri ->
         activity.lifecycleScope.launch {
             try {
                 val request = ImageRequest.Builder(activity.applicationContext)
@@ -72,33 +117,43 @@ internal fun SplashScreen.installEchoExitTransition(
             }
         }
     }
-    val settingsJob = activity.lifecycleScope.launch {
-        mode = withContext(Dispatchers.IO) {
-            val context = activity.applicationContext
-            val settings = EchoSettingsStore(context).appSettings.first()
-            val powerSave = context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
-            EchoPerformanceMode.fromId(settings.performanceMode).resolve(powerSave)
+    settingsJob = activity.lifecycleScope.launch {
+        try {
+            mode = withContext(Dispatchers.IO) {
+                val context = activity.applicationContext
+                val settings = EchoSettingsStore(context).appSettings.first()
+                val powerSave = context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
+                EchoPerformanceMode.fromId(settings.performanceMode).resolve(powerSave)
+            }
+        } catch (_: java.io.IOException) {
+            // Settings are optional for this visual transition; keep lightweight mode.
         }
     }
     setOnExitAnimationListener { provider ->
-        activity.lifecycleScope.launch {
+        if (removed || launchSplash.finished) {
+            provider.remove()
+            finish()
+            return@setOnExitAnimationListener
+        }
+        systemSplash = provider
+        handOffJob = activity.lifecycleScope.launch {
             withTimeoutOrNull(HandOffWaitMillis) {
                 settingsJob.join()
                 imageJob?.join()
             }
+            settingsJob.cancel()
+            imageJob?.cancel()
             val surface = provider.view
             if (!activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) ||
                 !ValueAnimator.areAnimatorsEnabled()
             ) {
-                launchSplash.finished = true
-                provider.remove()
+                finish()
                 return@launch
             }
             val background = startupBackground
+            startupBackground = null
             if (background != null) surface.background = EchoSplashBackgroundDrawable(background)
-            launchSplash.background = background
-            launchSplash.lightweight = mode.isLightweight
-            launchSplash.started = true
+            launchSplash.start(background, mode.isLightweight)
 
             // The overlay beneath already shows the same ground; this only dissolves the system layer.
             surface.animate()
@@ -106,14 +161,8 @@ internal fun SplashScreen.installEchoExitTransition(
                 .setDuration(if (mode.isLightweight) 120L else 180L)
                 .setInterpolator(PathInterpolator(0.4f, 0f, 0.2f, 1f))
                 .setListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) = finish()
-                    override fun onAnimationCancel(animation: Animator) = finish()
-
-                    private fun finish() {
-                        surface.animate().setListener(null)
-                        surface.background = null
-                        provider.remove()
-                    }
+                    override fun onAnimationEnd(animation: Animator) = removeSystemSplash()
+                    override fun onAnimationCancel(animation: Animator) = removeSystemSplash()
                 })
                 .start()
         }

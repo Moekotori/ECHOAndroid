@@ -13,7 +13,7 @@ class EchoSavedPlaybackSessionTest {
     @Test
     fun cueRangesAndRelativePositionRoundTripIncludingOpenEndedTail() {
         val track = EchoTrackRef("saf:album#cue:1", "content://audio/album#echo-cue=1", "First", "Artist",
-            durationMs = 60_000L, clipEndMs = 60_000L)
+            durationMs = 60_000L, clipEndMs = 60_000L, albumArtist = "Various Artists")
         val session = savedSession(currentIndex = 1, positionMs = 5_000L).copy(queue = listOf(
             track,
             track.copy(id = "saf:album#cue:2", uri = "content://audio/album#echo-cue=2",

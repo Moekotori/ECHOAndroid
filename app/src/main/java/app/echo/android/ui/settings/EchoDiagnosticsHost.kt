@@ -6,7 +6,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.EchoAndroidViewModel
 import app.echo.android.data.EchoAppSettings
+import app.echo.android.feature.settings.AudioSettingsContent
 import app.echo.android.feature.settings.DiagnosticsScreen
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.model.playback.EchoPlaybackStatus
 
 /** Sound-page wiring lives outside the root pager to keep generated Compose methods bounded. */
@@ -18,6 +20,10 @@ internal fun EchoDiagnosticsHost(
     playbackStatus: EchoPlaybackStatus,
     isActive: Boolean,
     soundRequestId: Int,
+    audioSettingsRequested: Boolean,
+    audioSettingsAnchor: String?,
+    onOpenSystemAudioEffects: () -> Unit,
+    systemEffectsLocalPlayback: Boolean,
     onSwipeToConnect: () -> Unit,
     bluetoothCodecNeedsPermission: Boolean,
     onRequestBluetoothCodecPermission: () -> Unit,
@@ -30,6 +36,31 @@ internal fun EchoDiagnosticsHost(
     DiagnosticsScreen(
         isActive = isActive,
         soundRequestId = soundRequestId,
+        audioSettingsRequested = audioSettingsRequested,
+        audioSettingsAnchor = audioSettingsAnchor,
+        audioSettingsContent = {
+            AudioSettingsContent(
+                compactMode = appSettings.compactModeEnabled,
+                audioFocusEnabled = appSettings.audioFocusEnabled,
+                audioInterruptionPolicy = appSettings.audioInterruptionPolicy,
+                trackTransitions = appSettings.trackTransitions,
+                usbExclusiveEnabled = appSettings.usbExclusiveEnabled,
+                usbBitPerfectEnabled = appSettings.usbBitPerfectEnabled,
+                effectivePerformanceMode = LocalEchoEffectivePerformanceMode.current.id,
+                replayGainEnabled = appSettings.replayGainEnabled,
+                replayGainMode = appSettings.replayGainMode,
+                replayGainPreampDb = appSettings.replayGainPreampDb,
+                audioDiagnostics = playbackStatus.diagnostics,
+                systemEffectsLocalPlayback = systemEffectsLocalPlayback,
+                onAudioFocusEnabledChange = viewModel::setAudioFocusEnabled,
+                onAudioInterruptionPolicyChange = viewModel::setAudioInterruptionPolicy,
+                onTrackTransitionsChange = viewModel::setTrackTransitions,
+                onReplayGainChange = viewModel::setReplayGain,
+                onReplayGainModeChange = viewModel::setReplayGainMode,
+                onResetAudioOutput = viewModel::resetAudioOutputSettings,
+                onOpenSystemAudioEffects = onOpenSystemAudioEffects,
+            )
+        },
         onSwipeToConnect = onSwipeToConnect,
         status = playbackStatus,
         positionFlow = viewModel.playbackPosition,

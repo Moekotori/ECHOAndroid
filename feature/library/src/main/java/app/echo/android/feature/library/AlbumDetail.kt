@@ -135,6 +135,7 @@ internal fun AlbumDetailPage(
     playingTrackId: String? = null,
     modifier: Modifier = Modifier,
 ) {
+    val rangeSource = rememberLibraryRangeSource(tracks)
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
     val loadedTracks = tracks.itemSnapshotList.items
     val facts = remember(loadedTracks) { albumTrackFacts(loadedTracks) }
@@ -222,6 +223,7 @@ internal fun AlbumDetailPage(
                                     .padding(horizontal = 16.dp),
                             ) {
                                 AlbumDiscTrackRow(
+                                    rangeSource = rangeSource,
                                     index = index,
                                     track = track,
                                     previous = if (index > 0) tracks.peek(index - 1) else null,
@@ -291,6 +293,7 @@ internal fun AlbumDetailListPage(
     onOpenTrackArtist: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val rangeSource = rememberLibraryRangeSource(tracks)
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
     val facts = remember(tracks) { albumTrackFacts(tracks) }
     val discSummaries = if (tracks.size == album.trackCount) facts.discs else emptyMap()
@@ -359,6 +362,7 @@ internal fun AlbumDetailListPage(
                                 .padding(horizontal = 16.dp),
                         ) {
                             AlbumDiscTrackRow(
+                                rangeSource = rangeSource,
                                 index = index,
                                 track = track,
                                 previous = tracks.getOrNull(index - 1),
@@ -405,6 +409,7 @@ internal fun GenreTrackDetailPage(
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val rangeSource = rememberLibraryRangeSource(tracks)
     val palette = rememberArtworkPalette(artist.artworkUri, seedKey = artist.artistKey)
     val loadedTracks = tracks.itemSnapshotList.items
     Box(
@@ -477,6 +482,7 @@ internal fun GenreTrackDetailPage(
                                 .padding(horizontal = 20.dp),
                         ) {
                             AlbumTrackRow(
+                                rangeSource = rangeSource,
                                 index = index,
                                 track = track,
                                 accent = palette.vibrant,
@@ -1078,6 +1084,7 @@ private fun readableDuration(durationMs: Long): String {
 internal fun AlbumTrackRow(
     index: Int,
     track: EchoTrack,
+    rangeSource: LibraryRangeSource? = null,
     accent: Color,
     palette: ArtworkPalette? = null,
     playing: Boolean = false,
@@ -1099,6 +1106,7 @@ internal fun AlbumTrackRow(
 ) {
     val colors = rememberDetailGlassColors()
     TrackContextMenu(
+        rangeSource = rangeSource,
         track = track,
         onPlay = onClick,
         onMoveUp = onMoveUp,
@@ -1221,6 +1229,7 @@ internal fun AlbumTrackRow(
 private fun AlbumDiscTrackRow(
     index: Int,
     track: EchoTrack,
+    rangeSource: LibraryRangeSource? = null,
     previous: EchoTrack?,
     isFirst: Boolean,
     multiDisc: Boolean,
@@ -1247,6 +1256,7 @@ private fun AlbumDiscTrackRow(
             AlbumDiscHeader(discNumber = track.albumDiscNumber(), isFirst = isFirst, totals = discTotals)
         }
         AlbumTrackRow(
+        rangeSource = rangeSource,
             index = index,
             track = track,
             accent = accent,

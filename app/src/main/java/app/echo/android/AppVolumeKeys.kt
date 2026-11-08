@@ -6,7 +6,7 @@ import androidx.media3.common.util.UnstableApi
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.feature.settings.R as SettingsR
 
-/** Foreground keys only. Android continues to own volume keys outside the Activity. */
+/** Foreground USB-exclusive keys only. Normal playback uses Android media volume. */
 @UnstableApi
 internal class AppVolumeKeys(private val application: EchoApplication) {
     private val pressed = HashSet<Int>(2)
@@ -21,6 +21,8 @@ internal class AppVolumeKeys(private val application: EchoApplication) {
         }
         val remote = application.echoLinkSession
         if (remote.castActive.value || remote.playbackRouter.remoteMode.value) return false
+        val usb = EchoPlaybackProcessRuntime.usbAudioMonitor(application).status.value
+        if (!usb.connected || !usb.exclusiveEnabled) return false
         if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
             if (repeat == 0) notice(application.getString(R.string.usb_key_volume_locked))
         } else {

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_shuffle_albums">Whole albums</string>
+    <string name="settings_shuffle_albums_detail">Shuffle album order while keeping disc and track order within each album. The current album continues from the current track; manually requested songs still play first.</string>
+    <string name="settings_play_next_behavior">When playing next</string>
+    <string name="settings_play_next_behavior_detail">Choose what happens when the song is already later in the queue. Current playback and history are preserved.</string>
+    <string name="settings_play_next_repeat">Play another copy</string>
+    <string name="settings_play_next_move">Move the upcoming copy</string>
+</resources>

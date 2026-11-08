@@ -3,13 +3,11 @@ package app.echo.android.data
 import app.echo.android.model.library.CueSheet
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.LibraryScanOptions
-import app.echo.android.model.platform.EchoPlatformCapabilities
 import kotlinx.coroutines.CancellationException
 import android.content.ContentResolver
 import android.database.Cursor
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
 import android.provider.DocumentsContract
 import android.util.Log
 import androidx.core.database.getLongOrNull
@@ -568,7 +566,9 @@ class DocumentTreeTrackScanner(
         }
         fun fallbackMetadata() = fileTags.toDocumentMetadata(readSucceeded = !reads.failed && container?.durationMs?.let { it > 0 } == true).copy(
             durationMs = container?.durationMs ?: 0L,
-            sampleRateHz = container?.sampleRateHz.takeIf { readSampleRate },
+            sampleRateHz = if (readSampleRate) {
+                container?.sampleRateHz ?: readLocalAudioSampleRate(contentResolver, uri)
+            } else null,
             artworkUri = persistArtwork(fileTags?.artworkBytes),
         )
         if (container != null && container.durationMs > 0 &&
@@ -610,16 +610,9 @@ class DocumentTreeTrackScanner(
                             ?.take(4)
                             ?.toIntOrNull()
                             ?.takeIf { it > 0 },
-                    sampleRateHz = if (
-                        readSampleRate &&
-                        Build.VERSION.SDK_INT >= EchoPlatformCapabilities.MediaMetadataSampleRateSdk
-                    ) {
-                        container?.sampleRateHz ?: retriever.metadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
-                            ?.toIntOrNull()
-                            ?.takeIf { it > 0 }
-                    } else {
-                        container?.sampleRateHz.takeIf { readSampleRate }
-                    },
+                    sampleRateHz = if (readSampleRate) {
+                        container?.sampleRateHz ?: readLocalAudioSampleRate(contentResolver, uri, retriever)
+                    } else null,
                     artworkUri = persistArtwork(fileTags?.artworkBytes ?: runCatching { retriever.embeddedPicture }.getOrNull()),
                 )
             } ?: fallbackMetadata()

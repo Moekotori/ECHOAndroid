@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_shuffle_albums">Целые альбомы</string>
+    <string name="settings_shuffle_albums_detail">Случайный порядок альбомов с сохранением порядка дисков и треков. Текущий альбом продолжается; ручные запросы имеют приоритет.</string>
+    <string name="settings_play_next_behavior">Песня уже в очереди</string>
+    <string name="settings_play_next_behavior_detail">Добавить копию или перенести песню из последующей очереди. Текущее воспроизведение и история сохраняются.</string>
+    <string name="settings_play_next_repeat">Добавить копию</string>
+    <string name="settings_play_next_move">Перенести существующую</string>
+</resources>

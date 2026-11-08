@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -26,6 +27,7 @@ internal fun SignalPathPanel(
     balance: EchoChannelBalanceState,
     dsp: EchoDspSettings,
     volume: EchoVolumeSettings = EchoVolumeSettings(),
+    onDiagnostics: () -> Unit,
 ) {
     val d = status.diagnostics
     val scheme = MaterialTheme.colorScheme
@@ -74,6 +76,12 @@ internal fun SignalPathPanel(
             stages.forEachIndexed { index, stage ->
                 SignalPathStep(stage, index, last = index == stages.lastIndex, expanded = expanded)
             }
+        }
+        TextButton(onClick = onDiagnostics, contentPadding = PaddingValues(horizontal = 0.dp)) {
+            Text(stringResource(R.string.feature_settings_diagnostics_b6e487))
+            Spacer(Modifier.width(6.dp))
+            EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null,
+                modifier = Modifier.size(18.dp), tint = scheme.onSurfaceVariant)
         }
     }
 }

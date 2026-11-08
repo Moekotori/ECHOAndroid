@@ -1,5 +1,13 @@
 package app.echo.android.feature.player
 
+/** Short panes need enough width for artwork AND transport, rather than a tall cover page. */
+internal fun playerMinimumPaneWidth(heightDp: Float, horizontalFold: Boolean, hasFold: Boolean): Float = when {
+    horizontalFold -> 480f
+    hasFold -> 280f
+    heightDp < 600f -> 520f
+    else -> 280f
+}
+
 /** Returns a readable side pane only when both panes fit the available window. */
 internal fun playerSidePaneWidth(
     widthDp: Float,

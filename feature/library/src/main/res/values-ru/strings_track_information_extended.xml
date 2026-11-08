@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_playlists">Плейлисты с этой песней</string>
+    <string name="track_info_playlists_empty">Нет в известных постоянных плейлистах на этом устройстве.</string>
+    <string name="track_info_playlists_failed">Не удалось загрузить плейлисты. Повторите попытку.</string>
+    <string name="track_info_playlists_scope">Показаны известные постоянные связи, синхронизированные плейлисты и избранное. Динамические смарт-плейлисты и несинхронизированные списки сервера не включены.</string>
+    <string name="track_info_modified">Файл изменён</string>
+    <string name="track_info_clip_start">Начало фрагмента</string>
+    <string name="track_info_clip_end">Конец фрагмента</string>
+</resources>

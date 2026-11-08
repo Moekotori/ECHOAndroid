@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_range_start">設為區間起點</string>
+    <string name="library_range_end">選到這裡</string>
+    <string name="library_range_changed">列表已變更，請重新選擇起點。</string>
+    <string name="library_range_unloaded">區間內有歌曲尚未載入，請捲動載入該區間後重試。</string>
+    <string name="library_range_limit">累計最多選擇 200 首歌曲。</string>
+</resources>

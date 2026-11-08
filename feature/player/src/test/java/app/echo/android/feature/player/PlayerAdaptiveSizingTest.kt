@@ -4,6 +4,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PlayerAdaptiveSizingTest {
+    @Test fun phoneLandscapeKeepsTransportBesideArtworkBeforeAddingLyrics() {
+        fun placement(width: Int, height: Int, scale: Float = 1f) = playerPanePlacement(
+            width, height, 18, minimumPaneWidth = (playerMinimumPaneWidth(height.toFloat(), false, false) * scale).toInt(),
+            minimumPaneHeight = (180 * scale).toInt(),
+        )
+        assertFalse(placement(760, 300).isSplit)
+        assertTrue(placement(1120, 360).isSplit)
+        assertFalse(placement(1120, 360, 1.5f).isSplit)
+        assertTrue(placement(840, 700).isSplit)
+        // A physical hinge still takes precedence over the ordinary phone breakpoint.
+        assertEquals(280f, playerMinimumPaneWidth(360f, false, true), 0f)
+        assertEquals(480f, playerMinimumPaneWidth(360f, true, true), 0f)
+    }
+
     @Test fun shortLandscapeKeepsBothPanesReadableAndLargeTextFallsBack() {
         fun lyrics(width: Float, height: Float, scale: Float) = playerSidePaneWidth(
             width, height, scale, 264f, 216f * scale, 20f, .45f)

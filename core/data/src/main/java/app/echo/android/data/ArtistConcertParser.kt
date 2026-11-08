@@ -27,21 +27,13 @@ internal object ArtistConcertParser {
 
     private fun date(value: String?): String? = value?.let { runCatching { LocalDate.parse(it).toString() }.getOrNull() }
     private fun time(value: String?): String? = value?.let { runCatching { LocalTime.parse(it).format(DateTimeFormatter.ofPattern("HH:mm")) }.getOrNull() }
-    private fun sameName(value: String, names: List<String>) = names.any {
-        ArtistOnlineInfoParser.normalize(value) == ArtistOnlineInfoParser.normalize(it)
-    }
-    private fun containsName(value: String, names: List<String>): Boolean = names.any { name ->
-        // Keep word boundaries for Latin names so "Air" cannot match "Airbourne".
-        Regex("(?<![\\p{L}\\p{N}])${Regex.escape(name)}(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE).containsMatchIn(value) ||
-            (name.any { it.code > 0x3000 } && ArtistOnlineInfoParser.normalize(value).contains(ArtistOnlineInfoParser.normalize(name)))
-    }
-
     fun actorPage(html: String, names: List<String>): String? {
+        val matcher = ConcertArtistMatcher(names)
         if (!html.contains("/actors/search")) throw IOException("Unrecognized Eventernote search page")
         return anchors.findAll(html).filter {
             // Mobile results put pronunciation and a count inside the artist anchor.
             val label = text(it.groupValues[2].replace(Regex("<span\\b[^>]*class=[\"']count[^\"']*[\"'][^>]*>.*?</span>", htmlOptions), ""))
-            sameName(label, names) || sameName(label.replace(Regex("\\s*[（(][^（）()]*[）)]\\s*$"), ""), names)
+            matcher.matchesName(label) || matcher.matchesName(label.replace(Regex("\\s*[（(][^（）()]*[）)]\\s*$"), ""))
         }
             .mapNotNull { match ->
                 "https://www.eventernote.com".toHttpUrl().resolve(match.groupValues[1])?.takeIf {
@@ -51,6 +43,7 @@ internal object ArtistConcertParser {
     }
 
     fun eventernote(html: String, names: List<String>, today: LocalDate, includePast: Boolean = false): List<ArtistConcert> {
+        val matcher = ConcertArtistMatcher(names)
         if (html.contains("gb_listevent")) return eventernoteMobile(html, names, today, includePast)
         if (!html.contains("gb_event_list") && !html.contains("イベントがありません")) throw IOException("Unrecognized Eventernote event page")
         val blocks = Regex("<li\\b[^>]*class=[\"']clearfix[^\"']*[\"'][^>]*>(.*?)(?=<li\\b[^>]*class=[\"']clearfix|</ul>)", htmlOptions)
@@ -61,8 +54,8 @@ internal object ArtistConcertParser {
             val links = anchors.findAll(block).toList()
             val event = links.firstOrNull { it.groupValues[1].matches(Regex("/events/[0-9]+")) } ?: return@mapNotNull null
             val title = text(event.groupValues[2])
-            val performerMatch = links.any { it.groupValues[1].startsWith("/actors/") && sameName(text(it.groupValues[2]), names) }
-            if (!performerMatch && !containsName(title, names)) return@mapNotNull null
+            val performerMatch = links.any { it.groupValues[1].startsWith("/actors/") && matcher.matchesName(text(it.groupValues[2])) }
+            if (!performerMatch && !matcher.matchesTitle(title)) return@mapNotNull null
             val venue = links.firstOrNull { it.groupValues[1].startsWith("/places/") }?.groupValues?.get(2)?.let(::text)
             ArtistConcert("eventernote:${event.groupValues[1].substringAfterLast('/')}", title, date,
                 time(Regex("開演\\s*([0-9]{1,2}:[0-9]{2})").find(text(block))?.groupValues?.get(1)?.padStart(5, '0')),
@@ -72,6 +65,7 @@ internal object ArtistConcertParser {
     }
 
     private fun eventernoteMobile(html: String, names: List<String>, today: LocalDate, includePast: Boolean): List<ArtistConcert> {
+        val matcher = ConcertArtistMatcher(names)
         val blocks = Regex("<li\\b[^>]*class=[\"']\\s*day[0-9]+[^\"']*[\"'][^>]*>(.*?)</li>", htmlOptions)
         return blocks.findAll(html).mapNotNull { match ->
             val block = match.groupValues[1]
@@ -79,7 +73,7 @@ internal object ArtistConcertParser {
                 .find(block)?.groupValues?.get(1)?.let(::text)
             val title = field("event") ?: return@mapNotNull null
             // A member's solo show tagged with the band must not become a band performance.
-            if (!containsName(title, names) && !sameName(field("actor").orEmpty(), names)) return@mapNotNull null
+            if (!matcher.matchesTitle(title) && !matcher.matchesName(field("actor").orEmpty())) return@mapNotNull null
             val date = date(field("date")?.take(10)) ?: return@mapNotNull null
             if (!includePast && date < today.toString()) return@mapNotNull null
             val id = Regex("href=[\"']/events/([0-9]+)[\"']").find(block)?.groupValues?.get(1) ?: return@mapNotNull null
@@ -91,6 +85,7 @@ internal object ArtistConcertParser {
     }
 
     fun eplus(html: String, names: List<String>, today: LocalDate): List<ArtistConcert> {
+        val matcher = ConcertArtistMatcher(names)
         val body = Regex("<script\\b[^>]*id=[\"']json[\"'][^>]*>(.*?)</script>", htmlOptions).find(html)?.groupValues?.get(1)
             ?: throw IOException("Unrecognized eplus event page")
         val data = JSONObject(body).optJSONObject("data") ?: throw IOException("Missing eplus event data")
@@ -98,7 +93,7 @@ internal object ArtistConcertParser {
         return data.objects("record_list").mapNotNull { row ->
             val show = row.optJSONObject("kanren_kogyo_sub") ?: return@mapNotNull null
             val title = listOfNotNull(show.text("kogyo_name_1"), show.text("kogyo_name_2")).joinToString(" · ").let(::text)
-            if (!containsName(title, names) || row.optString("abort_henko_enki_status", "0") != "0") return@mapNotNull null
+            if (!matcher.matchesTitle(title) || row.optString("abort_henko_enki_status", "0") != "0") return@mapNotNull null
             val rawDate = row.text("koenbi_term") ?: return@mapNotNull null
             val date = runCatching { LocalDate.parse(rawDate, DateTimeFormatter.BASIC_ISO_DATE).toString() }.getOrNull() ?: return@mapNotNull null
             if (date < today.toString()) return@mapNotNull null

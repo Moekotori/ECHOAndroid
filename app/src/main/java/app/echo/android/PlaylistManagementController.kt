@@ -31,6 +31,7 @@ internal class PlaylistManagementController(
 
     fun order(id: String) = repository.observePlaylistOrder(id)
     fun memberships(trackId: String) = repository.observeTrackPlaylistIds(trackId)
+    fun containingPlaylists(trackId: String) = repository.observeTrackPlaylists(trackId)
     fun stats(id: String) = repository.observePlaylistStats(id)
     suspend fun sort(id: String, order: PlaylistTrackOrder) = repository.setPlaylistOrder(id, order)
     fun candidates(query: String) = repository.pagedTracks(query).map { data -> data.map { it.toEchoTrack() } }

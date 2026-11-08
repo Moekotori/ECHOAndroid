@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_menu_edit">Edit menu</string>
+    <string name="player_menu_detail">Choose visible actions, use the arrows to reorder, then save. Unsupported actions remain hidden for each song source.</string>
+    <string name="player_menu_move_up">Move %1$s up</string>
+    <string name="player_menu_move_down">Move %1$s down</string>
+    <string name="player_menu_save_failed">Could not save. Please try again.</string>
+    <string name="player_menu_empty">All actions are hidden. Use Edit menu at the top to restore them.</string>
+</resources>

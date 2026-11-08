@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_menu_edit">编辑菜单</string>
+    <string name="player_menu_detail">勾选要显示的功能，用上下箭头调整顺序，点保存生效。不支持的功能会随歌曲来源自动隐藏。</string>
+    <string name="player_menu_move_up">上移 %1$s</string>
+    <string name="player_menu_move_down">下移 %1$s</string>
+    <string name="player_menu_save_failed">保存失败，请重试。</string>
+    <string name="player_menu_empty">所有功能已隐藏，可用顶部的编辑菜单恢复。</string>
+</resources>

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.view.KeyEvent
 import android.graphics.Color
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
         setTheme(R.style.Theme_EchoAndroid_Splash)
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        volumeControlStream = AudioManager.STREAM_MUSIC
         splashScreen.setKeepOnScreenCondition { !startupReady }
         window.decorView.setBackgroundColor(
             echoStartupWindowColor(

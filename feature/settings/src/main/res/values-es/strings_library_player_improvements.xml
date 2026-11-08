@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_shuffle_albums">Álbumes completos</string>
+    <string name="settings_shuffle_albums_detail">Orden aleatorio de álbumes, manteniendo el orden de discos y pistas. El álbum actual continúa; las peticiones manuales tienen prioridad.</string>
+    <string name="settings_play_next_behavior">Canción ya en la cola</string>
+    <string name="settings_play_next_behavior_detail">Añade otra copia o adelanta la canción que aparece más tarde. Se conservan la reproducción actual y el historial.</string>
+    <string name="settings_play_next_repeat">Añadir otra copia</string>
+    <string name="settings_play_next_move">Adelantar la existente</string>
+</resources>

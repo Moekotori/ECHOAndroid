@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_menu_edit">Изменить меню</string>
+    <string name="player_menu_detail">Выберите видимые действия, измените порядок стрелками и сохраните. Недоступные для источника действия остаются скрытыми.</string>
+    <string name="player_menu_move_up">Поднять %1$s</string>
+    <string name="player_menu_move_down">Опустить %1$s</string>
+    <string name="player_menu_save_failed">Не удалось сохранить. Повторите попытку.</string>
+    <string name="player_menu_empty">Все действия скрыты. Их можно вернуть через кнопку изменения меню вверху.</string>
+</resources>

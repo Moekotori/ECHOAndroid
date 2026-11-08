@@ -12,6 +12,7 @@ without changing any numerical filter values. Original measurement-rig folders
 were restored by matching every profile ID to the upstream Git tree at the pinned revision. The upstream license was independently verified.
 Use scripts/import-autoeq.py with an upstream checkout to rebuild/update data.
 Profiles from different measurement sources and targets are not interchangeable.
+Brand names and aliases: dbtools/manufacturers.tsv at the same revision (MIT).
 
 Validation: all 8,850 reconstructed ParametricEQ.txt files matched the upstream
 Git blob SHA-1 IDs at the pinned revision (numerical values and ordering).

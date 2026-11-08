@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_playlists">Enthalten in Playlists</string>
+    <string name="track_info_playlists_empty">In keiner bekannten festen Playlist auf diesem Gerät.</string>
+    <string name="track_info_playlists_failed">Playlists konnten nicht geladen werden. Erneut versuchen.</string>
+    <string name="track_info_playlists_scope">Zeigt bekannte feste Zuordnungen, synchronisierte Playlists und Lieblingssongs. Dynamische Smart-Playlists und nicht synchronisierte Server-Playlists sind nicht enthalten.</string>
+    <string name="track_info_modified">Datei geändert</string>
+    <string name="track_info_clip_start">Clip-Anfang</string>
+    <string name="track_info_clip_end">Clip-Ende</string>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_shuffle_albums">アルバム単位でシャッフル</string>
+    <string name="settings_shuffle_albums_detail">アルバム順をランダムにし、各アルバム内はディスク・トラック順で再生します。現在の曲から続け、手動リクエストを優先します。</string>
+    <string name="settings_play_next_behavior">次に再生する曲の重複</string>
+    <string name="settings_play_next_behavior_detail">キューの後方にある曲をもう一度追加するか前に移動します。現在の再生と履歴は保持されます。</string>
+    <string name="settings_play_next_repeat">もう一度追加</string>
+    <string name="settings_play_next_move">後方の曲を前に移動</string>
+</resources>

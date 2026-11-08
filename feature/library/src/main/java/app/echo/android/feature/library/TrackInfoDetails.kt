@@ -1,11 +1,15 @@
 package app.echo.android.feature.library
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
+import java.text.DateFormat
+import java.util.Date
 
 /** Optional facts for this song; output-device settings must never be supplied here. */
 data class TrackInfoAudioFormat(
@@ -24,6 +28,12 @@ internal fun trackInfoFields(track: EchoTrack, audio: TrackInfoAudioFormat?): Li
     val missing = stringResource(R.string.feature_library_not_available_7d3220)
     fun text(value: String?) = value?.trim()?.takeIf(String::isNotBlank) ?: missing
     val rate = audio?.sampleRateHz?.takeIf { it > 0 } ?: track.sampleRateHz?.takeIf { it > 0 }
+    val locale = LocalConfiguration.current.locales[0]
+    val modified = remember(track.dateModifiedSeconds, locale) {
+        track.dateModifiedSeconds.takeIf { it in 1..(Long.MAX_VALUE / 1000) }?.let {
+            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, locale).format(Date(it * 1000))
+        }
+    }
     return listOf(
         TrackInfoField(stringResource(R.string.feature_library_title_af1111), displayTrack(track.title)),
         TrackInfoField(stringResource(R.string.feature_library_artist_b6e7ad), displayArtist(track.artist), opensArtist = true),
@@ -43,6 +53,11 @@ internal fun trackInfoFields(track: EchoTrack, audio: TrackInfoAudioFormat?): Li
         TrackInfoField(stringResource(R.string.feature_library_duration_573e08), track.durationMs.takeIf { it > 0 }?.let(::formatDuration) ?: missing),
         TrackInfoField(stringResource(R.string.feature_library_size_f63a75), formatTrackFileSize(track.sizeBytes)),
         TrackInfoField(stringResource(R.string.track_info_file_name), text(track.fileName)),
+        TrackInfoField(stringResource(R.string.track_info_mime), text(track.mimeType)),
+        TrackInfoField(stringResource(R.string.track_info_modified), modified ?: missing),
         TrackInfoField(stringResource(R.string.feature_library_source_4aff16), text(track.source.id)),
-    )
+    ) + if (track.clipStartMs > 0 || track.clipEndMs > 0) listOf(
+        TrackInfoField(stringResource(R.string.track_info_clip_start), "${track.clipStartMs.coerceAtLeast(0)} ms"),
+        TrackInfoField(stringResource(R.string.track_info_clip_end), track.clipEndMs.takeIf { it > 0 }?.let { "$it ms" } ?: missing),
+    ) else emptyList()
 }

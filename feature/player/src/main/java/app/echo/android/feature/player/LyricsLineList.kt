@@ -110,6 +110,7 @@ internal fun LyricsLineList(
             } else null
         }
         val immersive = lyricsImmersiveModeEnabled && synced
+        val metro = LocalPlayerPageStyle.current == app.echo.android.model.settings.EchoPlayerPageStyle.MetroLine
         LazyColumn(
             state = listState,
             userScrollEnabled = interactive,
@@ -144,6 +145,7 @@ internal fun LyricsLineList(
                     showRomanization = showRomanization, motion = motion, blurEffects = blurEffects,
                     animateFocus = animateFocus, paper = paper, passed = focusIndex >= 0 && index < focusIndex,
                     stationNumber = index + 1,
+                    railTravel = if (metro && animateFocus) metroRailTravel(lyrics.lines, index, focusIndex) else null,
                     onClick = if (seekable) ({
                         calibrationIndex = null
                         pendingFollowIndex = index

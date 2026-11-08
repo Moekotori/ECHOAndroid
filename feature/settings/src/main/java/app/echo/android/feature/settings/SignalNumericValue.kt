@@ -53,11 +53,12 @@ internal fun SignalNumericValue(
     unit: String = "dB",
     scale: Float = 1f,
     decimals: Int = 1,
+    trigger: (@Composable (onClick: () -> Unit) -> Unit)? = null,
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(enabled) { if (!enabled) editing = false }
     val scheme = MaterialTheme.colorScheme
-    TextButton(
+    if (trigger != null) trigger { editing = true } else TextButton(
         onClick = { editing = true }, enabled = enabled,
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         shape = RoundedCornerShape(10.dp),

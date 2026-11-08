@@ -15,4 +15,5 @@ data class EchoTrackRef(
     val queueContext: PlaybackQueueContext? = null,
     val clipStartMs: Long = 0L,
     val clipEndMs: Long = 0L,
+    val albumArtist: String? = null,
 )

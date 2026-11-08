@@ -95,6 +95,10 @@ internal fun LyricsSettingsPanel(
     onLyricsFocusGlowChange: (Boolean) -> Unit,
     onShowLyricsControlDeckChange: (Boolean) -> Unit,
     onOnlineLyricsEnabledChange: (Boolean) -> Unit,
+    translationScale: Float = 1f,
+    romanizationScale: Float = 1f,
+    onTranslationScaleChange: (Float) -> Unit = {},
+    onRomanizationScaleChange: (Float) -> Unit = {},
 ) {
     val dark = LocalEchoDarkTheme.current
     val titleColor = if (dark) Color.White else echoTheme().heading
@@ -142,6 +146,7 @@ internal fun LyricsSettingsPanel(
                     pageStyle = lyricsPageStyle,
                     fontFamily = lyricsFontFamily,
                     fontScale = lyricsFontScale,
+                    translationScale = translationScale, romanizationScale = romanizationScale,
                     colorMode = lyricsColorMode,
                     alignment = lyricsAlignment,
                     lineSpacing = lyricsLineSpacing,
@@ -192,6 +197,8 @@ internal fun LyricsSettingsPanel(
                                 LyricsSettingChoices(options = LyricsAlignmentOptions.map { it.value to lyricsAlignmentLabel(it.value) },
                                     selected = lyricsAlignment, onSelect = onLyricsAlignmentChange)
                                 LyricsSettingSlider(stringResource(L10nR.string.feature_player_type_size_8ff7ee), lyricsFontScale, 0.50f..1.28f, 1f, onLyricsFontScaleChange)
+                                LyricsSettingSlider(stringResource(L10nR.string.lyrics_translation_size), translationScale, 0.5f..2f, 1f, onTranslationScaleChange)
+                                LyricsSettingSlider(stringResource(L10nR.string.lyrics_romanization_size), romanizationScale, 0.5f..2f, 1f, onRomanizationScaleChange)
                                 LyricsSettingSlider(stringResource(L10nR.string.feature_player_line_spacing_ecbb6f), lyricsLineSpacing, 0.50f..1.38f, 1f, onLyricsLineSpacingChange)
                             }
                             if (page == LyricsSettingsCategory.Color) {

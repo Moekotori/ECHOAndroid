@@ -14,5 +14,6 @@ internal fun rememberLibraryMediaTools(viewModel: EchoAndroidViewModel): Library
         images = tools.images::load,
         previewFolder = { track, charset -> tools.encoding.previewFolder(track.id, charset) },
         applyFolder = tools.encoding::applyFolder,
+        containingPlaylists = { track -> viewModel.playlistTools.containingPlaylists(track.id) },
     )
 }

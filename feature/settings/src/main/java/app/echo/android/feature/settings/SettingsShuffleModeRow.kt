@@ -59,10 +59,15 @@ internal fun SettingsShuffleModeRow(options: EchoShuffleOptions, onChange: (Echo
                 selected = value.mode == EchoShuffleMode.PureRandom,
                 onClick = { onChange(value.copy(mode = EchoShuffleMode.PureRandom)) },
             )
+            ShuffleModeChoice(title = stringResource(R.string.settings_shuffle_albums),
+                summary = stringResource(R.string.settings_shuffle_albums_detail), badge = "",
+                selected = value.mode == EchoShuffleMode.Albums,
+                onClick = { onChange(value.copy(mode = EchoShuffleMode.Albums)) })
         }
         ShuffleSequencePreview(value)
         HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
         when (value.mode) {
+            EchoShuffleMode.Albums -> Unit
             EchoShuffleMode.PseudoRandom -> SettingsSwitchRow(
                 title = stringResource(R.string.settings_shuffle_spread_artists),
                 detail = stringResource(R.string.settings_shuffle_spread_artists_detail),
@@ -90,8 +95,11 @@ internal fun SettingsShuffleModeRow(options: EchoShuffleOptions, onChange: (Echo
         if (detailsExpanded) {
             SettingsInfoRow(
                 stringResource(R.string.settings_shuffle_rule_round),
-                stringResource(if (value.mode == EchoShuffleMode.PseudoRandom)
-                    R.string.settings_shuffle_pseudo_detail else R.string.settings_shuffle_pure_detail),
+                stringResource(when (value.mode) {
+                    EchoShuffleMode.PseudoRandom -> R.string.settings_shuffle_pseudo_detail
+                    EchoShuffleMode.PureRandom -> R.string.settings_shuffle_pure_detail
+                    EchoShuffleMode.Albums -> R.string.settings_shuffle_albums_detail
+                }),
             )
             if (value.mode == EchoShuffleMode.PureRandom) SettingsInfoRow(
                 stringResource(R.string.settings_shuffle_rule_fair),

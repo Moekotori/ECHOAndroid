@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_playlists">Listas que incluyen esta canción</string>
+    <string name="track_info_playlists_empty">No está en ninguna lista fija conocida en este dispositivo.</string>
+    <string name="track_info_playlists_failed">No se pudieron cargar las listas. Inténtalo de nuevo.</string>
+    <string name="track_info_playlists_scope">Muestra listas fijas conocidas, sincronizadas y canciones favoritas. No incluye listas inteligentes dinámicas ni listas del servidor sin sincronizar.</string>
+    <string name="track_info_modified">Archivo modificado</string>
+    <string name="track_info_clip_start">Inicio del fragmento</string>
+    <string name="track_info_clip_end">Fin del fragmento</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_playlists">이 곡이 포함된 재생목록</string>
+    <string name="track_info_playlists_empty">이 기기에 알려진 고정 재생목록에 포함되지 않았습니다.</string>
+    <string name="track_info_playlists_failed">재생목록을 불러오지 못했습니다. 다시 시도하세요.</string>
+    <string name="track_info_playlists_scope">이 기기에 알려진 고정 목록, 동기화된 목록 및 좋아요를 표시합니다. 동적 스마트 목록과 미동기화 서버 목록은 포함하지 않습니다.</string>
+    <string name="track_info_modified">파일 수정 시간</string>
+    <string name="track_info_clip_start">구간 시작</string>
+    <string name="track_info_clip_end">구간 끝</string>
+</resources>

@@ -21,10 +21,11 @@ internal class ArtistConcertRepository(
     private val musicBrainz: suspend (String, Map<String, String>) -> JSONObject,
 ) {
     private val regional = RegionalConcertFeeds(directory, transport)
+    private val artistIdentity = ConcertArtistIdentity(identity)
     private data class Source(val name: String, val read: suspend (Long) -> RegionalConcertFeeds.Result)
 
     suspend fun load(query: ArtistOnlineQuery, queryKey: String, refresh: Boolean, period: ArtistConcertPeriod): ArtistConcerts {
-        val key = "concerts-v3:$period:$queryKey"
+        val key = "concerts-v4:$period:$queryKey"
         val entry = cache.read(key)
         val saved = entry?.value?.let { runCatching { ArtistConcertParser.decode(it) }.getOrNull() }
         val now = Instant.now()
@@ -36,9 +37,10 @@ internal class ArtistConcertRepository(
         val ttl = if (saved?.failedSources?.isNotEmpty() == true) 5 * 60_000L else 6 * 3600_000L
         if (!refresh && saved != null && entry.age < ttl) return current(saved)
         if (query.name.isBlank()) return ArtistConcerts(emptyList())
+        val deadline = System.nanoTime() + 12_000_000_000L
         val known = cache.read("identity-v1:$queryKey")?.takeIf { it.age < 7 * 86400_000L }?.value
-        val names = (listOf(query.name) + listOfNotNull(known?.text("name")) + known?.objects("aliases").orEmpty()
-            .mapNotNull { it.text("name") }).distinct().filter { it.isNotBlank() }.take(16)
+        val resolved = artistIdentity.resolve(query, known, refresh)
+        val names = resolved.names
         val today = LocalDate.now(ZoneOffset.UTC)
         val jobs = mutableListOf<Source>()
         // Regional feeds get a fair share of the bounded request budget before slower identity lookups.
@@ -46,10 +48,17 @@ internal class ArtistConcertRepository(
             jobs += Source(source) { budget -> regional.load(source, names, refresh, now, (budget - 100).coerceAtLeast(1), period) }
         }
         jobs += Source("Eventernote") {
-            val search = transport.text(url("https://www.eventernote.com/actors/search", mapOf("keyword" to query.name)))
-            var page = ArtistConcertParser.actorPage(search, names)?.toHttpUrl()
             val events = ArrayList<ArtistConcert>()
             var failed = false
+            var page: okhttp3.HttpUrl? = null
+            for (name in names.take(3)) {
+                try {
+                    val search = transport.text(url("https://www.eventernote.com/actors/search", mapOf("keyword" to name)))
+                    page = ArtistConcertParser.actorPage(search, names)?.toHttpUrl()
+                    if (page != null) break
+                } catch (cancelled: CancellationException) { throw cancelled
+                } catch (_: Exception) { failed = true }
+            }
             for (index in 0 until if (period == ArtistConcertPeriod.Past) 4 else 1) {
                 val address = page ?: break
                 try {
@@ -62,7 +71,7 @@ internal class ArtistConcertRepository(
             RegionalConcertFeeds.Result(events, failed)
         }
         jobs += Source("MusicBrainz") {
-            val id = identity(query, refresh)?.text("id")
+            val id = resolved.artist?.text("id")
             val events = ArrayList<ArtistConcert>()
             if (id != null) {
                 val dates = if (period == ArtistConcertPeriod.Past) "begin:[0001-01-01 TO $today]"
@@ -76,13 +85,21 @@ internal class ArtistConcertRepository(
                     }
                 }
             }
-            RegionalConcertFeeds.Result(events, false)
+            RegionalConcertFeeds.Result(events, resolved.failed)
         }
         if (period == ArtistConcertPeriod.Upcoming) jobs += Source("eplus") {
-            RegionalConcertFeeds.Result(ArtistConcertParser.eplus(transport.text(url("https://eplus.jp/sf/search", mapOf("keyword" to query.name))), names, today), false)
+            val events = ArrayList<ArtistConcert>()
+            var failed = false
+            for (name in names.take(3)) {
+                try {
+                    events += ArtistConcertParser.eplus(transport.text(url("https://eplus.jp/sf/search", mapOf("keyword" to name))), names, today)
+                    if (events.isNotEmpty()) break
+                } catch (cancelled: CancellationException) { throw cancelled
+                } catch (_: Exception) { failed = true }
+            }
+            RegionalConcertFeeds.Result(events, failed)
         }
         val workers = Semaphore(3)
-        val deadline = System.nanoTime() + 12_000_000_000L
         val results = coroutineScope {
             jobs.map { job -> async {
                 workers.withPermit {

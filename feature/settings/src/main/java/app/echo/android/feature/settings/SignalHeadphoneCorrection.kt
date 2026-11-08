@@ -109,7 +109,7 @@ internal fun SignalHeadphoneCorrection(
                 onCatalogSelected = chooseBrand, onRefresh = onRefresh)
             selectedBrand?.let { brand ->
                 OpraSelectedBrand(brand, enabled = true,
-                    backLabel = stringResource(if (autoEq) R.string.autoeq_all_measurements else R.string.opra_all_brands),
+                    backLabel = stringResource(R.string.opra_all_brands),
                     onBack = { chooseBrand(null) })
             }
             Box(Modifier.fillMaxWidth().height(4.dp)) {
@@ -163,8 +163,7 @@ internal fun SignalHeadphoneCorrection(
                 }
             }
             if (content.brands.isNotEmpty()) {
-                item("brands-title") { OpraSectionTitle(stringResource(
-                    if (autoEq) R.string.autoeq_choose_measurement else R.string.opra_choose_brand)) }
+                item("brands-title") { OpraSectionTitle(stringResource(R.string.opra_choose_brand)) }
                 opraBrandItems(content.brands, enabled = !state.loading) { chooseBrand(it) }
             }
             if (content.products.isNotEmpty()) {

@@ -83,6 +83,7 @@ internal fun PlaylistDetailPage(
     onExport: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val rangeSource = rememberLibraryRangeSource(tracks)
     val loadedTracks = tracks.itemSnapshotList.items
     val displayName = playlistDisplayName(playlist)
     val coverUris = remember(playlist.id, playlist.artworkUri, loadedTracks) {
@@ -219,6 +220,7 @@ internal fun PlaylistDetailPage(
                     val track = tracks[index]
                     if (track == null) PlaylistTrackPlaceholder(editing) else {
                         PlaylistTrackRow(
+                            rangeSource = rangeSource,
                             modifier = libraryTrackItemMotion().then(
                                 when {
                                     drag.source == track.id -> Modifier.alpha(0.45f)

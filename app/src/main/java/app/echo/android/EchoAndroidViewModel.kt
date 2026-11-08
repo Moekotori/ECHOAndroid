@@ -224,15 +224,20 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     internal suspend fun trackVersions(track: EchoTrack) = repository.trackVersions(track)
     internal val duplicateLibrary by lazy { LibraryDuplicatesController(application, viewModelScope) { !scanState.value.isScanning } }
     internal suspend fun setPreferredTrackVersion(track: EchoTrack, id: String?) = repository.setPreferredTrackVersion(track, id)
+    private suspend fun shuffleStart(queue: List<EchoTrack>, fallback: Int, intent: PlaybackQueueReplaceIntent): Int =
+        if (intent == PlaybackQueueReplaceIntent.Shuffle && settingsStore.appSettings.first().shuffleOptions.mode == app.echo.android.model.playback.EchoShuffleMode.Albums)
+            withContext(Dispatchers.Default) { app.echo.android.playback.albumShuffleStartIndex(queue) }
+        else fallback
+
     private suspend fun playPreferredQueue(
         queue: List<EchoTrack>, startIndex: Int,
         intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
         source: String? = queue.firstOrNull()?.album?.takeIf { album -> queue.all { it.album == album } },
-    ) = playbackController.playQueue(preferredPlayback.resolve(queue), startIndex, intent, source)
+    ) = playbackController.playQueue(preferredPlayback.resolve(queue), shuffleStart(queue, startIndex, intent), intent, source)
     private suspend fun playPreferredAlbumQueue(
         queue: List<EchoTrack>, startIndex: Int,
         intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
-    ) = playbackController.playAlbumQueue(preferredPlayback.resolve(queue), startIndex, intent)
+    ) = playbackController.playAlbumQueue(preferredPlayback.resolve(queue), shuffleStart(queue, startIndex, intent), intent)
 
     init {
         libraryController.setPlaybackOccupiesStorage {
@@ -357,6 +362,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     internal fun msebPresets(presets: List<app.echo.android.model.playback.EchoMsebUserPreset>) = msebPresetActions(settingsStore, presets)
 
     val appSettings: Flow<EchoAppSettings> = settingsStore.appSettings
+    internal suspend fun savePlayerMenuLayout(value: app.echo.android.model.settings.EchoPlayerMenuLayout) =
+        settingsStore.setPlayerMenuLayout(value)
     private val _backupNotice = MutableStateFlow<app.echo.android.model.backup.EchoBackupNotice?>(null)
     val backupNotice: StateFlow<app.echo.android.model.backup.EchoBackupNotice?> = _backupNotice.asStateFlow()
     val lastFmState: StateFlow<LastFmUiState> = lastFmController.uiState

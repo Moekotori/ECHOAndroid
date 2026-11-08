@@ -37,7 +37,10 @@ internal data class SettingsSearchItem(
     @StringRes val fallbackRes: Int = anchorRes,
     val keywords: List<Int> = emptyList(),
     val opensPlugins: Boolean = false,
-)
+) {
+    val opensAudioSettings: Boolean
+        get() = category == SettingsCategory.Playback && anchorRes in audioSettingsSearchAnchors
+}
 
 internal data class SettingsSearchResult(
     val item: SettingsSearchItem,
@@ -50,6 +53,14 @@ internal data class SettingsSearchResult(
     val normalizedCategory = categoryTitle.lowercase(Locale.ROOT)
     val normalizedKeywords = keywords.lowercase(Locale.ROOT)
 }
+
+private val audioSettingsSearchAnchors = setOf(
+    R.string.audio_output_title, R.string.audio_focus_title, R.string.audio_output_reset,
+    R.string.listening_interruption, R.string.manual_fade_title, R.string.effects_panel_title,
+    R.string.settings_replay_gain, R.string.settings_replay_gain_mode, R.string.eq_preamp,
+    R.string.settings_section_transition, R.string.settings_gapless, R.string.settings_track_fade,
+    R.string.settings_track_fade_duration, R.string.settings_smart_transition,
+)
 
 private fun item(
     category: SettingsCategory?,
@@ -178,6 +189,7 @@ private val indexedSettings = listOf(
         keywords = *intArrayOf(R.string.settings_category_playback_detail)),
     item(SettingsCategory.Playback, R.string.settings_section_playback, anchor = R.string.settings_section_listening),
     item(SettingsCategory.Playback, R.string.settings_section_listening),
+    item(SettingsCategory.Playback, R.string.audio_settings_title, anchor = R.string.audio_output_title),
     item(SettingsCategory.Playback, R.string.audio_output_title),
     item(SettingsCategory.Playback, R.string.audio_focus_title,
         keywords = *intArrayOf(R.string.audio_focus_detail)),
@@ -195,6 +207,8 @@ private val indexedSettings = listOf(
         keywords = *intArrayOf(R.string.settings_shuffle_spread_artists_detail)),
     item(SettingsCategory.Playback, R.string.settings_shuffle_recent, anchor = R.string.settings_shuffle_mode,
         keywords = *intArrayOf(R.string.settings_shuffle_recent_detail)),
+    item(SettingsCategory.Playback, R.string.settings_play_next_behavior),
+    item(SettingsCategory.Playback, R.string.settings_shuffle_albums, anchor = R.string.settings_shuffle_mode),
     item(SettingsCategory.Playback, R.string.settings_shuffle_rules,
         keywords = *intArrayOf(R.string.settings_shuffle_rules_summary)),
     item(SettingsCategory.Playback, R.string.settings_section_transition),
@@ -363,7 +377,8 @@ internal fun rememberSettingsSearchResults(availability: SettingsSearchAvailabil
             SettingsSearchResult(
                 item = item,
                 title = resources.getString(titleRes),
-                categoryTitle = item.category?.let { resources.getString(it.title) }
+                categoryTitle = if (item.opensAudioSettings) resources.getString(R.string.audio_settings_title)
+                    else item.category?.let { resources.getString(it.title) }
                     ?: resources.getString(R.string.settings_group_app),
                 anchorTitle = resources.getString(settingsSearchAnchorResource(item, availability)),
                 keywords = buildString {

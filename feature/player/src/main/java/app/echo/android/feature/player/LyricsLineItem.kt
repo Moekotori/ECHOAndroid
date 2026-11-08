@@ -54,6 +54,7 @@ internal fun LyricsLineItem(
     paper: Boolean,
     passed: Boolean = false,
     stationNumber: Int = 1,
+    railTravel: MetroRailTravel? = null,
     onClick: (() -> Unit)?,
     onLongClick: () -> Unit,
 ) {
@@ -132,7 +133,11 @@ internal fun LyricsLineItem(
                     drawOutline(ChatStyle.Bubble.createOutline(size, layoutDirection, this), fill)
                 }
                 if (metro) {
-                    drawMetroLyricStation(passed, focused, markerAlpha.value, spacing)
+                    // Only the current row and the next read the position, and only while drawing.
+                    val progress = railTravel?.progressAt(positionMsState.value) ?: 0f
+                    drawMetroLyricStation(passed, focused, markerAlpha.value, spacing,
+                        depart = if (railTravel != null && focused) metroDepartFill(progress) else 0f,
+                        arrive = if (railTravel != null && !focused) metroArriveFill(progress) else 0f)
                 }
                 if (terminal && markerAlpha.value > 0f) {
                     // Cursor line: a tinted row and a bar on the left edge.
@@ -230,8 +235,8 @@ internal fun LyricsLineItem(
                 color = lineColor,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.SansSerif,
-                    fontSize = (14f * scale).sp,
-                    lineHeight = maxOf(21f * scale * spacing, 14f * scale * 1.1f).sp,
+                    fontSize = (14f * scale * LocalLyricsSecondaryText.current.translation).sp,
+                    lineHeight = (maxOf(21f * scale * spacing, 14f * scale * 1.1f) * LocalLyricsSecondaryText.current.translation).sp,
                     letterSpacing = 0.sp,
                 ),
                 fontWeight = FontWeight.Normal,
@@ -245,8 +250,8 @@ internal fun LyricsLineItem(
                 color = lineColor,
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = FontFamily.SansSerif,
-                    fontSize = (12f * scale).sp,
-                    lineHeight = maxOf(18f * scale * spacing, 12f * scale * 1.1f).sp,
+                    fontSize = (12f * scale * LocalLyricsSecondaryText.current.romanization).sp,
+                    lineHeight = (maxOf(18f * scale * spacing, 12f * scale * 1.1f) * LocalLyricsSecondaryText.current.romanization).sp,
                 ),
                 fontWeight = FontWeight.Normal,
                 textAlign = textAlign,

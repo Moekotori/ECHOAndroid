@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_shuffle_albums">Albums entiers</string>
+    <string name="settings_shuffle_albums_detail">Mélange les albums en conservant leur ordre de disques et de pistes. L’album actuel continue ; les demandes manuelles restent prioritaires.</string>
+    <string name="settings_play_next_behavior">Titre déjà dans la file</string>
+    <string name="settings_play_next_behavior_detail">Ajoute une autre copie ou avance le titre présent plus loin. La lecture actuelle et l’historique sont conservés.</string>
+    <string name="settings_play_next_repeat">Ajouter une autre copie</string>
+    <string name="settings_play_next_move">Avancer le titre existant</string>
+</resources>

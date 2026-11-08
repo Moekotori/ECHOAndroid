@@ -1,6 +1,6 @@
 <resources>
     <string name="volume_title">音量</string>
-    <string name="volume_summary">音量、增益与按键步长</string>
+    <string name="volume_summary">应用音量、增益与调节步长</string>
     <string name="volume_scope">仅调整手机播放。系统和 DAC 音量独立，投放音量由接收设备控制。</string>
     <string name="volume_advanced">高级选项</string>
     <string name="volume_device_saved">自动记忆音量和增益</string>
@@ -16,16 +16,16 @@
     <string name="volume_limit">合成增益上限</string>
     <string name="volume_limit_detail">限制音量、增益和 ReplayGain 的叠加值。</string>
     <string name="volume_gain_hint">增益较高时，可用高级选项中的限幅减少削波。</string>
-    <string name="volume_step">音量键步长</string>
+    <string name="volume_step">应用音量调节步长</string>
     <string name="volume_step_value">每次调节 %1$s dB</string>
     <string name="volume_decrease">降低应用音量</string>
     <string name="volume_increase">提高应用音量</string>
     <string name="volume_replaygain_summary">按曲目或专辑补偿响度</string>
     <string name="volume_remembered_device">音量记忆设备</string>
-    <string name="volume_device_memory_summary">音量与增益按设备保存；前台音量键跟随精调步长。</string>
+    <string name="volume_device_memory_summary">应用音量与增益按设备保存；普通播放的音量键调节系统媒体音量。</string>
     <string name="volume_device_help">音量键与设备识别说明</string>
     <string name="volume_current_output">当前输出设备</string>
-    <string name="volume_device_memory_detail">开启设备记忆后，各设备分别保存音量和增益。前台音量键按步长调节，加键也会解除静音；后台和锁屏调系统音量。没有唯一标识的设备按类型和名称共用记录，同型号 USB DAC 共用一条记录。</string>
+    <string name="volume_device_memory_detail">开启设备记忆后，各设备分别保存应用音量和增益。普通播放时，音量键调节系统媒体音量，暂停时也一样。这里的步长用于页面上的应用音量加减按钮，以及 USB 独占处理模式下的前台音量键；该 USB 模式下加键也会解除静音。USB 严格直通请使用 DAC 硬件音量，投送时音量键控制接收设备。没有唯一标识的设备按类型和名称共用记录，同型号 USB DAC 共用一条记录。</string>
     <string name="volume_key_value">应用音量：%1$.1f dB</string>
     <string name="volume_save_failed">音量设置未能保存，再次调节即可重试。</string>
 </resources>

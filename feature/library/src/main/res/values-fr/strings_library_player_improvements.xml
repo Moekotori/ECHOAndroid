@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_range_start">Définir le début de la plage</string>
+    <string name="library_range_end">Sélectionner jusqu’ici</string>
+    <string name="library_range_changed">La liste a changé. Choisissez à nouveau le début.</string>
+    <string name="library_range_unloaded">Certains titres ne sont pas chargés. Parcourez la plage et réessayez.</string>
+    <string name="library_range_limit">Sélectionnez au maximum 200 titres au total.</string>
+</resources>

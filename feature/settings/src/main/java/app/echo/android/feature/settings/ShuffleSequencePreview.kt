@@ -26,7 +26,8 @@ import app.echo.android.model.playback.EchoShuffleOptions
 @Composable
 internal fun ShuffleSequencePreview(options: EchoShuffleOptions) {
     val scheme = MaterialTheme.colorScheme
-    val sequence = if (options.mode == EchoShuffleMode.PureRandom && options.recentTrackCount == 0)
+    val sequence = if (options.mode == EchoShuffleMode.Albums) listOf("A1", "A2", "C1", "C2")
+        else if (options.mode == EchoShuffleMode.PureRandom && options.recentTrackCount == 0)
         listOf("A", "C", "A", "D") else listOf("A", "C", "B", "D")
     val description = stringResource(R.string.settings_shuffle_example_accessible, sequence.joinToString(" → "))
     Column(
@@ -49,6 +50,7 @@ internal fun ShuffleSequencePreview(options: EchoShuffleOptions) {
         Text(
             stringResource(when {
                 options.mode == EchoShuffleMode.PseudoRandom -> R.string.settings_shuffle_example_pseudo
+                options.mode == EchoShuffleMode.Albums -> R.string.settings_shuffle_albums_detail
                 options.recentTrackCount == 0 -> R.string.settings_shuffle_example_pure
                 else -> R.string.settings_shuffle_example_recent
             }),

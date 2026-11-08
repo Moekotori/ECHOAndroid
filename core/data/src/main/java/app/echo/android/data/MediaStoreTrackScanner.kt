@@ -4,11 +4,9 @@ import app.echo.android.model.library.CueSheet
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.LibraryScanOptions
 import kotlinx.coroutines.CancellationException
-import app.echo.android.model.platform.EchoPlatformCapabilities
 import android.content.ContentResolver
 import android.content.Context
 import android.database.Cursor
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -935,20 +933,10 @@ class MediaStoreTrackScanner(
 
     internal fun readSampleRateHz(contentUri: String): Int? =
         runCatching {
-            if (Build.VERSION.SDK_INT < EchoPlatformCapabilities.MediaMetadataSampleRateSdk) return@runCatching null
             val uri = Uri.parse(contentUri)
-            val retriever = MediaMetadataRetriever()
-            try {
-                contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
-                    retriever.setDataSource(descriptor.fileDescriptor)
-                    retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
-                        ?.toIntOrNull()
-                        ?.takeIf { it > 0 }
-                }
-            } finally {
-                retriever.release()
-            }
+            readLocalAudioSampleRate(contentResolver, uri)
         }.onFailure { error ->
+            if (error is CancellationException) throw error
             Log.d(TAG, "Unable to read audio sample rate for $contentUri.", error)
         }.getOrNull()
 

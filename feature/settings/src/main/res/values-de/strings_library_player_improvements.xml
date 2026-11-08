@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_shuffle_albums">Ganze Alben</string>
+    <string name="settings_shuffle_albums_detail">Zufällige Albumreihenfolge, innerhalb jedes Albums nach Disc und Titelnummer. Das aktuelle Album wird fortgesetzt; manuelle Wünsche haben Vorrang.</string>
+    <string name="settings_play_next_behavior">Bereits vorgemerkter nächster Titel</string>
+    <string name="settings_play_next_behavior_detail">Einen späteren Titel erneut hinzufügen oder vorziehen. Aktuelle Wiedergabe und Verlauf bleiben erhalten.</string>
+    <string name="settings_play_next_repeat">Erneut hinzufügen</string>
+    <string name="settings_play_next_move">Späteren Eintrag vorziehen</string>
+</resources>

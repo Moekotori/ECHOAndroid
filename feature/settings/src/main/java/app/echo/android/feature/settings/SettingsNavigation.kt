@@ -64,6 +64,7 @@ internal fun SettingsNavigation(
     onOpenPlugins: () -> Unit,
     onScanMusic: () -> Unit,
     onOpenSound: () -> Unit,
+    onOpenAudioSettings: (String) -> Unit,
     soundSummary: String,
     content: @Composable (SettingsCategory, SettingsSubNav) -> Unit,
 ) {
@@ -110,7 +111,9 @@ internal fun SettingsNavigation(
             onOpenCategory = { searchFocus = null; subPage = null; selected = it },
             onSearchSelect = { result ->
                 focusManager.clearFocus(); keyboardController?.hide()
-                if (result.item.opensPlugins) onOpenPlugins() else {
+                if (result.item.opensPlugins) onOpenPlugins()
+                else if (result.item.opensAudioSettings) onOpenAudioSettings(result.anchorTitle)
+                else {
                     searchRequestId++
                     searchFocus = SettingsSearchFocus(result.anchorTitle, searchRequestId)
                     subPage = settingsSubPageForAnchor(

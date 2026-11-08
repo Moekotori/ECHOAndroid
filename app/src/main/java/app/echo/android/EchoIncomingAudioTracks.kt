@@ -4,16 +4,18 @@ import android.content.Context
 import android.content.Intent
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
 import android.provider.OpenableColumns
 import app.echo.android.data.EchoLibraryRepository
+import app.echo.android.data.readLocalAudioSampleRate
 import app.echo.android.data.readLocalAudioTags
 import app.echo.android.data.toEchoTrack
 import app.echo.android.data.isSupportedIncomingAudioFile
 import app.echo.android.data.incomingAudioMimeType
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibrarySource
-import app.echo.android.model.platform.EchoPlatformCapabilities
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 fun tryTakePersistableReadPermission(context: Context, uri: Uri) {
     if (uri.scheme != "content") return
@@ -36,7 +38,7 @@ suspend fun resolveIncomingAudioTrack(
         repository.trackById(trackId)?.toEchoTrack()?.let { return it }
     }
     repository.trackByContentUri(content)?.toEchoTrack()?.let { return it }
-    return readStandaloneIncomingTrack(context, uri)
+    return withContext(Dispatchers.IO) { readStandaloneIncomingTrack(context, uri) }
 }
 
 private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack? {
@@ -51,7 +53,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack? 
         ?: context.getString(R.string.unknown_track)
     val fileTags = runCatching {
         context.contentResolver.openInputStream(uri)?.use(::readLocalAudioTags)
-    }.getOrNull()
+    }.onFailure { if (it is CancellationException) throw it }.getOrNull()
     val retriever = MediaMetadataRetriever()
     return try {
         retriever.setDataSource(context, uri)
@@ -59,13 +61,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack? 
             ?.toLongOrNull()
             ?.takeIf { it > 0L }
             ?: 0L
-        val sampleRateHz = if (Build.VERSION.SDK_INT >= EchoPlatformCapabilities.MediaMetadataSampleRateSdk) {
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
-                ?.toIntOrNull()
-                ?.takeIf { it > 0 }
-        } else {
-            null
-        }
+        val sampleRateHz = readLocalAudioSampleRate(context.contentResolver, uri, retriever)
         EchoTrack(
             id = EchoIncomingAudio.incomingTrackId(uri),
             uri = uri.toString(),
@@ -99,6 +95,8 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack? 
             sampleRateHz = sampleRateHz,
             source = LibrarySource.Unknown,
         )
+    } catch (cancelled: CancellationException) {
+        throw cancelled
     } catch (_: RuntimeException) {
         EchoTrack(
             id = EchoIncomingAudio.incomingTrackId(uri),
@@ -112,6 +110,7 @@ private fun readStandaloneIncomingTrack(context: Context, uri: Uri): EchoTrack? 
             year = fileTags?.year,
             composer = fileTags?.composer,
             mimeType = resolvedMime,
+            sampleRateHz = readLocalAudioSampleRate(context.contentResolver, uri),
             source = LibrarySource.Unknown,
         )
     } finally {

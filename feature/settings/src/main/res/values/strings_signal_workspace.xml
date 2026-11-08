@@ -1,4 +1,6 @@
 <resources>
+    <string name="signal_sound_adjusted">Adjusted</string>
+    <string name="signal_sound_bypassed">Bypassed</string>
     <string name="signal_sound_back">Back to sound adjustments</string>
     <string name="signal_sound_eq_summary">Band gains and parametric equalization</string>
     <string name="signal_sound_headphones_summary">Headphone frequency response correction</string>

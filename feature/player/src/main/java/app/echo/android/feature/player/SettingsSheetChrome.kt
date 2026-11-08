@@ -68,6 +68,7 @@ internal fun SettingsSheetHeader(
     onBack: () -> Unit,
     onClose: () -> Unit,
     compact: Boolean = false,
+    actions: @Composable () -> Unit = {},
     leading: @Composable () -> Unit,
 ) {
     val dark = LocalEchoDarkTheme.current
@@ -113,6 +114,7 @@ internal fun SettingsSheetHeader(
                 )
             }
         }
+        actions()
         GlyphButton(
             icon = Icons.Rounded.Close,
             description = closeDescription,

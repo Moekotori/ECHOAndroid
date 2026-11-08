@@ -16,6 +16,17 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LibraryPlaylistDao {
     @Query("""
+        SELECT p.id, p.name, p.source FROM library_playlists p
+        JOIN library_playlist_tracks m ON m.playlistId = p.id
+        WHERE m.trackId = :trackId AND p.id != 'local:liked'
+        UNION ALL
+        SELECT 'local:liked' AS id, '' AS name, 'mediastore' AS source
+        WHERE EXISTS (SELECT 1 FROM library_favorites WHERE trackId = :trackId)
+        ORDER BY name COLLATE NOCASE, id
+    """)
+    fun observeContainingPlaylists(trackId: String): Flow<List<TrackPlaylistMembershipRow>>
+
+    @Query("""
         SELECT playlistId FROM library_playlist_tracks WHERE trackId = :trackId
         UNION SELECT 'local:liked' WHERE EXISTS (
             SELECT 1 FROM library_favorites WHERE trackId = :trackId

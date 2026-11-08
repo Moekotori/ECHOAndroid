@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_menu_edit">Editar menú</string>
+    <string name="player_menu_detail">Elige las acciones visibles, ordénalas con las flechas y guarda. Las acciones no compatibles con la fuente siguen ocultas.</string>
+    <string name="player_menu_move_up">Subir %1$s</string>
+    <string name="player_menu_move_down">Bajar %1$s</string>
+    <string name="player_menu_save_failed">No se pudo guardar. Inténtalo de nuevo.</string>
+    <string name="player_menu_empty">Todas las acciones están ocultas. Puedes restaurarlas desde Editar menú en la parte superior.</string>
+</resources>

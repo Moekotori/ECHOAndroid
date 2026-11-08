@@ -42,6 +42,7 @@ fun MediaItem.toEchoTrackRef(durationMs: Long = 0L): EchoTrackRef {
         title = metadata.title?.toString().orEmpty().ifBlank { "Unknown Track" },
         artist = metadata.artist?.toString().orEmpty().ifBlank { "Unknown Artist" },
         album = metadata.albumTitle?.toString(),
+        albumArtist = metadata.albumArtist?.toString(),
         artworkUri = metadata.artworkUri?.toString(),
         durationMs = if (EchoRadioStation.isRadio(mediaId)) 0L else durationMs.takeIf { it > 0L } ?: metadataDurationMs,
         sampleRateHz = extrasSampleRate,
@@ -64,6 +65,7 @@ fun EchoTrackRef.toMediaItem(): MediaItem =
                 .setTitle(title)
                 .setArtist(artist)
                 .setAlbumTitle(album)
+                .setAlbumArtist(albumArtist)
                 .setArtworkUri(artworkUri?.let(Uri::parse))
                 .also { builder ->
                     if (durationMs > 0L) builder.setDurationMs(durationMs)
@@ -94,6 +96,7 @@ fun EchoTrack.toEchoTrackRef(): EchoTrackRef =
         title = title,
         artist = artist,
         album = album,
+        albumArtist = albumArtist,
         artworkUri = artworkUri,
         durationMs = durationMs,
         sampleRateHz = sampleRateHz,
@@ -115,6 +118,7 @@ fun EchoTrack.toMediaItem(): MediaItem {
                 .setTitle(title)
                 .setArtist(artist)
                 .setAlbumTitle(album)
+                .setAlbumArtist(albumArtist)
                 .setArtworkUri(artworkUri?.let(Uri::parse))
                 .also { builder ->
                     if (durationMs > 0L) builder.setDurationMs(durationMs)

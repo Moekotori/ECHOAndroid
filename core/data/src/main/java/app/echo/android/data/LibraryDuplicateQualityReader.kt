@@ -38,7 +38,13 @@ internal class LibraryDuplicateQualityReader(private val context: Context) {
                     for (index in 0 until extractor.trackCount.coerceAtMost(16)) {
                         val format = extractor.getTrackFormat(index)
                         val type = format.getString(MediaFormat.KEY_MIME)
-                        if (type?.startsWith("audio/") == true) { codec = type; break }
+                        if (type?.startsWith("audio/") == true) {
+                            codec = type
+                            if (rate == null && format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                                rate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE).takeIf { it > 0 }
+                            }
+                            break
+                        }
                     }
                 } catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: Exception) { /* Preserve the known scanned format when extraction is unsupported. */ }

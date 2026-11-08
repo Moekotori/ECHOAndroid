@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="track_info_playlists">Playlists containing this song</string>
+    <string name="track_info_playlists_empty">Not in any known fixed playlist on this device.</string>
+    <string name="track_info_playlists_failed">Could not load playlists. Try again.</string>
+    <string name="track_info_playlists_scope">Shows fixed memberships known on this device, including synced playlists and liked songs. Dynamic smart playlists and unsynced server playlists are not included.</string>
+    <string name="track_info_modified">File modified</string>
+    <string name="track_info_clip_start">Clip start</string>
+    <string name="track_info_clip_end">Clip end</string>
+    <string name="track_info_mime" translatable="false">MIME</string>
+</resources>

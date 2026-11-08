@@ -7,27 +7,28 @@ import java.util.Base64
 import java.util.Locale
 import java.util.zip.GZIPInputStream
 
-internal data class AutoEqEntry(val product: OpraHeadphoneCorrectionProduct, val source: String, val searchKey: String, val compactSearchKey: String = searchKey.replace(" ", ""))
+internal data class AutoEqEntry(val product: OpraHeadphoneCorrectionProduct, val searchKey: String, val compactSearchKey: String = searchKey.replace(" ", ""))
 
 internal class AutoEqCatalog(val revision: String, rawEntries: List<AutoEqEntry>) {
-    private val entries = rawEntries.groupBy { Triple(it.source, it.product.subtype, it.product.productName) }
+    private val entries = rawEntries.groupBy { it.product.subtype to it.product.productName }
         .values.map { variants ->
             variants.first().let { first -> first.copy(product = first.product.copy(
                 presets = variants.flatMap { it.product.presets },
-            )) }
+            ), searchKey = variants.joinToString(" ") { it.searchKey },
+                compactSearchKey = variants.joinToString(" ") { it.compactSearchKey }) }
         }
-    val brands = entries.groupingBy { it.source }.eachCount().map { (source, count) ->
-        OpraHeadphoneBrand(source, source, count)
+    val brands = entries.groupingBy { it.product.vendorName }.eachCount().map { (brand, count) ->
+        OpraHeadphoneBrand(brand, brand, count)
     }.sortedBy { it.name.lowercase(Locale.ROOT) }
     val status = OpraDatabaseStatus("bundled-autoeq", brands.size, entries.size, rawEntries.size, revision)
 
-    fun search(query: String, source: String?, limit: Int = 16): List<OpraHeadphoneCorrectionProduct> {
+    fun search(query: String, brand: String?, limit: Int = 16): List<OpraHeadphoneCorrectionProduct> {
         val tokens = OpraDatabaseParser.normalizeSearchText(query).split(' ').filter(String::isNotBlank)
-        if (tokens.isEmpty() && source == null) return emptyList()
-        return entries.asSequence().filter { source == null || it.source == source }
+        if (tokens.isEmpty() && brand == null) return emptyList()
+        return entries.asSequence().filter { brand == null || it.product.vendorName == brand }
             .filter { entry -> tokens.all { token -> token in entry.searchKey || token in entry.compactSearchKey } }
             .sortedWith(compareBy<AutoEqEntry> { it.product.productName.lowercase(Locale.ROOT) }.thenBy { it.product.productId })
-            .let { if (source == null) it.take(limit.coerceIn(1, 100)) else it }
+            .let { if (brand == null) it.take(limit.coerceIn(1, 100)) else it }
             .map { it.product }.toList()
     }
 
@@ -35,7 +36,7 @@ internal class AutoEqCatalog(val revision: String, rawEntries: List<AutoEqEntry>
         private val RevisionPattern = Regex("[0-9a-f]{40}")
         private val IdPattern = Regex("[0-9a-f]{20}")
         private val Categories = setOf("in-ear", "over-ear", "earbud")
-        fun read(input: InputStream): AutoEqCatalog {
+        fun read(input: InputStream, manufacturers: AutoEqManufacturers): AutoEqCatalog {
             val entries = ArrayList<AutoEqEntry>()
             val ids = HashSet<String>()
             var revision: String? = null
@@ -59,6 +60,7 @@ internal class AutoEqCatalog(val revision: String, rawEntries: List<AutoEqEntry>
                             .also { require(it.isNotBlank() && it.length <= 300 && it.none(Char::isISOControl)) }
                         val source = decode(fields[2])
                         val name = decode(fields[3])
+                        val brand = manufacturers.brandFor(name)
                         val measurementRig = decode(fields[6])
                         require(measurementRig.endsWith(fields[1]))
                         require(listOf(source, name, measurementRig).none { it == ".." || '/' in it || '\\' in it })
@@ -86,8 +88,8 @@ internal class AutoEqCatalog(val revision: String, rawEntries: List<AutoEqEntry>
                                 listOf(source, measurementRig, name, "$name ParametricEQ.txt").joinToString("/") {
                                     URLEncoder.encode(it, "UTF-8").replace("+", "%20")
                                 }, preamp, bands)
-                        entries += AutoEqEntry(OpraHeadphoneCorrectionProduct(id, name, "AutoEQ", fields[1], listOf(preset)),
-                            source, OpraDatabaseParser.normalizeSearchText("$name $source"))
+                        entries += AutoEqEntry(OpraHeadphoneCorrectionProduct(id, name, brand, fields[1], listOf(preset)),
+                            OpraDatabaseParser.normalizeSearchText("$name $brand $source"))
                     }
                 }
             } }

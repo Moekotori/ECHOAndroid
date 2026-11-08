@@ -147,6 +147,7 @@ object EchoBackupCodec {
         settings.replayGainPreampDb?.let { put("replayGainPreampDb", it.toDouble()) }
         settings.volume?.let { put("volume", JSONObject(EchoVolumePreferences.encode(it))) }
         putOpt("shuffleMode", settings.shuffleMode)
+        putOpt("playNextBehavior", settings.playNextBehavior)
         putOptNullableBoolean("shuffleSpreadArtists", settings.shuffleSpreadArtists)
         settings.shuffleRecentTrackCount?.let { put("shuffleRecentTrackCount", it) }
         settings.trackTransitions?.let { transitions ->
@@ -183,6 +184,8 @@ object EchoBackupCodec {
         putOpt("lyricsPageStyle", settings.lyricsPageStyle)
         putOpt("lyricsFontFamily", settings.lyricsFontFamily)
         settings.lyricsFontScale?.let { put("lyricsFontScale", it.toDouble()) }
+        settings.lyricsTranslationScale?.let { put("lyricsTranslationScale", it.toDouble()) }
+        settings.lyricsRomanizationScale?.let { put("lyricsRomanizationScale", it.toDouble()) }
         putOpt("lyricsColorMode", settings.lyricsColorMode)
         putOpt("lyricsAlignment", settings.lyricsAlignment)
         settings.lyricsLineSpacing?.let { put("lyricsLineSpacing", it.toDouble()) }
@@ -267,6 +270,7 @@ object EchoBackupCodec {
             replayGainPreampDb = json.optionalFloat("replayGainPreampDb"),
             volume = json.optJSONObject("volume")?.let { EchoVolumePreferences.decode(it.toString()) },
             shuffleMode = json.optionalString("shuffleMode"),
+            playNextBehavior = json.optionalString("playNextBehavior"),
             shuffleSpreadArtists = json.optionalBoolean("shuffleSpreadArtists"),
             shuffleRecentTrackCount = json.optionalInt("shuffleRecentTrackCount"),
             trackTransitions = transitions,
@@ -290,6 +294,8 @@ object EchoBackupCodec {
             lyricsPageStyle = json.optionalString("lyricsPageStyle"),
             lyricsFontFamily = json.optionalString("lyricsFontFamily"),
             lyricsFontScale = json.optionalFloat("lyricsFontScale"),
+            lyricsTranslationScale = json.optionalFloat("lyricsTranslationScale"),
+            lyricsRomanizationScale = json.optionalFloat("lyricsRomanizationScale"),
             lyricsColorMode = json.optionalString("lyricsColorMode"),
             lyricsAlignment = json.optionalString("lyricsAlignment"),
             lyricsLineSpacing = json.optionalFloat("lyricsLineSpacing"),

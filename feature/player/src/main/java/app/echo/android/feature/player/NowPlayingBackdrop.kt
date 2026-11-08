@@ -104,6 +104,9 @@ internal fun NowPlayingBackdrop(
             style == EchoLyricsBackdrop.Ridge && washedGrid != null -> RidgeBackdropField(wash.deep, washedGrid, dark)
             style == EchoLyricsBackdrop.Vinyl && washedGrid != null -> VinylBackdropField(wash.deep, washedGrid, dark)
             style == EchoLyricsBackdrop.Iso && washedGrid != null -> IsoBackdropField(wash.deep, washedGrid, dark)
+            // The default surface flows with the cover's own colors; until the grid arrives (or without
+            // artwork) the three-color palette field stands in, and the two cross-fade.
+            style == EchoLyricsBackdrop.Fluid && washedGrid != null -> FlowBackdropField(wash.deep, washedGrid)
             else -> FluidArtworkField(wash)
         }
     }

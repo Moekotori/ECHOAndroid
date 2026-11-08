@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_range_start">Bereichsanfang festlegen</string>
+    <string name="library_range_end">Bis hier auswählen</string>
+    <string name="library_range_changed">Die Liste wurde geändert. Wähle den Anfang erneut.</string>
+    <string name="library_range_unloaded">Einige Titel sind nicht geladen. Scrolle durch den Bereich und versuche es erneut.</string>
+    <string name="library_range_limit">Insgesamt sind höchstens 200 Titel möglich.</string>
+</resources>

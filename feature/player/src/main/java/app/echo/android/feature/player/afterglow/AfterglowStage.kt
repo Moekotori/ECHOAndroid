@@ -2,6 +2,8 @@ package app.echo.android.feature.player.afterglow
 
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,6 +53,7 @@ internal fun AfterglowStage(
     outputDelayMs: Int = 0,
 ) {
     val displayOffsetMs = lyrics.offsetMs - app.echo.android.model.lyrics.EchoLyricsOutputTiming.mediaDelayMs(outputDelayMs, speed)
+    val secondaryText = app.echo.android.feature.player.LocalLyricsSecondaryText.current
     val budget = AfterglowBudget.forMode(LocalEchoEffectivePerformanceMode.current)
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     val renderActive = visible && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
@@ -89,6 +92,19 @@ internal fun AfterglowStage(
                 (seed.toLong() and 0xFFFFFFFFL), hostPosition, displayOffsetMs, playing, speed, renderActive, budget, motion,
                 wordHighlight, estimatedWordHighlight, palette.background, title, controller,
                 onFailed = { engineFailed = true }, onSeed = { seed = it.toInt() }, modifier = Modifier.fillMaxSize())
+            val currentLine = plan.lines.getOrNull(engineIndex)
+            val captionScroll = remember(currentLine?.startMs) { ScrollState(0) }
+            if (currentLine != null) Column(Modifier.align(Alignment.BottomCenter).padding(start = 24.dp, end = 24.dp, bottom = 112.dp).heightIn(max = 180.dp).verticalScroll(captionScroll),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                if (showRomanization) currentLine.romanization?.takeIf(String::isNotBlank)?.let {
+                    Text(it, color = Color(palette.foreground).copy(alpha = 0.7f), fontFamily = fontFamily,
+                        fontSize = (14f * fontScale * secondaryText.romanization).sp, textAlign = TextAlign.Center)
+                }
+                if (showTranslation) currentLine.translation?.takeIf(String::isNotBlank)?.let {
+                    Text(it, color = Color(palette.foreground).copy(alpha = 0.8f), fontFamily = fontFamily,
+                        fontSize = (14f * fontScale * secondaryText.translation).sp, textAlign = TextAlign.Center)
+                }
+            }
             val sceneControls: @Composable () -> Unit = {
                 AfterglowControls(engineIndex, plan, lyrics.offsetMs, style, AfterglowScene.forStyle(style).first(), null,
                     onScene = {}, onPalette = { variant = (variant + 1) % 3; controller.palette() },
@@ -117,14 +133,14 @@ internal fun AfterglowStage(
     val captionSize = with(density) { (14f * fontScale.coerceIn(0.50f, 1.28f)).sp.toPx() }
     val endMs = if (index >= 0 && currentPlan != null) currentPlan.endAt(index) else 0L
     val textLayout by produceState<AfterglowTextLayout?>(null, line, endMs, bounds, typeface,
-        textSize, captionSize, lineSpacing, showTranslation, showRomanization, estimatedWordHighlight, wordHighlight, budget.glyphMotion, renderActive, composition) {
+        textSize, captionSize, lineSpacing, showTranslation, showRomanization, secondaryText, estimatedWordHighlight, wordHighlight, budget.glyphMotion, renderActive, composition) {
         value = null
         if (renderActive && line != null && bounds.width > 0 && bounds.height > 0) {
             value = withContext(Dispatchers.Default) {
                 AfterglowTextLayout.build(line, endMs, (bounds.width * 0.86f).toInt(),
                     (bounds.height * 0.65f).toInt(), typeface, textSize, captionSize, lineSpacing,
                     showTranslation, showRomanization, estimatedWordHighlight && wordHighlight && budget.glyphMotion,
-                    composition, budget.framesPerSecond == 0)
+                    composition, budget.framesPerSecond == 0, secondaryText.translation, secondaryText.romanization)
             }
         }
     }

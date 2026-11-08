@@ -1,6 +1,6 @@
 # Android 应用图标
 
-当前选定图标为 2026-11-08 用户提供的紫底、耳机、兔耳看板娘版本。源图为 [`scripts/assets/echo-app-icon.png`](../../scripts/assets/echo-app-icon.png)，保留用户提供文件的原始内容。
+当前选定图标为 2026-11-08 用户提供的薄荷绿底、猫耳看板娘版本。源图为 [`scripts/assets/echo-app-icon.png`](../../scripts/assets/echo-app-icon.png)，保留用户提供文件的原始内容。
 
 Windows 重新生成启动图标：
 

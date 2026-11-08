@@ -25,7 +25,7 @@ internal fun SignalOverview(
     val d = status.diagnostics
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SignalDeviceCard(status)
-        SignalPathPanel(status, equalizer, channelBalance, dspSettings, volume)
+        SignalPathPanel(status, equalizer, channelBalance, dspSettings, volume, onDiagnostics)
         SignalDacPanel(status, onDiagnostics)
         SignalSection(stringResource(L10nR.string.feature_settings_output_details_f242d2)) {
             SignalReadout(

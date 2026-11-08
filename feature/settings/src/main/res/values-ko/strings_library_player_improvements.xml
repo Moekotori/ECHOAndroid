@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_shuffle_albums">앨범 단위 셔플</string>
+    <string name="settings_shuffle_albums_detail">앨범 순서는 무작위로, 앨범 안에서는 디스크 및 트랙 순서대로 재생합니다. 현재 곡부터 이어지며 수동 요청이 우선됩니다.</string>
+    <string name="settings_play_next_behavior">다음 재생 중복 처리</string>
+    <string name="settings_play_next_behavior_detail">곡이 대기열 뒤에 있으면 다시 추가하거나 앞으로 이동합니다. 현재 재생과 기록은 유지됩니다.</string>
+    <string name="settings_play_next_repeat">한 번 더 추가</string>
+    <string name="settings_play_next_move">뒤에 있는 곡 이동</string>
+</resources>
