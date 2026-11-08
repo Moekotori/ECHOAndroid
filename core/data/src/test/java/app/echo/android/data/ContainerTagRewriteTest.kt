@@ -11,11 +11,14 @@ class ContainerTagRewriteTest {
             key.toByteArray(Charsets.ISO_8859_1) + bytes
         fun text(value: String) = atom("data", byteArrayOf(0, 0, 0, 1, 0, 0, 0, 0) + value.toByteArray())
         val artists = atom("©ART", text("One") + text("Two"))
+        val composers = atom("©wrt", text("Writer One") + text("Writer Two"))
         val owners = atom("aART", text("Owner One") + text("Owner Two"))
         val source = atom("ftyp", "M4A ".toByteArray() + ByteArray(4)) +
-            atom("moov", atom("udta", atom("meta", ByteArray(4) + atom("ilst", artists + owners)))) +
+            atom("moov", atom("udta", atom("meta", ByteArray(4) + atom("ilst", artists + owners + composers)))) +
             atom("mdat", byteArrayOf(1, 2, 3))
-        val fields = AudioTagFields("New title", "One; Two", null, "Owner One; Owner Two", null, null, null)
+        assertEquals("Writer One; Writer Two", readLocalAudioTags(source.inputStream())?.composer)
+        val fields = AudioTagFields("New title", "One; Two", null, "Owner One; Owner Two", null, null, null,
+            composer = "Writer One;Writer Two", composerModified = true)
         val output = ByteArrayOutputStream()
         assertEquals(AudioTagRewriteStatus.Written, AudioFileTagRewriter.rewrite(source.inputStream(), output, fields))
         val rewritten = output.toByteArray()
@@ -33,7 +36,13 @@ class ContainerTagRewriteTest {
         val activeMetadata = requireNotNull(metadata).toList()
         assertTrue(activeMetadata.windowed(artists.size).any { it == artists.toList() })
         assertTrue(activeMetadata.windowed(owners.size).any { it == owners.toList() })
+        assertTrue(activeMetadata.windowed(composers.size).any { it == composers.toList() })
         assertArrayEquals(mdat(source), mdat(rewritten))
+        val reduced = fields.copy(composer = "Writer One")
+        val edited = ByteArrayOutputStream()
+        assertEquals(AudioTagRewriteStatus.Written, AudioFileTagRewriter.rewrite(source.inputStream(), edited, reduced))
+        assertTrue(readLocalAudioTags(edited.toByteArray().inputStream()).matchesWrittenTags(reduced))
+        assertArrayEquals(mdat(source), mdat(edited.toByteArray()))
     }
     @Test fun commonContainersRoundTripTagsAndKeepEveryAudioPacketAcrossRepeatedEdits() {
         val directory = File("build/format-tag-smoke").apply { mkdirs() }

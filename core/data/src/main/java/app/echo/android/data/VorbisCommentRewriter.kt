@@ -12,7 +12,9 @@ internal object VorbisCommentRewriter {
         fun old(vararg keys: String) = keys.firstNotNullOfOrNull { key ->
             original.firstOrNull { it.first.equals(key, true) && it.second.isNotBlank() }?.second
         }
-        val replaceComposer = shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, old("COMPOSER"))
+        val originalComposers = LibraryArtistPolicy.display(original
+            .filter { it.first.equals("COMPOSER", ignoreCase = true) }.map { it.second })
+        val replaceComposer = shouldReplaceOptionalNamesTag(fields.composer, fields.composerModified, originalComposers)
         val replaceGenre = shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, old("GENRE"))
         val preserveArtist = preserveTagNames(fields.artist, LibraryArtistPolicy.display(original
             .filter { it.first.equals("ARTIST", ignoreCase = true) }.map { it.second }))

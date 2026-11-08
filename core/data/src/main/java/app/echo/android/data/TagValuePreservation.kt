@@ -23,3 +23,7 @@ internal fun shouldReplaceOptionalTextTag(value: String?, modified: Boolean, ori
 internal fun preserveTagNames(value: String?, original: String?): Boolean =
     !value.isNullOrBlank() && LibraryArtistPolicy.display(listOf(value)) ==
         LibraryArtistPolicy.display(listOf(original.orEmpty()))
+
+/** Compare the whole displayed list, so removing a later name is still an edit. */
+internal fun shouldReplaceOptionalNamesTag(value: String?, modified: Boolean, original: String?): Boolean =
+    (value != null || modified) && !preserveTagNames(value, original)

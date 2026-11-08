@@ -7,7 +7,7 @@ internal fun AudioTagFields?.matchesWrittenTags(expected: AudioTagFields): Boole
         normalizedText(album) == normalizedText(expected.album) &&
         normalizedNames(albumArtist) == normalizedNames(expected.albumArtist) &&
         trackNumber == expected.trackNumber && discNumber == expected.discNumber && year == expected.year &&
-        (!(expected.composerModified || expected.composer != null) || normalizedText(composer) == normalizedText(expected.composer)) &&
+        (!(expected.composerModified || expected.composer != null) || normalizedNames(composer) == normalizedNames(expected.composer)) &&
         (!(expected.genreModified || expected.genre != null) || normalizedText(genre) == normalizedText(expected.genre)) &&
         (expected.lyrics == null || normalizedLyrics(lyrics) == normalizedLyrics(expected.lyrics)) &&
         (expected.artworkBytes == null || artworkBytes?.contentEquals(expected.artworkBytes) == true) &&

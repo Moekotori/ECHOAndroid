@@ -103,7 +103,7 @@ internal object Mp4TagReader {
                 "©ART" -> old.copy(artist = LibraryArtistPolicy.display(listOfNotNull(old.artist.takeIf { it.isNotBlank() }, text)).orEmpty())
                 "©alb" -> old.copy(album = old.album ?: text)
                 "aART" -> old.copy(albumArtist = LibraryArtistPolicy.display(listOfNotNull(old.albumArtist, text)))
-                "©wrt" -> old.copy(composer = old.composer ?: text)
+                "©wrt" -> old.copy(composer = LibraryArtistPolicy.display(listOfNotNull(old.composer, text)))
                 "©wrk" -> old.copy(musicRelations = old.musicRelations.copy(work = old.musicRelations.work ?: text))
                 "©mvn" -> old.copy(musicRelations = old.musicRelations.copy(movement = old.musicRelations.movement ?: text))
                 "©gen" -> old.copy(genre = old.genre ?: text)

@@ -102,16 +102,22 @@ suspend fun resolvePreferredTrackVersions(
                 .distinctBy { it.id }.filter { EchoDuplicateVersionPolicy.matches(track, it) &&
                     (it.id == track.id || !track.source.isLocalAudioFile || !it.source.isLocalAudioFile ||
                         !album.isNullOrBlank() && byId[it.id]?.albumKey == album) }
-            for (candidate in related) {
+            val group = membership[track.id]?.let { groups[it.groupKey] }
+            val scoped = store.group(track, album) ?: key
+            result[index] = resolvePlaybackTrackVersion(
+                anchor = track,
+                candidates = related,
+                preferredId = store.choice(preferences, scoped, key, store.previousGroup(track, album)),
+                quality = group?.let(duplicates::quality).orEmpty(),
+                preferQuality = preferQuality && group != null,
+                hasIndexedGroup = group != null,
+            ) { candidate ->
                 if (checked.add(candidate.id)) {
                     val ready = if (candidate.source.isLocalAudioFile) localUriExists(CueSheetPolicy.playbackUri(candidate.uri)) else isRemotePlayable(candidate)
                     if (ready) playable += candidate.id else if (candidate.source.isLocalAudioFile) unavailable += candidate.id
                 }
+                candidate.id in playable
             }
-            val group = membership[track.id]?.let { groups[it.groupKey] }
-            val scoped = store.group(track, album) ?: key
-            result[index] = EchoTrackVersionPolicy.choose(track, related, store.choice(preferences, scoped, key, store.previousGroup(track, album)), playable,
-                group?.let(duplicates::quality).orEmpty(), preferQuality && group != null)
         }
         duplicates.invalidateUnavailable(indexed.filter { it.trackId in unavailable })
     }

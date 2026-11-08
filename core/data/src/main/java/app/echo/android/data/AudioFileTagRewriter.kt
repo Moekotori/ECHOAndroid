@@ -513,7 +513,7 @@ internal object AudioFileTagRewriter {
         if (preserveDate) managed.removeAll(setOf("TDRC", "TYER"))
         if (preserveArtist) managed.remove("TPE1")
         if (preserveAlbumArtist) managed.remove("TPE2")
-        val replaceComposer = shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, originalText("TCOM"))
+        val replaceComposer = shouldReplaceOptionalNamesTag(fields.composer, fields.composerModified, originalNames("TCOM"))
         val replaceGenre = shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, originalText("TCON"))
         if (replaceComposer) managed += "TCOM"
         if (replaceGenre) managed += "TCON"
@@ -790,7 +790,9 @@ internal object AudioFileTagRewriter {
         fun original(vararg keys: String): String? = keys.firstNotNullOfOrNull { key ->
             originalComments.firstOrNull { it.first.equals(key, ignoreCase = true) && it.second.isNotBlank() }?.second
         }
-        val replaceComposer = shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, original("COMPOSER"))
+        val originalComposers = LibraryArtistPolicy.display(originalComments
+            .filter { it.first.equals("COMPOSER", ignoreCase = true) }.map { it.second })
+        val replaceComposer = shouldReplaceOptionalNamesTag(fields.composer, fields.composerModified, originalComposers)
         val replaceGenre = shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, original("GENRE"))
         val preserveArtist = preserveTagNames(fields.artist, LibraryArtistPolicy.display(originalComments
             .filter { it.first.equals("ARTIST", ignoreCase = true) }.map { it.second }))

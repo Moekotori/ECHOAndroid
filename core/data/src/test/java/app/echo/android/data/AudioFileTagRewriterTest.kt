@@ -545,7 +545,7 @@ class AudioFileTagRewriterTest {
     @Test
     fun unchangedGenreAndComposerKeepAllValuesWhileEditsAndClearsReplaceThem() {
         val original = flacFile(listOf("GENRE=Rock", "GENRE=Jazz", "COMPOSER=One", "COMPOSER=Two"), byteArrayOf(1))
-        val unchanged = SAMPLE_FIELDS.copy(genre = "Rock", composer = "One", genreModified = true, composerModified = true)
+        val unchanged = SAMPLE_FIELDS.copy(genre = "Rock", composer = "One; Two", genreModified = true, composerModified = true)
         val kept = rewrite(original, unchanged, "audio/flac").asString()
         assertTrue(kept.contains("GENRE=Jazz"))
         assertTrue(kept.contains("COMPOSER=Two"))
@@ -560,6 +560,41 @@ class AudioFileTagRewriterTest {
             textFrameV24("TCOM", "One"), textFrameV24("TCOM", "Two")), FAKE_MP3)
         val mp3Kept = rewrite(mp3, unchanged, "audio/mpeg").asString()
         assertTrue(mp3Kept.contains("Jazz") && mp3Kept.contains("Two"))
+        assertEquals(2, Regex("TCOM").findAll(mp3Kept).count())
+        assertTrue(kept.contains("COMPOSER=One"))
+        for ((source, mime) in listOf(original to "audio/flac", mp3 to "audio/mpeg")) {
+            val reduced = unchanged.copy(composer = "One")
+            val tags = readLocalAudioTags(rewrite(source, reduced, mime).inputStream())!!
+            assertEquals("One", tags.composer)
+            assertTrue(tags.matchesWrittenTags(reduced))
+        }
+    }
+
+    @Test
+    fun unchangedNullSeparatedComposersKeepTheirOriginalId3Frame() {
+        val frame = textFrameV24("TCOM", "One\u0000Two")
+        val source = id3File(4, listOf(frame), FAKE_MP3)
+        val fields = SAMPLE_FIELDS.copy(composer = "One;Two", composerModified = true)
+        val rewritten = rewrite(source, fields, "audio/mpeg")
+        assertTrue(rewritten.asString().contains("One\u0000Two"))
+        assertTrue(readLocalAudioTags(rewritten.inputStream()).matchesWrittenTags(fields))
+    }
+
+    @Test
+    fun vorbisCommentEditsCompareEveryComposerAndPreserveUnchangedEntries() {
+        val original = flacFile(listOf("COMPOSER=One", "COMPOSER=Two"), byteArrayOf(1))
+        val length = ((original[43].toInt() and 255) shl 16) or
+            ((original[44].toInt() and 255) shl 8) or (original[45].toInt() and 255)
+        val payload = original.copyOfRange(46, 46 + length)
+        val fields = SAMPLE_FIELDS.copy(composer = "One;Two", composerModified = true)
+        val kept = VorbisCommentRewriter.rewrite(payload, fields)!!
+        assertEquals(listOf("One", "Two"), VorbisTagReader.comments(kept)
+            .filter { it.first == "COMPOSER" }.map { it.second })
+        assertTrue(VorbisTagReader.fields(kept).matchesWrittenTags(fields))
+        val reduced = VorbisCommentRewriter.rewrite(payload, fields.copy(composer = "One"))!!
+        assertEquals("One", VorbisTagReader.fields(reduced).composer)
+        val cleared = VorbisCommentRewriter.rewrite(payload, fields.copy(composer = null))!!
+        assertNull(VorbisTagReader.fields(cleared).composer)
     }
 
     @Test

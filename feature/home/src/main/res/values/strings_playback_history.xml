@@ -21,4 +21,46 @@
     <string name="playback_history_cleared">Playback history cleared</string>
     <string name="playback_history_cancel">Cancel</string>
     <string name="playback_history_action_error">Could not complete this action. Try again.</string>
+    <string name="playback_history_export">Export history</string>
+    <string name="playback_history_exported">History exported</string>
+    <string name="playback_history_group_timeline">Timeline</string>
+    <string name="playback_history_group_tracks">Tracks</string>
+    <string name="playback_history_group_albums">Albums</string>
+    <string name="playback_history_group_artists">Artists</string>
+    <string name="playback_history_period_week">This week</string>
+    <string name="playback_history_period_month">This month</string>
+    <string name="playback_history_period_year">This year</string>
+    <string name="playback_history_period_day">Pick a day</string>
+    <string name="playback_history_period_custom">Custom range</string>
+    <string name="playback_history_sort">Sort</string>
+    <string name="playback_history_sort_recent">Last played</string>
+    <string name="playback_history_sort_title">Title</string>
+    <string name="playback_history_sort_artist">Artist</string>
+    <string name="playback_history_sort_ascending">Ascending</string>
+    <string name="playback_history_sort_descending">Descending</string>
+    <string name="playback_history_overview_tracks">Tracks</string>
+    <string name="playback_history_overview_latest">Last played</string>
+    <string name="playback_history_insights">Insights</string>
+    <string name="playback_history_trend">Last 14 days</string>
+    <string name="playback_history_play">Play</string>
+    <string name="playback_history_play_next">Play next</string>
+    <string name="playback_history_add_queue">Add to queue</string>
+    <string name="playback_history_copy">Copy title and artist</string>
+    <string name="playback_history_copied">Copied</string>
+    <string name="playback_history_prune">Remove unavailable records</string>
+    <string name="playback_history_prune_detail">Delete records whose tracks are no longer in your library? Records of sources that are only offline right now are deleted too. This cannot be undone.</string>
+    <string name="playback_history_prune_confirm">Remove</string>
+    <string name="playback_history_prune_none">No unavailable records</string>
+    <string name="playback_history_apply">Apply</string>
+    <string name="playback_history_col_time">Time</string>
+    <string name="playback_history_col_album">Album</string>
+    <string name="playback_history_exported_at">Exported %1$s</string>
+    <plurals name="playback_history_trend_description">
+        <item quantity="one">%1$d play in the last 14 days</item>
+        <item quantity="other">%1$d plays in the last 14 days</item>
+    </plurals>
+    <plurals name="playback_history_pruned">
+        <item quantity="one">Removed %1$d record</item>
+        <item quantity="other">Removed %1$d records</item>
+    </plurals>
 </resources>

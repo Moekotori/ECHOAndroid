@@ -377,7 +377,9 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     private val _recentPlaybackArtists = MutableStateFlow<List<ArtistSummary>>(emptyList())
     val recentPlaybackArtists: StateFlow<List<ArtistSummary>> = _recentPlaybackArtists.asStateFlow()
     private val listeningHistory = (application as EchoApplication).listeningHistory
-    internal val playbackHistory = PlaybackHistoryController(viewModelScope, listeningHistory, repository, ::play)
+    internal val playbackHistory = PlaybackHistoryController(
+        viewModelScope, listeningHistory, repository, ::play, ::playNextByTrackId, ::enqueueByTrackId,
+    )
     val recentPlaybackHeatmap: StateFlow<List<PlaybackHeatmapDay>> = listeningHistory
         .observeHeatmap(HOME_HEATMAP_VISIBLE_DAYS)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), emptyList())

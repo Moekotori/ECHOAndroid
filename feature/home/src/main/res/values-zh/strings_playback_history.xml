@@ -21,4 +21,44 @@
     <string name="playback_history_cleared">播放历史已清空</string>
     <string name="playback_history_cancel">取消</string>
     <string name="playback_history_action_error">操作未完成，请重试。</string>
+    <string name="playback_history_export">导出历史</string>
+    <string name="playback_history_exported">历史已导出</string>
+    <string name="playback_history_group_timeline">时间线</string>
+    <string name="playback_history_group_tracks">曲目</string>
+    <string name="playback_history_group_albums">专辑</string>
+    <string name="playback_history_group_artists">艺术家</string>
+    <string name="playback_history_period_week">本周</string>
+    <string name="playback_history_period_month">本月</string>
+    <string name="playback_history_period_year">今年</string>
+    <string name="playback_history_period_day">选择日期</string>
+    <string name="playback_history_period_custom">自定义区间</string>
+    <string name="playback_history_sort">排序</string>
+    <string name="playback_history_sort_recent">最近播放</string>
+    <string name="playback_history_sort_title">标题</string>
+    <string name="playback_history_sort_artist">艺术家</string>
+    <string name="playback_history_sort_ascending">升序</string>
+    <string name="playback_history_sort_descending">降序</string>
+    <string name="playback_history_overview_tracks">曲目</string>
+    <string name="playback_history_overview_latest">最近播放</string>
+    <string name="playback_history_insights">详细统计</string>
+    <string name="playback_history_trend">近 14 天</string>
+    <string name="playback_history_play">播放</string>
+    <string name="playback_history_play_next">下一首播放</string>
+    <string name="playback_history_add_queue">加入播放队列</string>
+    <string name="playback_history_copy">复制歌名和艺术家</string>
+    <string name="playback_history_copied">已复制</string>
+    <string name="playback_history_prune">清理失效记录</string>
+    <string name="playback_history_prune_detail">删除曲目已不在曲库中的记录？暂时离线的来源所对应的记录也会被删除，此操作无法撤销。</string>
+    <string name="playback_history_prune_confirm">清理</string>
+    <string name="playback_history_prune_none">没有失效记录</string>
+    <string name="playback_history_apply">确定</string>
+    <string name="playback_history_col_time">时间</string>
+    <string name="playback_history_col_album">专辑</string>
+    <string name="playback_history_exported_at">导出于 %1$s</string>
+    <plurals name="playback_history_trend_description">
+        <item quantity="other">近 14 天播放 %1$d 次</item>
+    </plurals>
+    <plurals name="playback_history_pruned">
+        <item quantity="other">已清理 %1$d 条记录</item>
+    </plurals>
 </resources>

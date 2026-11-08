@@ -131,7 +131,7 @@ internal object Mp4TagRewriter {
         val replace = mutableSetOf("©nam", "©ART", "©alb", "aART", "trkn", "disk", "©day")
         if (preserveTagNames(fields.artist, old?.artist)) replace -= "©ART"
         if (preserveTagNames(fields.albumArtist, old?.albumArtist)) replace -= "aART"
-        if (shouldReplaceOptionalTextTag(fields.composer, fields.composerModified, old?.composer)) replace += "©wrt"
+        if (shouldReplaceOptionalNamesTag(fields.composer, fields.composerModified, old?.composer)) replace += "©wrt"
         if (shouldReplaceOptionalTextTag(fields.genre, fields.genreModified, old?.genre)) replace += setOf("©gen", "gnre")
         if (fields.lyrics != null) replace += "©lyr"
         if (fields.artworkBytes != null) replace += "covr"

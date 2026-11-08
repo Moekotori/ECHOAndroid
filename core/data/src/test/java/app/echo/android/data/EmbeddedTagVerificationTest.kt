@@ -43,4 +43,13 @@ class EmbeddedTagVerificationTest {
         assertTrue(fields.copy(lyrics = "First\nSecond").matchesWrittenTags(fields.copy(lyrics = " First\r\nSecond\n")))
         assertFalse(fields.copy(lyrics = "First\nChanged").matchesWrittenTags(fields.copy(lyrics = "First\nSecond")))
     }
+
+    @Test
+    fun composerListFormattingIsNormalizedButRemovingANameStillRequiresAWrite() {
+        val read = fields.copy(composer = "One; Two")
+        assertTrue(read.matchesWrittenTags(fields.copy(composer = "One;Two")))
+        assertTrue(read.matchesWrittenTags(fields.copy(composer = "One；Two")))
+        assertFalse(read.matchesWrittenTags(fields.copy(composer = "One")))
+        assertFalse(read.matchesWrittenTags(fields.copy(composer = "Two; One")))
+    }
 }

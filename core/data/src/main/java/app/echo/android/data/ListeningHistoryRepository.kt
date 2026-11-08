@@ -5,6 +5,8 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.map
 import app.echo.android.model.playback.PlaybackHistoryEntry
+import app.echo.android.model.playback.PlaybackHistoryFilter
+import app.echo.android.model.playback.PlaybackHistorySummary
 import app.echo.android.model.playback.ListeningStats
 import app.echo.android.model.playback.ListeningStatsEntry
 import app.echo.android.model.playback.ListeningStatsRange
@@ -26,18 +28,25 @@ class ListeningHistoryRepository(
     private val writes = Mutex()
     private var clearedThroughEpochMs = Long.MIN_VALUE
 
-    fun pagedHistory(query: String, range: ListeningStatsRange) = Pager(
+    fun pagedHistory(filter: PlaybackHistoryFilter) = Pager(
         config = PagingConfig(pageSize = 40, initialLoadSize = 40, maxSize = 160, enablePlaceholders = false),
-        pagingSourceFactory = {
-            dao.pageHistory(playbackHistoryQuery(query, ListeningHistoryPolicy.rangeStartEpochMs(range, now(), zone())))
-        },
-    ).flow.map { page ->
-        page.map { row ->
-            val event = row.event
-            PlaybackHistoryEntry(event.id, event.trackId, event.title, event.artist, event.album,
-                event.artworkUri, event.playedAtEpochMs, event.listenedMs, row.canReplay)
+        pagingSourceFactory = { dao.pageHistory(playbackHistoryQuery(filter, todayEpochDay())) },
+    ).flow.map { page -> page.map(PlayEventHistoryRow::toEntry) }
+
+    /** Aggregates for the whole filter, independent of how far the list has been paged. */
+    fun observeSummary(filter: PlaybackHistoryFilter): Flow<PlaybackHistorySummary> =
+        dao.observeSummary(playbackHistorySummaryQuery(filter, todayEpochDay())).map {
+            PlaybackHistorySummary(it.plays, it.listenedMs, it.tracks, it.latestPlayedAtEpochMs)
         }
-    }
+
+    /** Newest-first rows of the current filter for export; bounded so a huge history cannot exhaust memory. */
+    suspend fun exportRows(filter: PlaybackHistoryFilter, limit: Int = EXPORT_LIMIT): List<PlaybackHistoryEntry> =
+        dao.historyRows(playbackHistoryQuery(filter, todayEpochDay(), limit)).map(PlayEventHistoryRow::toEntry)
+
+    /** Remove records whose track left the library. Returns how many were deleted. */
+    suspend fun deleteUnavailable(): Int = writes.withLock { dao.deleteUnavailable() }
+
+    private fun todayEpochDay(): Long = Instant.ofEpochMilli(now()).atZone(zone()).toLocalDate().toEpochDay()
 
     suspend fun deleteEvent(id: Long) = dao.deleteEvent(id)
 
@@ -120,6 +129,7 @@ class ListeningHistoryRepository(
 
     private companion object {
         const val DEFAULT_RANK_LIMIT = 10
+        const val EXPORT_LIMIT = 5_000
     }
 }
 
@@ -133,6 +143,11 @@ data class ListeningHistoryListen(
     val durationMs: Long,
     val listenedMs: Long,
     val startedAtEpochMs: Long,
+)
+
+private fun PlayEventHistoryRow.toEntry() = PlaybackHistoryEntry(
+    event.id, event.trackId, event.title, event.artist, event.album, event.artworkUri,
+    event.playedAtEpochMs, event.listenedMs, canReplay, plays,
 )
 
 private fun PlayEventRankRow.toEntry(): ListeningStatsEntry =

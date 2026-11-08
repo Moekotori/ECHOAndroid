@@ -36,7 +36,15 @@ data class PlayEventRankRow(
 
 data class PlayEventHistoryRow(
     @Embedded val event: LibraryPlayEventEntity,
+    val plays: Int,
     val canReplay: Boolean,
+)
+
+data class PlayEventSummaryRow(
+    val plays: Int,
+    val listenedMs: Long,
+    val tracks: Int,
+    val latestPlayedAtEpochMs: Long?,
 )
 
 @Dao
@@ -44,8 +52,23 @@ interface LibraryPlayEventDao {
     @RawQuery(observedEntities = [LibraryPlayEventEntity::class, LibraryTrackEntity::class])
     fun pageHistory(query: SupportSQLiteQuery): PagingSource<Int, PlayEventHistoryRow>
 
+    @RawQuery(observedEntities = [LibraryPlayEventEntity::class])
+    fun observeSummary(query: SupportSQLiteQuery): Flow<PlayEventSummaryRow>
+
+    @RawQuery(observedEntities = [LibraryPlayEventEntity::class, LibraryTrackEntity::class])
+    suspend fun historyRows(query: SupportSQLiteQuery): List<PlayEventHistoryRow>
+
     @Query("DELETE FROM library_play_events WHERE id = :id")
     suspend fun deleteEvent(id: Long)
+
+    /** Same availability rule as the list's `canReplay`: the track must still resolve to a playable URI. */
+    @Query("""
+        DELETE FROM library_play_events WHERE NOT EXISTS (
+            SELECT 1 FROM visible_library_tracks t
+            WHERE t.id = library_play_events.trackId AND TRIM(t.contentUri) != ''
+        )
+    """)
+    suspend fun deleteUnavailable(): Int
 
     @Insert
     suspend fun insert(event: LibraryPlayEventEntity): Long
