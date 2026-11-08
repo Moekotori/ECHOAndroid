@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_bluetooth_lyrics_delay">Bluetooth lyric delay</string>
+    <string name="settings_bluetooth_lyrics_delay_value">%1$d ms</string>
+    <string name="settings_bluetooth_lyrics_delay_hint">Delays lyric display only while this phone plays through Bluetooth. Speaker, wired, USB and casting playback are unchanged. Adds to each song’s timing adjustment; 0 ms turns it off.</string>
+</resources>

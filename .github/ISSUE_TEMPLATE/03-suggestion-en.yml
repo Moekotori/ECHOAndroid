@@ -1,0 +1,36 @@
+name: "English · Suggestion"
+description: "Suggest improvements to the existing experience, interface, or documentation."
+title: "[Suggestion] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Please be civil and polite when asking questions.**
+
+        **Nobody owes you anything.** People who answer are spending their own time helping you. Treat that help as a kindness, not an obligation.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Before submitting"
+      options:
+        - label: "I confirm that I can behave respectfully and that this is a genuine request."
+          required: true
+  - type: "textarea"
+    id: "current"
+    attributes:
+      label: "Current experience"
+      description: "Describe the page, action, or documentation involved and what could be improved."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "suggestion"
+    attributes:
+      label: "Suggested improvement"
+      description: "What would you change, and how would it help?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "references"
+    attributes:
+      label: "Additional context"
+      description: "You may attach examples or screenshots."

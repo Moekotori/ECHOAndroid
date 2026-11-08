@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_bluetooth_lyrics_delay">Задержка текста при Bluetooth</string>
+    <string name="settings_bluetooth_lyrics_delay_value">%1$d мс</string>
+    <string name="settings_bluetooth_lyrics_delay_hint">Задерживает текст только при воспроизведении по Bluetooth на этом телефоне. Не применяется к динамику, проводным наушникам, USB и трансляции на другие устройства. Добавляется к поправке времени песни. 0 мс отключает функцию.</string>
+</resources>

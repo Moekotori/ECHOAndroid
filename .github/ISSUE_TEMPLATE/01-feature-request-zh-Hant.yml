@@ -1,0 +1,36 @@
+name: "繁體中文 · 功能需求"
+description: "提出希望 ECHOAndroid 支援的新功能。"
+title: "[功能需求] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **提問請講文明、懂禮貌。**
+
+        **世界上沒有人欠你的。** 回答你的人是在用自己的時間幫你，請把這份幫助當作情分，而不是義務。
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "提交前確認"
+      options:
+        - label: "我的素質達標且我確認這是需求"
+          required: true
+  - type: "textarea"
+    id: "problem"
+    attributes:
+      label: "使用情境"
+      description: "你在什麼情境下遇到了什麼需求？"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "feature"
+    attributes:
+      label: "期望的功能"
+      description: "請描述希望增加的功能及其預期行為。"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "alternatives"
+    attributes:
+      label: "替代方案與補充資訊"
+      description: "可填寫目前的解決方式、參考案例或截圖。"

@@ -1,0 +1,36 @@
+name: 简体中文 · 建议
+description: 对现有体验、界面或文档提出改进建议。
+title: "[建议] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **提问请讲文明、懂礼貌。**
+
+        **世界上没有人欠你的。**回答你的人是在用自己的时间帮你，请把这份帮助当作情分，而不是义务。
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我的素质达标且我确认这是需求
+          required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: 当前体验
+      description: 请说明涉及的页面、操作或文档，以及希望改进的地方。
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 改进建议
+      description: 你建议如何调整？希望带来什么改善？
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: 补充信息
+      description: 可附上参考案例或截图。

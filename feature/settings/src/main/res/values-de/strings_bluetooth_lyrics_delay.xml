@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_bluetooth_lyrics_delay">Liedtextverzögerung bei Bluetooth</string>
+    <string name="settings_bluetooth_lyrics_delay_value">%1$d ms</string>
+    <string name="settings_bluetooth_lyrics_delay_hint">Verzögert Liedtexte nur bei Bluetooth-Wiedergabe auf diesem Smartphone. Gilt nicht für Lautsprecher, Kabel, USB oder Übertragung auf andere Geräte. Wird zur Zeitkorrektur des Titels addiert. 0 ms deaktiviert die Funktion.</string>
+</resources>

@@ -69,10 +69,10 @@ internal fun CastDevicesPanel(
 ) {
     val connected = connectedAddress?.trim()?.takeIf { it.isNotEmpty() }
     val canCast = blockedReason == null && !phoneTrackTitle.isNullOrBlank()
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Column(Modifier.padding(horizontal = 4.dp)) { ConnectNote(stringResource(L10nR.string.echo_link_cast_subtitle)) }
         remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
-        ConnectSection(stringResource(L10nR.string.echo_link_cast_now_playing)) {
+        ConnectSection(stringResource(L10nR.string.echo_link_cast_now_playing), flat = true, plain = true) {
             val title = phoneTrackTitle?.trim().orEmpty()
             if (title.isEmpty() || blockedReason == EchoLinkCastBlockReason.EmptyQueue) {
                 ConnectNote(stringResource(L10nR.string.echo_link_cast_play_first))
@@ -156,6 +156,7 @@ internal fun CastDevicesPanel(
         ConnectSection(
             stringResource(L10nR.string.echo_link_cast_devices),
             list = true,
+            flat = true,
             action = {
                 IconButton(onClick = onRefreshLanDevices, enabled = !casting) {
                     EchoIcon(Icons.Rounded.Refresh, stringResource(L10nR.string.feature_connect_refresh_828c69))
@@ -191,6 +192,7 @@ internal fun CastDevicesPanel(
             stringResource(L10nR.string.echo_link_cast_tvs),
             subtitle = stringResource(L10nR.string.echo_link_cast_tvs_note),
             list = true,
+            flat = true,
         ) {
             if (lanRenderers.isEmpty()) {
                 PcDiscoveryEmptyState(
@@ -228,7 +230,7 @@ internal fun CastDevicesPanel(
             }
         }
         if (extraSaved.isNotEmpty()) {
-            ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91), list = true) {
+            ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91), list = true, flat = true) {
                 extraSaved.asReversed().forEachIndexed { index, pc ->
                     if (index > 0) ConnectRowDivider()
                     CastDeviceRow(

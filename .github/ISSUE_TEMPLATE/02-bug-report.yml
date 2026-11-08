@@ -1,0 +1,57 @@
+name: 简体中文 · BUG反馈
+description: 反馈 ECHOAndroid 的异常行为或错误。
+title: "[BUG] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **提问请讲文明、懂礼貌。**
+
+        **世界上没有人欠你的。**回答你的人是在用自己的时间帮你，请把这份帮助当作情分，而不是义务。
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我的素质达标且我确认这是需求
+          required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: ECHOAndroid 版本
+      placeholder: 请填写完整版本号
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: 设备型号与 Android 版本
+      placeholder: 例如：Pixel 9 / Android 16
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 问题描述
+      description: 实际发生了什么？
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请按顺序描述操作；无法稳定复现时，请说明发生条件与频率。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 你期望正常情况下发生什么？
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: 日志、截图与补充信息
+      description: 可附上相关日志或截图，请先移除账号、令牌等隐私信息。

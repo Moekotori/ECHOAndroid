@@ -268,7 +268,8 @@ fun ConnectScreen(
                                         if (!libraryOnly && remoteState == EchoRemoteConnectionState.Connected) {
                                             TextButton(onClick = onOpenLinkSongTransfer) { Text(stringResource(L10nR.string.link_transfer_title)) }
                                         }
-                                        if (!libraryOnly) ConnectCard {
+                                        if (!libraryOnly) ConnectFlatGroup {
+                                            Box(Modifier.padding(vertical = 14.dp)) {
                                             PhoneLibraryShareControl(
                                                 status = phoneLibraryShareStatus,
                                                 configuredPort = phoneLibraryPort,
@@ -280,6 +281,7 @@ fun ConnectScreen(
                                                 onConnectRequested = { openShareConnectionNonce++ },
                                                 onChange = onPhoneLibraryShareChange,
                                             )
+                                            }
                                         }
                                     },
                                     remoteState = remoteState,

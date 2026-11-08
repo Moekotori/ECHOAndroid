@@ -1,0 +1,57 @@
+name: "English · Bug report"
+description: "Report unexpected behavior or errors in ECHOAndroid."
+title: "[BUG] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Please be civil and polite when asking questions.**
+
+        **Nobody owes you anything.** People who answer are spending their own time helping you. Treat that help as a kindness, not an obligation.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Before submitting"
+      options:
+        - label: "I confirm that I can behave respectfully and that this is a genuine request."
+          required: true
+  - type: "input"
+    id: "app-version"
+    attributes:
+      label: "ECHOAndroid version"
+      placeholder: "Enter the full version number"
+    validations:
+      required: true
+  - type: "input"
+    id: "device"
+    attributes:
+      label: "Device model and Android version"
+      placeholder: "For example: Pixel 9 / Android 16"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "actual"
+    attributes:
+      label: "Problem description"
+      description: "What actually happened?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "steps"
+    attributes:
+      label: "Steps to reproduce"
+      description: "Describe the steps in order. If the issue is intermittent, explain when and how often it occurs."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "expected"
+    attributes:
+      label: "Expected behavior"
+      description: "What did you expect to happen?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "attachments"
+    attributes:
+      label: "Logs, screenshots, and additional context"
+      description: "Attach relevant logs or screenshots. Remove private information such as accounts and tokens first."

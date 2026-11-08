@@ -94,6 +94,7 @@ private val anchorPages: Map<Pair<SettingsCategory, Int>, SettingsSubPage> = lis
         R.string.settings_pause_on_disconnect, R.string.settings_resume_on_reconnect),
     anchors(SettingsSubPage.PlaybackLyrics,
         R.string.settings_section_lyrics, R.string.settings_lyrics_interface, R.string.settings_lyrics_source_order,
+        R.string.settings_bluetooth_lyrics_delay,
         R.string.settings_notification_lyrics, R.string.settings_status_overlay_lyrics,
         R.string.settings_system_status_lyrics, R.string.settings_status_lyrics_hide_translation,
         R.string.settings_online_lyrics, R.string.settings_lock_lyrics, R.string.settings_floating_lyrics,

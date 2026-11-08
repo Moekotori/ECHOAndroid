@@ -1,0 +1,57 @@
+name: "Français · Signalement de bug"
+description: "Signalez un comportement inattendu ou une erreur dans ECHOAndroid."
+title: "[BUG] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Posez vos questions avec respect et politesse.**
+
+        **Personne ne vous doit quoi que ce soit.** Les personnes qui répondent prennent sur leur temps pour vous aider. Considérez cette aide comme une marque de bienveillance, pas comme une obligation.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Avant l’envoi"
+      options:
+        - label: "Je confirme pouvoir me comporter avec respect et qu’il s’agit d’une demande légitime."
+          required: true
+  - type: "input"
+    id: "app-version"
+    attributes:
+      label: "Version d’ECHOAndroid"
+      placeholder: "Saisissez le numéro de version complet"
+    validations:
+      required: true
+  - type: "input"
+    id: "device"
+    attributes:
+      label: "Modèle de l’appareil et version d’Android"
+      placeholder: "Par exemple : Pixel 9 / Android 16"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "actual"
+    attributes:
+      label: "Description du problème"
+      description: "Que s’est-il réellement passé ?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "steps"
+    attributes:
+      label: "Étapes de reproduction"
+      description: "Décrivez les étapes dans l’ordre. Si le problème est intermittent, précisez les conditions et la fréquence."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "expected"
+    attributes:
+      label: "Comportement attendu"
+      description: "Que devait-il se passer normalement ?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "attachments"
+    attributes:
+      label: "Journaux, captures et informations complémentaires"
+      description: "Joignez les journaux ou captures utiles. Supprimez d’abord les données privées, comme les comptes et les jetons."

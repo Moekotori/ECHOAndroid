@@ -1,0 +1,36 @@
+name: "日本語 · 機能リクエスト"
+description: "ECHOAndroid に追加してほしい機能を提案します。"
+title: "[機能リクエスト] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **質問するときは、礼儀正しく丁寧に接してください。**
+
+        **誰にもあなたを助ける義務はありません。** 回答する人は、自分の時間を使ってあなたを助けています。その助けを義務ではなく、厚意として受け止めてください。
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "送信前の確認"
+      options:
+        - label: "礼儀正しく接することができ、これが正当な要望であることを確認しました。"
+          required: true
+  - type: "textarea"
+    id: "problem"
+    attributes:
+      label: "利用場面"
+      description: "どのような場面で、何が必要になりましたか？"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "feature"
+    attributes:
+      label: "希望する機能"
+      description: "追加してほしい機能と、期待する動作を説明してください。"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "alternatives"
+    attributes:
+      label: "代替手段と補足情報"
+      description: "現在の対処方法、参考例、スクリーンショットなどを記載できます。"

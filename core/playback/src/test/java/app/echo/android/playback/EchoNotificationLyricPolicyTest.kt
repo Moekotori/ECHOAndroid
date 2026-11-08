@@ -10,6 +10,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EchoNotificationLyricPolicyTest {
+    @Test fun bluetoothDelayDefersTheFirstLineAndUsesTheSameClockForNotificationsAndSnapshots() {
+        val lines = listOf(EchoNotificationLyricLine(0, "First"), EchoNotificationLyricLine(1_000, "Second"))
+        val before = app.echo.android.model.lyrics.EchoLyricsOutputTiming.positionMs(299, 300, 1f)
+        assertNull(EchoNotificationLyricPolicy.primaryText(lines, before))
+        assertNull(EchoNotificationLyricPolicy.snapshot("t", null, lines, before, true, 1f, 0).current)
+        assertEquals(300L, EchoNotificationLyricPolicy.delayMs(-300, 0, 1f))
+        val atSecond = app.echo.android.model.lyrics.EchoLyricsOutputTiming.positionMs(1_300, 300, 1f)
+        assertEquals("Second", EchoNotificationLyricPolicy.primaryText(lines, atSecond))
+        assertEquals("Second", EchoNotificationLyricPolicy.snapshot("t", null, lines, atSecond, true, 1f, 0).current?.text)
+    }
+
     @Test
     fun documentDropsUnsyncedAndRequiresSungContent() {
         assertNull(EchoNotificationLyricPolicy.document("track", listOf(-1L to "plain", 1000L to "  ")))

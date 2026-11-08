@@ -1,0 +1,57 @@
+name: "Deutsch · Fehlerbericht"
+description: "Melde unerwartetes Verhalten oder Fehler in ECHOAndroid."
+title: "[BUG] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Stelle deine Fragen respektvoll und höflich.**
+
+        **Niemand schuldet dir etwas.** Wer dir antwortet, nimmt sich dafür eigene Zeit. Betrachte diese Hilfe als Entgegenkommen und nicht als Pflicht.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Vor dem Absenden"
+      options:
+        - label: "Ich bestätige, dass ich respektvoll auftreten kann und dass dies eine ernst gemeinte Anfrage ist."
+          required: true
+  - type: "input"
+    id: "app-version"
+    attributes:
+      label: "ECHOAndroid-Version"
+      placeholder: "Gib die vollständige Versionsnummer ein"
+    validations:
+      required: true
+  - type: "input"
+    id: "device"
+    attributes:
+      label: "Gerätemodell und Android-Version"
+      placeholder: "Zum Beispiel: Pixel 9 / Android 16"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "actual"
+    attributes:
+      label: "Problembeschreibung"
+      description: "Was ist tatsächlich passiert?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "steps"
+    attributes:
+      label: "Schritte zum Reproduzieren"
+      description: "Beschreibe die Schritte der Reihe nach. Tritt der Fehler nicht immer auf, nenne die Bedingungen und die Häufigkeit."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "expected"
+    attributes:
+      label: "Erwartetes Verhalten"
+      description: "Was sollte normalerweise passieren?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "attachments"
+    attributes:
+      label: "Protokolle, Screenshots und weitere Informationen"
+      description: "Füge relevante Protokolle oder Screenshots hinzu. Entferne vorher private Daten wie Konten und Tokens."

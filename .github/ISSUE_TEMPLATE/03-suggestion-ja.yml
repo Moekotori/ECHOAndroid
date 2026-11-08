@@ -1,0 +1,36 @@
+name: "日本語 · 改善提案"
+description: "既存の使い勝手、画面、ドキュメントの改善を提案します。"
+title: "[改善提案] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **質問するときは、礼儀正しく丁寧に接してください。**
+
+        **誰にもあなたを助ける義務はありません。** 回答する人は、自分の時間を使ってあなたを助けています。その助けを義務ではなく、厚意として受け止めてください。
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "送信前の確認"
+      options:
+        - label: "礼儀正しく接することができ、これが正当な要望であることを確認しました。"
+          required: true
+  - type: "textarea"
+    id: "current"
+    attributes:
+      label: "現在の使い勝手"
+      description: "対象の画面、操作、ドキュメントと、改善してほしい点を説明してください。"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "suggestion"
+    attributes:
+      label: "改善案"
+      description: "どのように変更すると、何が良くなりますか？"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "references"
+    attributes:
+      label: "補足情報"
+      description: "参考例やスクリーンショットを添付できます。"

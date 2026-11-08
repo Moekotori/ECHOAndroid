@@ -1,0 +1,36 @@
+name: "Deutsch · Verbesserungsvorschlag"
+description: "Schlage Verbesserungen an Bedienung, Oberfläche oder Dokumentation vor."
+title: "[Verbesserungsvorschlag] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Stelle deine Fragen respektvoll und höflich.**
+
+        **Niemand schuldet dir etwas.** Wer dir antwortet, nimmt sich dafür eigene Zeit. Betrachte diese Hilfe als Entgegenkommen und nicht als Pflicht.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Vor dem Absenden"
+      options:
+        - label: "Ich bestätige, dass ich respektvoll auftreten kann und dass dies eine ernst gemeinte Anfrage ist."
+          required: true
+  - type: "textarea"
+    id: "current"
+    attributes:
+      label: "Aktuelle Erfahrung"
+      description: "Beschreibe die betroffene Seite, Aktion oder Dokumentation und was verbessert werden könnte."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "suggestion"
+    attributes:
+      label: "Vorgeschlagene Verbesserung"
+      description: "Was würdest du ändern und welchen Nutzen hätte es?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "references"
+    attributes:
+      label: "Weitere Informationen"
+      description: "Du kannst Beispiele oder Screenshots hinzufügen."

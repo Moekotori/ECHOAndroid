@@ -38,7 +38,7 @@ internal fun PcManualEntry(
 ) {
     ConnectFlatGroup {
         Column(modifier) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).echoClickable(role = Role.Button, onClick = onToggle).padding(horizontal = 4.dp),
+            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).echoClickable(role = Role.Button, onClick = onToggle),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 EchoIcon(Icons.Rounded.Link, null, Modifier.size(22.dp))
                 Text(stringResource(L10nR.string.echo_link_pairing_entry), Modifier.weight(1f),
@@ -46,7 +46,7 @@ internal fun PcManualEntry(
                 EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.echoExpandIndicator(expanded))
             }
             EchoExpand(expanded) {
-                Column(Modifier.padding(start = 4.dp, end = 4.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     ConnectNote(stringResource(L10nR.string.echo_link_direct_address_hint))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
                         Box(Modifier.weight(1f)) {

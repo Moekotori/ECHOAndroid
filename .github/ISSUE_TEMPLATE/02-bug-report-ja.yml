@@ -1,0 +1,57 @@
+name: "日本語 · 不具合報告"
+description: "ECHOAndroid の予期しない動作やエラーを報告します。"
+title: "[BUG] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **質問するときは、礼儀正しく丁寧に接してください。**
+
+        **誰にもあなたを助ける義務はありません。** 回答する人は、自分の時間を使ってあなたを助けています。その助けを義務ではなく、厚意として受け止めてください。
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "送信前の確認"
+      options:
+        - label: "礼儀正しく接することができ、これが正当な要望であることを確認しました。"
+          required: true
+  - type: "input"
+    id: "app-version"
+    attributes:
+      label: "ECHOAndroid のバージョン"
+      placeholder: "完全なバージョン番号を入力してください"
+    validations:
+      required: true
+  - type: "input"
+    id: "device"
+    attributes:
+      label: "端末の機種と Android のバージョン"
+      placeholder: "例：Pixel 9 / Android 16"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "actual"
+    attributes:
+      label: "問題の説明"
+      description: "実際に何が起きましたか？"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "steps"
+    attributes:
+      label: "再現手順"
+      description: "操作を順番に説明してください。安定して再現できない場合は、発生条件と頻度を記載してください。"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "expected"
+    attributes:
+      label: "期待する動作"
+      description: "本来どのように動作するはずでしたか？"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "attachments"
+    attributes:
+      label: "ログ、スクリーンショット、補足情報"
+      description: "関連するログや画像を添付できます。アカウントやトークンなどの個人情報は事前に削除してください。"

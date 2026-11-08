@@ -53,6 +53,11 @@ internal fun ConnectInput(
         value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(),
         label = { Text(label) }, placeholder = { Text(placeholder) }, singleLine = true,
         shape = ConnectControlShape, enabled = enabled, isError = error != null,
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
+        ),
         supportingText = error?.let { { ConnectNote(it, error = true) } },
         visualTransformation = if (secret && !visible) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType ?: when { secret -> KeyboardType.Password; url -> KeyboardType.Uri; else -> KeyboardType.Text },

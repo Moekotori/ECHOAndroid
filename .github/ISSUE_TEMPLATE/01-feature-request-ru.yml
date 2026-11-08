@@ -1,0 +1,36 @@
+name: "Русский · Запрос функции"
+description: "Предложите новую функцию для ECHOAndroid."
+title: "[Запрос функции] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Задавайте вопросы вежливо и уважительно.**
+
+        **Никто вам ничего не должен.** Люди, которые отвечают, тратят своё время, чтобы помочь вам. Воспринимайте эту помощь как добрую волю, а не как обязанность.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Перед отправкой"
+      options:
+        - label: "Я подтверждаю, что умею вести себя уважительно и что это обоснованный запрос."
+          required: true
+  - type: "textarea"
+    id: "problem"
+    attributes:
+      label: "Сценарий использования"
+      description: "В какой ситуации вам нужна эта функция и какую проблему она решит?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "feature"
+    attributes:
+      label: "Желаемая функция"
+      description: "Опишите нужную функцию и ожидаемое поведение."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "alternatives"
+    attributes:
+      label: "Альтернативы и дополнительная информация"
+      description: "Укажите текущие способы решения, примеры или снимки экрана."

@@ -1,0 +1,36 @@
+name: "繁體中文 · 建議"
+description: "對現有體驗、介面或文件提出改進建議。"
+title: "[建議] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **提問請講文明、懂禮貌。**
+
+        **世界上沒有人欠你的。** 回答你的人是在用自己的時間幫你，請把這份幫助當作情分，而不是義務。
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "提交前確認"
+      options:
+        - label: "我的素質達標且我確認這是需求"
+          required: true
+  - type: "textarea"
+    id: "current"
+    attributes:
+      label: "目前體驗"
+      description: "請說明涉及的頁面、操作或文件，以及希望改進的地方。"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "suggestion"
+    attributes:
+      label: "改進建議"
+      description: "你建議如何調整？希望帶來什麼改善？"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "references"
+    attributes:
+      label: "補充資訊"
+      description: "可附上參考案例或截圖。"

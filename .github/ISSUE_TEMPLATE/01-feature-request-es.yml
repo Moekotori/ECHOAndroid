@@ -1,0 +1,36 @@
+name: "Español · Solicitud de función"
+description: "Solicita una nueva función para ECHOAndroid."
+title: "[Solicitud de función] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Haz tus preguntas con respeto y educación.**
+
+        **Nadie te debe nada.** Quienes responden dedican su propio tiempo a ayudarte. Considera esa ayuda un gesto de buena voluntad, no una obligación.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Antes de enviar"
+      options:
+        - label: "Confirmo que puedo comportarme con respeto y que esta es una petición legítima."
+          required: true
+  - type: "textarea"
+    id: "problem"
+    attributes:
+      label: "Caso de uso"
+      description: "¿En qué situación necesitas esta función y qué problema resolvería?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "feature"
+    attributes:
+      label: "Función solicitada"
+      description: "Describe la función que deseas y cómo debería funcionar."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "alternatives"
+    attributes:
+      label: "Alternativas e información adicional"
+      description: "Comparte soluciones actuales, ejemplos o capturas de pantalla."

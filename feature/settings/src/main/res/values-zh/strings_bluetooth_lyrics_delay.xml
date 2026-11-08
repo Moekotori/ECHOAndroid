@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_bluetooth_lyrics_delay">蓝牙歌词延迟补偿</string>
+    <string name="settings_bluetooth_lyrics_delay_value">%1$d 毫秒</string>
+    <string name="settings_bluetooth_lyrics_delay_hint">仅在手机通过蓝牙播放时延后显示歌词，切回扬声器、有线、USB 或投送播放时不生效。与单曲歌词偏移叠加，设为 0 毫秒关闭。</string>
+</resources>

@@ -51,9 +51,11 @@ internal fun ConnectSection(
     action: (@Composable () -> Unit)? = null,
     list: Boolean = false,
     flat: Boolean = false,
+    /** With [flat]: no hairlines either, just titled content sitting on the page. */
+    plain: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (flat) 0.dp else 8.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (flat && !plain) 0.dp else 8.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium,
@@ -63,6 +65,7 @@ internal fun ConnectSection(
             action?.invoke()
         }
         when {
+            flat && plain -> Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
             flat -> ConnectFlatGroup(content)
             list -> ConnectCard(contentPadding = ListCardPadding, spacing = 0.dp, content = content)
             else -> ConnectCard(content = content)
@@ -75,7 +78,7 @@ internal fun ConnectSection(
 internal fun ConnectFlatGroup(content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth()) {
         ConnectRowDivider()
-        content()
+        Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), content = content)
         ConnectRowDivider()
     }
 }

@@ -1,0 +1,36 @@
+name: "Français · Demande de fonctionnalité"
+description: "Demandez une nouvelle fonctionnalité pour ECHOAndroid."
+title: "[Demande de fonctionnalité] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Posez vos questions avec respect et politesse.**
+
+        **Personne ne vous doit quoi que ce soit.** Les personnes qui répondent prennent sur leur temps pour vous aider. Considérez cette aide comme une marque de bienveillance, pas comme une obligation.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Avant l’envoi"
+      options:
+        - label: "Je confirme pouvoir me comporter avec respect et qu’il s’agit d’une demande légitime."
+          required: true
+  - type: "textarea"
+    id: "problem"
+    attributes:
+      label: "Cas d’utilisation"
+      description: "Dans quelle situation avez-vous besoin de cette fonctionnalité et quel problème résoudrait-elle ?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "feature"
+    attributes:
+      label: "Fonctionnalité souhaitée"
+      description: "Décrivez la fonctionnalité souhaitée et son comportement attendu."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "alternatives"
+    attributes:
+      label: "Solutions alternatives et informations complémentaires"
+      description: "Indiquez vos solutions actuelles, des exemples ou des captures d’écran."

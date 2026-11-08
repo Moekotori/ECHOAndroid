@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_bluetooth_lyrics_delay">Retardo de letras por Bluetooth</string>
+    <string name="settings_bluetooth_lyrics_delay_value">%1$d ms</string>
+    <string name="settings_bluetooth_lyrics_delay_hint">Retrasa las letras solo al reproducir por Bluetooth en este teléfono. No se aplica al altavoz, cable, USB ni a la transmisión a otro dispositivo. Se suma al ajuste de cada canción. Usa 0 ms para desactivarlo.</string>
+</resources>

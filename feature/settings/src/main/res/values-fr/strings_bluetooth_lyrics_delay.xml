@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_bluetooth_lyrics_delay">Retard des paroles en Bluetooth</string>
+    <string name="settings_bluetooth_lyrics_delay_value">%1$d ms</string>
+    <string name="settings_bluetooth_lyrics_delay_hint">Retarde les paroles uniquement lors de la lecture Bluetooth sur ce téléphone. Sans effet sur le haut-parleur, le câble, l’USB ou la diffusion vers un autre appareil. S’ajoute au réglage de chaque titre. 0 ms désactive la fonction.</string>
+</resources>

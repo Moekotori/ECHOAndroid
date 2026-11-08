@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_bluetooth_lyrics_delay">블루투스 가사 지연 보정</string>
+    <string name="settings_bluetooth_lyrics_delay_value">%1$d ms</string>
+    <string name="settings_bluetooth_lyrics_delay_hint">이 휴대전화에서 블루투스로 재생할 때만 가사 표시를 늦춥니다. 스피커, 유선, USB 및 전송 재생에는 적용되지 않습니다. 곡별 시간 조정과 함께 적용되며, 0 ms로 설정하면 꺼집니다.</string>
+</resources>

@@ -1,0 +1,36 @@
+name: "Español · Sugerencia"
+description: "Propón mejoras de la experiencia actual, la interfaz o la documentación."
+title: "[Sugerencia] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Haz tus preguntas con respeto y educación.**
+
+        **Nadie te debe nada.** Quienes responden dedican su propio tiempo a ayudarte. Considera esa ayuda un gesto de buena voluntad, no una obligación.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Antes de enviar"
+      options:
+        - label: "Confirmo que puedo comportarme con respeto y que esta es una petición legítima."
+          required: true
+  - type: "textarea"
+    id: "current"
+    attributes:
+      label: "Experiencia actual"
+      description: "Describe la página, acción o documentación afectada y qué podría mejorar."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "suggestion"
+    attributes:
+      label: "Mejora propuesta"
+      description: "¿Qué cambiarías y qué mejora aportaría?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "references"
+    attributes:
+      label: "Información adicional"
+      description: "Puedes adjuntar ejemplos o capturas de pantalla."

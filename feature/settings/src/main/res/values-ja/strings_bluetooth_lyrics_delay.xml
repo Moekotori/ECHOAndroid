@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_bluetooth_lyrics_delay">Bluetooth の歌詞遅延補正</string>
+    <string name="settings_bluetooth_lyrics_delay_value">%1$d ms</string>
+    <string name="settings_bluetooth_lyrics_delay_hint">この端末の Bluetooth 再生時のみ歌詞表示を遅らせます。スピーカー、有線、USB、キャスト再生には適用しません。曲ごとの時間調整に加算されます。0 ms で無効になります。</string>
+</resources>

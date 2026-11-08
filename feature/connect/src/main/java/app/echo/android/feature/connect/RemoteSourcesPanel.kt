@@ -52,7 +52,7 @@ internal fun RemoteSourcesPanel(
 ) {
     var expandedSource by rememberSaveable { mutableStateOf<String?>(null) }
     // The backend exposes one shared scan state. Show it once, never attribute it to both providers.
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(L10nR.string.feature_connect_your_music_wherever_it_lives_e9713c),
                 style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -68,9 +68,8 @@ internal fun RemoteSourcesPanel(
                 }
             }
         }
-        ConnectSourceLayout {
+        ConnectFlatGroup {
             SourceEditor(
-                modifier = Modifier.weight(1f),
                 title = "Subsonic / Navidrome", icon = Icons.Rounded.Dns,
                 description = stringResource(L10nR.string.feature_connect_your_music_server_dd7eb8),
                 placeholder = "https://music.example.com",
@@ -78,8 +77,8 @@ internal fun RemoteSourcesPanel(
                 expanded = expandedSource == "subsonic", onExpand = { expandedSource = if (expandedSource == "subsonic") null else "subsonic" },
                 busy = scanState.isScanning, onSave = onSaveSubsonic, onSync = onSyncSubsonic, onClear = onClearSubsonic,
             )
+            ConnectRowDivider()
             SourceEditor(
-                modifier = Modifier.weight(1f),
                 title = "WebDAV", icon = Icons.Rounded.Cloud,
                 description = stringResource(L10nR.string.feature_connect_a_nas_or_cloud_music_folder_5525c7),
                 placeholder = "https://dav.example.com/music",
@@ -88,8 +87,8 @@ internal fun RemoteSourcesPanel(
                 busy = scanState.isScanning, onSave = onSaveWebDav, onSync = onSyncWebDav, onClear = onClearWebDav,
                 allowAnonymous = true,
             )
+            ConnectRowDivider()
             SourceEditor(
-                modifier = Modifier.weight(1f),
                 title = "SMB", icon = Icons.Rounded.Folder,
                 description = stringResource(L10nR.string.connect_smb_description),
                 placeholder = "smb://192.168.1.10/Music",
@@ -101,8 +100,8 @@ internal fun RemoteSourcesPanel(
                 credentialsOptional = true,
                 usernameHint = stringResource(L10nR.string.connect_smb_username_hint),
             )
+            ConnectRowDivider()
             SourceEditor(
-                modifier = Modifier.weight(1f),
                 title = "Jellyfin / Emby", icon = Icons.Rounded.VideoLibrary,
                 description = stringResource(L10nR.string.feature_connect_jellyfin_or_emby_independent_of_echo_link_a8f3c1),
                 placeholder = "http://192.168.1.10:8096",
@@ -111,7 +110,7 @@ internal fun RemoteSourcesPanel(
                 busy = scanState.isScanning, onSave = onSaveJellyfin, onSync = onSyncJellyfin, onClear = onClearJellyfin,
             )
         }
-        ConnectSection(stringResource(L10nR.string.feature_connect_music_on_this_phone_8611a5)) {
+        ConnectSection(stringResource(L10nR.string.feature_connect_music_on_this_phone_8611a5), flat = true, plain = true) {
             ConnectNote(stringResource(L10nR.string.feature_connect_local_files_are_managed_in_library_no_server_c5274c))
         }
     }
@@ -152,7 +151,7 @@ private fun SourceEditor(
         else username.isNotBlank() && password.isNotBlank()
     )
     val submit = { if (ready && !busy) { keyboard?.hide(); onSync(url.trim(), effectiveUsername, effectivePassword) } }
-    ConnectCard(modifier, contentPadding = ListCardPadding, spacing = 0.dp) {
+    Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).echoClickable(role = Role.Button) { focus.clearFocus(); keyboard?.hide(); onExpand() }.padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ConnectIconTile(icon)

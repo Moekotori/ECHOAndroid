@@ -1,0 +1,36 @@
+name: "English · Feature request"
+description: "Request a new feature for ECHOAndroid."
+title: "[Feature request] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **Please be civil and polite when asking questions.**
+
+        **Nobody owes you anything.** People who answer are spending their own time helping you. Treat that help as a kindness, not an obligation.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "Before submitting"
+      options:
+        - label: "I confirm that I can behave respectfully and that this is a genuine request."
+          required: true
+  - type: "textarea"
+    id: "problem"
+    attributes:
+      label: "Use case"
+      description: "In what situation do you need this feature, and what problem would it solve?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "feature"
+    attributes:
+      label: "Requested feature"
+      description: "Describe the feature you would like and how it should behave."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "alternatives"
+    attributes:
+      label: "Alternatives and additional context"
+      description: "Share any current workarounds, examples, or screenshots."

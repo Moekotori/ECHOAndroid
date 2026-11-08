@@ -219,9 +219,7 @@ internal fun PcLinkPanel(
             }
         }
         if (!libraryOnly && (connected || hasSaved)) {
-            ConnectCard(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
-                EchoLinkModeSwitch(remoteMode, onRemoteModeChange)
-            }
+            EchoLinkModeSwitch(remoteMode, onRemoteModeChange, Modifier.padding(horizontal = 4.dp))
         }
         when {
             busy -> if (remoteState == EchoRemoteConnectionState.Reconnecting && remoteMode && currentTrackId != null) {

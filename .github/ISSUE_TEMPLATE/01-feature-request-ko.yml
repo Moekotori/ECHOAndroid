@@ -1,0 +1,36 @@
+name: "한국어 · 기능 요청"
+description: "ECHOAndroid에 추가할 새 기능을 요청합니다."
+title: "[기능 요청] "
+body:
+  - type: "markdown"
+    attributes:
+      value: |
+        **질문할 때는 예의 바르고 정중하게 말해 주세요.**
+
+        **누구도 당신을 도와야 할 의무는 없습니다.** 답변하는 사람은 자신의 시간을 들여 당신을 돕고 있습니다. 그 도움을 의무가 아닌 호의로 받아들여 주세요.
+  - type: "checkboxes"
+    id: "confirmation"
+    attributes:
+      label: "제출 전 확인"
+      options:
+        - label: "예의를 지킬 수 있으며 이것이 정당한 요청임을 확인합니다."
+          required: true
+  - type: "textarea"
+    id: "problem"
+    attributes:
+      label: "사용 상황"
+      description: "어떤 상황에서 무엇이 필요했나요?"
+    validations:
+      required: true
+  - type: "textarea"
+    id: "feature"
+    attributes:
+      label: "원하는 기능"
+      description: "추가할 기능과 기대하는 동작을 설명해 주세요."
+    validations:
+      required: true
+  - type: "textarea"
+    id: "alternatives"
+    attributes:
+      label: "대안 및 추가 정보"
+      description: "현재 해결 방법, 참고 사례 또는 스크린샷을 작성할 수 있습니다."
