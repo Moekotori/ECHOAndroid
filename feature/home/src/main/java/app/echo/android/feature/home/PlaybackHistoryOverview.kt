@@ -2,7 +2,6 @@ package app.echo.android.feature.home
 
 import android.text.format.DateUtils
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -25,7 +23,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -56,64 +53,60 @@ internal fun PlaybackHistoryOverview(
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(28.dp)
-    Surface(
-        modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp),
-        shape = shape,
-        color = scheme.surfaceContainer,
+    Column(
+        modifier.fillMaxWidth().padding(top = 6.dp, bottom = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            Modifier
-                .background(Brush.verticalGradient(listOf(scheme.primary.copy(alpha = 0.16f), scheme.primary.copy(alpha = 0f))))
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        stringResource(R.string.listening_stats_total_time),
-                        style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant,
-                    )
-                    Text(
-                        if (summary == null) "—" else formatListeningDuration(summary.listenedMs),
-                        style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
-                        fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                InsightsLink(onStats)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OverviewMetric(
-                    stringResource(R.string.listening_stats_total_plays),
-                    summary?.plays?.toString() ?: "—", Modifier.weight(1f),
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    stringResource(R.string.listening_stats_total_time),
+                    style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant,
                 )
-                OverviewMetric(
-                    stringResource(R.string.playback_history_overview_tracks),
-                    summary?.tracks?.toString() ?: "—", Modifier.weight(1f),
-                )
-                OverviewMetric(
-                    stringResource(R.string.playback_history_overview_latest),
-                    summary?.latestPlayedAtEpochMs?.let(::relativeTime) ?: "—", Modifier.weight(1.3f),
+                Text(
+                    if (summary == null) "—" else formatListeningDuration(summary.listenedMs),
+                    style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
             }
-            PlaybackHistoryTrend(trend)
+            InsightsLink(onStats, Modifier.weight(0.65f, fill = false))
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OverviewMetric(
+                stringResource(R.string.listening_stats_total_plays),
+                summary?.plays?.toString() ?: "—", Modifier.weight(1f),
+            )
+            OverviewMetric(
+                stringResource(R.string.playback_history_overview_tracks),
+                summary?.tracks?.toString() ?: "—", Modifier.weight(1f),
+            )
+            OverviewMetric(
+                stringResource(R.string.playback_history_overview_latest),
+                summary?.latestPlayedAtEpochMs?.let(::relativeTime) ?: "—", Modifier.weight(1.5f),
+            )
+        }
+        PlaybackHistoryTrend(trend)
     }
 }
 
 @Composable
-private fun InsightsLink(onClick: () -> Unit) {
+private fun InsightsLink(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     Row(
-        Modifier.clip(RoundedCornerShape(50)).echoClickable(role = Role.Button, onClick = onClick)
-            .heightIn(min = 48.dp).padding(start = 12.dp, end = 4.dp),
+        modifier.clip(RoundedCornerShape(8.dp)).echoClickable(role = Role.Button, onClick = onClick)
+            .heightIn(min = 48.dp).padding(start = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             stringResource(R.string.playback_history_insights),
             style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = scheme.primary,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
         )
-        EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.width(20.dp), tint = scheme.primary)
+        EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.width(20.dp))
     }
 }
 
@@ -121,17 +114,16 @@ private fun InsightsLink(onClick: () -> Unit) {
 private fun OverviewMetric(label: String, value: String, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     Column(
-        modifier.clip(RoundedCornerShape(18.dp)).background(scheme.onSurface.copy(alpha = 0.05f))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
-            value, style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            value, style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+            fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
         Text(
             label, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -150,29 +142,29 @@ private fun PlaybackHistoryTrend(trend: List<PlaybackHeatmapDay>) {
     val description = pluralStringResource(R.plurals.playback_history_trend_description, total, total)
     Column(
         Modifier.semantics(mergeDescendants = true) { contentDescription = description },
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             stringResource(R.string.playback_history_trend), style = MaterialTheme.typography.labelMedium,
             color = scheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics { },
         )
         val accent = scheme.primary
-        val rest = scheme.onSurface.copy(alpha = 0.08f)
-        Canvas(Modifier.fillMaxWidth().height(52.dp).clearAndSetSemantics { }) {
-            val gap = 5.dp.toPx()
-            val bar = ((size.width - gap * (TREND_DAYS - 1)) / TREND_DAYS).coerceAtLeast(1f)
-            val radius = CornerRadius(bar / 2f, bar / 2f)
+        val rest = scheme.outlineVariant
+        Canvas(Modifier.fillMaxWidth().height(24.dp).clearAndSetSemantics { }) {
+            val dayWidth = size.width / TREND_DAYS
+            val bar = minOf(dayWidth / 2f, 6.dp.toPx())
+            val radius = CornerRadius(1.dp.toPx())
+            val tick = 2.dp.toPx()
             for (i in 0 until TREND_DAYS) {
-                val left = i * (bar + gap)
+                val left = i * dayWidth + (dayWidth - bar) / 2f
                 val value = counts[i]
-                drawRoundRect(rest, Offset(left, 0f), Size(bar, size.height), radius)
-                if (value > 0) {
-                    val h = (size.height * value / max).coerceAtLeast(bar)
-                    drawRoundRect(
-                        accent.copy(alpha = if (i == TREND_DAYS - 1) 1f else 0.5f),
-                        Offset(left, size.height - h), Size(bar, h), radius,
-                    )
+                val height = (size.height * value / max).coerceAtLeast(tick)
+                val color = when {
+                    value == 0 -> rest
+                    i == TREND_DAYS - 1 -> accent
+                    else -> accent.copy(alpha = 0.55f)
                 }
+                drawRoundRect(color, Offset(left, size.height - height), Size(bar, height), radius)
             }
         }
     }

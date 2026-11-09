@@ -2,7 +2,6 @@ package app.echo.android.feature.player
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
@@ -79,7 +78,7 @@ internal fun LyricsMotionPreview(
     if (alignment == "vertical") {
         VerticalLyricsList(
             lyrics, position, 9600L, {}, {}, fontFamily, fontScale * 0.6f, lineSpacing,
-            accent, MaterialTheme.colorScheme.primary, highlightEnabled, false, highlightIntensity,
+            accent, accent, highlightEnabled, false, highlightIntensity,
             showTranslation = false, showRomanization = false, visible = focused && motionScale > 0f, motionMode = motionMode, modifier = modifier,
             interactive = false,
         )
@@ -92,7 +91,7 @@ internal fun LyricsMotionPreview(
             lyricsWordHighlightIntensity = highlightIntensity, lyricsImmersiveModeEnabled = false,
             lyricsMotionMode = motionMode, showTranslation = false, showRomanization = false,
             focusGlowEnabled = true, animationsVisible = focused && motionScale > 0f, modifier = modifier,
-            highlightColor = MaterialTheme.colorScheme.primary, paper = pageStyle == EchoLyricsPageStyle.Paper, durationMs = 9600L,
+            paper = pageStyle == EchoLyricsPageStyle.Paper, durationMs = 9600L,
             interactive = false,
         )
     }

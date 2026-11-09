@@ -34,9 +34,11 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.feature.player.LyricsLineList
 import app.echo.android.feature.player.LyricsCastAction
+import app.echo.android.feature.player.LyricsInfoRow
 import app.echo.android.feature.player.LyricsScrubber
 import app.echo.android.feature.player.LyricsTransportControls
 import app.echo.android.feature.player.R
+import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoLyricsPageStyle
@@ -79,7 +81,7 @@ internal fun AfterglowImmersivePage(
     AfterglowSystemBars(chrome.visible || overlayBlocking)
     BackHandler(enabled = !overlayBlocking, onBack = onDismiss)
     val controls: @Composable (@Composable () -> Unit) -> Unit = { sceneControls ->
-        AfterglowChromeOverlay(chrome.visible, lightweight, status, position, duration,
+        AfterglowChromeOverlay(chrome.visible, lightweight, status, (lyricsState as? EchoLyricsLoadState.Ready)?.lyrics, position, duration,
             onDismiss, { chrome.touch(); onSettings() }, onPlayPause, onNext, onPrevious,
             onSeek, onQueue, onCast?.let { cast -> { chrome.touch(); cast() } }, castActive, sceneControls)
     }
@@ -129,7 +131,7 @@ internal fun AfterglowImmersivePage(
 
 @Composable
 private fun AfterglowChromeOverlay(
-    shown: Boolean, lightweight: Boolean, status: EchoPlaybackStatus,
+    shown: Boolean, lightweight: Boolean, status: EchoPlaybackStatus, lyrics: EchoLyrics?,
     position: State<Long>, duration: State<Long>, onDismiss: () -> Unit, onSettings: () -> Unit,
     onPlayPause: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onSeek: (Long) -> Unit,
     onQueue: () -> Unit, onCast: (() -> Unit)?, castActive: Boolean, sceneControls: @Composable () -> Unit,
@@ -156,6 +158,7 @@ private fun AfterglowChromeOverlay(
             .padding(horizontal = 22.dp, vertical = if (shortLandscape) 8.dp else 20.dp)) {
             sceneControls()
             Spacer(Modifier.height(12.dp))
+            lyrics?.let { LyricsInfoRow(it, color = Color.White.copy(alpha = 0.84f)) }
             LyricsScrubber(status.track?.id, position, duration, onSeek)
             LyricsTransportControls(status.isPlaying, onPlayPause, onNext, onPrevious, onQueue, onMore = onSettings)
         }

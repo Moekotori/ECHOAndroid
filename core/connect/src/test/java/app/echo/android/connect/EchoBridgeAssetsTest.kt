@@ -24,9 +24,14 @@ class EchoBridgeAssetsTest {
             assertEquals("/echo-link/peer/v1/catalog", request.url.encodedPath)
             assertEquals("1", request.header("X-ECHO-Link-Direct"))
             assertNull(request.header("Authorization"))
-            JSONObject().put("catalog", JSONObject().put("page", 1).put("pageSize", 50).put("total", 1)
-                .put("entries", JSONArray().put(JSONObject().put("id", "song").put("title", "Song")
-                    .put("coverId", "art /:封面").put("canPlay", true))))
+            val entries = JSONArray().put(JSONObject().put("id", "song").put("title", "Song")
+                .put("coverId", "art /:封面").put("sourceProvider", "local").put("canPlay", true))
+            if (request.url.queryParameter("kind") == "playlists") {
+                entries.put(JSONObject().put("id", "unknown").put("title", "Unknown"))
+                entries.put(JSONObject().put("id", "remote").put("title", "Remote").put("sourceProvider", "netease"))
+            }
+            JSONObject().put("catalog", JSONObject().put("page", 1).put("pageSize", 50)
+                .put("total", entries.length()).put("entries", entries))
         }
         val urls = listOf(transport.tracks(endpoint, "", 1).tracks.single().artworkUrl,
             transport.albums(endpoint, "", 1).albums.single().artworkUrl,
@@ -37,6 +42,16 @@ class EchoBridgeAssetsTest {
             assertEquals("art /:封面", url.toHttpUrl().queryParameter("id"))
             assertEquals(49234, url.toHttpUrl().port)
         }
+    }
+
+    @Test fun legacyCatalogWithoutPlaylistProvenanceIsNotPaged() = runBlocking {
+        val transport = EchoBridgeTransport { JSONObject("""
+            {"catalog":{"page":1,"pageSize":50,"total":200,
+                "entries":[{"id":"unknown","title":"Unknown"}]}}
+        """.trimIndent()) }
+        val playlists = transport.playlists(endpoint, "", 1)
+        assertTrue(playlists.playlists.isEmpty())
+        assertEquals(0, playlists.nextPage)
     }
 
     @Test fun structuredOnlyLyricsKeepSourceTimingAndRemovedLyricsStayEmpty() = runBlocking {

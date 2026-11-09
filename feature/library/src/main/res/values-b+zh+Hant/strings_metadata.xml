@@ -4,4 +4,9 @@
     <string name="metadata_lyrics">歌詞</string>
     <string name="metadata_choose_artwork">選擇封面</string>
     <string name="album_cue_banner">整軌 CUE · 按樂章播放</string>
+    <string name="metadata_track_details">歌曲資訊</string>
+    <string name="metadata_release">發行資訊</string>
+    <string name="metadata_discard_title">放棄未儲存的變更？</string>
+    <string name="metadata_discard">放棄變更</string>
+    <string name="metadata_keep_editing">繼續編輯</string>
 </resources>

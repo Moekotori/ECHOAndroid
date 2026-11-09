@@ -1,11 +1,9 @@
 package app.echo.android.feature.library
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.res.stringResource
-import app.echo.android.design.EchoDropdownMenu
-import app.echo.android.design.EchoDropdownMenuItem
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.LibrarySmartPlaylistKind
 import kotlinx.coroutines.Dispatchers
@@ -41,25 +39,26 @@ internal fun rememberPlaylistCatalog(playlists: List<EchoPlaylist>, query: Strin
                 sorted.filter { it.isLikedSongs }.takeIf { it.isNotEmpty() }?.let { add(PlaylistCatalogSection("liked", null, it)) }
                 sorted.filter { it.isSmartPlaylist }.takeIf { it.isNotEmpty() }?.let { add(PlaylistCatalogSection("smart", R.string.playlist_smart_section, it)) }
                 val user = sorted.filterNot { it.isLikedSongs || it.isSmartPlaylist }
-                if (user.isNotEmpty() || needle.isBlank()) add(PlaylistCatalogSection("user", R.string.playlist_user_section, user))
+                if (user.isNotEmpty()) add(PlaylistCatalogSection("user", R.string.playlist_user_section, user))
             }
         }
     }
 }
 
 @Composable
-internal fun PlaylistCatalogSortControl(sort: PlaylistCatalogSort, onSort: (PlaylistCatalogSort) -> Unit) {
-    var menu by remember { mutableStateOf(false) }
-    Box {
-        TextButton(onClick = { menu = true }) { Text(stringResource(sort.label), color = MaterialTheme.colorScheme.onSurface) }
-        EchoDropdownMenu(menu, onDismissRequest = { menu = false }) {
-            PlaylistCatalogSort.entries.forEach { item ->
-                EchoDropdownMenuItem(text = { Text(stringResource(item.label)) },
-                    selected = item == sort,
-                    onClick = { menu = false; onSort(item) })
-            }
-        }
-    }
+internal fun PlaylistCatalogSortMenu(
+    selected: PlaylistCatalogSort,
+    onSelect: (PlaylistCatalogSort) -> Unit,
+    onCustomize: (() -> Unit)?,
+) {
+    LibrarySortMenu(
+        selected = selected,
+        options = PlaylistCatalogSort.entries,
+        label = { stringResource(it.label) },
+        contentDescription = stringResource(R.string.library_sort_title),
+        onSelect = onSelect,
+        onCustomize = onCustomize,
+    )
 }
 
 private val PlaylistCatalogSort.label: Int get() = when (this) {

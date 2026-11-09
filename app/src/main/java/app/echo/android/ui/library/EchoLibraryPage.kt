@@ -54,6 +54,7 @@ internal fun EchoLibraryPage(
     onRequestPermission: () -> Unit,
     onScanFolder: (LibraryScanOptions) -> Unit,
     onAddMusic: () -> Unit,
+    onEditTrackTags: (EchoTrack, Boolean) -> Unit,
     onImportLyricsForTrack: (EchoTrack) -> Unit,
     onPickTrackArtwork: (EchoTrack) -> Unit,
     onOpenAlbum: (AlbumSummary) -> Unit,
@@ -246,8 +247,8 @@ internal fun EchoLibraryPage(
         matcher = app.echo.android.model.library.ArtistSetlistMatcher { viewModel.matchSetlist(it) },
         onPlayMatched = viewModel::playSetlistTracks,
     ) {
-    app.echo.android.feature.library.EmbeddedLyricsLoaderProvider(
-        loader = app.echo.android.feature.library.EmbeddedLyricsLoader { viewModel.loadEmbeddedLyrics(it) },
+    app.echo.android.feature.library.TrackMetadataEditorLauncherProvider(
+        onOpen = onEditTrackTags,
     ) {
     app.echo.android.feature.library.AlbumOnlineInfoProvider(application.albumOnlineInfo) {
     app.echo.android.feature.library.LibraryBatchProvider(batchActions,
@@ -332,17 +333,10 @@ internal fun EchoLibraryPage(
             onLoadMoreLinkedAlbums = remoteClient::loadMoreAlbums,
             onLoadMoreLinkedPlaylists = remoteClient::loadMorePlaylists,
             onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },
+            onLoadLinkedPlaylistArtwork = remoteClient::loadPlaylistArtwork,
             onOpenLinkedAlbum = { album -> remoteClient.refreshAlbumTracks(album) },
             onRefreshLinkedFolders = { path -> remoteClient.refreshFolders(path) },
             onChangeLinkedFolderPage = remoteClient::changeFolderPage,
-            onPlayLinkedTrack = { track ->
-                playLinkedEchoTracks(
-                    tracks = listOf(track),
-                    startIndex = 0,
-                    viewModel = viewModel,
-                    playbackRouter = playbackRouter,
-                )
-            },
             onPlayLinkedQueue = { tracks, startIndex ->
                 playLinkedEchoTracks(
                     tracks = tracks,
@@ -357,7 +351,6 @@ internal fun EchoLibraryPage(
             },
             onPlayTrack = { track, origin -> viewModel.playFromLibrary(track, origin) },
             onPlayNext = viewModel::playNext,
-            onAddNextUp = viewModel::addNextUp,
             onEnqueueTrack = viewModel::enqueue,
             onUpdateTrackMetadata = viewModel::updateTrackMetadata,
             onImportLyricsForTrack = onImportLyricsForTrack,

@@ -46,7 +46,6 @@
     <string name="feature_library_create_7b4bc9">"Erstellen"</string>
     <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"Schreibt Tags unterstützter Formate in die Audiodatei, wenn Android es erlaubt. Andernfalls bleibt dies im ECHOAndroid-Bibliotheksindex."</string>
     <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"Schreibt Tags unterstützter Formate einschließlich importierter Liedtexte und Cover in die Audiodatei, wenn Android es erlaubt."</string>
-    <string name="feature_library_custom_artwork_c8c999">"Eigenes Cover"</string>
     <string name="feature_library_delete_138ccf">"Löschen"</string>
     <string name="feature_library_delete_playlist_4d9753">"Playlist löschen"</string>
     <string name="feature_library_delete_playlist_name_songs_in_the_library_will_3541db">"„%1$s“ löschen? Songs in der Bibliothek werden nicht gelöscht."</string>

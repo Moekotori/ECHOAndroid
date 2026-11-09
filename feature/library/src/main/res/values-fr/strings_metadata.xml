@@ -4,4 +4,9 @@
     <string name="metadata_lyrics">Paroles</string>
     <string name="metadata_choose_artwork">Choisir une pochette</string>
     <string name="album_cue_banner">CUE d\'album entier · lecture par mouvements</string>
+    <string name="metadata_track_details">Détails du morceau</string>
+    <string name="metadata_release">Publication</string>
+    <string name="metadata_discard_title">Abandonner les modifications non enregistrées ?</string>
+    <string name="metadata_discard">Abandonner</string>
+    <string name="metadata_keep_editing">Continuer à modifier</string>
 </resources>

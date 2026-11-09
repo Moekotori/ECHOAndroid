@@ -1,8 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="library_range_start">Set range start</string>
-    <string name="library_range_end">Select through here</string>
-    <string name="library_range_changed">The list changed. Choose a new starting song.</string>
-    <string name="library_range_unloaded">Some songs in this range are not loaded. Scroll through the range and try again.</string>
-    <string name="library_range_limit">Select at most 200 songs in total.</string>
 </resources>

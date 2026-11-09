@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">PC가 페어링 없는 접근을 거부했습니다. Echo Link를 켜고 PC에서 생성한 새 페어링 링크를 붙여 넣으세요. frp/Tailscale은 먼저 PC에 접속 가능한 외부 주소를 설정해야 합니다.</string>
+    <string name="connect_direct_unavailable">PC가 페어링 없는 연결을 거부했습니다. PC의 Echo Link → 휴대전화에서 페어링 링크를 생성한 후 휴대전화의 연결 화면에 붙여 넣으세요.</string>
 </resources>

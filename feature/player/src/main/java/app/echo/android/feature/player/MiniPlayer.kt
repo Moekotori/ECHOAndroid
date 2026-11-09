@@ -11,6 +11,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import app.echo.android.design.echoDrag
 import androidx.compose.foundation.basicMarquee
 import app.echo.android.design.echoClickable
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.lifecycle.Lifecycle
@@ -59,6 +61,7 @@ import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
+import app.echo.android.model.radio.EchoRadioStation
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -84,6 +87,7 @@ fun MiniPlayer(
     animationsVisible: Boolean = true,
     dockExpansion: State<Float>? = null,
     onSeek: ((Long) -> Unit)? = null,
+    onOpenLyrics: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val haptics = rememberEchoHapticPerformer()
@@ -101,6 +105,9 @@ fun MiniPlayer(
     val density = LocalDensity.current
     val flingThresholdPx = with(density) { 780.dp.toPx() }
     val minimumFlingDistancePx = with(density) { 12.dp.toPx() }
+    val lyricsSwipeThresholdPx = with(density) { 28.dp.toPx() }
+    val canOpenLyrics = onOpenLyrics != null && status.track != null && !EchoRadioStation.isRadio(status.track?.id)
+    val openLyrics by rememberUpdatedState(onOpenLyrics)
     val nextAction by rememberUpdatedState(onNext)
     val previousAction by rememberUpdatedState(onPrevious)
     val compactDock = onShowDock != null || onOpenQueue != null
@@ -135,7 +142,19 @@ fun MiniPlayer(
             .defaultMinSize(minHeight = 64.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = MiniPlayerProgressTouchHeight, bottom = 6.dp),
+            modifier = Modifier.fillMaxWidth()
+                .pointerInput(canOpenLyrics, lyricsSwipeThresholdPx) {
+                    if (!canOpenLyrics) return@pointerInput
+                    var dragDistance = 0f
+                    detectVerticalDragGestures(
+                        onDragStart = { dragDistance = 0f },
+                        onDragEnd = {
+                            if (dragDistance <= -lyricsSwipeThresholdPx) openLyrics?.invoke()
+                        },
+                        onVerticalDrag = { _, delta -> dragDistance += delta },
+                    )
+                }
+                .padding(start = 16.dp, end = 8.dp, top = MiniPlayerProgressTouchHeight, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(

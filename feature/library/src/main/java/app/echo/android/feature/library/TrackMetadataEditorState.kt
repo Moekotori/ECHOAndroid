@@ -50,6 +50,13 @@ internal class TrackMetadataEditorState(
     val discNumberValid: Boolean get() = discNumber.isValidMetadataNumber()
     val yearValid: Boolean get() = year.isValidMetadataNumber(max = 9999)
 
+    fun hasChanges(track: EchoTrack): Boolean =
+        title != track.title || artist != track.artist || album != track.album.orEmpty() ||
+            albumArtist != track.albumArtist.orEmpty() || composer != track.composer.orEmpty() ||
+            trackNumber != track.trackNumber?.toString().orEmpty() ||
+            discNumber != track.discNumber?.toString().orEmpty() ||
+            year != track.year?.toString().orEmpty() || artworkUri != null || lyricsEdited
+
     fun toUpdate(track: EchoTrack): EchoTrackMetadataUpdate =
         EchoTrackMetadataUpdate(
             trackId = track.id,
@@ -67,7 +74,10 @@ internal class TrackMetadataEditorState(
 }
 
 @Composable
-internal fun rememberTrackMetadataEditorState(track: EchoTrack): TrackMetadataEditorState {
+internal fun rememberTrackMetadataEditorState(
+    track: EchoTrack,
+    loadLyrics: suspend (String) -> String?,
+): TrackMetadataEditorState {
     // Retain the whole draft across configuration changes without serializing large lyrics.
     // Leaving the editor permanently retires the retained draft.
     val state = retain(track.id) {
@@ -82,11 +92,10 @@ internal fun rememberTrackMetadataEditorState(track: EchoTrack): TrackMetadataEd
             composer = track.composer.orEmpty()
         }
     }
-    val loader = LocalEmbeddedLyricsLoader.current
-    LaunchedEffect(track.id, loader) {
+    LaunchedEffect(track.id, loadLyrics) {
         state.lyricsLoading = true
         try {
-            state.loadLyrics(loader?.load(track.id).orEmpty())
+            state.loadLyrics(loadLyrics(track.id).orEmpty())
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {

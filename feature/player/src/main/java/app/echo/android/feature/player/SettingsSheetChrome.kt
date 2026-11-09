@@ -3,12 +3,15 @@ package app.echo.android.feature.player
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -24,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,6 +36,7 @@ import app.echo.android.design.EchoMotion
 import app.echo.android.design.EchoStateContent
 import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.LocalEchoPageInteractive
 import app.echo.android.design.echoAccentColor
 import app.echo.android.design.echoPageSection
 import app.echo.android.design.echoSheetSurface
@@ -75,12 +80,13 @@ internal fun SettingsSheetHeader(
     val titleColor = if (dark) Color.White else echoTheme().heading
     val mutedColor = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted
     val plate = settingsPlateColor()
+    val scrollTrackTitle = compact && !deeper && LocalEchoPageInteractive.current
     Row(
         modifier = Modifier
             .echoPageSection(0)
             .fillMaxWidth()
             .padding(bottom = if (compact) 4.dp else 10.dp)
-            .padding(horizontal = 6.dp),
+            .padding(start = 6.dp, end = if (compact) 0.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
     ) {
@@ -97,9 +103,17 @@ internal fun SettingsSheetHeader(
             }
         }
         EchoStateContent(title to subtitle, Modifier.weight(1f)) { (t, s) ->
+            val titleScroll = when {
+                !scrollTrackTitle || t != title -> Modifier
+                LocalEchoEffectivePerformanceMode.current.isLightweight -> Modifier.horizontalScroll(rememberScrollState())
+                LocalWindowInfo.current.isWindowFocused -> Modifier.basicMarquee(iterations = Int.MAX_VALUE)
+                else -> Modifier
+            }
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     t,
+                    modifier = titleScroll,
+                    softWrap = !scrollTrackTitle,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     color = titleColor,
                     style = MaterialTheme.typography.titleMedium,
@@ -114,16 +128,18 @@ internal fun SettingsSheetHeader(
                 )
             }
         }
-        actions()
-        GlyphButton(
-            icon = Icons.Rounded.Close,
-            description = closeDescription,
-            touchSize = if (compact) 48.dp else 40.dp,
-            iconSize = 20.dp,
-            tint = titleColor,
-            background = plate,
-            onClick = onClose,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            actions()
+            GlyphButton(
+                icon = Icons.Rounded.Close,
+                description = closeDescription,
+                touchSize = if (compact) 48.dp else 40.dp,
+                iconSize = if (compact) 18.dp else 20.dp,
+                tint = titleColor,
+                background = if (compact) Color.Transparent else plate,
+                onClick = onClose,
+            )
+        }
     }
 }
 

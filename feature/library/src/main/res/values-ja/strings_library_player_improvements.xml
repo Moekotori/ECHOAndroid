@@ -1,8 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="library_range_start">範囲の開始に設定</string>
-    <string name="library_range_end">ここまで選択</string>
-    <string name="library_range_changed">リストが変更されました。開始曲を選び直してください。</string>
-    <string name="library_range_unloaded">未読込の曲があります。範囲をスクロールして再試行してください。</string>
-    <string name="library_range_limit">合計で最大 200 曲まで選択できます。</string>
 </resources>

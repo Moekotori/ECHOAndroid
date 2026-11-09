@@ -42,7 +42,7 @@ import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
 
 /**
- * Song page of the full-cover style. The cover is painted edge to edge behind the page by
+ * Song page of the full-cover style. The artwork and its surrounding colors are painted by
  * [FullCoverBackdrop]; this page only adds title, progress and the standard transport icons.
  * Tapping the picture opens the lyrics.
  */
@@ -62,7 +62,7 @@ internal fun FullCoverCoverPage(
         playbackFormatChips(status.diagnostics, ::formatSampleRate).take(2).joinToString(" · ")
     }
     val lyricsLabel = stringResource(R.string.feature_player_lyrics_b90c97)
-    val muted = Color.White.copy(alpha = 0.62f)
+    val muted = Color.White.copy(alpha = 0.82f)
     PlayerCoverLayout(
         minimumPortraitHeight = (560f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp,
         modifier = modifier,
@@ -80,7 +80,7 @@ internal fun FullCoverCoverPage(
                     Text(
                         track?.let { displayArtist(it.artist) } ?: stringResource(R.string.feature_player_pick_a_song_to_start_68b6af),
                         Modifier.fillMaxWidth().openArtistWhen(track?.id, track?.artist, actions.openArtist),
-                        color = Color.White.copy(alpha = 0.72f), fontSize = 14.sp,
+                        color = muted, fontSize = 14.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, style = shadow,
                     )
                 }

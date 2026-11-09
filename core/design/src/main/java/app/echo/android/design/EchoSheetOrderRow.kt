@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,16 +29,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * A reorderable, hideable entry for layout editors. Hidden entries fade back instead of vanishing,
- * and the numbered plate always shows where the entry currently sits.
+ * A reorderable, hideable entry for layout editors. Compact rows use a plain index and an eye
+ * toggle while keeping the toggle and drag handle at 48 dp.
  */
 @Composable
 fun EchoSheetOrderRow(
@@ -53,6 +59,7 @@ fun EchoSheetOrderRow(
     dragState: EchoOrderDragState,
     itemKey: String,
     enabled: Boolean = true,
+    compact: Boolean = false,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val dim by animateFloatAsState(
@@ -61,7 +68,7 @@ fun EchoSheetOrderRow(
         label = "echo-order-row-dim",
     )
     Row(
-        modifier.fillMaxWidth().heightIn(min = 60.dp)
+        modifier.fillMaxWidth().heightIn(min = if (compact) 48.dp else 60.dp)
             .zIndex(if (dragState.source == itemKey) 1f else 0f)
             .graphicsLayer {
                 translationY = if (dragState.source == itemKey) {
@@ -78,23 +85,32 @@ fun EchoSheetOrderRow(
                 }
             }.padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 0.dp else 10.dp),
     ) {
         Row(
             Modifier.weight(1f).graphicsLayer { alpha = dim },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 14.dp),
         ) {
-            Box(
-                Modifier.size(34.dp).clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
-                contentAlignment = Alignment.Center,
-            ) {
+            if (compact) {
                 Text(
-                    position.toString(),
-                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    position.toString().padStart(2, '0'),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            } else {
+                Box(
+                    Modifier.size(34.dp).clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        position.toString(),
+                        style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
             Text(
                 label, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -102,10 +118,31 @@ fun EchoSheetOrderRow(
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
-        EchoSwitch(
-            checked = visible, onCheckedChange = onVisibleChange, enabled = switchEnabled && enabled,
-            modifier = Modifier.semantics { contentDescription = label },
-        )
+        if (compact) {
+            Box(
+                Modifier.size(48.dp).clip(CircleShape)
+                    .toggleable(
+                        value = visible,
+                        enabled = switchEnabled && enabled,
+                        role = Role.Switch,
+                        onValueChange = onVisibleChange,
+                    )
+                    .semantics { contentDescription = label },
+                contentAlignment = Alignment.Center,
+            ) {
+                EchoIcon(
+                    if (visible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (visible) 1f else 0.65f),
+                )
+            }
+        } else {
+            EchoSwitch(
+                checked = visible, onCheckedChange = onVisibleChange, enabled = switchEnabled && enabled,
+                modifier = Modifier.semantics { contentDescription = label },
+            )
+        }
         if (enabled) EchoOrderDragHandle(itemKey, dragState)
     }
 }
@@ -120,9 +157,10 @@ fun EchoSheetActionBar(
     modifier: Modifier = Modifier,
     resetLabel: String? = null,
     onReset: (() -> Unit)? = null,
+    compact: Boolean = false,
 ) {
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = if (compact) 4.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

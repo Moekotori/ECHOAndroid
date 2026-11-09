@@ -160,7 +160,7 @@ internal fun EchoNowPlayingHost(
         playerTextScale = appSettings.playerTextScale,
         playerArtworkScale = appSettings.playerArtworkScale,
         onPlayerAppearanceChange = viewModel::setPlayerAppearance,
-        appearancePacks = { app.echo.android.appearance.EchoAppearancePacks() },
+        appearancePacks = { app.echo.android.appearance.EchoAppearancePacks(it) },
         lyricsFontFamily = lyricsFontFamily,
         lyricsPageStyle = appSettings.lyricsPageStyle,
         lyricsBackdrop = appSettings.lyricsBackdrop,

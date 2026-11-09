@@ -4,4 +4,9 @@
     <string name="metadata_lyrics">Liedtext</string>
     <string name="metadata_choose_artwork">Cover wählen</string>
     <string name="album_cue_banner">Ganzes Album-CUE · nach Sätzen spielen</string>
+    <string name="metadata_track_details">Titelinformationen</string>
+    <string name="metadata_release">Veröffentlichung</string>
+    <string name="metadata_discard_title">Ungespeicherte Änderungen verwerfen?</string>
+    <string name="metadata_discard">Verwerfen</string>
+    <string name="metadata_keep_editing">Weiter bearbeiten</string>
 </resources>

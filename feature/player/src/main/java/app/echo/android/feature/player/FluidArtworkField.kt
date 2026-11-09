@@ -29,14 +29,14 @@ internal class FluidArtworkField(palette: ArtworkPalette) : BackdropField {
         val time = elapsedMs / 1000.0
         for (field in fields) {
             val phase = field.phase
-            val x = width * (field.x + 0.24f * sin(time * 0.13 + phase).toFloat())
-            val y = height * (field.y + 0.20f * cos(time * 0.11 + phase).toFloat())
-            val breathing = 1f + 0.12f * sin(time * 0.09 + phase).toFloat()
+            val x = width * (field.x + 0.24f * sin(time * 0.32 + phase).toFloat())
+            val y = height * (field.y + 0.20f * cos(time * 0.27 + phase).toFloat())
+            val breathing = 1f + 0.12f * sin(time * 0.22 + phase).toFloat()
             field.paint.alpha = alpha
             // Animate recorded canvas commands; keep the cached shader itself immutable.
             val checkpoint = canvas.save()
             canvas.translate(x, y)
-            canvas.rotate((sin(time * 0.07 + phase) * 28.0).toFloat())
+            canvas.rotate((sin(time * 0.17 + phase) * 28.0).toFloat())
             canvas.scale(width * 0.80f * breathing, height * 0.62f / breathing)
             canvas.drawCircle(0f, 0f, 1f, field.paint)
             canvas.restoreToCount(checkpoint)

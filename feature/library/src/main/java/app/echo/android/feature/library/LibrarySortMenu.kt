@@ -13,14 +13,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -41,7 +40,51 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.EchoModalSheet
 import app.echo.android.design.EchoSheetHeader
+import app.echo.android.design.EchoSwitch
 import app.echo.android.design.echoClickable
+import app.echo.android.model.library.ArtistSortMode
+
+@Composable
+internal fun LibraryArtistSortMenu(
+    selectedSortMode: ArtistSortMode,
+    onSortModeChange: (ArtistSortMode) -> Unit,
+    onCustomize: (() -> Unit)? = null,
+    linked: Boolean = false,
+    showAlbumArtists: Boolean = false,
+    onShowAlbumArtistsChange: ((Boolean) -> Unit)? = null,
+) {
+    LibrarySortMenu(
+        selected = selectedSortMode,
+        options = ArtistSortMode.entries,
+        label = { it.label() },
+        contentDescription = stringResource(R.string.feature_library_set_artist_sort_order_e15a06),
+        onSelect = onSortModeChange,
+        onCustomize = onCustomize,
+        scopeNote = if (linked) stringResource(R.string.library_sort_loaded_items) else null,
+        additionalOptions = { dismiss ->
+            if (onShowAlbumArtistsChange != null) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .toggleable(value = showAlbumArtists, role = Role.Switch, onValueChange = {
+                            dismiss()
+                            onShowAlbumArtistsChange(it)
+                        })
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.library_show_album_artists),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    EchoSwitch(checked = showAlbumArtists, onCheckedChange = null)
+                }
+            }
+        },
+    )
+}
 
 /** Shared by local and linked library categories; sorting stays with the existing caller. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,15 +98,10 @@ internal fun <T> LibrarySortMenu(
     onCustomize: (() -> Unit)? = null,
     scopeNote: String? = null,
     section: (T) -> Int = { 0 },
+    additionalOptions: @Composable (dismiss: () -> Unit) -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
-    IconButton(onClick = { expanded = true }) {
-        EchoIcon(
-            Icons.AutoMirrored.Rounded.Sort,
-            contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    LibrarySortButton(contentDescription = contentDescription, onClick = { expanded = true })
     if (!expanded) return
 
     val maxContentHeight = minOf(720.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.82f })
@@ -79,6 +117,7 @@ internal fun <T> LibrarySortMenu(
             // Bound the scrolling content, not the sheet, so its expanded anchor remains stable.
             Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
                 LibrarySortChoices(selected, options, label, onSelect = { expanded = false; onSelect(it) }, section = section)
+                additionalOptions { expanded = false }
             }
             if (onCustomize != null) {
                 Row(

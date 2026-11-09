@@ -62,6 +62,18 @@ class TrackMetadataEditorStateTest {
     }
 
     @Test
+    fun loadedLyricsDoNotMarkDraftAsEditedButClearingThemDoes() {
+        val state = TrackMetadataEditorState().apply {
+            title = track.title
+            artist = track.artist
+        }
+        state.loadLyrics("original lyrics")
+        assertFalse(state.hasChanges(track))
+        state.editLyrics("")
+        assertTrue(state.hasChanges(track))
+    }
+
+    @Test
     fun explicitEditsIncludingClearingAreSentToWriter() {
         val state = TrackMetadataEditorState()
         state.loadLyrics("original lyrics")

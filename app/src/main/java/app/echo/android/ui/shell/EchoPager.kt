@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
@@ -56,26 +55,6 @@ internal val EchoPagerPage.dockTab: EchoTab?
 private const val ROUTE_MOTION_BASE_DURATION_MS = 420
 private const val ROUTE_MOTION_DISTANCE_DURATION_MS = 48
 private const val ROUTE_MOTION_MAX_DURATION_MS = 560
-
-@Composable
-internal fun rememberDockPagerFlingBehavior(
-    state: PagerState,
-    effectivePerformanceMode: EchoEffectivePerformanceMode,
-): TargetedFlingBehavior {
-    val lightweight = effectivePerformanceMode.isLightweight
-    val snap = remember(lightweight) {
-        spring<Float>(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = EchoMotion.silkStiffness(if (lightweight) 100 else 200),
-            visibilityThreshold = 0.5f,
-        )
-    }
-    return PagerDefaults.flingBehavior(
-        state = state,
-        snapAnimationSpec = snap,
-        snapPositionalThreshold = 0.2f,
-    )
-}
 
 /** Prewarm Home and Library without mounting a new offscreen destination during their swipe. */
 @Composable

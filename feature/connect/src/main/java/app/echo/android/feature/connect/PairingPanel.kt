@@ -162,10 +162,13 @@ internal fun PcLinkPanel(
     }
     val keyboard = LocalSoftwareKeyboardController.current
     val connect = { if (endpoint != null && !busy) { keyboard?.hide(); onConnectPc(endpoint.address, endpoint.token) } }
-    val selectPc: (String, String, Boolean) -> Unit = { selectedAddress, selectedToken, requiresPairing ->
-        address = selectedAddress
-        manual = requiresPairing && selectedToken.isBlank()
-        if (!manual && !busy) onConnectPc(selectedAddress, selectedToken)
+    val connectDevice: (String, String) -> Unit = { deviceAddress, token ->
+        if (!busy) {
+            keyboard?.hide()
+            address = deviceAddress
+            manual = false
+            onConnectPc(deviceAddress, token)
+        }
     }
     LaunchedEffect(remoteState) {
         if (remoteState == EchoRemoteConnectionState.Error) manual = true
@@ -187,12 +190,13 @@ internal fun PcLinkPanel(
     }
     val listenTitle = stringResource(L10nR.string.feature_connect_listen_together_title)
     val listenDetail = stringResource(L10nR.string.feature_connect_listen_together_detail)
+    val manualError = remoteError?.takeIf { manual && remoteState == EchoRemoteConnectionState.Error }
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         PcLinkHero(
             title = if (connected || hasSaved) pcTitle else stringResource(L10nR.string.remote_connect_title),
             state = remoteState,
             showRequirement = !connected && !busy,
-            error = remoteError,
+            error = if (manualError == null) remoteError else null,
         ) {
             when {
                 busy -> {
@@ -206,7 +210,7 @@ internal fun PcLinkPanel(
                     Text(stringResource(L10nR.string.feature_connect_disconnect_pc_fd446c))
                 }
                 hasSaved && !manual && savedPcs.isEmpty() -> Button(
-                    onClick = { selectPc(savedPcAddress.orEmpty(), savedPcToken.orEmpty(), false) },
+                    onClick = { connectDevice(savedPcAddress.orEmpty(), savedPcToken.orEmpty()) },
                     shape = ConnectControlShape, modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(L10nR.string.feature_connect_reconnect_pc_ea8c5f)) }
             }
@@ -249,7 +253,7 @@ internal fun PcLinkPanel(
                                 name = pc.name,
                                 address = pc.address,
                                 actionLabel = stringResource(L10nR.string.feature_connect_connect_c7c091),
-                                onConnect = { selectPc(pc.address, pc.token.orEmpty(), false) },
+                                onConnect = { connectDevice(pc.address, pc.token.orEmpty()) },
                                 onForget = { onForgetSavedPc(pc) },
                             )
                         }
@@ -266,16 +270,16 @@ internal fun PcLinkPanel(
                     }
                     discoveredLanDevices.forEachIndexed { index, device ->
                         if (index > 0) ConnectRowDivider()
+                        val deviceAddress = EchoLinkDiscoveryPolicy.addressLabel(device)
                         PcDeviceRow(
                             name = device.name,
                             address = if (device.libraryOnly) stringResource(L10nR.string.echo_bridge_library_note)
-                                else EchoLinkDiscoveryPolicy.addressLabel(device),
-                            actionLabel = stringResource(if (device.requiresPairing) L10nR.string.feature_connect_select_21bce2 else L10nR.string.feature_connect_connect_c7c091),
+                                else deviceAddress,
+                            actionLabel = stringResource(L10nR.string.feature_connect_connect_c7c091),
                             onConnect = {
-                                val saved = savedPcs.firstOrNull { EchoLinkDiscoveryPolicy.addressMatchesDevice(it.address, device) }
-                                val selectedToken = if (device.libraryOnly) "" else saved?.token?.takeIf { it.isNotBlank() }
-                                    ?: EchoLinkDiscoveryPolicy.tokenAfterSelecting(device, savedPcAddress, savedPcToken)
-                                selectPc(EchoLinkDiscoveryPolicy.addressLabel(device), selectedToken, device.requiresPairing)
+                                val token = if (device.libraryOnly) "" else
+                                    EchoManualConnectionInput.resolve(deviceAddress, savedPcs, currentPc)?.token.orEmpty()
+                                connectDevice(deviceAddress, token)
                                 onSelectLanDevice(device)
                             },
                         )
@@ -289,6 +293,7 @@ internal fun PcLinkPanel(
                     canConnect = endpoint != null,
                     onConnect = connect,
                     modifier = Modifier.bringIntoViewRequester(connectionEntry),
+                    connectionError = manualError,
                 )
             }
         }

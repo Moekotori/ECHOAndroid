@@ -68,7 +68,7 @@ internal fun NowPlayingLyricsPage(
     modifier: Modifier = Modifier,
     animationsVisible: Boolean = true,
     pageReveal: () -> Float = { 1f },
-    /** Only the lyric list: the host page supplies heading, transport and backdrop. */
+    /** The host page supplies heading, transport and backdrop. */
     embedded: Boolean = false,
     outputDelayMs: Int = 0,
 ) {
@@ -137,7 +137,6 @@ internal fun NowPlayingLyricsPage(
                                         lyricsFontFamily = lyricsFontFamily,
                                         lyricsFontScale = lyricsFontScale,
                                         lyricAccent = lyricAccent,
-                                        highlightColor = if (lyricsColorMode == "white") MaterialTheme.colorScheme.primary else lyricAccent,
                                         paper = paper,
                                         lyricsAlignment = lyricsAlignment,
                                         lyricsLineSpacing = lyricsLineSpacing,
@@ -160,7 +159,7 @@ internal fun NowPlayingLyricsPage(
                                         lyrics = lyricsState.lyrics, position = displayPosition,
                                         durationMs = durationMsState.value, onSeek = onSeek, onAdjustOffset = onAdjustLyricsOffset,
                                         fontFamily = lyricsFontFamily, fontScale = lyricsFontScale, spacing = lyricsLineSpacing,
-                                        color = lyricAccent, highlight = MaterialTheme.colorScheme.primary,
+                                        color = lyricAccent, highlight = lyricAccent,
                                         wordHighlight = lyricsWordHighlightEnabled, estimatedHighlight = lyricsEstimatedWordHighlightEnabled,
                                         highlightIntensity = lyricsWordHighlightIntensity,
                                         showTranslation = lyricsShowTranslation, showRomanization = lyricsShowRomanization,
@@ -206,7 +205,12 @@ internal fun NowPlayingLyricsPage(
                         }
                     }
             }
-            if (embedded) lyricsBody() else LyricsPageLayout(
+            if (embedded) {
+                Column(Modifier.fillMaxSize()) {
+                    Box(Modifier.weight(1f)) { lyricsBody() }
+                    readyLyrics?.let { LyricsInfoRow(it, color = ChatStyle.Muted) }
+                }
+            } else LyricsPageLayout(
                 supportingPane = !showTransportDock,
                 heading = { landscape ->
                     Box(Modifier.fillMaxWidth().lyricsPageEntrance(pageReveal, lightweight, travelDp = 10f)) {
@@ -249,6 +253,9 @@ internal fun NowPlayingLyricsPage(
                     }
                     }
                     if (!landscape) controlDeck()
+                    if (!showLyricsControlDeck && readyLyrics != null) {
+                        LyricsInfoRow(readyLyrics, Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                    }
                     if (showTransportDock) {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(top = 4.dp, bottom = 4.dp)) {

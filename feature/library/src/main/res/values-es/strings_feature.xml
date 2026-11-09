@@ -46,7 +46,6 @@
     <string name="feature_library_create_7b4bc9">"Crear"</string>
     <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"Escribe etiquetas de formatos compatibles en el archivo de audio cuando Android lo permite. De lo contrario, esto permanece en el índice de la biblioteca de ECHOAndroid."</string>
     <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"Escribe etiquetas de formatos compatibles, incluida la letra y la portada importadas, en el archivo de audio cuando Android lo permite."</string>
-    <string name="feature_library_custom_artwork_c8c999">"Portada personalizada"</string>
     <string name="feature_library_delete_138ccf">"Eliminar"</string>
     <string name="feature_library_delete_playlist_4d9753">"Eliminar lista"</string>
     <string name="feature_library_delete_playlist_name_songs_in_the_library_will_3541db">"¿Eliminar “%1$s”? Las canciones de la biblioteca no se eliminarán."</string>

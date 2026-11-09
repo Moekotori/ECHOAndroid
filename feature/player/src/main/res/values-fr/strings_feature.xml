@@ -55,7 +55,7 @@
     <string name="feature_player_next_d67904">"Suivant"</string>
     <string name="feature_player_nightcore_pitch_65449f">"Hauteur Nightcore"</string>
     <string name="feature_player_no_data_5a8239">"Aucune donnée"</string>
-    <string name="feature_player_no_matching_lyrics_found_7ffc7e">"Aucune parole correspondante"</string>
+    <string name="feature_player_no_matching_lyrics_found_7ffc7e">"Aucune parole disponible"</string>
     <string name="feature_player_normal_speed_a8fc98">"Vitesse normale"</string>
     <string name="feature_player_not_playing_d72324">"Pas de lecture"</string>
     <string name="feature_player_open_artist">"Voir l’artiste"</string>

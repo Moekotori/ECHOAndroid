@@ -19,6 +19,7 @@ import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -37,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.unit.dp
@@ -63,6 +65,8 @@ fun <T> EchoPageContent(
     back: EchoPageBack<T>? = null,
     /** Hosts [echoSharedCover] flights between pages. The caller sizes the host through [modifier]. */
     sharedElements: Boolean = false,
+    /** Keeps a base page mounted below the stack, including while a detail fully covers it. */
+    retainedPage: T? = null,
     content: @Composable (T) -> Unit,
 ) {
     val motion = rememberEchoContentMotion()
@@ -111,6 +115,7 @@ fun <T> EchoPageContent(
     }
     val navigation = rememberTransition(seekable, label = label)
     val returning = isBackward(navigation.currentState, navigation.targetState)
+    val retainedKey = retainedPage?.let(contentKey)
     val pages: @Composable (Modifier) -> Unit = { pagesModifier ->
     navigation.AnimatedContent(
         contentKey = contentKey,
@@ -134,6 +139,11 @@ fun <T> EchoPageContent(
             )
         },
     ) { page ->
+        if (contentKey(page) == retainedKey) {
+            // The actual page lives below AnimatedContent so a pop can reuse its layout and items.
+            Spacer(Modifier.fillMaxSize())
+            return@AnimatedContent
+        }
         val corners = transition.animateFloat(
             transitionSpec = { if (lightweight || fadeOnly) tween(0) else EchoMotion.silkFloat(EchoMotion.PageMs) },
             label = "page-corners",
@@ -175,7 +185,23 @@ fun <T> EchoPageContent(
         }
     }
     }
-    if (sharedElements && !lightweight) {
+    if (retainedPage != null) {
+        Box(modifier) {
+            EchoPageSurface(
+                active = pageKey == retainedKey,
+                modifier = Modifier.drawWithContent {
+                    if (contentKey(navigation.currentState) == retainedKey ||
+                        contentKey(navigation.targetState) == retainedKey
+                    ) {
+                        drawContent()
+                    }
+                },
+            ) {
+                content(retainedPage)
+            }
+            pages(Modifier.matchParentSize())
+        }
+    } else if (sharedElements && !lightweight) {
         SharedTransitionLayout(modifier) {
             CompositionLocalProvider(LocalEchoPageSharedScope provides this) { pages(Modifier.fillMaxSize()) }
         }

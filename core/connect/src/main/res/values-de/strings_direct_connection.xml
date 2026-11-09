@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">Der PC hat Zugriff ohne Kopplung abgelehnt. Echo Link aktivieren und einen neuen Kopplungslink vom PC einfügen. Für frp/Tailscale zuerst eine erreichbare externe Adresse am PC einrichten.</string>
+    <string name="connect_direct_unavailable">Der PC hat die Verbindung ohne Kopplung abgelehnt. Erstelle am PC unter Echo Link → Smartphone einen Kopplungslink und füge ihn auf dem Smartphone auf der Verbindungsseite ein.</string>
 </resources>

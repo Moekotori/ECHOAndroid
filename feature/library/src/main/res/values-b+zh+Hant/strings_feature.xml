@@ -46,7 +46,6 @@
     <string name="feature_library_create_7b4bc9">"建立"</string>
     <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"在系統允許寫入時，會把 支援格式的標籤寫進音訊檔案；否則只儲存在 ECHOAndroid 音樂庫索引。"</string>
     <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"在系統允許寫入時，會把 支援格式的標籤寫進音訊檔案，包括匯入的歌詞和封面。"</string>
-    <string name="feature_library_custom_artwork_c8c999">"自訂封面"</string>
     <string name="feature_library_delete_138ccf">"刪除"</string>
     <string name="feature_library_delete_playlist_4d9753">"刪除歌單"</string>
     <string name="feature_library_delete_playlist_name_songs_in_the_library_will_3541db">"刪除「%1$s」？音樂庫裡的歌曲不會被刪除。"</string>

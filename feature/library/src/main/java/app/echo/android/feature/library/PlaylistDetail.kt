@@ -70,7 +70,6 @@ internal fun PlaylistDetailPage(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
-    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
@@ -84,7 +83,6 @@ internal fun PlaylistDetailPage(
     onSharePlaylist: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val rangeSource = rememberLibraryRangeSource(tracks)
     val loadedTracks = tracks.itemSnapshotList.items
     val displayName = playlistDisplayName(playlist)
     val coverUris = remember(playlist.id, playlist.artworkUri, loadedTracks) {
@@ -231,7 +229,6 @@ internal fun PlaylistDetailPage(
                     val track = tracks[index]
                     if (track == null) PlaylistTrackPlaceholder(editing) else {
                         PlaylistTrackRow(
-                            rangeSource = rangeSource,
                             modifier = libraryTrackItemMotion().then(
                                 when {
                                     drag.source == track.id -> Modifier.alpha(0.45f)
@@ -248,7 +245,6 @@ internal fun PlaylistDetailPage(
                             onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                             onAddToPlaylist = onAddToPlaylist,
                             onPlayNext = onPlayNext,
-                            onAddNextUp = onAddNextUp,
                             onEnqueue = onEnqueue,
                             onRemoveFromPlaylist = if (!playlist.canRemoveTracks) null else ::removeTrack,
                             onMoveUp = if (playlist.canEdit && order.isManual && index > 0) ({

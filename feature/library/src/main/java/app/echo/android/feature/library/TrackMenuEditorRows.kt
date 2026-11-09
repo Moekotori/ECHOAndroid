@@ -20,11 +20,12 @@ internal fun LazyListScope.trackMenuEditorRows(layout: EchoLibraryLayout, drag: 
             Text(stringResource(R.string.track_menu_detail), style = MaterialTheme.typography.bodySmall)
         }
     }
-    itemsIndexed(layout.trackActionOrder, key = { _, action -> "menu:${action.id}" }) { index, action ->
+    val actions = layout.editableTrackActions
+    itemsIndexed(actions, key = { _, action -> "menu:${action.id}" }) { index, action ->
         val label = stringResource(when (action) {
             EchoTrackMenuAction.EditTags -> R.string.feature_library_edit_tags_c8ec75
             EchoTrackMenuAction.ImportLyrics -> R.string.feature_library_import_lrc_lyrics_8e2810
-            EchoTrackMenuAction.Artwork -> R.string.feature_library_custom_artwork_c8c999
+            EchoTrackMenuAction.Artwork -> return@itemsIndexed
             EchoTrackMenuAction.Versions -> R.string.track_versions_title
             EchoTrackMenuAction.Hide -> R.string.hidden_track_hide
             EchoTrackMenuAction.Delete -> R.string.feature_library_delete_138ccf
@@ -32,7 +33,7 @@ internal fun LazyListScope.trackMenuEditorRows(layout: EchoLibraryLayout, drag: 
         EchoSheetOrderRow(
             position = index + 1, label = label, visible = action !in layout.hiddenTrackActions,
             dragState = drag, itemKey = "menu:${action.id}",
-            canMoveUp = index > 0, canMoveDown = index < layout.trackActionOrder.lastIndex,
+            canMoveUp = index > 0, canMoveDown = index < actions.lastIndex,
             moveUpDescription = stringResource(R.string.library_layout_move_up, label),
             moveDownDescription = stringResource(R.string.library_layout_move_down, label),
             onMoveUp = { onChange(layout.moveTrackAction(action, -1)) },
@@ -44,8 +45,12 @@ internal fun LazyListScope.trackMenuEditorRows(layout: EchoLibraryLayout, drag: 
     }
 }
 
+// Saved layouts can still contain the retired artwork action.
+private val EchoLibraryLayout.editableTrackActions: List<EchoTrackMenuAction>
+    get() = trackActionOrder.filterNot { it == EchoTrackMenuAction.Artwork }
+
 private fun EchoLibraryLayout.moveTrackAction(action: EchoTrackMenuAction, delta: Int): EchoLibraryLayout {
-    val order = trackActionOrder.toMutableList()
+    val order = editableTrackActions.toMutableList()
     val from = order.indexOf(action)
     val to = (from + delta).coerceIn(order.indices)
     order.add(to, order.removeAt(from))

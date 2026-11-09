@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">The PC rejected access without pairing. Check that Echo Link is enabled, then paste a new pairing link generated on the PC. For frp/Tailscale, configure a reachable external address on the PC first.</string>
+    <string name="connect_direct_unavailable">The PC rejected access without pairing. In Echo Link → Phone on the PC, generate a pairing link and paste it on the phone’s Connect page.</string>
 </resources>

@@ -46,10 +46,8 @@ internal fun TrackActionSheet(
     track: EchoTrack,
     canEditMetadata: Boolean,
     canImportLyrics: Boolean,
-    canPickArtwork: Boolean,
     canAddToPlaylist: Boolean,
     canPlayNext: Boolean,
-    canAddNextUp: Boolean,
     canEnqueue: Boolean,
     canRemoveFromPlaylist: Boolean,
     canMoveUp: Boolean,
@@ -63,10 +61,8 @@ internal fun TrackActionSheet(
     onOpenAlbum: () -> Unit,
     onEdit: () -> Unit,
     onImportLyrics: () -> Unit,
-    onPickArtwork: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onPlayNext: () -> Unit,
-    onAddNextUp: () -> Unit,
     onEnqueue: () -> Unit,
     onRemoveFromPlaylist: () -> Unit,
     onMoveUp: () -> Unit,
@@ -77,8 +73,6 @@ internal fun TrackActionSheet(
     onVersions: (() -> Unit)? = null,
     onHide: (() -> Unit)? = null,
     onShare: (() -> Unit)? = null,
-    onRangeStart: (() -> Unit)? = null,
-    onRangeEnd: (() -> Unit)? = null,
 ) {
     // Constrain content, not the ModalBottomSheet: its anchors need the full window height.
     // Short windows need more room for actions while retaining the handle and safe insets.
@@ -109,8 +103,6 @@ internal fun TrackActionSheet(
             if (onSelectForBatch != null) {
                 TrackActionRow(stringResource(L10nR.string.library_multiselect), Icons.Rounded.Checklist, enabled = true, onClick = onSelectForBatch)
             }
-            if (onRangeStart != null) TrackActionRow(stringResource(L10nR.string.library_range_start), Icons.Rounded.Checklist, true, onRangeStart)
-            if (onRangeEnd != null) TrackActionRow(stringResource(L10nR.string.library_range_end), Icons.Rounded.Checklist, true, onRangeEnd)
             TrackActionRow(stringResource(L10nR.string.feature_library_play_38419a), Icons.Rounded.PlayArrow, enabled = true, onClick = onPlay)
             if (canPlayOnPc) {
                 TrackActionRow(
@@ -135,9 +127,6 @@ internal fun TrackActionSheet(
                     enabled = true,
                     onClick = onOpenAlbum,
                 )
-            }
-            if (canAddNextUp) {
-                TrackActionRow(stringResource(L10nR.string.queue_add_next_up), Icons.Rounded.Queue, enabled = true, onClick = onAddNextUp)
             }
             if (canPlayNext) {
                 TrackActionRow(
@@ -181,7 +170,7 @@ internal fun TrackActionSheet(
                 if (shown(action)) when (action) {
                     EchoTrackMenuAction.EditTags -> TrackActionRow(stringResource(L10nR.string.feature_library_edit_tags_c8ec75), Icons.Rounded.Edit, canEditMetadata, onEdit)
                     EchoTrackMenuAction.ImportLyrics -> TrackActionRow(stringResource(L10nR.string.feature_library_import_lrc_lyrics_8e2810), Icons.Rounded.UploadFile, canImportLyrics, onImportLyrics)
-                    EchoTrackMenuAction.Artwork -> TrackActionRow(stringResource(L10nR.string.feature_library_custom_artwork_c8c999), Icons.Rounded.Album, canPickArtwork, onPickArtwork)
+                    EchoTrackMenuAction.Artwork -> Unit
                     EchoTrackMenuAction.Versions -> if (onVersions != null) TrackActionRow(stringResource(L10nR.string.track_versions_title), Icons.Rounded.Album, true, onVersions)
                     EchoTrackMenuAction.Hide -> if (onHide != null) TrackActionRow(stringResource(L10nR.string.hidden_track_hide), Icons.Rounded.VisibilityOff, true, onHide)
                     EchoTrackMenuAction.Delete -> if (onDelete != null) TrackActionRow(stringResource(L10nR.string.feature_library_delete_138ccf), Icons.Rounded.DeleteOutline, true, onDelete, danger = true)

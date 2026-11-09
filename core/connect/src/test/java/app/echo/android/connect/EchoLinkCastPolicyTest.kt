@@ -81,6 +81,22 @@ class EchoLinkCastPolicyTest {
     }
 
     @Test
+    fun limitingPcLibraryHandoffKeepsTheCurrentTrackWithoutCheckingLaterTracks() {
+        val tracks = listOf("before", "current", "next").map { id ->
+            source(id = EchoLinkPlaybackUri.mediaId(id), uri = EchoLinkPlaybackUri.persistUri(id))
+        }
+        val plan = EchoLinkCastPolicy.plan(
+            tracks = tracks.dropLast(1) + tracks.last().copy(clipEndMs = 1_000),
+            startIndex = 1,
+            maxTracks = Int.MAX_VALUE,
+            pcLibraryTrackLimit = 1,
+        ) as EchoLinkCastPlan.HandoffPcLibrary
+
+        assertEquals(listOf("current"), plan.tracks.map { it.id })
+        assertEquals(0, plan.startIndex)
+    }
+
+    @Test
     fun clippedTracksBlockTheWholeCastRun() {
         val whole = source("whole", "content://media/1")
         val clip = source("clip", "content://media/2").copy(clipStartMs = 60000, clipEndMs = 120000)

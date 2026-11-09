@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_layout_title">ホームを編集</string>
-    <string name="home_layout_detail">ハンドルをドラッグして並べ替え、スイッチで表示・非表示を切り替えます。データのない項目はデータが利用可能になると表示されます。</string>
+    <string name="home_layout_detail">ドラッグで並べ替え、目のアイコンで表示を切り替えます。</string>
     <string name="home_layout_move_up">%1$sを上へ移動</string>
     <string name="home_layout_move_down">%1$sを下へ移動</string>
     <string name="home_layout_reset">初期設定に戻す</string>

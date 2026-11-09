@@ -76,6 +76,7 @@ fun HomeScreen(
     onHomeLayoutChange: ((EchoHomeLayout) -> Unit)? = null,
     onOpenPlaybackHistory: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
+    animateSectionEntrance: Boolean = true,
 ) {
     var editingLayout by rememberSaveable { mutableStateOf(false) }
     val layout = remember(homeLayout) { homeLayout.normalized() }
@@ -103,7 +104,7 @@ fun HomeScreen(
         Box(Modifier.fillMaxSize().background(echoPageBackgroundColor()), contentAlignment = Alignment.TopCenter) {
             HomeAdaptiveFeed(bottomInset) {
                 item(key = "header", span = { GridItemSpan(maxLineSpan) }) {
-                    HomeSectionEntrance(0) {
+                    HomeSectionEntrance(0, animateSectionEntrance) {
                         HomeHeader(onOpenSearch, onEditLayout = if (onHomeLayoutChange != null) {
                             { editingLayout = true }
                         } else null, onOpenHistory = onOpenPlaybackHistory,
@@ -134,12 +135,14 @@ fun HomeScreen(
                     when (section) {
                         EchoHomeSection.Resume -> if (status.track != null && status.state != EchoPlaybackState.Error) {
                             item(key = section.id, span = { GridItemSpan(maxLineSpan) }) {
-                                HomeSectionEntrance(1) { HomeResumeSection(status, positionState, onResumePlayback) }
+                                HomeSectionEntrance(1, animateSectionEntrance) {
+                                    HomeResumeSection(status, positionState, onResumePlayback)
+                                }
                             }
                         }
                         EchoHomeSection.Recent -> if (hasRecentMusic) {
                             item(key = section.id) {
-                                HomeSectionEntrance(2) {
+                                HomeSectionEntrance(2, animateSectionEntrance) {
                                     RoonRecentActivitySection(
                                         recentPlayedAlbums = recentPlayedAlbums,
                                         recentlyAddedAlbums = recentlyAddedAlbums,
@@ -153,7 +156,9 @@ fun HomeScreen(
                         }
                         EchoHomeSection.DailyAlbum -> if (dailyAlbums.isNotEmpty()) {
                             item(key = section.id) {
-                                HomeSectionEntrance(3) { HomeDailyAlbumSection(dailyAlbums, onPlayAlbum, onOpenAlbum) }
+                                HomeSectionEntrance(3, animateSectionEntrance) {
+                                    HomeDailyAlbumSection(dailyAlbums, onPlayAlbum, onOpenAlbum)
+                                }
                             }
                         }
                         EchoHomeSection.Recommended -> if (distinctRecommendations.isNotEmpty()) {

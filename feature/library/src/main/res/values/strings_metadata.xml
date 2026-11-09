@@ -4,4 +4,9 @@
     <string name="metadata_lyrics">Lyrics</string>
     <string name="metadata_choose_artwork">Choose artwork</string>
     <string name="album_cue_banner">Full-album CUE · play by movement</string>
+    <string name="metadata_track_details">Track details</string>
+    <string name="metadata_release">Release</string>
+    <string name="metadata_discard_title">Discard changes?</string>
+    <string name="metadata_discard">Discard</string>
+    <string name="metadata_keep_editing">Keep editing</string>
 </resources>

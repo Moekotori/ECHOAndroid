@@ -1,6 +1,5 @@
 package app.echo.android.feature.home
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -11,16 +10,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -51,7 +56,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 /** Sticky strip under the overview: how to group, which period, and how to sort. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PlaybackHistoryFilterBar(
     filter: PlaybackHistoryFilter,
@@ -62,51 +66,42 @@ internal fun PlaybackHistoryFilterBar(
     val locale = LocalConfiguration.current.locales[0]
     val dateFormat = remember(locale) { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale) }
     val shortFormat = remember(locale) { DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(locale) }
+    val from = filter.fromEpochDay
+    val to = filter.toEpochDay
+    val period = filter.period
+    val selectedPeriodLabel = when {
+        period == PlaybackHistoryPeriod.Day && from != null ->
+            dateFormat.format(LocalDate.ofEpochDay(from))
+        period == PlaybackHistoryPeriod.Custom && from != null && to != null ->
+            "${shortFormat.format(LocalDate.ofEpochDay(from))} – ${shortFormat.format(LocalDate.ofEpochDay(to))}"
+        else -> stringResource(periodLabel(period))
+    }
 
-    Column(
-        modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
+    Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            PlaybackHistoryGrouping.entries.forEach { grouping ->
+                HistoryGroupingTab(stringResource(groupingLabel(grouping)), filter.grouping == grouping) {
+                    onFilter {
+                        val sort = if (it.sort.isAvailableFor(grouping)) it.sort else PlaybackHistorySort.Recent
+                        it.copy(grouping = grouping, sort = sort)
+                    }
+                }
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                PlaybackHistoryGrouping.entries.forEach { grouping ->
-                    HistoryChip(
-                        stringResource(groupingLabel(grouping)), filter.grouping == grouping,
-                        onClick = {
-                            onFilter {
-                                it.copy(grouping = grouping, sort = if (it.sort.isAvailableFor(grouping)) it.sort else PlaybackHistorySort.Recent)
-                            }
-                        },
-                    )
+            PeriodButton(selectedPeriodLabel, period, Modifier.weight(1f)) { selection ->
+                when (selection) {
+                    PlaybackHistoryPeriod.Day -> picker = HistoryDatePicker.Day
+                    PlaybackHistoryPeriod.Custom -> picker = HistoryDatePicker.Range
+                    else -> onFilter { it.copy(period = selection, fromEpochDay = null, toEpochDay = null) }
                 }
             }
             SortButton(filter, onFilter)
         }
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PlaybackHistoryPeriod.entries.forEach { period ->
-                val label = when {
-                    period == PlaybackHistoryPeriod.Day && filter.period == period && filter.fromEpochDay != null ->
-                        dateFormat.format(LocalDate.ofEpochDay(filter.fromEpochDay!!))
-                    period == PlaybackHistoryPeriod.Custom && filter.period == period &&
-                        filter.fromEpochDay != null && filter.toEpochDay != null ->
-                        "${shortFormat.format(LocalDate.ofEpochDay(filter.fromEpochDay!!))} – ${shortFormat.format(LocalDate.ofEpochDay(filter.toEpochDay!!))}"
-                    else -> stringResource(periodLabel(period))
-                }
-                HistoryChip(label, filter.period == period, onClick = {
-                    when (period) {
-                        PlaybackHistoryPeriod.Day -> picker = HistoryDatePicker.Day
-                        PlaybackHistoryPeriod.Custom -> picker = HistoryDatePicker.Range
-                        else -> onFilter { it.copy(period = period, fromEpochDay = null, toEpochDay = null) }
-                    }
-                })
-            }
-        }
+        HorizontalDivider()
     }
 
     when (picker) {
@@ -133,16 +128,50 @@ internal fun PlaybackHistoryFilterBar(
 private enum class HistoryDatePicker { Day, Range }
 
 @Composable
+private fun PeriodButton(
+    label: String,
+    selectedPeriod: PlaybackHistoryPeriod,
+    modifier: Modifier = Modifier,
+    onSelect: (PlaybackHistoryPeriod) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier) {
+        Row(
+            Modifier.clip(RoundedCornerShape(8.dp)).echoClickable(role = Role.Button) { open = true }
+                .heightIn(min = 48.dp).padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            EchoIcon(Icons.Rounded.CalendarToday, null, Modifier.size(16.dp))
+            Text(
+                label, style = MaterialTheme.typography.labelLarge,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+            )
+            EchoIcon(Icons.Rounded.KeyboardArrowDown, null, Modifier.size(18.dp))
+        }
+        EchoDropdownMenu(open, onDismissRequest = { open = false }) {
+            PlaybackHistoryPeriod.entries.forEach { period ->
+                EchoDropdownMenuItem(
+                    text = { Text(stringResource(periodLabel(period))) },
+                    selected = period == selectedPeriod,
+                    onClick = {
+                        open = false
+                        onSelect(period)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SortButton(
     filter: PlaybackHistoryFilter,
     onFilter: ((PlaybackHistoryFilter) -> PlaybackHistoryFilter) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
-        Box(
-            Modifier.size(48.dp).clip(RoundedCornerShape(50)).echoClickable(role = Role.Button) { open = true },
-            contentAlignment = Alignment.Center,
-        ) {
+        IconButton(onClick = { open = true }) {
             EchoIcon(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.playback_history_sort), Modifier.size(22.dp))
         }
         EchoDropdownMenu(open, onDismissRequest = { open = false }) {
@@ -170,29 +199,29 @@ private fun SortButton(
     }
 }
 
-/** 48dp touch target around a 36dp pill. */
 @Composable
-private fun HistoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun HistoryGroupingTab(label: String, selected: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Box(
-        Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(50))
-            .selectable(selected = selected, interactionSource = null, indication = null,
-                role = Role.Tab, onClick = onClick),
+        Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp)
+            .drawBehind {
+                if (selected) {
+                    val stroke = 2.dp.toPx()
+                    val inset = 8.dp.toPx()
+                    val y = size.height - stroke / 2f
+                    drawLine(scheme.primary, Offset(inset, y), Offset(size.width - inset, y), stroke)
+                }
+            }
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Surface(
-            shape = RoundedCornerShape(50),
-            color = if (selected) scheme.primary.copy(alpha = 0.14f) else scheme.onSurface.copy(alpha = 0.05f),
-            border = if (selected) BorderStroke(1.dp, scheme.primary.copy(alpha = 0.4f)) else null,
-        ) {
-            Text(
-                label, style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (selected) scheme.primary else scheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            )
-        }
+        Text(
+            label, style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+            maxLines = 1,
+        )
     }
 }
 

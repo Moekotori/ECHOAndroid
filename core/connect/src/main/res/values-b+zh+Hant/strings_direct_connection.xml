@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">電腦拒絕了免配對存取。請確認 Echo Link 已開啟，再貼上電腦產生的新配對連結；frp/Tailscale 還需先在電腦設定可存取的外部位址。</string>
+    <string name="connect_direct_unavailable">電腦拒絕免配對連線。請在電腦的 Echo Link → 手機產生配對連結，再貼到手機的連線頁。</string>
 </resources>

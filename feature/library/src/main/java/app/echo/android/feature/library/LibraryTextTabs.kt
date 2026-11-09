@@ -40,6 +40,7 @@ internal fun LibraryTextTabs(
     onSelect: (Int) -> Unit,
     compact: Boolean = false,
     pager: PagerState? = null,
+    inBrowserHeader: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val keyboard = LocalSoftwareKeyboardController.current
@@ -50,7 +51,10 @@ internal fun LibraryTextTabs(
     val labelStyle = if (compact) MaterialTheme.typography.labelLarge
         else MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp, lineHeight = 18.sp)
     val indicatorWidth = if (compact) 16.dp else 18.dp
-    val indicatorTop = 6.dp + with(density) { labelStyle.lineHeight.toDp() } + 6.dp
+    val labelTop = if (inBrowserHeader) 4.dp else 6.dp
+    val indicatorGap = if (inBrowserHeader) 4.dp else 6.dp
+    val indicatorTop = labelTop + with(density) { labelStyle.lineHeight.toDp() } + indicatorGap
+    val tabHeight = if (inBrowserHeader) LibraryCategoryBarHeight else 48.dp
     val spacingPx = with(density) { spacing.toPx() }
     val scroll = rememberScrollState()
     LaunchedEffect(selectedIndex, labels, density, compact, lightweight) {
@@ -67,7 +71,8 @@ internal fun LibraryTextTabs(
             }
         }
     }
-    Box(Modifier.fillMaxWidth().horizontalScroll(scroll)) {
+    val width = if (inBrowserHeader) Modifier else Modifier.fillMaxWidth()
+    Box(width.horizontalScroll(scroll)) {
         Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
             labels.forEachIndexed { index, label ->
                 val selected = index == selectedIndex
@@ -80,7 +85,7 @@ internal fun LibraryTextTabs(
                     Modifier.onSizeChanged { widths[index] = it.width }
                         .selectable(selected, interactionSource = null, indication = null,
                             role = Role.Tab, onClick = { keyboard?.hide(); onSelect(index) })
-                        .heightIn(min = 48.dp).padding(top = 6.dp),
+                        .heightIn(min = tabHeight).padding(top = labelTop),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     // Reserve the bold width so selecting a label cannot shift its neighbours.
@@ -94,7 +99,7 @@ internal fun LibraryTextTabs(
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
                     }
                     // Leave room for the indicator, also when the system font size is enlarged.
-                    Spacer(Modifier.height(13.dp))
+                    Spacer(Modifier.height(indicatorGap + 7.dp))
                 }
             }
         }
@@ -106,7 +111,7 @@ internal fun LibraryTextTabs(
             val position = if (pager == null) animateDpAsState(target,
                 animationSpec = if (lightweight) snap() else tween(160, easing = EchoMotion.Silk),
                 label = "library-tab-indicator") else null
-            // Anchor to the label line instead of the 48dp minimum touch target's bottom.
+            // Anchor to the label line so the gap stays consistent at larger font sizes.
             Box(Modifier.align(Alignment.TopStart).padding(top = indicatorTop)
                 .offset {
                     val x = if (pager == null) position!!.value.roundToPx() else {

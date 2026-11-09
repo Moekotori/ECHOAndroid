@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_layout_title">Настроить главную</string>
-    <string name="home_layout_detail">Перетаскивайте разделы за ручки, а переключателями скрывайте и возвращайте их. Пустые разделы появятся, когда в них будет содержимое.</string>
+    <string name="home_layout_detail">Перетаскивайте для сортировки. Нажмите на значок глаза, чтобы показать или скрыть раздел.</string>
     <string name="home_layout_move_up">Переместить %1$s вверх</string>
     <string name="home_layout_move_down">Переместить %1$s вниз</string>
     <string name="home_layout_reset">По умолчанию</string>

@@ -22,7 +22,6 @@ internal fun MusicRelationsResults(actions: MusicRelationsActions, selection: Li
     if (kind == null) {
         val flow = remember(actions, selection, query) { actions.tracks(selection, query) }
         val tracks = flow.collectAsLazyPagingItems()
-        val rangeSource = rememberLibraryRangeSource(tracks)
         LazyColumn(modifier.fillMaxWidth()) {
             if (playback != null) item {
                 TextButton(enabled = tracks.itemSnapshotList.items.isNotEmpty(), onClick = {
@@ -30,7 +29,7 @@ internal fun MusicRelationsResults(actions: MusicRelationsActions, selection: Li
                 }) { Text(stringResource(R.string.music_relation_play_loaded)) }
             }
             items(tracks.itemCount, key = tracks.itemKey { it.id }) { index ->
-                tracks[index]?.let { track -> TrackRow(track = track, rangeSource = rangeSource, onClick = { onPlay(track) },
+                tracks[index]?.let { track -> TrackRow(track = track, onClick = { onPlay(track) },
                     onPlayNext = playback?.playNext, onEnqueue = playback?.enqueue, showAudioInfoTags = false) }
             }
             item { RelationLoadState(tracks.itemCount, tracks.loadState.refresh, tracks.loadState.append, tracks::retry) }

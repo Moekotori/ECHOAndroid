@@ -10,11 +10,14 @@ import app.echo.android.model.connect.EchoRemotePlaybackSnapshot
 import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.connect.EchoRemoteTrack
+import app.echo.android.model.library.EchoTrack
+import app.echo.android.model.playback.EchoLinkPlaybackUri
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -500,6 +503,29 @@ class EchoRemoteClientTest {
         assertEquals(listOf("echo-link:a", "echo-link:b", "echo-link:c"), received)
         assertEquals(1, start)
         client.disconnect()
+    }
+
+    @Test
+    fun phoneQueueStartsAtTheSelectedOccurrenceAfterFilteringUnavailableTracks() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport)
+        try {
+            client.connect(endpoint, refreshLibraryOnConnect = false)
+            val repeated = remoteTrack("a")
+            val ready = CompletableDeferred<Pair<List<EchoTrack>, Int>>()
+            client.playTracksOnPhone(
+                tracks = listOf(repeated, remoteTrack("unavailable").copy(canPlayOnPhone = false), remoteTrack("b"), repeated),
+                startIndex = 3,
+                onQueueReady = { queue, index -> ready.complete(queue to index) },
+            )
+
+            val (queue, index) = withTimeout(2_000) { ready.await() }
+            assertEquals(listOf("echo-link:a", "echo-link:b", "echo-link:a"), queue.map { it.id })
+            assertEquals(2, index)
+            assertEquals(EchoLinkPlaybackUri.persistUri("a"), queue.first().uri)
+            assertTrue(EchoLinkPlaybackUri.isOneShotStreamUri(queue[index].uri))
+            assertEquals(1, transport.streamCalls)
+        } finally { client.disconnect() }
     }
 
     @Test
@@ -1337,7 +1363,7 @@ internal class FakeEchoLinkTransport(
         pageSize: Int,
     ): EchoLinkPlaylistPage {
         playlistListBlocker?.await()
-        return EchoLinkPlaylistPage(playlists = emptyList(), totalCount = 0)
+        return EchoLinkPlaylistPage(playlists = emptyList())
     }
 
     override suspend fun fetchAlbums(

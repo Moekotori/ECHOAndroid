@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_layout_title">Personalizar inicio</string>
-    <string name="home_layout_detail">Arrastra los controles para cambiar el orden y usa los interruptores para ocultar o mostrar secciones. Las secciones vacías aparecerán cuando haya contenido.</string>
+    <string name="home_layout_detail">Arrastra para ordenar. Toca el ojo para mostrar u ocultar.</string>
     <string name="home_layout_move_up">Subir %1$s</string>
     <string name="home_layout_move_down">Bajar %1$s</string>
     <string name="home_layout_reset">Restaurar valores</string>

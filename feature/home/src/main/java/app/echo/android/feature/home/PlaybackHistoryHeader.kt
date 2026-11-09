@@ -98,14 +98,21 @@ internal fun PlaybackHistoryHeader(
             IconButton(onClick = { searchExpanded = true }) {
                 EchoIcon(Icons.Rounded.Search, stringResource(R.string.playback_history_search))
             }
-            IconButton(onClick = onExport, enabled = !busy && hasHistory) {
-                EchoIcon(Icons.Rounded.FileDownload, stringResource(R.string.playback_history_export))
-            }
             Row {
                 IconButton(onClick = { menuOpen = true }) {
                     EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.playback_history_more), Modifier.size(24.dp))
                 }
                 EchoDropdownMenu(menuOpen, onDismissRequest = { menuOpen = false }) {
+                    EchoDropdownMenuItem(
+                        text = { Text(stringResource(R.string.playback_history_export)) },
+                        selected = false,
+                        enabled = !busy && hasHistory,
+                        leadingIcon = { EchoIcon(Icons.Rounded.FileDownload, null) },
+                        onClick = {
+                            menuOpen = false
+                            onExport()
+                        },
+                    )
                     EchoDropdownMenuItem(
                         text = { Text(stringResource(R.string.playback_history_prune)) }, selected = false, enabled = !busy,
                         leadingIcon = { EchoIcon(Icons.Rounded.HistoryToggleOff, null) },

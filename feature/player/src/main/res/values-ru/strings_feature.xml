@@ -55,7 +55,7 @@
     <string name="feature_player_next_d67904">"Следующий"</string>
     <string name="feature_player_nightcore_pitch_65449f">"Высота Nightcore"</string>
     <string name="feature_player_no_data_5a8239">"Нет данных"</string>
-    <string name="feature_player_no_matching_lyrics_found_7ffc7e">"Подходящий текст песни не найден"</string>
+    <string name="feature_player_no_matching_lyrics_found_7ffc7e">"Текст песни недоступен"</string>
     <string name="feature_player_normal_speed_a8fc98">"Обычная скорость"</string>
     <string name="feature_player_not_playing_d72324">"Не играет"</string>
     <string name="feature_player_open_artist">"К исполнителю"</string>

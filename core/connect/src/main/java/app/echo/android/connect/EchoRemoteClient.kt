@@ -19,6 +19,7 @@ import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.playback.EchoLinkPlaybackUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class EchoRemoteClient internal constructor(
     private val scope: CoroutineScope,
@@ -88,6 +90,7 @@ class EchoRemoteClient internal constructor(
 
     private val _library = MutableStateFlow(EchoRemoteLibraryState())
     val library: StateFlow<EchoRemoteLibraryState> = _library.asStateFlow()
+    private val playlistArtwork = EchoLinkPlaylistArtwork(transport)
     private val bridgeFolders = EchoBridgeFolderBrowser(scope, transport, { endpoint }, _library) { it.userMessage() }
     private val queueBrowser = EchoLinkRemoteQueue(scope, transport, { endpoint },
         { _status.value.playback.queue }, { it.userMessage() })
@@ -528,11 +531,11 @@ class EchoRemoteClient internal constructor(
                     transport.fetchPlaylists(target, query, page = 1, pageSize = PcLibraryPageSize)
                 }.onSuccess { page ->
                     if (!isCurrentRefresh()) return@onSuccess
-                    nextPlaylistPage = if (page.playlists.size < page.totalCount) 2 else 0
+                    nextPlaylistPage = page.nextPage
                     _library.update {
                         it.copy(
                             playlists = page.playlists,
-                            playlistTotalCount = page.totalCount.coerceAtLeast(page.playlists.size),
+                            playlistTotalCount = playlistBrowseCount(page.playlists.size, page.nextPage),
                         )
                     }
                 }.onFailure { error ->
@@ -665,11 +668,12 @@ class EchoRemoteClient internal constructor(
                 val playlists = current.playlists + page.playlists
                 current.copy(
                     playlists = playlists,
-                    playlistTotalCount = page.totalCount.coerceAtLeast(playlists.size),
+                    playlistTotalCount = playlistBrowseCount(playlists.size, page.nextPage),
                 )
             },
             itemCount = { page -> page.playlists.size },
             isComplete = { state -> state.playlists.size >= state.playlistTotalCount },
+            nextPageAfter = { page -> page.nextPage },
         )
     }
 
@@ -684,6 +688,7 @@ class EchoRemoteClient internal constructor(
         append: (EchoRemoteLibraryState, T) -> EchoRemoteLibraryState,
         itemCount: (T) -> Int,
         isComplete: (EchoRemoteLibraryState) -> Boolean,
+        nextPageAfter: (T) -> Int? = { null },
     ) {
         if (nextPage < 2 || active?.isActive == true) return
         if (total in 1..loaded) {
@@ -691,7 +696,7 @@ class EchoRemoteClient internal constructor(
             return
         }
         val target = endpoint ?: return
-        if (nextPage > MaxLibraryPages) {
+        if (nextPage > EchoLinkMaxLibraryPages) {
             onAdvance(0)
             _library.update {
                 it.copy(
@@ -708,7 +713,8 @@ class EchoRemoteClient internal constructor(
             val result = runSuspendCatching { fetch(target, query, nextPage) }
             if (endpoint?.id != target.id || generation != libraryRefreshGeneration) return@launch
             result.onSuccess { page ->
-                if (itemCount(page) <= 0) {
+                val followingPage = nextPageAfter(page)
+                if (itemCount(page) <= 0 && followingPage != 0) {
                     // A premature empty page must remain retryable and cannot look complete.
                     _library.update { it.copy(isLoadingMore = false,
                         error = text(R.string.connect_library_partial, loaded, total.coerceAtLeast(loaded))) }
@@ -717,7 +723,7 @@ class EchoRemoteClient internal constructor(
                 if (endpoint?.id != target.id || generation != libraryRefreshGeneration) return@onSuccess
                 _library.update { current -> append(current, page).copy(isLoadingMore = false) }
                 if (generation != libraryRefreshGeneration) return@onSuccess
-                onAdvance(if (isComplete(_library.value)) 0 else nextPage + 1)
+                onAdvance(followingPage ?: if (isComplete(_library.value)) 0 else nextPage + 1)
             }.onFailure { error ->
                 // Keep the failed cursor. UI prefetch pauses on error; an explicit retry resumes here.
                 _library.update { it.copy(isLoadingMore = false, error = error.userMessage()) }
@@ -740,6 +746,15 @@ class EchoRemoteClient internal constructor(
         nextTrackPage = 0
         nextAlbumPage = 0
         nextPlaylistPage = 0
+    }
+
+    suspend fun loadPlaylistArtwork(playlist: EchoRemotePlaylist): String? {
+        val target = endpoint ?: return null
+        val generation = libraryRefreshGeneration
+        val cover = runSuspendCatching {
+            playlistArtwork.resolve(target, generation, playlist) { _library.value.playlistTracks[playlist.id] }
+        }.getOrNull()
+        return cover?.takeIf { generation == libraryRefreshGeneration }
     }
 
     fun refreshPlaylistTracks(playlist: EchoRemotePlaylist) {
@@ -1109,7 +1124,6 @@ class EchoRemoteClient internal constructor(
         val generation = ++playOnPhoneGeneration
         phonePlaybackJob?.cancel()
         val requested = tracks.getOrNull(startIndex)
-        val playable = EchoLinkLibraryQueryPolicy.playableLinkedPhoneTracks(tracks)
         if (requested?.id.isNullOrBlank() || !requested.canPlayOnPhone) {
             _library.update {
                 it.copy(
@@ -1123,12 +1137,15 @@ class EchoRemoteClient internal constructor(
         phonePlaybackJob = scope.launch {
             val resolved = runSuspendCatching {
                 val stream = resolveCachedStream(target, requestedId)
-                playable.map { track ->
-                    track.toPhonePlaybackTrack(
-                        if (track.id == requestedId) stream.streamUrl
-                        else EchoLinkPlaybackUri.persistUri(requireNotNull(track.id)),
-                        if (track.id == requestedId) stream.sourceRange else track.sourceRange,
-                    )
+                withContext(Dispatchers.Default) {
+                    val before = EchoLinkLibraryQueryPolicy.playableLinkedPhoneTracks(tracks.subList(0, startIndex))
+                    val after = EchoLinkLibraryQueryPolicy.playableLinkedPhoneTracks(tracks.subList(startIndex + 1, tracks.size))
+                    val queue = buildList(before.size + 1 + after.size) {
+                        before.forEach { add(it.toPhonePlaybackTrack()) }
+                        add(requested.toPhonePlaybackTrack(stream.streamUrl, stream.sourceRange))
+                        after.forEach { add(it.toPhonePlaybackTrack()) }
+                    }
+                    queue to before.size
                 }
             }
             if (!EchoLinkRequestPolicy.shouldApplyResolvedPlay(generation, playOnPhoneGeneration)) {
@@ -1137,17 +1154,7 @@ class EchoRemoteClient internal constructor(
             if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, target)) {
                 return@launch
             }
-            resolved.onSuccess { queue ->
-                if (queue.isEmpty()) {
-                    _library.update {
-                        it.copy(
-                            error = text(R.string.connect_stream_unavailable),
-                        )
-                    }
-                    return@onSuccess
-                }
-                val start = queue.indexOfFirst { EchoLinkPlaybackUri.trackIdFromMediaId(it.id) == requestedId }
-                check(start >= 0) { "Selected PC track is missing from the playback queue" }
+            resolved.onSuccess { (queue, start) ->
                 onQueueReady(queue, start)
                 val lyrics = runSuspendCatching { transport.fetchLyrics(target, requestedId) }.getOrNull()
                 if (lyrics != null && generation == playOnPhoneGeneration &&
@@ -1177,7 +1184,7 @@ class EchoRemoteClient internal constructor(
             }
             if (batch.tracks.isEmpty()) throw EchoLinkHttpException(
                 text(R.string.connect_library_partial, items.size, batch.totalCount))
-            check(page++ < MaxLibraryPages) { "PC album exceeds the supported page limit" }
+            check(page++ < EchoLinkMaxLibraryPages) { "PC album exceeds the supported page limit" }
         }
     }
 
@@ -1192,7 +1199,7 @@ class EchoRemoteClient internal constructor(
             }
             if (batch.tracks.isEmpty()) throw EchoLinkHttpException(
                 text(R.string.connect_library_partial, items.size, batch.totalCount))
-            check(page++ < MaxLibraryPages) { "PC playlist exceeds the supported page limit" }
+            check(page++ < EchoLinkMaxLibraryPages) { "PC playlist exceeds the supported page limit" }
         }
     }
 
@@ -1541,9 +1548,12 @@ class EchoRemoteClient internal constructor(
         const val SseHeartbeatPollIntervalMs = 30_000L
         const val PcLibraryPageSize = 500
         const val PcPlaylistTrackPageSize = 500
-        const val MaxLibraryPages = 40
     }
 }
+
+// The unfiltered PC count cannot be displayed as a count of local playlists.
+private fun playlistBrowseCount(loaded: Int, nextPage: Int): Int =
+    if (nextPage == 0) loaded else loaded + 1
 
 private data class CachedEchoLinkStream(
     val sourceRange: app.echo.android.model.connect.EchoRemoteSourceRange? = null,
@@ -1551,7 +1561,10 @@ private data class CachedEchoLinkStream(
     val expiresAtEpochMs: Long,
 )
 
-internal fun EchoRemoteTrack.toPhonePlaybackTrack(streamUrl: String, range: app.echo.android.model.connect.EchoRemoteSourceRange? = sourceRange): EchoTrack {
+internal fun EchoRemoteTrack.toPhonePlaybackTrack(
+    streamUrl: String = EchoLinkPlaybackUri.persistUri(requireNotNull(id)),
+    range: app.echo.android.model.connect.EchoRemoteSourceRange? = sourceRange,
+): EchoTrack {
     val trackId = id?.takeIf { it.isNotBlank() } ?: streamUrl.hashCode().toString()
     return EchoTrack(
         id = EchoLinkPlaybackUri.mediaId(trackId),

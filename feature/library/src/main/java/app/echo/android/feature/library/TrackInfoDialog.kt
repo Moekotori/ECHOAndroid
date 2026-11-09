@@ -17,6 +17,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.collapse
@@ -46,6 +48,9 @@ fun TrackInfoDialog(
 ) {
     var tool by remember(track.id) { mutableStateOf<String?>(null) }
     var showMissing by rememberSaveable(track.id) { mutableStateOf(false) }
+    val setRating = mediaTools?.setRating?.takeIf { track.supportsLocalRating() }
+    var rating by remember(track.id, track.rating) { mutableIntStateOf(track.rating) }
+    var showRating by rememberSaveable(track.id) { mutableStateOf(false) }
     val artistLabel = stringResource(L10nR.string.feature_library_go_to_artist)
     val sections = trackInfoSections(track, audioFormat)
     var playlistRetry by remember(track.id) { mutableIntStateOf(0) }
@@ -72,91 +77,102 @@ fun TrackInfoDialog(
     val context = LocalContext.current
     val copyLabel = stringResource(L10nR.string.track_info_copy)
     val copiedLabel = stringResource(L10nR.string.track_info_copied)
+    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val maxContentHeight = if (windowHeight > 0.dp) minOf(560.dp, windowHeight * 0.70f) else 560.dp
     EchoModalSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        EchoSheetHeader(
-            title = displayMetadataOrUnknown(track.libraryDisplayTitle(LocalLibraryFileNames.current), unknownTrackLabel()),
-            modifier = Modifier.semantics { heading() },
-        )
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
-            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            sections.forEach { section ->
-                if (section.fields.none { it.value != null }) return@forEach
-                item(key = "section:${section.title}") { TrackInfoHeading(section.title) }
-                section.fields.forEachIndexed { index, field ->
-                    val value = field.value ?: return@forEachIndexed
-                    item(key = "field:${section.title}:$index") {
-                        TrackInfoLine(field.label, value, onOpenArtist?.takeIf { field.opensArtist }, artistLabel)
-                    }
+        Column(Modifier.fillMaxWidth().heightIn(max = maxContentHeight)) {
+            EchoSheetHeader(
+                title = displayMetadataOrUnknown(track.libraryDisplayTitle(LocalLibraryFileNames.current), unknownTrackLabel()),
+                modifier = Modifier.semantics { heading() },
+            )
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (setRating != null) {
+                    item(key = "rating") { TrackRatingRow(rating) { showRating = true } }
                 }
-            }
-            if (track.supportsLocalRating()) mediaTools?.setRating?.let { setter ->
-                item(key = "rating") { TrackRatingControl(track, setter) }
-            }
-            if (!playlistsUnavailable) {
-                item(key = "playlists") { TrackInfoHeading(L10nR.string.track_info_playlists) }
-                if (membershipMessage != null) item(key = "playlist-status") {
-                    Column {
-                        SelectionContainer { Text(membershipMessage, style = MaterialTheme.typography.bodyMedium) }
-                        if (membership.failed) TextButton(onClick = { playlistRetry++ }) {
-                            Text(stringResource(L10nR.string.hidden_track_retry))
+                sections.forEach { section ->
+                    if (section.fields.none { it.value != null }) return@forEach
+                    item(key = "section:${section.title}") { TrackInfoHeading(section.title) }
+                    section.fields.forEachIndexed { index, field ->
+                        val value = field.value ?: return@forEachIndexed
+                        item(key = "field:${section.title}:$index") {
+                            TrackInfoLine(field.label, value, onOpenArtist?.takeIf { field.opensArtist }, artistLabel)
                         }
                     }
                 }
-                items(playlists, key = { "playlist:${it.id}" }) { playlist ->
-                    SelectionContainer { Text(playlistName(playlist), style = MaterialTheme.typography.bodyMedium) }
+                if (!playlistsUnavailable) {
+                    item(key = "playlists") { TrackInfoHeading(L10nR.string.track_info_playlists) }
+                    if (membershipMessage != null) item(key = "playlist-status") {
+                        Column {
+                            SelectionContainer { Text(membershipMessage, style = MaterialTheme.typography.bodyMedium) }
+                            if (membership.failed) TextButton(onClick = { playlistRetry++ }) {
+                                Text(stringResource(L10nR.string.hidden_track_retry))
+                            }
+                        }
+                    }
+                    items(playlists, key = { "playlist:${it.id}" }) { playlist ->
+                        SelectionContainer { Text(playlistName(playlist), style = MaterialTheme.typography.bodyMedium) }
+                    }
+                    if (playlists.isNotEmpty()) item(key = "playlist-scope") {
+                        Text(
+                            stringResource(L10nR.string.track_info_playlists_scope),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-                if (playlists.isNotEmpty()) item(key = "playlist-scope") {
-                    Text(
-                        stringResource(L10nR.string.track_info_playlists_scope),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (mediaTools != null && track.source.isLocalAudioFile) item(key = "media-tools") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = { tool = "encoding" }) { Text(stringResource(L10nR.string.encoding_title)) }
+                        TextButton(onClick = { tool = "images" }) { Text(stringResource(L10nR.string.album_images_title)) }
+                    }
+                }
+                if (missingLabels.isNotEmpty()) {
+                    item(key = "missing-toggle") {
+                        TrackInfoMissingToggle(missingLabels.size, showMissing) { showMissing = !showMissing }
+                    }
+                    if (showMissing) items(missingLabels.size, key = { "missing:$it" }) { index ->
+                        TrackInfoLine(missingLabels[index], missing)
+                    }
                 }
             }
-            if (mediaTools != null && track.source.isLocalAudioFile) item(key = "media-tools") {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { tool = "encoding" }) { Text(stringResource(L10nR.string.encoding_title)) }
-                    TextButton(onClick = { tool = "images" }) { Text(stringResource(L10nR.string.album_images_title)) }
-                }
-            }
-            if (missingLabels.isNotEmpty()) {
-                item(key = "missing-toggle") {
-                    TrackInfoMissingToggle(missingLabels.size, showMissing) { showMissing = !showMissing }
-                }
-                if (showMissing) items(missingLabels.size, key = { "missing:$it" }) { index ->
-                    TrackInfoLine(missingLabels[index], missing)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+            ) {
+                TextButton(enabled = !membership.loading && !membership.failed, onClick = {
+                    context.getSystemService(ClipboardManager::class.java)?.let { clipboard ->
+                        val details = buildString {
+                            fields.forEach { append(it.label).append(": ").append(it.value ?: missing).append('\n') }
+                            append(playlistLabel).append(": ")
+                            if (membershipMessage != null) append(membershipMessage)
+                            else playlists.forEach { append('\n').append(playlistName(it)) }
+                        }
+                        clipboard.setPrimaryClip(ClipData.newPlainText(copyLabel, details))
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                            Toast.makeText(context, copiedLabel, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) { Text(copyLabel) }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(L10nR.string.feature_library_done_a5e659))
                 }
             }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-        ) {
-            TextButton(enabled = !membership.loading && !membership.failed, onClick = {
-                context.getSystemService(ClipboardManager::class.java)?.let { clipboard ->
-                    val details = buildString {
-                        fields.forEach { append(it.label).append(": ").append(it.value ?: missing).append('\n') }
-                        append(playlistLabel).append(": ")
-                        if (membershipMessage != null) append(membershipMessage)
-                        else playlists.forEach { append('\n').append(playlistName(it)) }
-                    }
-                    clipboard.setPrimaryClip(ClipData.newPlainText(copyLabel, details))
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                        Toast.makeText(context, copiedLabel, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }) { Text(copyLabel) }
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(L10nR.string.feature_library_done_a5e659))
-            }
-        }
+    }
+    if (showRating && setRating != null) {
+        TrackRatingControl(
+            track = track.copy(rating = rating),
+            set = { _, choice -> setRating(track, choice).also { rating = it } },
+            onDismiss = { showRating = false },
+        )
     }
     if (mediaTools != null) when (tool) {
         "encoding" -> TrackEncodingDialog(track, mediaTools) { tool = null }
@@ -168,7 +184,7 @@ fun TrackInfoDialog(
 private fun TrackInfoHeading(title: Int) {
     Text(
         stringResource(title),
-        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp).semantics { heading() },
+        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp).semantics { heading() },
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.onSurface,
     )
@@ -218,17 +234,17 @@ private fun TrackInfoLine(
                     Modifier
                 },
             ),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.Top,
     ) {
         Text(
             label,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(0.3f),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
         )
-        SelectionContainer(Modifier.weight(2f)) {
+        SelectionContainer(Modifier.weight(0.7f)) {
             Text(
                 value,
                 color = if (onClick != null) {

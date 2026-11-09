@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">El PC rechazó el acceso sin emparejar. Activa Echo Link y pega un nuevo enlace generado en el PC. Para frp/Tailscale, configura primero una dirección externa accesible en el PC.</string>
+    <string name="connect_direct_unavailable">El PC rechazó la conexión sin emparejamiento. En el PC, genera un enlace en Echo Link → Teléfono y pégalo en la pantalla de conexión del teléfono.</string>
 </resources>

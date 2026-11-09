@@ -19,13 +19,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -286,14 +284,10 @@ private fun HistoryMessage(title: String, detail: String, action: (() -> Unit)?)
         Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 48.dp),
         verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)) {
-            Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
-                EchoIcon(Icons.Rounded.History, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
-            }
-        }
+        EchoIcon(Icons.Rounded.History, null, Modifier.size(28.dp))
         Text(
             title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 20.dp).semantics { heading() },
+            modifier = Modifier.padding(top = 12.dp).semantics { heading() },
         )
         if (action == null) Text(
             detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,

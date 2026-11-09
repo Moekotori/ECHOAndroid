@@ -55,8 +55,11 @@ internal fun LibraryBrowserFrame(
 
     Surface(Modifier.fillMaxSize(), color = echoPageBackgroundColor()) {
         Box(Modifier.statusBarsPadding().imePadding(), contentAlignment = Alignment.TopCenter) {
-            Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize().padding(start = 24.dp)) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(end = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()) {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     if (searching) {
                         IconButton(onClick = {
                             focusManager.clearFocus()
@@ -90,6 +93,16 @@ internal fun LibraryBrowserFrame(
                 content()
             }
         }
+    }
+}
+
+internal val LibraryCategoryBarHeight = 42.dp
+
+@Composable
+internal fun LibraryCategoryBar(tabs: @Composable () -> Unit, actions: @Composable () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.weight(1f, fill = false)) { tabs() }
+        actions()
     }
 }
 

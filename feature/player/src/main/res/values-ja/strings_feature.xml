@@ -55,7 +55,7 @@
     <string name="feature_player_next_d67904">"次の曲"</string>
     <string name="feature_player_nightcore_pitch_65449f">"Nightcore ピッチ"</string>
     <string name="feature_player_no_data_5a8239">"データなし"</string>
-    <string name="feature_player_no_matching_lyrics_found_7ffc7e">"同名の歌詞が見つかりません"</string>
+    <string name="feature_player_no_matching_lyrics_found_7ffc7e">"歌詞がありません"</string>
     <string name="feature_player_normal_speed_a8fc98">"通常速度"</string>
     <string name="feature_player_not_playing_d72324">"未再生"</string>
     <string name="feature_player_open_artist">"アーティストを表示"</string>

@@ -24,10 +24,14 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.HourglassEmpty
+import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -66,6 +70,7 @@ import app.echo.android.model.library.LibrarySmartPlaylistKind
 internal fun LocalPlaylistPanel(
     playlists: List<EchoPlaylist>,
     query: String,
+    sort: PlaylistCatalogSort,
     onOpenLikedAlbums: () -> Unit,
     onRestoreBuiltinPlaylists: () -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
@@ -102,8 +107,6 @@ internal fun LocalPlaylistPanel(
     var copyFailed by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<EchoPlaylist?>(null) }
     var deleting by remember { mutableStateOf<EchoPlaylist?>(null) }
-    var sortName by rememberSaveable { mutableStateOf(PlaylistCatalogSort.Updated.name) }
-    val sort = PlaylistCatalogSort.entries.firstOrNull { it.name == sortName } ?: PlaylistCatalogSort.Updated
     val sections by rememberPlaylistCatalog(playlists, query, sort)
     val hasHiddenBuiltinPlaylists = remember(playlists) {
         playlists.any { it.isLikedSongs } && playlists.count { it.smartKind != null } < LibrarySmartPlaylistKind.entries.size
@@ -121,8 +124,6 @@ internal fun LocalPlaylistPanel(
             item {
                 LocalPlaylistHeader(
                     playlistCount = playlists.size,
-                    sort = sort,
-                    onSort = { sortName = it.name },
                     onCreatePlaylist = { createVisible = true },
                     onImportM3uPlaylist = onImportM3uPlaylist,
                     onCreateSmartPlaylist = experienceActions?.let { { editingSmart = null; smartEditorVisible = true } },
@@ -139,14 +140,10 @@ internal fun LocalPlaylistPanel(
                         Text(stringResource(label), modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } }
-                    if (section.playlists.isEmpty()) item(key = "empty-${section.key}") {
-                        EmptyState(stringResource(L10nR.string.feature_library_no_local_playlists_yet_create_one_from_the_e13a98))
-                    }
                     items(items = section.playlists, key = { it.id }, contentType = { "playlist" }) { playlist ->
                         LocalPlaylistRow(
                             playlist = playlist,
                             onOpen = { onOpenPlaylist(playlist) },
-                            onPlay = { onPlayPlaylist(playlist) },
                             onMore = { menuPlaylistId = playlist.id },
                         )
                     }
@@ -303,8 +300,6 @@ internal fun PlaylistNameDialog(
 @Composable
 private fun LocalPlaylistHeader(
     playlistCount: Int,
-    sort: PlaylistCatalogSort,
-    onSort: (PlaylistCatalogSort) -> Unit,
     onCreatePlaylist: () -> Unit,
     onImportM3uPlaylist: () -> Unit,
     onCreateSmartPlaylist: (() -> Unit)?,
@@ -316,7 +311,6 @@ private fun LocalPlaylistHeader(
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(L10nR.string.feature_library_playlistcount_playlists_220ceb, playlistCount.toString()),
             Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        PlaylistCatalogSortControl(sort, onSort)
         Box {
             androidx.compose.material3.IconButton(onClick = { menuOpen = true }) {
                 EchoIcon(Icons.Rounded.Add, contentDescription = stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
@@ -363,20 +357,42 @@ private fun LocalPlaylistHeader(
 private fun LocalPlaylistRow(
     playlist: EchoPlaylist,
     onOpen: () -> Unit,
-    onPlay: () -> Unit,
     onMore: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().echoClickable(onClick = onOpen).padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        ArtworkTile(playlist.artworkUri, Modifier.echoSharedCover("playlist", playlist.id).size(48.dp), accent = rememberLibraryArtworkAccent(), cornerRadius = 4.dp)
+    val icon = when (playlist.smartKind) {
+        LibrarySmartPlaylistKind.Recent -> Icons.Rounded.History
+        LibrarySmartPlaylistKind.Frequent -> Icons.Rounded.Equalizer
+        LibrarySmartPlaylistKind.Never -> Icons.Rounded.HourglassEmpty
+        LibrarySmartPlaylistKind.Added -> Icons.Rounded.LibraryAdd
+        null -> when {
+            playlist.isLikedSongs -> Icons.Rounded.FavoriteBorder
+            playlist.isCustomSmartPlaylist -> Icons.Rounded.AutoAwesome
+            else -> null
+        }
+    }
+    Row(
+        Modifier.fillMaxWidth().echoClickable(role = Role.Button, onClick = onOpen).heightIn(min = 52.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                EchoIcon(icon, contentDescription = null)
+            }
+        } else {
+            ArtworkTile(
+                playlist.artworkUri,
+                Modifier.echoSharedCover("playlist", playlist.id).size(40.dp),
+                accent = rememberLibraryArtworkAccent(),
+                cornerRadius = 4.dp,
+            )
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(playlistDisplayName(playlist), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(playlistCaption(playlist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
+            val caption = if (icon != null) libraryTrackCountLabel(playlist.trackCount) else playlistCaption(playlist)
+            Text(caption, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        androidx.compose.material3.IconButton(onClick = onPlay, enabled = playlist.trackCount > 0) {
-            EchoIcon(Icons.Rounded.PlayArrow, contentDescription = stringResource(L10nR.string.feature_library_play_38419a))
         }
         androidx.compose.material3.IconButton(onClick = onMore) {
             EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_playlist_actions))
@@ -387,11 +403,11 @@ private fun LocalPlaylistRow(
 @Composable
 private fun LikedAlbumsEntry(onOpen: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().echoClickable(role = Role.Button, onClick = onOpen).heightIn(min = 48.dp),
+        Modifier.fillMaxWidth().echoClickable(role = Role.Button, onClick = onOpen).heightIn(min = 52.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
             EchoIcon(Icons.Rounded.Album, contentDescription = null)
         }
         Text(stringResource(L10nR.string.album_liked_title), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)

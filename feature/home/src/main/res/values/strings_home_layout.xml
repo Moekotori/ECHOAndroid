@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_layout_title">Customize home</string>
-    <string name="home_layout_detail">Drag the handles to reorder sections. Use the switches to hide or restore them. Empty sections appear when content is available.</string>
+    <string name="home_layout_detail">Drag to reorder. Tap the eye to show or hide.</string>
     <string name="home_layout_move_up">Move %1$s up</string>
     <string name="home_layout_move_down">Move %1$s down</string>
     <string name="home_layout_reset">Restore defaults</string>

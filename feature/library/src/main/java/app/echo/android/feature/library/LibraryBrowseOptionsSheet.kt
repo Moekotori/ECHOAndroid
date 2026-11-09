@@ -7,7 +7,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.*
@@ -30,10 +29,12 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.EchoModalSheet
 import app.echo.android.design.EchoSwitch
+import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.library.*
 import app.echo.android.model.settings.EchoLibraryLayout
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 private enum class LibraryBrowseTab(val title: Int) {
     Sort(R.string.library_sort_title),
@@ -56,16 +57,14 @@ internal fun LibraryBrowseOptionsMenu(
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
-    IconButton(onClick = { open = true }) {
-        BadgedBox(badge = { if (filter.isActive) Badge { Text(filter.activeCount.toString()) } }) {
-            EchoIcon(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.library_browse_options_title),
-                Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
+    LibrarySortButton(
+        contentDescription = stringResource(R.string.library_browse_options_title),
+        onClick = { open = true },
+        filterCount = filter.activeCount,
+    )
     if (open) LibraryBrowseOptionsSheet(selectedSort, filter, tabIndex, onTabChange = { tabIndex = it },
         lyricsIndexState, onInspectLyrics, onCancelLyrics, onCustomize, layout, onLayoutChange,
         onDismiss = { open = false }, onApply = { sort, next ->
-            open = false
             if (sort != selectedSort) onSortChange(sort)
             if (next != filter) onFilterChange(next)
         })
@@ -102,8 +101,12 @@ private fun LibraryBrowseOptionsSheet(
     val filterCount = draft.conditionCount + draft.tagCount + draft.rangeCount + if (draft.filter.formats.isEmpty()) 0 else 1
     val tabStates = rememberSaveableStateHolder()
     val maxHeight = minOf(520.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.62f })
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    var applying by remember { mutableStateOf(false) }
     EchoModalSheet(onDismissRequest = onDismiss, modifier = Modifier.widthIn(max = 480.dp),
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        sheetState = sheetState, sheetGesturesEnabled = !applying) {
         Column(Modifier.fillMaxWidth().heightIn(max = maxHeight)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
@@ -161,14 +164,28 @@ private fun LibraryBrowseOptionsSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_filter_cancel)) }
                 Button(onClick = {
+                    if (applying) return@Button
                     focus.clearFocus()
                     applied?.let {
+                        applying = true
+                        val animateClose = sort != selectedSort && !lightweight
                         if (showFileNames != layout.showFileNames || showPlayNext != layout.showPlayNext) {
                             onLayoutChange?.invoke(layout.copy(showFileNames = showFileNames, showPlayNext = showPlayNext))
                         }
                         onApply(sort, it)
+                        if (animateClose) {
+                            scope.launch {
+                                try {
+                                    sheetState.hide()
+                                } finally {
+                                    onDismiss()
+                                }
+                            }
+                        } else {
+                            onDismiss()
+                        }
                     }
-                }, enabled = applied != null) {
+                }, enabled = applied != null && !applying) {
                     Text(stringResource(R.string.library_filter_apply))
                 }
             }

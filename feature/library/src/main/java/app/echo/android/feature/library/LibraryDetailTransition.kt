@@ -3,6 +3,8 @@ package app.echo.android.feature.library
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,12 +13,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.EchoPageBack
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.EchoPageContent
+import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.design.rememberEchoContentMotion
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import app.echo.android.model.connect.EchoRemotePlaylist
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
@@ -55,14 +62,6 @@ private val LibraryDetailTransitionTarget.pageKey: String
         is LibraryDetailTransitionTarget.LinkedPlaylist -> "linked-playlist:${playlist.id}"
     }
 
-/** Album, artist and playlist pages open from a cover card, so their cover can fly between card and hero. */
-private val LibraryDetailTransitionTarget.hasSharedCover: Boolean
-    get() = this is LibraryDetailTransitionTarget.AlbumDetail ||
-        this is LibraryDetailTransitionTarget.ArtistDetail ||
-        this is LibraryDetailTransitionTarget.PlaylistDetail ||
-        this is LibraryDetailTransitionTarget.LinkedAlbum ||
-        this is LibraryDetailTransitionTarget.LinkedArtist
-
 private fun isLibraryDetailBackward(
     initial: LibraryDetailTransitionTarget,
     target: LibraryDetailTransitionTarget,
@@ -82,8 +81,6 @@ internal fun LibraryDetailTransition(
 ) {
     val motion = rememberEchoContentMotion()
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
-    // Cross-tab and split layouts keep their own movement; only the plain browser <-> detail trip flies a cover.
-    val coverFlights = !split && !outerNavigationOwnsTransition && !lightweight
     val savedState = rememberSaveableStateHolder()
     var retainedKeys by rememberSaveable { mutableStateOf(emptyMap<String, String>()) }
     LaunchedEffect(targetState.pageKey) {
@@ -99,36 +96,38 @@ internal fun LibraryDetailTransition(
         targetState = targetState,
         contentKey = { it.pageKey },
         isBackward = ::isLibraryDetailBackward,
-        // Cross-tab navigation already moves the whole library page. Keep its detail
-        // ready underneath, without a second slide, scale, or staggered reveal.
-        fadeOnly = split || outerNavigationOwnsTransition,
-        transitionSpec = if (outerNavigationOwnsTransition) {
-            {
-                if (initialState == LibraryDetailTransitionTarget.Browser ||
-                    this.targetState == LibraryDetailTransitionTarget.Browser
-                ) {
+        // Move just the covering detail. The browser keeps its viewport throughout the transition.
+        fadeOnly = true,
+        transitionSpec = {
+            val fromBrowser = initialState == LibraryDetailTransitionTarget.Browser
+            val toBrowser = this.targetState == LibraryDetailTransitionTarget.Browser
+            when {
+                outerNavigationOwnsTransition && (fromBrowser || toBrowser) ->
                     ContentTransform(EnterTransition.None, ExitTransition.None, sizeTransform = null)
-                } else {
-                    motion.pageFade()
-                }
+                split || lightweight || (!fromBrowser && !toBrowser) -> motion.pageFade()
+                toBrowser -> ContentTransform(
+                    EnterTransition.None,
+                    slideOutHorizontally(EchoMotion.silkOffset(EchoMotion.PageExitMs)) { it },
+                    sizeTransform = null,
+                )
+                else -> ContentTransform(
+                    slideInHorizontally(EchoMotion.silkOffset(EchoMotion.PageExitMs)) { it },
+                    ExitTransition.None,
+                    sizeTransform = null,
+                )
             }
-        } else if (coverFlights) {
-            {
-                val browserToCover = initialState == LibraryDetailTransitionTarget.Browser && this.targetState.hasSharedCover
-                val coverToBrowser = this.targetState == LibraryDetailTransitionTarget.Browser && initialState.hasSharedCover
-                when {
-                    browserToCover -> EchoMotion.pagePushCover()
-                    coverToBrowser -> EchoMotion.pagePopCover()
-                    isLibraryDetailBackward(initialState, this.targetState) -> motion.pagePop()
-                    else -> motion.pagePush()
-                }
-            }
-        } else null,
-        sharedElements = coverFlights,
-        modifier = modifier,
+        },
+        retainedPage = LibraryDetailTransitionTarget.Browser.takeUnless { split },
+        modifier = modifier.clipToBounds(),
         back = back,
         label = "library-detail-transition",
     ) { target ->
-        savedState.SaveableStateProvider(target.pageKey) { content(target) }
+        savedState.SaveableStateProvider(target.pageKey) {
+            if (target == LibraryDetailTransitionTarget.Browser) {
+                content(target)
+            } else {
+                Box(Modifier.fillMaxSize().background(echoPageBackgroundColor())) { content(target) }
+            }
+        }
     }
 }

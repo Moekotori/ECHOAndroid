@@ -4,4 +4,9 @@
     <string name="metadata_lyrics">歌詞</string>
     <string name="metadata_choose_artwork">アートワークを選ぶ</string>
     <string name="album_cue_banner">一枚通し CUE · 楽章ごとに再生</string>
+    <string name="metadata_track_details">曲の情報</string>
+    <string name="metadata_release">リリース情報</string>
+    <string name="metadata_discard_title">未保存の変更を破棄しますか？</string>
+    <string name="metadata_discard">破棄</string>
+    <string name="metadata_keep_editing">編集を続ける</string>
 </resources>

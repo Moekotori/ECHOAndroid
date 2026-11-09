@@ -4,4 +4,9 @@
     <string name="metadata_lyrics">Letra</string>
     <string name="metadata_choose_artwork">Elegir portada</string>
     <string name="album_cue_banner">CUE de álbum completo · reproducir por movimientos</string>
+    <string name="metadata_track_details">Datos de la canción</string>
+    <string name="metadata_release">Publicación</string>
+    <string name="metadata_discard_title">¿Descartar los cambios sin guardar?</string>
+    <string name="metadata_discard">Descartar</string>
+    <string name="metadata_keep_editing">Seguir editando</string>
 </resources>

@@ -20,4 +20,4 @@ internal val EchoLyricsBackdrop.reactsToLyrics: Boolean
 
 /** Styles whose motion eases down while playback is paused. */
 internal val EchoLyricsBackdrop.slowsWhenPaused: Boolean
-    get() = this == EchoLyricsBackdrop.Fluid || this == EchoLyricsBackdrop.Ridge || reactsToLyrics
+    get() = this == EchoLyricsBackdrop.Ridge || reactsToLyrics

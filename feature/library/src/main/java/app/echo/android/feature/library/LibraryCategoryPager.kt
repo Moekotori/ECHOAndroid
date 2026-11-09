@@ -41,13 +41,13 @@ internal fun EchoLibraryCategory.viewMode(): LibraryViewMode = when (this) {
 
 /** Category paging stays in the library; each lazy page retains its saved scroll state. */
 @Composable
-internal fun LibraryCategoryPager(
+internal fun <Mode : Enum<Mode>> LibraryCategoryPager(
     pager: PagerState,
-    modes: List<LibraryViewMode>,
-    selectedMode: LibraryViewMode,
-    onSelectMode: (LibraryViewMode) -> Unit,
+    modes: List<Mode>,
+    selectedMode: Mode,
+    onSelectMode: (Mode) -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable (LibraryViewMode) -> Unit,
+    content: @Composable (Mode) -> Unit,
 ) = key(modes) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val interactive = LocalEchoPageInteractive.current

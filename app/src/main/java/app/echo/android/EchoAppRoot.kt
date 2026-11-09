@@ -129,7 +129,7 @@ import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.fadeToDockPage
 import app.echo.android.ui.shell.pagerPage
 import app.echo.android.ui.shell.rememberDockPageContentReady
-import app.echo.android.ui.shell.rememberDockPagerFlingBehavior
+import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.ui.shell.outerPagerUserScrollEnabled
 import app.echo.android.ui.shell.rememberHomeSafePagerNestedScroll
 import app.echo.android.ui.shell.recoverStrandedPager
@@ -493,14 +493,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             sendingCastAddress = null
         }
     }
+    val pcSupportsSourceRanges = remoteStatus.playback.supportsSourceRanges
     val phoneCastPlan by produceState<EchoLinkCastPlan>(
-        EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.EmptyQueue), playbackQueue,
+        EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.EmptyQueue), playbackQueue, pcSupportsSourceRanges,
     ) {
         value = withContext(Dispatchers.Default) {
             EchoLinkCastPolicy.plan(
                 tracks = playbackQueue.items.map { it.toCastSource() },
                 startIndex = playbackQueue.currentIndex,
                 maxTracks = Int.MAX_VALUE,
+                sourceRanges = pcSupportsSourceRanges,
+                pcLibraryTrackLimit = 1,
             )
         }
     }
@@ -743,6 +746,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     startIndex = snapshot.queue.currentIndex,
                     maxTracks = Int.MAX_VALUE,
                     sourceRanges = echoLinkSession.client.status.value.playback.supportsSourceRanges,
+                    pcLibraryTrackLimit = 1,
                 )
             },
             pausePhone = { viewModel.pause() },
@@ -806,6 +810,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     var listeningStatsVisible by rememberSaveable { mutableStateOf(false) }
     var playbackHistoryVisible by rememberSaveable { mutableStateOf(false) }
     var addMusicVisible by rememberSaveable { mutableStateOf(openAddMusicInitially) }
+    val tagEditor = app.echo.android.feature.library.rememberTrackMetadataEditorNavigation()
+    val tagEditorVisible = tagEditor.isOpen
     var libraryRepairVisible by rememberSaveable { mutableStateOf(false) }
     var listeningDraft by rememberSaveable { mutableStateOf("") }
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -825,6 +831,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         nowPlayingExpanded = true
     }
     var lyricsLaunchToken by rememberSaveable { mutableIntStateOf(0) }
+    fun expandNowPlayingLyrics() {
+        lyricsLaunchToken += 1
+        expandNowPlaying()
+    }
     var queueSheetVisible by rememberSaveable { mutableStateOf(false) }
     var remotePlayerSheetVisible by rememberSaveable { mutableStateOf(false) }
     var remoteQueueSheetVisible by rememberSaveable { mutableStateOf(false) }
@@ -852,13 +862,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val libraryDetailBack = rememberEchoBackProgress(pageLightweight)
     val pageCoverCount = listOf(
         searchVisible, errorLogVisible, listeningStatsVisible, playbackHistoryVisible,
-        listeningVisible, pluginsVisible, addMusicVisible,
+        listeningVisible, pluginsVisible, addMusicVisible, tagEditorVisible,
     ).count { it }
     val openLyricsRequest by EchoLaunchActions.openLyrics.collectAsStateWithLifecycle()
     LaunchedEffect(openLyricsRequest) {
         if (openLyricsRequest) {
-            expandNowPlaying()
-            lyricsLaunchToken += 1
+            expandNowPlayingLyrics()
             viewModel.setShowLyricsControlDeck(true)
             EchoLaunchActions.consumeOpenLyrics()
         }
@@ -1248,7 +1257,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     ) {
         addMusicVisible = false
     }
-    val shellOverlayOpen = showPermissionOnboarding || searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible || libraryRepairVisible
+    val shellOverlayOpen = showPermissionOnboarding || searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible || libraryRepairVisible || tagEditorVisible
     EchoDesktopShortcuts(
         navigationEnabled = appVisible && !shellOverlayOpen,
         onSelectTab = ::selectDockTab, onSettings = { navigateToPage(EchoPagerPage.Settings) },
@@ -1432,7 +1441,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 modifier = Modifier.fillMaxSize()
                     .then(if (shellOverlayOpen) Modifier.clearAndSetSemantics { } else Modifier)
                     .echoPageUnderlay(
-                        obscured = searchVisible || errorLogVisible || listeningStatsVisible || playbackHistoryVisible || listeningVisible || pluginsVisible || addMusicVisible,
+                        obscured = pageCoverCount > 0,
                         // Hand the page back only when the dragged overlay is the sole cover.
                         backProgress = {
                             if (pageCoverCount == 1) maxOf(searchBack.value, errorLogBack.value, statsBack.value, historyBack.value, listeningBack.value, addMusicBack.value, pluginsBack.value) else 0f
@@ -1440,7 +1449,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     )
                     .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBack.value, nowPlayingDragProgress) },
             ) { sideNavigation ->
-                val tabPagerFling = rememberDockPagerFlingBehavior(tabPagerState, effectivePerformanceMode)
+                val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
                 val libraryDetailOpen = hasLibraryDetail()
                 val enteringInnerTabPage =
                     (selectedTab == EchoTab.Connect.ordinal || selectedTab == EchoTab.Diagnostics.ordinal) &&
@@ -1494,8 +1503,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 selectedGenre = selectedGenre,
                                 selectedFolder = selectedFolder,
                                 selectedPlaylist = selectedPlaylist,
-                                outerNavigationOwnsTransition = detailReturnPage != null &&
-                                    detailReturnPage != EchoPagerPage.Library,
+                                outerNavigationOwnsTransition = searchVisible ||
+                                    tabPagerState.settledPage != EchoPagerPage.Library.ordinal ||
+                                    (detailReturnPage != null && detailReturnPage != EchoPagerPage.Library),
                                 detailBackProgress = { libraryDetailBack.value },
                                 onRequestPermission = { permissionLauncher.launch(permission) },
                                 onScanFolder = { options ->
@@ -1503,6 +1513,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                     folderScanLauncher.launch(null)
                                 },
                                 onAddMusic = { addMusicVisible = true },
+                                onEditTrackTags = tagEditor::open,
                                 onImportLyricsForTrack = { track ->
                                     lyricsImportTrackId = track.id
                                     lyricsImportLauncher.launch(LyricsDocumentMimeTypes)
@@ -1564,6 +1575,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                     selectDockTab(EchoTab.Library)
                                 },
                                 homeLayout = appSettings.homeLayout,
+                                // A section composed during a page swipe is already entering with the pager.
+                                animateSectionEntrance = remember(tabPagerState) {
+                                    derivedStateOf {
+                                        tabPagerState.settledPage == EchoPagerPage.Now.ordinal &&
+                                            !tabPagerState.isScrollInProgress &&
+                                            tabPagerState.currentPageOffsetFraction.absoluteValue < 0.001f
+                                    }
+                                }.value,
                                 bottomInset = bottomDockInset,
                                 viewModel = viewModel,
                                 playbackStatus = playbackStatus,
@@ -1650,8 +1669,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 pauseOnMute = appSettings.pauseOnMute, onPauseOnMuteChange = viewModel::setPauseOnMute,
                                 onLyricsOptionsChange = viewModel::setLyricsOptions,
                                 onOpenLyricsInterface = {
-                                    expandNowPlaying()
-                                    lyricsLaunchToken += 1
+                                    expandNowPlayingLyrics()
                                     viewModel.setShowLyricsControlDeck(true)
                                 },
                                 floatingLyrics = appSettings.floatingLyrics,
@@ -2081,6 +2099,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     onShowDock = { bottomDockExpanded = true },
                     onSelectTab = ::tapNavigationTab,
                     onExpand = { expandNowPlaying() },
+                    onOpenLyrics = ::expandNowPlayingLyrics,
                     onOpenQueue = { queueSheetVisible = true },
                     onNext = ::routedSkipNext,
                     onPrevious = ::routedSkipPrevious,
@@ -2093,6 +2112,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             EchoExpandedPlayer(
                 visible = nowPlayingExpanded,
                 onHidden = {
+                    lyricsLaunchToken = 0
                     nowPlayingBack.reset()
                     suppressPlayerArtworkFlight = false
                 },
@@ -2427,6 +2447,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     onBack = { errorLogVisible = false },
                 )
             }
+            app.echo.android.feature.library.TrackMetadataEditorOverlay(
+                navigation = tagEditor,
+                loadLyrics = viewModel::loadEmbeddedLyrics,
+                onSave = viewModel::updateTrackMetadata,
+            )
             EchoPluginsOverlay(
                 visible = pluginsVisible,
                 playback = viewModel,

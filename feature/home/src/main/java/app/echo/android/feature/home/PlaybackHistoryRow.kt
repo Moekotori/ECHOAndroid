@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,9 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
@@ -101,19 +98,12 @@ internal fun PlaybackHistoryTimelineRow(
                     metadata, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
-                Row(
-                    Modifier.padding(top = 3.dp).clip(RoundedCornerShape(8.dp)).background(scheme.onSurface.copy(alpha = 0.05f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    if (entry.canReplay) EchoIcon(Icons.Rounded.Headphones, null, Modifier.size(12.dp), tint = scheme.onSurfaceVariant)
-                    Text(
-                        if (entry.canReplay) stringResource(R.string.playback_history_listened, duration)
-                        else stringResource(R.string.playback_history_unavailable),
-                        style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Text(
+                    if (entry.canReplay) stringResource(R.string.playback_history_listened, duration)
+                    else stringResource(R.string.playback_history_unavailable),
+                    style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         IconButton(onClick = onMore, enabled = !busy, modifier = Modifier.size(48.dp)) {
@@ -143,11 +133,10 @@ internal fun PlaybackHistoryGroupedRow(
     val playsText = listeningPlayCount(entry.plays)
     val accent = scheme.primary
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(20.dp))
-            .background(scheme.onSurface.copy(alpha = 0.04f))
+        Modifier.fillMaxWidth()
             .combinedClickable(enabled = !busy, role = Role.Button, onLongClick = onMore, onClick = { if (entry.canReplay) onPlay() else onMore() })
             .semantics { customActions = listOf(CustomAccessibilityAction(moreDescription) { onMore(); true }) }
-            .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (rank != null) Text(
@@ -156,8 +145,8 @@ internal fun PlaybackHistoryGroupedRow(
             color = scheme.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 1,
         )
         EchoArtworkImage(
-            entry.artworkUri, null, Modifier.size(56.dp).alpha(if (entry.canReplay) 1f else 0.55f),
-            shape = RoundedCornerShape(14.dp), sizeClass = EchoArtworkSize.Thumbnail,
+            entry.artworkUri, null, Modifier.size(48.dp).alpha(if (entry.canReplay) 1f else 0.55f),
+            shape = RoundedCornerShape(8.dp), sizeClass = EchoArtworkSize.Thumbnail,
         )
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -186,7 +175,7 @@ internal fun PlaybackHistoryGroupedRow(
 @Composable
 internal fun PlaybackHistoryDateHeader(title: String, detail: String) {
     Row(
-        Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 6.dp).padding(horizontal = 4.dp),
+        Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 6.dp).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(

@@ -36,7 +36,6 @@ internal fun PlaylistTrackPlaceholder(editing: Boolean) {
 @Composable
 internal fun PlaylistTrackRow(
     track: EchoTrack,
-    rangeSource: LibraryRangeSource? = null,
     accent: Color,
     onClick: () -> Unit,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)?,
@@ -45,7 +44,6 @@ internal fun PlaylistTrackRow(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)?,
     onAddToPlaylist: ((EchoTrack) -> Unit)?,
     onPlayNext: ((EchoTrack) -> Unit)?,
-    onAddNextUp: ((EchoTrack) -> Unit)?,
     onEnqueue: ((EchoTrack) -> Unit)?,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)?,
     onMoveUp: (() -> Unit)?,
@@ -59,7 +57,6 @@ internal fun PlaylistTrackRow(
 ) {
     val colors = rememberPlaylistDetailColors()
     TrackContextMenu(
-        rangeSource = rangeSource,
         track = track,
         onPlay = onClick,
         onUpdateTrackMetadata = onUpdateTrackMetadata,
@@ -68,7 +65,6 @@ internal fun PlaylistTrackRow(
         onMatchNeteaseMetadata = onMatchNeteaseMetadata,
         onAddToPlaylist = onAddToPlaylist,
         onPlayNext = onPlayNext,
-        onAddNextUp = onAddNextUp,
         onEnqueue = onEnqueue,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         onMoveUp = onMoveUp,

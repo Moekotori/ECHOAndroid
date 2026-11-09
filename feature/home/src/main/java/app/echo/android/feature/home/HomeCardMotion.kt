@@ -25,23 +25,29 @@ import app.echo.android.design.echoPressFeedback
 
 /** Saved inside each stable lazy-item key: scrolling back never replays its entrance. */
 @Composable
-internal fun HomeSectionEntrance(order: Int, content: @Composable ColumnScope.() -> Unit) {
-    val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+internal fun HomeSectionEntrance(
+    order: Int,
+    animateEntrance: Boolean,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val animate = animateEntrance && !LocalEchoEffectivePerformanceMode.current.isLightweight
     var shown by rememberSaveable { mutableStateOf(false) }
-    val reveal = remember { Animatable(if (shown || lightweight) 1f else 0f) }
-    LaunchedEffect(lightweight) {
+    val reveal = remember(animate) { Animatable(if (shown || !animate) 1f else 0f) }
+    LaunchedEffect(reveal) {
         shown = true
-        if (lightweight) reveal.snapTo(1f)
-        else reveal.animateTo(1f, tween(
+        if (reveal.value < 1f) reveal.animateTo(1f, tween(
             EchoMotion.CardRevealMs,
             delayMillis = order.coerceIn(0, 3) * EchoMotion.CardStaggerMs,
             easing = EchoMotion.Silk,
         ))
     }
-    Column(Modifier.graphicsLayer {
-        alpha = reveal.value
-        translationY = 12.dp.toPx() * (1f - reveal.value)
-    }, content = content)
+    Column(
+        modifier = if (animate) Modifier.graphicsLayer {
+            alpha = reveal.value
+            translationY = 12.dp.toPx() * (1f - reveal.value)
+        } else Modifier,
+        content = content,
+    )
 }
 
 internal fun Modifier.homeCardClickable(onClick: () -> Unit): Modifier = composed {

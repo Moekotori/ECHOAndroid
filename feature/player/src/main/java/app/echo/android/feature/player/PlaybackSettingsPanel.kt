@@ -288,8 +288,8 @@ private fun PlaybackSettingsSheet(
                         if (!moreExpanded) GlyphButton(
                             icon = Icons.Rounded.Edit,
                             description = stringResource(L10nR.string.player_menu_edit),
-                            touchSize = 48.dp, iconSize = 20.dp,
-                            tint = MaterialTheme.colorScheme.onSurface, background = settingsPlateColor(), onClick = onEditMenu,
+                            touchSize = 48.dp, iconSize = 18.dp,
+                            tint = MaterialTheme.colorScheme.onSurface, background = Color.Transparent, onClick = onEditMenu,
                         )
                     },
                 ) {

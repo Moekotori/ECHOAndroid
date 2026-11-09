@@ -25,6 +25,7 @@ internal fun EchoHomePage(
     onResumePlayback: () -> Unit,
     bottomInset: Dp,
     homeLayout: app.echo.android.model.settings.EchoHomeLayout,
+    animateSectionEntrance: Boolean,
     onOpenSettings: () -> Unit,
 ) {
     val libraryStats by viewModel.libraryStats.collectAsStateWithLifecycle()
@@ -44,6 +45,7 @@ internal fun EchoHomePage(
         onOpenPlaylist = onOpenPlaylist,
         onPlayPlaylist = { viewModel.playPlaylist(it.id) },
         homeLayout = homeLayout,
+        animateSectionEntrance = animateSectionEntrance,
         onHomeLayoutChange = viewModel::setHomeLayout,
         status = playbackStatus,
         rediscoveredAlbums = rediscoveredAlbums,

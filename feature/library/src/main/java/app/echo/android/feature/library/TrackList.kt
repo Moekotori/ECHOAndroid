@@ -4,10 +4,7 @@ import app.echo.android.design.EchoModalSheet
 import app.echo.android.feature.library.R as L10nR
 import androidx.compose.ui.res.stringResource
 
-import androidx.compose.foundation.background
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
-import app.echo.android.design.echoClickable
 import app.echo.android.design.echoCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,98 +18,58 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.retain.retain
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.paging.compose.LazyPagingItems
 import app.echo.android.design.ArtworkTile
-import app.echo.android.design.EchoColors
-import app.echo.android.design.LocalEchoDarkTheme
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.displayMetadataOrUnknown
-import app.echo.android.design.formatDuration
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.libraryDisplayTitle
 import app.echo.android.model.library.EchoTrackMetadataUpdate
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-
-fun interface EmbeddedLyricsLoader {
-    suspend fun load(trackId: String): String?
-}
-
-internal val LocalEmbeddedLyricsLoader = staticCompositionLocalOf<EmbeddedLyricsLoader?> { null }
-
-@Composable
-fun EmbeddedLyricsLoaderProvider(
-    loader: EmbeddedLyricsLoader?,
-    content: @Composable () -> Unit,
-) {
-    CompositionLocalProvider(LocalEmbeddedLyricsLoader provides loader, content = content)
-}
 
 @Composable
 internal fun TrackList(
     tracks: LazyPagingItems<EchoTrack>,
     playingTrackId: String? = null,
+    isPlaying: Boolean = false,
     onPlayTrack: (EchoTrack) -> Unit,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
@@ -120,7 +77,6 @@ internal fun TrackList(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
-    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
@@ -130,7 +86,6 @@ internal fun TrackList(
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
 ) {
-    val rangeSource = rememberLibraryRangeSource(tracks)
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         state = listState,
@@ -142,13 +97,11 @@ internal fun TrackList(
             key = { index: Int -> tracks.peek(index)?.id ?: "track-$index" },
         ) { index: Int ->
             tracks[index]?.let { track ->
+                val isCurrentTrack = track.id == playingTrackId
                 TrackRow(
-                rangeSource = rangeSource,
-                    modifier = libraryTrackItemMotion().then(
-                        if (track.id == playingTrackId) Modifier.background(
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), RoundedCornerShape(8.dp),
-                        ) else Modifier,
-                    ),
+                    modifier = libraryTrackItemMotion(),
+                    isCurrentTrack = isCurrentTrack,
+                    isPlaying = isPlaying && isCurrentTrack,
                     track = track,
                     onClick = { onPlayTrack(track) },
                     onUpdateTrackMetadata = onUpdateTrackMetadata,
@@ -159,7 +112,6 @@ internal fun TrackList(
                     onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                     onAddToPlaylist = onAddToPlaylist,
                     onPlayNext = onPlayNext,
-                    onAddNextUp = onAddNextUp,
                     onEnqueue = onEnqueue,
                     onRemoveFromPlaylist = onRemoveFromPlaylist,
                     onMoveUp = onMoveTrack?.takeIf { index > 0 }?.let { move ->
@@ -170,7 +122,7 @@ internal fun TrackList(
                     },
                     showAudioInfoTags = showAudioInfoTags,
                 )
-            } ?: Spacer(Modifier.fillMaxWidth().height(84.dp))
+            } ?: Spacer(Modifier.fillMaxWidth().height(LibraryTrackRowMinHeight))
         }
     }
 }
@@ -185,7 +137,6 @@ internal fun TrackList(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
-    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
@@ -195,7 +146,6 @@ internal fun TrackList(
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
 ) {
-    val rangeSource = rememberLibraryRangeSource(tracks)
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         state = listState,
@@ -208,7 +158,6 @@ internal fun TrackList(
         ) { index ->
             val track = tracks[index]
             TrackRow(
-                rangeSource = rangeSource,
                 modifier = libraryTrackItemMotion(),
                 track = track,
                 onClick = { onPlayTrack(track) },
@@ -220,7 +169,6 @@ internal fun TrackList(
                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                 onAddToPlaylist = onAddToPlaylist,
                 onPlayNext = onPlayNext,
-                onAddNextUp = onAddNextUp,
                 onEnqueue = onEnqueue,
                 onRemoveFromPlaylist = onRemoveFromPlaylist,
                 onMoveUp = onMoveTrack?.takeIf { index > 0 }?.let { move ->
@@ -235,160 +183,10 @@ internal fun TrackList(
     }
 }
 
-@Composable
-internal fun TrackRow(
-    track: EchoTrack,
-    rangeSource: LibraryRangeSource? = null,
-    onClick: () -> Unit,
-    onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
-    onImportLyrics: ((EchoTrack) -> Unit)? = null,
-    onPickArtwork: ((EchoTrack) -> Unit)? = null,
-    onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
-    onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
-    onPlayNext: ((EchoTrack) -> Unit)? = null,
-    onAddNextUp: ((EchoTrack) -> Unit)? = null,
-    onEnqueue: ((EchoTrack) -> Unit)? = null,
-    onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
-    onMoveUp: (() -> Unit)? = null,
-    onMoveDown: (() -> Unit)? = null,
-    onOpenArtist: ((EchoTrack) -> Unit)? = null,
-    onOpenAlbum: ((EchoTrack) -> Unit)? = null,
-    onPlayOnPc: (() -> Unit)? = null,
-    showAudioInfoTags: Boolean = true,
-    modifier: Modifier = Modifier,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val dark = LocalEchoDarkTheme.current
-    val subtitle = trackSubtitle(track)
-    val duration = remember(track.durationMs) { formatDuration(track.durationMs) }
-    val sampleRate = remember(showAudioInfoTags, track.sampleRateHz) {
-        if (showAudioInfoTags) track.sampleRateHz?.let(::formatTrackSampleRate) else null
-    }
-    val format = remember(showAudioInfoTags, track.mimeType) {
-        if (showAudioInfoTags) formatTrackMimeType(track.mimeType) else null
-    }
-    val hasTags = format != null || sampleRate != null
-
-    TrackContextMenu(
-        rangeSource = rangeSource,
-        track = track,
-        onPlay = onClick,
-        onUpdateTrackMetadata = onUpdateTrackMetadata,
-        onImportLyrics = onImportLyrics,
-        onPickArtwork = onPickArtwork,
-        onMatchNeteaseMetadata = onMatchNeteaseMetadata,
-        onAddToPlaylist = onAddToPlaylist,
-        onPlayNext = onPlayNext,
-        onAddNextUp = onAddNextUp,
-        onEnqueue = onEnqueue,
-        onRemoveFromPlaylist = onRemoveFromPlaylist,
-        onMoveUp = onMoveUp,
-        onMoveDown = onMoveDown,
-        onOpenArtist = onOpenArtist?.let { open -> { open(track) } },
-        onOpenAlbum = onOpenAlbum?.let { open -> { open(track) } },
-        onPlayOnPc = onPlayOnPc,
-        showMoreAction = true,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = 4.dp),
-    ) { pressModifier ->
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(pressModifier),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                ArtworkTile(
-                    track.artworkUri,
-                    Modifier.size(52.dp),
-                    accent = rememberLibraryArtworkAccent(),
-                    cornerRadius = 6.dp,
-                    elevation = 0.dp,
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        displayMetadataOrUnknown(track.libraryDisplayTitle(LocalLibraryFileNames.current), unknownTrackLabel()),
-                        color = if (dark) Color.White.copy(alpha = 0.98f) else scheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Medium,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        subtitle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = if (dark) Color.White.copy(alpha = 0.80f) else scheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Normal,
-                    )
-                    if (hasTags) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            format?.let { value ->
-                                TrackInfoTag(
-                                    text = value,
-                                    tone = TrackInfoTagTone.Format,
-                                )
-                            }
-                            sampleRate?.let { value ->
-                                TrackInfoTag(
-                                    text = value,
-                                    tone = if (isHiResSampleRate(track.sampleRateHz)) {
-                                        TrackInfoTagTone.Gold
-                                    } else {
-                                        TrackInfoTagTone.Neutral
-                                    },
-                                )
-                            }
-                        }
-                    }
-                }
-                Column(
-                    modifier = Modifier.widthIn(min = 36.dp, max = 46.dp),
-                    horizontalAlignment = Alignment.End,
-                ) {
-                    Text(
-                        duration,
-                        color = if (dark) Color.White.copy(alpha = 0.82f) else scheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Normal,
-                        maxLines = 1,
-                    )
-                }
-            }
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .padding(start = 66.dp)
-                    .background(if (dark) Color.White.copy(alpha = 0.06f) else scheme.outlineVariant.copy(alpha = 0.36f)),
-            )
-        }
-    }
-}
-
-private enum class TrackSheetMode {
-    Actions,
-    Editor,
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TrackContextMenu(
     track: EchoTrack,
-    rangeSource: LibraryRangeSource? = null,
     onPlay: () -> Unit,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
@@ -396,7 +194,6 @@ internal fun TrackContextMenu(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
-    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onRemoveFromPlaylist: ((EchoTrack) -> Unit)? = null,
     onMoveUp: (() -> Unit)? = null,
@@ -405,6 +202,7 @@ internal fun TrackContextMenu(
     onOpenAlbum: (() -> Unit)? = null,
     onPlayOnPc: (() -> Unit)? = null,
     showMoreAction: Boolean = false,
+    inlineSongActions: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable (Modifier) -> Unit,
 ) {
@@ -421,28 +219,19 @@ internal fun TrackContextMenu(
     val onSelectForBatch = selection?.let { { it.start(track) } }
     val actionScope = rememberCoroutineScope()
     var expanded by remember(track.id) { mutableStateOf(false) }
-    var sheetMode by rememberSaveable(track.id) { mutableStateOf<TrackSheetMode?>(null) }
+    var showActions by rememberSaveable(track.id) { mutableStateOf(false) }
     var showInfo by remember(track.id) { mutableStateOf(false) }
-    var showEditor by rememberSaveable(track.id) { mutableStateOf(false) }
-    val editorSave = retain(track.id) { TrackMetadataSaveState() }
-    val editorSaving = editorSave.saving
-    LaunchedEffect(editorSave.completed) {
-        if (editorSave.completed) {
-            sheetMode = null
-            showEditor = false
-            editorSave.consumeCompletion()
-        }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val openTagEditor = LocalTrackMetadataEditorLauncher.current
+    val canEditMetadata = openTagEditor != null && onUpdateTrackMetadata != null && track.canEditFileTags()
+
+    fun editTags() {
+        showActions = false
+        openTagEditor?.invoke(
+            track,
+            onPickArtwork != null && track.source != app.echo.android.model.library.LibrarySource.FilePlaylist,
+        )
     }
-    suspend fun saveMetadata(update: EchoTrackMetadataUpdate): Boolean = editorSave.save {
-        onUpdateTrackMetadata?.invoke(update) ?: false
-    }
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        confirmValueChange = { value ->
-            !editorSaving || value != SheetValue.Hidden
-        },
-    )
-    val canEditMetadata = onUpdateTrackMetadata != null && track.canEditFileTags()
 
     Box(modifier = modifier
         .libraryDeletionFeedback(track.id in selection?.deletingIds.orEmpty())
@@ -461,16 +250,32 @@ internal fun TrackContextMenu(
                     enabled = !selecting || canSelect,
                     role = if (selecting) Role.Checkbox else null,
                     onClick = { if (selecting) selection.toggle(track) else onPlay() },
-                    onLongClick = { sheetMode = TrackSheetMode.Actions },
+                    onLongClick = { showActions = true },
                 ).then(if (selecting) Modifier.semantics {
                     toggleableState = if (selected) ToggleableState.On else ToggleableState.Off
                 } else Modifier))
             }
-            if (LocalLibraryPlayNext.current && !selecting && onPlayNext != null) {
-                IconButton(onClick = { onPlayNext(track) }) {
-                    EchoIcon(Icons.Rounded.PlaylistPlay,
-                        contentDescription = stringResource(L10nR.string.library_inline_play_next_track, track.libraryDisplayTitle(LocalLibraryFileNames.current)),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!selecting) {
+                if (LocalLibraryPlayNext.current && onPlayNext != null) {
+                    IconButton(onClick = { onPlayNext(track) }) {
+                        EchoIcon(
+                            Icons.Rounded.PlaylistPlay,
+                            contentDescription = stringResource(
+                                L10nR.string.library_inline_play_next_track,
+                                track.libraryDisplayTitle(LocalLibraryFileNames.current),
+                            ),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else if (inlineSongActions && onEnqueue != null) {
+                    IconButton(onClick = { onEnqueue(track) }) {
+                        EchoIcon(
+                            Icons.Rounded.Add,
+                            contentDescription = stringResource(L10nR.string.feature_library_add_to_queue_1775d3),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                        )
+                    }
                 }
             }
             AnimatedVisibility(
@@ -478,9 +283,10 @@ internal fun TrackContextMenu(
                 enter = librarySelectionEnter(lightweight),
                 exit = librarySelectionExit(lightweight),
             ) {
-                IconButton(onClick = { sheetMode = TrackSheetMode.Actions }) {
+                IconButton(onClick = { showActions = true }) {
                     EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_track_actions),
-                        modifier = Modifier.offset(x = 8.dp),
+                        modifier = Modifier.offset(x = 8.dp)
+                            .then(if (inlineSongActions) Modifier.size(20.dp) else Modifier),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -508,7 +314,7 @@ internal fun TrackContextMenu(
                 enabled = canEditMetadata,
                 onClick = {
                     expanded = false
-                    showEditor = true
+                    editTags()
                 },
             )
             if (onImportLyrics != null) {
@@ -548,127 +354,99 @@ internal fun TrackContextMenu(
         }
     }
 
-    sheetMode?.let { mode ->
+    if (showActions) {
         EchoModalSheet(
-            onDismissRequest = { if (!editorSaving) sheetMode = null },
+            onDismissRequest = { showActions = false },
             sheetState = sheetState,
             // Changing top inset padding during a drag would resize the sheet and move its anchor.
             contentWindowInsets = {
-                if (mode == TrackSheetMode.Actions) {
-                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
-                } else {
-                    BottomSheetDefaults.windowInsets
-                }
+                WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
             },
         ) {
-            when (mode) {
-                TrackSheetMode.Actions -> TrackActionSheet(
-                    track = track,
-                    onRangeStart = if (rangeSource != null && selection != null && !selection.locked) ({ sheetMode = null; selection.beginRange(rangeSource, track) }) else null,
-                    onRangeEnd = if (rangeSource != null && selection?.rangeAnchor != null && !selection.locked) ({ sheetMode = null; selection.endRange(rangeSource, track) }) else null,
-                    canEditMetadata = canEditMetadata,
-                    canImportLyrics = onImportLyrics != null,
-                    canPickArtwork = onPickArtwork != null && track.source != app.echo.android.model.library.LibrarySource.FilePlaylist,
-                    canAddToPlaylist = onAddToPlaylist != null,
-                    canPlayNext = onPlayNext != null,
-                    canAddNextUp = onAddNextUp != null,
-                    canEnqueue = onEnqueue != null,
-                    canRemoveFromPlaylist = onRemoveFromPlaylist != null,
-                    canMoveUp = onMoveUp != null,
-                    canMoveDown = onMoveDown != null,
-                    canOpenArtist = onOpenArtist != null,
-                    canOpenAlbum = onOpenAlbum != null,
-                    canPlayOnPc = onPlayOnPc != null,
-                    onPlay = {
-                        sheetMode = null
-                        onPlay()
-                    },
-                    onPlayOnPc = {
-                        sheetMode = null
-                        onPlayOnPc?.invoke()
-                    },
-                    onOpenArtist = {
-                        sheetMode = null
-                        onOpenArtist?.invoke()
-                    },
-                    onOpenAlbum = {
-                        sheetMode = null
-                        onOpenAlbum?.invoke()
-                    },
-                    onEdit = { sheetMode = TrackSheetMode.Editor },
-                    onVersions = openTrackVersions?.let { open -> { sheetMode = null; open(track) } },
-                    onHide = hiddenTracks?.takeIf { track.source != app.echo.android.model.library.LibrarySource.EchoLink }?.let { ui ->
-                        { sheetMode = null; ui.requestHide(track) }
-                    },
-                    onDelete = requestTrackDeletion?.let { request ->
-                        {
-                            sheetMode = null
-                            request(track)
+            TrackActionSheet(
+                track = track,
+                canEditMetadata = canEditMetadata,
+                canImportLyrics = onImportLyrics != null,
+                canAddToPlaylist = onAddToPlaylist != null,
+                canPlayNext = onPlayNext != null,
+                canEnqueue = onEnqueue != null,
+                canRemoveFromPlaylist = onRemoveFromPlaylist != null,
+                canMoveUp = onMoveUp != null,
+                canMoveDown = onMoveDown != null,
+                canOpenArtist = onOpenArtist != null,
+                canOpenAlbum = onOpenAlbum != null,
+                canPlayOnPc = onPlayOnPc != null,
+                onPlay = {
+                    showActions = false
+                    onPlay()
+                },
+                onPlayOnPc = {
+                    showActions = false
+                    onPlayOnPc?.invoke()
+                },
+                onOpenArtist = {
+                    showActions = false
+                    onOpenArtist?.invoke()
+                },
+                onOpenAlbum = {
+                    showActions = false
+                    onOpenAlbum?.invoke()
+                },
+                onEdit = ::editTags,
+                onVersions = openTrackVersions?.let { open -> { showActions = false; open(track) } },
+                onHide = hiddenTracks?.takeIf { track.source != app.echo.android.model.library.LibrarySource.EchoLink }?.let { ui ->
+                    { showActions = false; ui.requestHide(track) }
+                },
+                onDelete = requestTrackDeletion?.let { request ->
+                    {
+                        showActions = false
+                        request(track)
+                    }
+                },
+                onImportLyrics = {
+                    showActions = false
+                    onImportLyrics?.invoke(track)
+                },
+                onAddToPlaylist = {
+                    showActions = false
+                    onAddToPlaylist?.invoke(track)
+                },
+                onPlayNext = {
+                    showActions = false
+                    onPlayNext?.invoke(track)
+                },
+                onEnqueue = {
+                    showActions = false
+                    onEnqueue?.invoke(track)
+                },
+                onRemoveFromPlaylist = {
+                    showActions = false
+                    onRemoveFromPlaylist?.invoke(track)
+                },
+                onMoveUp = {
+                    showActions = false
+                    onMoveUp?.invoke()
+                },
+                onMoveDown = {
+                    showActions = false
+                    onMoveDown?.invoke()
+                },
+                onInfo = {
+                    showActions = false
+                    showInfo = true
+                },
+                onShare = shareOriginal?.let { share -> { showActions = false; share(listOf(track)) } },
+                onSelectForBatch = onSelectForBatch?.let { select ->
+                    {
+                        actionScope.launch {
+                            sheetState.hide()
+                            showActions = false
+                            select()
                         }
-                    },
-                    onImportLyrics = {
-                        sheetMode = null
-                        onImportLyrics?.invoke(track)
-                    },
-                    onPickArtwork = {
-                        sheetMode = null
-                        onPickArtwork?.invoke(track)
-                    },
-                    onAddToPlaylist = {
-                        sheetMode = null
-                        onAddToPlaylist?.invoke(track)
-                    },
-                    onAddNextUp = {
-                        sheetMode = null
-                        onAddNextUp?.invoke(track)
-                    },
-                    onPlayNext = {
-                        sheetMode = null
-                        onPlayNext?.invoke(track)
-                    },
-                    onEnqueue = {
-                        sheetMode = null
-                        onEnqueue?.invoke(track)
-                    },
-                    onRemoveFromPlaylist = {
-                        sheetMode = null
-                        onRemoveFromPlaylist?.invoke(track)
-                    },
-                    onMoveUp = {
-                        sheetMode = null
-                        onMoveUp?.invoke()
-                    },
-                    onMoveDown = {
-                        sheetMode = null
-                        onMoveDown?.invoke()
-                    },
-                    onInfo = {
-                        sheetMode = null
-                        showInfo = true
-                    },
-                    onShare = shareOriginal?.let { share -> { sheetMode = null; share(listOf(track)) } },
-                    onSelectForBatch = onSelectForBatch?.let { select ->
-                        {
-                            actionScope.launch {
-                                sheetState.hide()
-                                sheetMode = null
-                                select()
-                            }
-                            Unit
-                        }
-                    },
-                )
-
-                TrackSheetMode.Editor -> if (onUpdateTrackMetadata != null) {
-                    TrackMetadataEditorSheet(
-                        track = track,
-                        saving = editorSaving,
-                        onDismiss = { sheetMode = null },
-                        onSave = ::saveMetadata,
-                        canPickArtwork = onPickArtwork != null && track.source != app.echo.android.model.library.LibrarySource.FilePlaylist,
-                    )
-                }
-            }
+                        Unit
+                    }
+                },
+            )
         }
     }
 
@@ -682,15 +460,6 @@ internal fun TrackContextMenu(
                     open()
                 }
             },
-        )
-    }
-    if (showEditor && onUpdateTrackMetadata != null) {
-        TrackMetadataEditorDialog(
-            track = track,
-            saving = editorSaving,
-            onDismiss = { showEditor = false },
-            onSave = ::saveMetadata,
-            canPickArtwork = onPickArtwork != null && track.source != app.echo.android.model.library.LibrarySource.FilePlaylist,
         )
     }
 }
@@ -731,276 +500,7 @@ internal fun TrackSheetHeader(track: EchoTrack, artworkSize: Dp = 64.dp, modifie
 }
 
 @Composable
-private fun TrackMetadataEditorSheet(
-    track: EchoTrack,
-    saving: Boolean,
-    onDismiss: () -> Unit,
-    onSave: suspend (EchoTrackMetadataUpdate) -> Boolean,
-    canPickArtwork: Boolean = false,
-) {
-    val editor = rememberTrackMetadataEditorState(track)
-    val pickArtwork = rememberTrackMetadataArtworkPicker(editor)
-    val scope = rememberCoroutineScope()
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 620.dp)
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        TrackSheetHeader(track.copy(artworkUri = editor.artworkUri ?: track.artworkUri))
-        Spacer(Modifier.height(2.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                stringResource(L10nR.string.feature_library_edit_tags_c8ec75),
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.titleLarge,
-            )
-            TextButton(onClick = onDismiss, enabled = !saving) {
-                Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
-            }
-        }
-        TrackMetadataEditorFields(
-            state = editor,
-            saving = saving,
-            onPickArtwork = if (canPickArtwork) pickArtwork else null,
-        )
-        Button(
-            enabled = editor.canSave || saving,
-            onClick = {
-                if (saving || !editor.canSave) return@Button
-                val update = editor.toUpdate(track)
-                scope.launch {
-                    withContext(NonCancellable) { onSave(update) }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            MetadataSaveButtonLabel(saving)
-        }
-    }
-}
-
-@Composable
-private fun TrackMetadataEditorFields(
-    state: TrackMetadataEditorState,
-    saving: Boolean,
-    onPickArtwork: (() -> Unit)?,
-) {
-    TextField(
-        value = state.title,
-        onValueChange = { state.title = it },
-        enabled = !saving,
-        label = { Text(stringResource(L10nR.string.feature_library_title_af1111)) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    TextField(
-        value = state.artist,
-        onValueChange = { state.artist = it },
-        enabled = !saving,
-        label = { Text(stringResource(L10nR.string.feature_library_artist_37d883)) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    TextField(
-        value = state.album,
-        onValueChange = { state.album = it },
-        enabled = !saving,
-        label = { Text(stringResource(L10nR.string.feature_library_album_eb13be)) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    TextField(
-        value = state.albumArtist,
-        onValueChange = { state.albumArtist = it },
-        enabled = !saving,
-        label = { Text(stringResource(L10nR.string.feature_library_album_artist_6defa0)) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    TextField(
-        value = state.composer,
-        onValueChange = { state.composer = it },
-        enabled = !saving,
-        label = { Text(stringResource(L10nR.string.metadata_composer)) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        NumericMetadataField(
-            value = state.trackNumber,
-            isError = !state.trackNumberValid,
-            onValueChange = { state.trackNumber = it },
-            enabled = !saving,
-            label = stringResource(L10nR.string.feature_library_track_000e4d),
-            modifier = Modifier.weight(1f),
-        )
-        NumericMetadataField(
-            value = state.discNumber,
-            isError = !state.discNumberValid,
-            onValueChange = { state.discNumber = it },
-            enabled = !saving,
-            label = stringResource(L10nR.string.feature_library_disc_3128c0),
-            modifier = Modifier.weight(1f),
-        )
-        NumericMetadataField(
-            value = state.year,
-            isError = !state.yearValid,
-            onValueChange = { state.year = it },
-            enabled = !saving,
-            label = stringResource(L10nR.string.feature_library_year_fe373f),
-            modifier = Modifier.weight(1f),
-        )
-    }
-    TextField(
-        value = state.lyrics,
-        onValueChange = state::editLyrics,
-        enabled = !saving && !state.lyricsLoading,
-        label = { Text(stringResource(L10nR.string.metadata_lyrics)) },
-        minLines = 4,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    if (onPickArtwork != null) {
-        state.artworkUri?.let { uri ->
-            ArtworkTile(uri, Modifier.size(64.dp), accent = rememberLibraryArtworkAccent())
-        }
-        TextButton(onClick = onPickArtwork, enabled = !saving) {
-            Text(stringResource(L10nR.string.metadata_choose_artwork))
-        }
-    }
-    Text(
-        stringResource(L10nR.string.feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.bodySmall,
-    )
-}
-
-@Composable
-private fun TrackMetadataEditorDialog(
-    track: EchoTrack,
-    saving: Boolean,
-    onDismiss: () -> Unit,
-    onSave: suspend (EchoTrackMetadataUpdate) -> Boolean,
-    canPickArtwork: Boolean = false,
-) {
-    val editor = rememberTrackMetadataEditorState(track)
-    val pickArtwork = rememberTrackMetadataArtworkPicker(editor)
-    val scope = rememberCoroutineScope()
-    AlertDialog(
-        onDismissRequest = { if (!saving) onDismiss() },
-        title = {
-            Text(
-                stringResource(L10nR.string.feature_library_edit_tags_c8ec75),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 460.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TrackMetadataEditorFields(
-                    state = editor,
-                    saving = saving,
-                    onPickArtwork = if (canPickArtwork) pickArtwork else null,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = editor.canSave || saving,
-                onClick = {
-                    if (saving || !editor.canSave) return@TextButton
-                    val update = editor.toUpdate(track)
-                    scope.launch {
-                        withContext(NonCancellable) { onSave(update) }
-                    }
-                },
-            ) {
-                MetadataSaveButtonLabel(saving)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !saving) {
-                Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
-            }
-        },
-    )
-}
-
-@Composable
-private fun MetadataSaveButtonLabel(saving: Boolean) {
-    if (!saving) {
-        Text(stringResource(L10nR.string.feature_library_save_68ae20))
-        return
-    }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(18.dp),
-            strokeWidth = 2.dp,
-            color = LocalContentColor.current,
-        )
-        Text(stringResource(L10nR.string.feature_library_saving_9f2a14))
-    }
-}
-
-@Composable
-private fun NumericMetadataField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    isError: Boolean = false,
-) {
-    TextField(
-        value = value,
-        onValueChange = onValueChange,
-        enabled = enabled,
-        isError = isError,
-        label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun TrackInfoTag(
-    text: String,
-    tone: TrackInfoTagTone,
-) {
-    val dark = LocalEchoDarkTheme.current
-    val colors = remember(dark, tone) { trackInfoTagColors(tone, dark) }
-    Text(
-        text = text,
-        modifier = Modifier.padding(end = 6.dp),
-        color = colors.content,
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Normal,
-        maxLines = 1,
-    )
-}
-
-@Composable
-internal fun trackSubtitle(track: EchoTrack): String {
+internal fun trackSubtitle(track: EchoTrack, separator: String = " / "): String {
     val parts = buildList {
         track.artist.takeIf { it.isNotBlank() }?.let { artist ->
             add(displayMetadataOrUnknown(artist, unknownArtistLabel()))
@@ -1011,7 +511,7 @@ internal fun trackSubtitle(track: EchoTrack): String {
     }
     return parts.ifEmpty {
         listOf(stringResource(L10nR.string.feature_library_local_audio_7fc2a6))
-    }.joinToString(" / ")
+    }.joinToString(separator)
 }
 
 internal fun formatTrackSampleRate(hz: Int): String =
@@ -1047,52 +547,5 @@ internal fun formatTrackMimeType(mimeType: String?): String? {
         else -> raw.uppercase()
     }
 }
-
-private fun isHiResSampleRate(sampleRateHz: Int?): Boolean =
-    sampleRateHz != null && sampleRateHz > 48_000
-
-private enum class TrackInfoTagTone {
-    Format,
-    Neutral,
-    Gold,
-}
-
-private data class TrackInfoTagColors(
-    val background: Color,
-    val border: Color,
-    val content: Color,
-)
-
-private fun trackInfoTagColors(tone: TrackInfoTagTone, dark: Boolean): TrackInfoTagColors =
-    when (tone) {
-        TrackInfoTagTone.Format,
-        TrackInfoTagTone.Neutral,
-        -> if (dark) {
-            TrackInfoTagColors(
-                background = Color.White.copy(alpha = 0.08f),
-                border = Color.White.copy(alpha = 0.12f),
-                content = Color.White.copy(alpha = 0.78f),
-            )
-        } else {
-            TrackInfoTagColors(
-                background = Color(0xFFF4F4F5),
-                border = Color(0xFFDDDEE2),
-                content = Color(0xFF646870),
-            )
-        }
-        TrackInfoTagTone.Gold -> if (dark) {
-            TrackInfoTagColors(
-                background = EchoColors.Brass.copy(alpha = 0.16f),
-                border = EchoColors.Brass.copy(alpha = 0.32f),
-                content = Color(0xFFE3C07A),
-            )
-        } else {
-            TrackInfoTagColors(
-                background = Color(0xFFFFF5DF),
-                border = Color(0xFFEAD09A),
-                content = Color(0xFF765516),
-            )
-        }
-    }
 
 internal val LibraryBottomControlsPadding = 150.dp

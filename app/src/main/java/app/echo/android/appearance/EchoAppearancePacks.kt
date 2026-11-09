@@ -2,6 +2,7 @@ package app.echo.android.appearance
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import app.echo.android.data.DecodedAppearancePack
@@ -13,7 +14,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /** Document picker and lifecycle wiring; presentation stays in feature:player. */
 @Composable
-internal fun EchoAppearancePacks() {
+internal fun EchoAppearancePacks(snackbar: SnackbarHostState) {
     val context = LocalContext.current.applicationContext
     val store = remember(context) { EchoAppearancePackStore(context) }
     val scope = rememberCoroutineScope()
@@ -41,7 +42,7 @@ internal fun EchoAppearancePacks() {
             finally { busy = false }
         }
     }
-    AppearancePackControls(preview?.appearance, preview?.background, busy, canUndo, notice,
+    AppearancePackControls(preview?.appearance, preview?.background, busy, canUndo, notice, snackbar,
         onImport = { importer.launch(arrayOf("application/zip", "application/octet-stream", "application/x-zip-compressed")) },
         onExport = { name -> exportName = name; exporter.launch(name.replace(Regex("[^\\p{L}\\p{N} _-]"), "_") + ".echoappearance.zip") },
         onApply = { preview?.let { pack -> scope.launch {

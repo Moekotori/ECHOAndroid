@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">电脑拒绝了免配对访问。请确认 Echo Link 已开启，再粘贴电脑生成的新配对链接；frp/Tailscale 还需先在电脑配置可达的外部地址。</string>
+    <string name="connect_direct_unavailable">电脑拒绝免配对连接。请在电脑的 Echo Link → 手机生成配对链接，再粘贴到手机的连接页。</string>
 </resources>

@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_direct_unavailable">Le PC a refusé un accès sans jumelage. Activez Echo Link puis collez un nouveau lien généré sur le PC. Pour frp/Tailscale, configurez au préalable une adresse externe accessible sur le PC.</string>
+    <string name="connect_direct_unavailable">Le PC a refusé la connexion sans jumelage. Sur le PC, générez un lien dans Echo Link → Téléphone, puis collez-le sur la page de connexion du téléphone.</string>
 </resources>

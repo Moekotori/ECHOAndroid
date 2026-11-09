@@ -46,11 +46,6 @@ internal data class EchoLinkTrackPage(
     val totalCount: Int,
 )
 
-internal data class EchoLinkPlaylistPage(
-    val playlists: List<EchoRemotePlaylist>,
-    val totalCount: Int,
-)
-
 internal data class EchoLinkAlbumPage(
     val albums: List<EchoRemoteAlbum>,
     val totalCount: Int,
@@ -409,13 +404,30 @@ internal class OkHttpEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkPlaylistPage = withContext(responseDispatcher) {
-        if (endpoint.libraryOnly) return@withContext bridge.playlists(endpoint, query, page)
+        val safePageSize = pageSize.coerceIn(1, 500)
+        var currentPage = page.coerceAtLeast(1)
+        var result: EchoLinkPlaylistPage
+        do {
+            check(currentPage <= EchoLinkMaxLibraryPages) { "PC playlists exceed the supported page limit" }
+            result = if (endpoint.libraryOnly) bridge.playlists(endpoint, query, currentPage)
+                else fetchPcPlaylistPage(endpoint, query, currentPage, safePageSize)
+            currentPage = result.nextPage
+        } while (result.playlists.isEmpty() && currentPage != 0)
+        result
+    }
+
+    private suspend fun fetchPcPlaylistPage(
+        endpoint: EchoRemoteEndpoint,
+        query: String,
+        page: Int,
+        pageSize: Int,
+    ): EchoLinkPlaylistPage {
         val json = executeJson(
             Request.Builder()
                 .url(
                     endpoint.url("library", "playlists") {
                         addQueryParameter("page", page.toString())
-                        addQueryParameter("pageSize", pageSize.coerceIn(1, 500).toString())
+                        addQueryParameter("pageSize", pageSize.toString())
                         query.trim().takeIf { it.isNotEmpty() }?.let { addQueryParameter("q", it) }
                     },
                 )
@@ -424,15 +436,9 @@ internal class OkHttpEchoLinkTransport(
                 .build(),
         )
         val items = json.optJSONArray("playlists") ?: json.optJSONArray("items") ?: JSONArray()
-        val playlists = buildList {
-            for (index in 0 until items.length()) {
-                items.optJSONObject(index)?.toRemotePlaylist(endpoint)?.let(::add)
-            }
+        return items.localPlaylistPage(page, pageSize, json.optInt("totalCount", json.optInt("total", items.length()))) {
+            it.toRemotePlaylist(endpoint)
         }
-        return@withContext EchoLinkPlaylistPage(
-            playlists = playlists,
-            totalCount = json.optInt("totalCount", json.optInt("total", playlists.size)),
-        )
     }
 
     override suspend fun fetchPlaylistTracks(
@@ -798,10 +804,10 @@ private fun JSONObject.toRemotePlaylist(endpoint: EchoRemoteEndpoint): EchoRemot
     return EchoRemotePlaylist(
         id = id,
         name = name,
-        artworkUrl = optArtworkUrl()?.toAbsoluteEchoLinkUrl(endpoint)
-            ?: tracks.firstNotNullOfOrNull { it.artworkUrl },
+        artworkUrl = optArtworkUrl()?.toAbsoluteEchoLinkUrl(endpoint)?.playlistArtworkOrNull()
+            ?: tracks.firstNotNullOfOrNull { it.artworkUrl?.playlistArtworkOrNull() },
         trackCount = optInt("trackCount", optInt("songCount", tracks.size)).coerceAtLeast(tracks.size),
-        sourceLabel = optText("sourceLabel") ?: optText("source") ?: optText("provider"),
+        sourceLabel = "local",
         tracks = tracks,
     )
 }

@@ -4,4 +4,9 @@
     <string name="metadata_lyrics">Текст</string>
     <string name="metadata_choose_artwork">Выбрать обложку</string>
     <string name="album_cue_banner">CUE целого альбома · воспроизведение по частям</string>
+    <string name="metadata_track_details">Данные композиции</string>
+    <string name="metadata_release">Релиз</string>
+    <string name="metadata_discard_title">Отменить несохранённые изменения?</string>
+    <string name="metadata_discard">Отменить изменения</string>
+    <string name="metadata_keep_editing">Продолжить правку</string>
 </resources>

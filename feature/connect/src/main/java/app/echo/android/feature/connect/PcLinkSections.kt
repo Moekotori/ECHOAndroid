@@ -28,6 +28,7 @@ internal fun PcManualEntry(
     canConnect: Boolean,
     onConnect: () -> Unit,
     modifier: Modifier = Modifier,
+    connectionError: String? = null,
 ) {
     ConnectFlatGroup {
         Column(modifier) {
@@ -40,7 +41,10 @@ internal fun PcManualEntry(
             }
             EchoExpand(expanded) {
                 Column(Modifier.padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ConnectNote(stringResource(L10nR.string.echo_link_direct_address_hint))
+                    ConnectNote(
+                        connectionError ?: stringResource(L10nR.string.echo_link_direct_address_hint),
+                        error = connectionError != null,
+                    )
                     ConnectInput(
                         label = stringResource(L10nR.string.feature_connect_pc_address_or_pairing_link_a3e680),
                         value = address,

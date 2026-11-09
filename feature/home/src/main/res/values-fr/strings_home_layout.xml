@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_layout_title">Personnaliser l’accueil</string>
-    <string name="home_layout_detail">Faites glisser les poignées pour réorganiser les sections et utilisez les interrupteurs pour les masquer ou les réafficher. Les sections vides apparaîtront lorsque du contenu sera disponible.</string>
+    <string name="home_layout_detail">Glissez pour réorganiser. Touchez l’œil pour afficher ou masquer.</string>
     <string name="home_layout_move_up">Monter %1$s</string>
     <string name="home_layout_move_down">Descendre %1$s</string>
     <string name="home_layout_reset">Rétablir les valeurs</string>

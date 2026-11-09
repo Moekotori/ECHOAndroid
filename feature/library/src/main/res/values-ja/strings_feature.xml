@@ -46,7 +46,6 @@
     <string name="feature_library_create_7b4bc9">"作成"</string>
     <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"Android が書き込みを許可すれば、対応形式のタグを音声ファイルに書き込みます。できない場合は ECHOAndroid のライブラリ索引にだけ保存します。"</string>
     <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"Android が書き込みを許可すれば、対応形式のタグと、インポートした歌詞・カバーを音声ファイルに書き込みます。"</string>
-    <string name="feature_library_custom_artwork_c8c999">"カスタムカバー"</string>
     <string name="feature_library_delete_138ccf">"削除"</string>
     <string name="feature_library_delete_playlist_4d9753">"プレイリストを削除"</string>
     <string name="feature_library_delete_playlist_name_songs_in_the_library_will_3541db">"「%1$s」を削除しますか？ライブラリの曲は削除されません。"</string>

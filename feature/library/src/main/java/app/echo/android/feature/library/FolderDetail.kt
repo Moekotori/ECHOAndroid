@@ -56,13 +56,11 @@ internal fun FolderDetailPage(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onAddToPlaylist: ((EchoTrack) -> Unit)? = null,
     onPlayNext: ((EchoTrack) -> Unit)? = null,
-    onAddNextUp: ((EchoTrack) -> Unit)? = null,
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val rangeSource = rememberLibraryRangeSource(tracks)
     val heroArtworkUri = folder.artworkUri?.takeIf { it.isNotBlank() }
         ?: tracks.itemSnapshotList.items.firstOrNull { !it.artworkUri.isNullOrBlank() }?.artworkUri
     val palette = rememberArtworkPalette(heroArtworkUri, seedKey = folder.folderKey)
@@ -137,7 +135,6 @@ internal fun FolderDetailPage(
                                 .padding(horizontal = 20.dp),
                         ) {
                             AlbumTrackRow(
-                                rangeSource = rangeSource,
                                 index = index,
                                 track = track,
                                 accent = palette.vibrant,
@@ -149,7 +146,6 @@ internal fun FolderDetailPage(
                                 onMatchNeteaseMetadata = onMatchNeteaseMetadata,
                                 onAddToPlaylist = onAddToPlaylist,
                                 onPlayNext = onPlayNext,
-                                onAddNextUp = onAddNextUp,
                                 onEnqueue = onEnqueue,
                                 onOpenArtist = onOpenArtist,
                                 onOpenAlbum = onOpenAlbum,

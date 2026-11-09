@@ -26,6 +26,7 @@ internal fun PlayerCoverLayout(
     // Keep the two scroll positions when resizing crosses the layout breakpoint.
     val portraitScroll = rememberScrollState()
     val detailsScroll = rememberScrollState()
+    val lyricsPreview = LocalCoverLyricsPreview.current
     BoxWithConstraints(modifier) {
         val viewportHeight = maxHeight
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
@@ -44,8 +45,10 @@ internal fun PlayerCoverLayout(
                         .verticalScroll(detailsScroll).heightIn(min = viewportHeight),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    content = details,
-                )
+                ) {
+                    lyricsPreview?.invoke()
+                    details()
+                }
             }
             }
         } else {
@@ -59,6 +62,7 @@ internal fun PlayerCoverLayout(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     content = artwork,
                 )
+                lyricsPreview?.invoke()
                 details()
             }
         }

@@ -46,7 +46,6 @@
     <string name="feature_library_create_7b4bc9">"Создать"</string>
     <string name="feature_library_currently_saved_only_to_the_echoandroid_library_index_6c327c">"Записывает теги поддерживаемых форматов в аудиофайл, когда Android это позволяет. Иначе данные остаются в индексе библиотеки ECHOAndroid."</string>
     <string name="feature_library_currently_saved_to_the_echoandroid_library_index_imported_e15a70">"Записывает теги поддерживаемых форматов, включая импортированный текст песни и обложку, в аудиофайл, когда Android это позволяет."</string>
-    <string name="feature_library_custom_artwork_c8c999">"Своя обложка"</string>
     <string name="feature_library_delete_138ccf">"Удалить"</string>
     <string name="feature_library_delete_playlist_4d9753">"Удалить плейлист"</string>
     <string name="feature_library_delete_playlist_name_songs_in_the_library_will_3541db">"Удалить «%1$s»? Композиции в библиотеке не будут удалены."</string>

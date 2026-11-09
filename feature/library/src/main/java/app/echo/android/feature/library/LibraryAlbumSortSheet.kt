@@ -10,14 +10,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -53,13 +51,10 @@ internal fun LibraryAlbumSortMenu(
     linked: Boolean = false,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
-    IconButton(onClick = { open = true }) {
-        EchoIcon(
-            Icons.AutoMirrored.Rounded.Sort,
-            contentDescription = stringResource(R.string.feature_library_set_album_sort_order_7c2d91),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    LibrarySortButton(
+        contentDescription = stringResource(R.string.feature_library_set_album_sort_order_7c2d91),
+        onClick = { open = true },
+    )
     if (open) LibraryAlbumSortSheet(
         selected = selectedSortMode,
         linked = linked,

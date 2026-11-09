@@ -2,10 +2,7 @@ package app.echo.android.feature.home
 
 import app.echo.android.design.EchoIcon
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
@@ -41,7 +38,12 @@ internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = 
             modifier = Modifier.semantics { heading() })
     }
     val actions: @Composable () -> Unit = {
-        if (onOpenHistory != null || onEditLayout != null || onOpenSettings != null) HomeHeaderActions {
+        HomeHeaderActions {
+            HomeHeaderAction(
+                Icons.Rounded.Search,
+                stringResource(R.string.feature_home_search_songs_albums_and_artists_c46634),
+                onOpenSearch,
+            )
             if (onOpenHistory != null) HomeHeaderAction(Icons.Rounded.History,
                 stringResource(R.string.playback_history_title), onOpenHistory)
             if (onEditLayout != null) HomeHeaderAction(Icons.Rounded.Tune,
@@ -55,10 +57,7 @@ internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = 
         if (compact && maxWidth >= 560.dp * fontScale) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Box(Modifier.widthIn(max = 160.dp)) { greetingTitle() }
-                Box(Modifier.weight(1f)) {
-                    HomeSearchBar(stringResource(R.string.feature_home_search_songs_albums_and_artists_c46634), onOpenSearch)
-                }
+                Box(Modifier.weight(1f)) { greetingTitle() }
                 actions()
             }
         } else {
@@ -72,7 +71,6 @@ internal fun HomeHeader(onOpenSearch: () -> Unit, onEditLayout: (() -> Unit)? = 
                     Text(stringResource(greeting.subtitle), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
-                HomeSearchBar(stringResource(R.string.feature_home_search_songs_albums_and_artists_c46634), onOpenSearch)
             }
         }
     }
@@ -88,19 +86,5 @@ private fun HomeHeaderActions(content: @Composable RowScope.() -> Unit) {
 private fun HomeHeaderAction(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, onClick: () -> Unit) {
     IconButton(onClick = onClick) {
         EchoIcon(icon, description, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun HomeSearchBar(placeholder: String, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp),
-        color = scheme.surfaceContainer) {
-        Row(Modifier.heightIn(min = 52.dp).padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            EchoIcon(Icons.Rounded.Search, null, Modifier.size(22.dp), tint = scheme.primary)
-            Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
     }
 }

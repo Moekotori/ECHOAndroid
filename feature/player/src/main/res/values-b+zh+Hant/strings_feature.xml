@@ -55,7 +55,7 @@
     <string name="feature_player_next_d67904">"下一首"</string>
     <string name="feature_player_nightcore_pitch_65449f">"Nightcore 變調"</string>
     <string name="feature_player_no_data_5a8239">"目前無資料"</string>
-    <string name="feature_player_no_matching_lyrics_found_7ffc7e">"未找到同名歌詞"</string>
+    <string name="feature_player_no_matching_lyrics_found_7ffc7e">"暫無歌詞"</string>
     <string name="feature_player_normal_speed_a8fc98">"普通變速"</string>
     <string name="feature_player_not_playing_d72324">"未在播放"</string>
     <string name="feature_player_open_artist">"查看藝術家"</string>

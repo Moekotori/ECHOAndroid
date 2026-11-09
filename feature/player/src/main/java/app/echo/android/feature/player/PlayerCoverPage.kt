@@ -10,6 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Density
 import app.echo.android.design.ArtworkPalette
+import app.echo.android.model.lyrics.EchoLyrics
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.settings.EchoPlayerPageStyle
 
@@ -48,13 +49,22 @@ internal fun PlayerCoverPage(
     onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
     /** Styles without a lyrics page draw the lyric list inside the cover page. */
     lyricsContent: (@Composable (Modifier) -> Unit)? = null,
+    previewLyrics: EchoLyrics? = null,
+    lyricsPositionMsState: State<Long> = positionMsState,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
+    val trackId = status.track?.id
+    val preview: (@Composable () -> Unit)? = if (trackId != null && previewLyrics != null) {
+        { CoverLyricsPreview(trackId, previewLyrics, lyricsPositionMsState, onOpenLyrics) }
+    } else null
     val actions = ExpressivePlayerActions(onPlayPause, onNext, onPrevious, onSeek, onOpenQueue,
         onCast, onToggleShuffle, onCycleRepeatMode, onToggleFavorite, onOpenLyrics, onOpenArtist, onMore)
-    // Only cover-page type scales. Lyrics, transport hit targets and the drawer do not.
-    CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * appearance.textScale)) {
+    // Scale cover-page typography while leaving transport hit targets and the drawer unchanged.
+    CompositionLocalProvider(
+        LocalDensity provides Density(density.density, density.fontScale * appearance.textScale),
+        LocalCoverLyricsPreview provides preview,
+    ) {
         if (appearance.style == EchoPlayerPageStyle.Terminal.id) {
             TerminalCoverPage(status, positionMsState, durationMsState, actions, isCurrentTrackFavorite,
                 appearance.artworkScale, presentationExpanded, modifier)

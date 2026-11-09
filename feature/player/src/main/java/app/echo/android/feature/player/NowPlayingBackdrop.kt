@@ -52,7 +52,7 @@ internal fun NowPlayingBackdrop(
         EchoPlayerPageStyle.Contours -> 0.5f
         EchoPlayerPageStyle.Dither -> 0.7f
         EchoPlayerPageStyle.GlyphField -> 0.62f
-        else -> 0f
+        else -> 0.24f
     }
     val mode = LocalEchoEffectivePerformanceMode.current
     val theme = echoTheme()
@@ -137,9 +137,12 @@ internal fun NowPlayingBackdrop(
                     if (layers.previous == null) 1f else smoothBlend, kick)
             }
             drawRect(veil)
-            drawRect(theme.night.copy(alpha = (if (dark) 0.06f else 0.04f) * reveal().coerceIn(0f, 1f)))
-            if (lyricsDim > 0f) drawRect(Color.Black.copy(alpha = lyricsDim * reveal().coerceIn(0f, 1f)))
-            if (pageStyle.isFullBleed && pageStyle != EchoPlayerPageStyle.Halftone) drawRect(titleVeil, alpha = 1f - reveal().coerceIn(0f, 1f))
+            val lyrics = reveal().coerceIn(0f, 1f)
+            if (lyrics > 0f) {
+                drawRect(theme.night.copy(alpha = (if (dark) 0.06f else 0.04f) * lyrics))
+                drawRect(Color.Black.copy(alpha = lyricsDim * lyrics))
+            }
+            if (pageStyle.isFullBleed && pageStyle != EchoPlayerPageStyle.Halftone) drawRect(titleVeil, alpha = 1f - lyrics)
         }
     }.fillMaxSize())
 }

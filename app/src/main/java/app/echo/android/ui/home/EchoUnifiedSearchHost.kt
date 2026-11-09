@@ -19,6 +19,7 @@ import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.feature.home.*
 import app.echo.android.model.library.*
 import app.echo.android.model.connect.EchoRemoteConnectionState
+import app.echo.android.model.connect.EchoRemoteTrack
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -44,26 +45,34 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
     var playlistTrack by remember { mutableStateOf<EchoTrack?>(null) }
     var playlistBusy by remember { mutableStateOf(false) }
     var playlistFailed by remember { mutableStateOf(false) }
-    var pendingPlay by remember { mutableStateOf<UnifiedSearchItem?>(null) }
+    var pendingPlay by remember(query, endpointKey) { mutableStateOf<(() -> Unit)?>(null) }
+    val searchEndpoint = pc.status.value.endpoint
     val playlists by viewModel.localPlaylists.collectAsState()
     val recentQueries by viewModel.unifiedSearch.history.collectAsStateWithLifecycle()
-    fun play(item: UnifiedSearchItem) {
+    fun play(item: UnifiedSearchItem, pcTracks: List<EchoRemoteTrack>, startIndex: Int) {
+        if (item is UnifiedSearchItem.PcTrack) {
+            val live = pc.status.value
+            if (live.endpoint != searchEndpoint || live.connectionState != EchoRemoteConnectionState.Connected) return
+        }
         onClose()
         when (item) {
             is UnifiedSearchItem.Track -> { playbackRouter.selectRemoteMode(false); viewModel.play(item.value) }
-            is UnifiedSearchItem.PcTrack -> playbackRouter.play(listOf(item.value), 0,
+            is UnifiedSearchItem.PcTrack -> playbackRouter.play(pcTracks, startIndex,
                 onPhoneQueueReady = viewModel::playQueue, onPhoneLyricsReady = viewModel::setEchoLinkLyrics)
             else -> Unit
         }
     }
-    fun open(item: UnifiedSearchItem) {
+    fun open(item: UnifiedSearchItem, pcTracks: List<EchoRemoteTrack> = emptyList()) {
         viewModel.unifiedSearch.recordQuery(query)
         focus.clearFocus(); keyboard?.hide()
         when (item) {
             is UnifiedSearchItem.Track, is UnifiedSearchItem.PcTrack -> {
+                val startIndex = if (item is UnifiedSearchItem.PcTrack) pcTracks.indexOf(item.value) else 0
+                if (startIndex < 0) return
+                val startPlayback = { play(item, pcTracks, startIndex) }
                 val hasQueue = if (item is UnifiedSearchItem.PcTrack && playbackRouter.remoteMode.value)
                     pc.status.value.playback.queue.totalCount > 0 else viewModel.playbackQueue.value.items.isNotEmpty()
-                if (hasQueue) pendingPlay = item else play(item)
+                if (hasQueue) pendingPlay = startPlayback else startPlayback()
             }
             is UnifiedSearchItem.Album -> onAlbum(item.value)
             is UnifiedSearchItem.Artist -> onArtist(item.value)
@@ -86,7 +95,7 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
             catch (_: Exception) { snackbar.showSnackbar(failedMessage) }
         }
     }
-    val pcAction: (app.echo.android.model.connect.EchoRemoteTrack, SearchTrackAction) -> Unit = { track, action ->
+    val pcAction: (EchoRemoteTrack, SearchTrackAction) -> Unit = { track, action ->
         viewModel.unifiedSearch.recordQuery(query)
         focus.clearFocus(); keyboard?.hide()
         scope.launch {
@@ -101,10 +110,10 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
             catch (_: Exception) { snackbar.showSnackbar(failedMessage) }
         }
     }
-    pendingPlay?.let { item -> AlertDialog(onDismissRequest = { pendingPlay = null },
+    pendingPlay?.let { startPlayback -> AlertDialog(onDismissRequest = { pendingPlay = null },
         title = { Text(stringResource(HomeR.string.search_replace_queue_title)) },
         text = { Text(stringResource(HomeR.string.search_replace_queue_body)) },
-        confirmButton = { TextButton(onClick = { pendingPlay = null; play(item) }) { Text(stringResource(HomeR.string.search_play_now)) } },
+        confirmButton = { TextButton(onClick = { pendingPlay = null; startPlayback() }) { Text(stringResource(HomeR.string.search_play_now)) } },
         dismissButton = { TextButton(onClick = { pendingPlay = null }) { Text(stringResource(HomeR.string.search_cancel)) } }) }
     playlistTrack?.let { track ->
         val memberships by remember(viewModel, track.id) {
@@ -125,8 +134,14 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
     section?.let { selected ->
         sectionStates.SaveableStateProvider(selected.name) {
             val pages = remember(selected, query, endpointKey) { viewModel.unifiedSearch.pages(selected, query, pc, endpointKey) }
+            val items = pages.collectAsLazyPagingItems()
             Box(Modifier.fillMaxSize()) {
-                UnifiedSearchResults(selected, query, pages.collectAsLazyPagingItems(), { section = null }, ::open, trackAction, pcAction)
+                UnifiedSearchResults(selected, query, items, { section = null }, { item ->
+                    if (item is UnifiedSearchItem.PcTrack) {
+                        val tracks = items.itemSnapshotList.items.mapNotNull { (it as? UnifiedSearchItem.PcTrack)?.value }
+                        open(item, tracks)
+                    } else open(item)
+                }, trackAction, pcAction)
                 SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
             }
         }
@@ -190,7 +205,8 @@ internal fun EchoUnifiedSearchHost(viewModel: EchoAndroidViewModel, pc: EchoRemo
         onAlbum = { open(UnifiedSearchItem.Album(it)) },
         onArtist = { open(UnifiedSearchItem.Artist(it)) },
         onPlaylist = { open(UnifiedSearchItem.Playlist(it)) },
-        onMoment = { open(UnifiedSearchItem.Moment(it)) }, onPcTrack = { open(UnifiedSearchItem.PcTrack(it)) },
+        onMoment = { open(UnifiedSearchItem.Moment(it)) },
+        onPcTrack = { open(UnifiedSearchItem.PcTrack(it), remote.results.pcTracks) },
         onViewAll = { viewModel.unifiedSearch.recordQuery(query); focus.clearFocus(); keyboard?.hide(); section = it },
         onTrackAction = trackAction, onPcAction = pcAction, requestFocus = active && !focusedOnce,
         onFocusRequested = { focusedOnce = true },

@@ -15,8 +15,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
@@ -149,8 +149,8 @@ internal fun LibraryLayoutEditor(
 @Composable
 internal fun LibraryCustomizeButton(onCustomize: (() -> Unit)?) {
     if (onCustomize == null) return
-    IconButton(onClick = onCustomize) {
-        EchoIcon(Icons.AutoMirrored.Rounded.Sort,
-            stringResource(R.string.library_layout_title))
+    IconButton(onClick = onCustomize, modifier = Modifier.size(LibraryCategoryBarHeight)) {
+        EchoIcon(Icons.Rounded.Tune,
+            stringResource(R.string.library_layout_title), Modifier.offset(y = (-4).dp).size(20.dp))
     }
 }

@@ -86,7 +86,6 @@ import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Star
@@ -97,6 +96,7 @@ import androidx.compose.material.icons.rounded.UploadFile
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -104,6 +104,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -126,7 +127,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -176,7 +176,6 @@ import app.echo.android.model.settings.EchoLyricsWordHighlightStyle
 import app.echo.android.model.settings.EchoPlayerPageStyle
 import app.echo.android.model.lyrics.EchoLyricLine
 import app.echo.android.model.lyrics.EchoLyrics
-import app.echo.android.model.lyrics.EchoLyricsFormat
 import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoAudioErrorKind
 import app.echo.android.model.playback.EchoPlaybackDiagnostics
@@ -289,7 +288,7 @@ fun NowPlayingScreen(
     playerTextScale: Float = 1f,
     playerArtworkScale: Float = 1f,
     onPlayerAppearanceChange: (String, Float, Float) -> Unit = { _, _, _ -> },
-    appearancePacks: @Composable () -> Unit = {},
+    appearancePacks: @Composable (SnackbarHostState) -> Unit = {},
 ) {
     val lyricsMotionMode = DefaultLyricsMotionMode
     val persistedAppearance = remember(playerPageStyle, playerTextScale, playerArtworkScale) {
@@ -312,10 +311,13 @@ fun NowPlayingScreen(
     val palette = rememberArtworkPalette(track?.artworkUri, seedKey = track?.id)
     val backdropStyle = EchoLyricsBackdrop.fromId(lyricsBackdrop)
     val fullBleedPage = appearance.style.isFullBleedStyle()
+    val fullCoverPage = appearance.style == EchoPlayerPageStyle.FullCover.id
     // Full-bleed page styles always paint their own field, whatever the lyrics backdrop setting says.
     val shownBackdrop = if (fullBleedPage) EchoLyricsBackdrop.Halftone else backdropStyle
     val detailedGrid = fullBleedPage && appearance.style != EchoPlayerPageStyle.Halftone.id
-    val colorGrid = rememberArtworkColorGrid(track?.artworkUri, detailed = detailedGrid)
+    val colorGrid = key(track?.artworkUri.takeIf { fullCoverPage }) {
+        rememberArtworkColorGrid(track?.artworkUri, detailed = detailedGrid)
+    }
     var splitNowPlaying by remember { mutableStateOf(false) }
     // The chat thread reads the lyrics in place; it has no lyrics page to swipe to.
     val inlineLyrics = !isRadio && appearance.style == EchoPlayerPageStyle.ChatThread.id
@@ -496,7 +498,6 @@ fun NowPlayingScreen(
     val lyricsSurfaceVisible = !isRadio && pagerState.currentPage == NowPlayingPage.Lyrics.ordinal
     val immersiveAfterglow = lyricsAlignment != "vertical" && !isRadio && fold == null && !splitNowPlaying && lyricStyle.isAfterglow && lyricsSurfaceVisible && !pagerState.isScrollInProgress
     val sleeveTopBar = !isRadio && appearance.usesFlatSurface && !splitNowPlaying && pagerState.currentPage == NowPlayingPage.Cover.ordinal
-    val fullCoverPage = appearance.style == EchoPlayerPageStyle.FullCover.id
     val drawLyricsBackdrop = !isRadio && (!appearance.usesFlatSurface || fullBleedPage || fullCoverPage)
     RecordSleeveSystemBars(
         enabled = presentationExpanded && (!immersiveAfterglow || playbackSettingsVisible || fullSettingsPageVisible),
@@ -587,8 +588,14 @@ fun NowPlayingScreen(
             if (drawLyricsBackdrop) {
                 val backdropModifier = Modifier.fillMaxSize()
                 if (fullCoverPage) {
-                    val coverTint = remember(palette) { lerp(palette.deep, Color.Black, 0.8f) }
-                    FullCoverBackdrop(track?.artworkUri, coverTint, lyricsReveal, backdropModifier)
+                    FullCoverBackdrop(
+                        artworkUri = track?.artworkUri,
+                        colorGrid = colorGrid,
+                        fallback = palette,
+                        spreadControls = preferSplit || fold != null,
+                        reveal = lyricsReveal,
+                        modifier = backdropModifier,
+                    )
                 } else {
                     LyricsPageBackdrop(palette, lyricsReveal,
                         presentationExpanded && !overlayBlocking && track != null, backdropModifier, shownBackdrop, colorGrid, backdropLink)
@@ -732,6 +739,8 @@ fun NowPlayingScreen(
                             },
                             onOpenArtist = onOpenArtist,
                             lyricsContent = if (inlineLyrics) ({ lyricsModifier -> lyricsPageBody(false, true, lyricsModifier) }) else null,
+                            previewLyrics = readyLyrics.takeUnless { inlineLyrics || splitNowPlaying },
+                            lyricsPositionMsState = lyricPositionMsState,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -998,10 +1007,11 @@ private fun NowPlayingTopBar(
                 label = "player-page-heading",
             ) { (displayedEditorial, displayedLyricsPage) ->
                 Box(Modifier.fillMaxSize()) {
-                    if (radioColors != null || displayedEditorial || displayedLyricsPage) {
+                    val paperLyrics = displayedLyricsPage && LocalLyricsPageStyle.current == EchoLyricsPageStyle.Paper
+                    if (radioColors != null || displayedEditorial || paperLyrics) {
                         Text(
                             if (radioColors != null) stringResource(L10nR.string.radio_player_title)
-                            else if (displayedLyricsPage && LocalLyricsPageStyle.current == EchoLyricsPageStyle.Paper) stringResource(L10nR.string.lyrics_page_title) else "ECHO",
+                            else if (paperLyrics) stringResource(L10nR.string.lyrics_page_title) else "ECHO",
                             color = headerInk,
                             fontFamily = if (displayedEditorial && appearance.style == "pixel_handheld") ExpressivePlayerStyle.PixelDisplay else RecordSleeveStyle.BodyFont,
                             fontSize = if (displayedEditorial && appearance.style == "pixel_handheld") 32.sp else 14.sp,
@@ -1203,12 +1213,6 @@ internal fun LyricsEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        EchoIcon(
-            Icons.Rounded.Lyrics,
-            contentDescription = null,
-            tint = OnArtMuted,
-            modifier = Modifier.size(36.dp),
-        )
         Text(
             text = message,
             color = OnArtMuted,
@@ -1357,26 +1361,6 @@ internal fun LyricsControlDeck(
             }
         }
     }
-}
-
-private fun EchoLyricsFormat.label(): String = when (this) {
-    EchoLyricsFormat.Spl -> "SPL"
-    EchoLyricsFormat.Lrc -> "LRC"
-    EchoLyricsFormat.EnhancedLrc -> "Enhanced LRC"
-    EchoLyricsFormat.Ttml -> "TTML"
-    EchoLyricsFormat.Srt -> "SRT"
-    EchoLyricsFormat.Vtt -> "WebVTT"
-    EchoLyricsFormat.Ass -> "ASS/SSA"
-    EchoLyricsFormat.Yrc -> "YRC"
-    EchoLyricsFormat.Qrc -> "QRC"
-    EchoLyricsFormat.Krc -> "KRC"
-    EchoLyricsFormat.PlainText -> "Plain"
-    EchoLyricsFormat.Sbv -> "SBV"
-    EchoLyricsFormat.Sami -> "SAMI"
-    EchoLyricsFormat.Json -> "JSON"
-    EchoLyricsFormat.Trc -> "TRC"
-    EchoLyricsFormat.Snc -> "SNC"
-    EchoLyricsFormat.Lrcx -> "LRCX"
 }
 
 internal fun formatLyricsOffset(offsetMs: Long): String {
