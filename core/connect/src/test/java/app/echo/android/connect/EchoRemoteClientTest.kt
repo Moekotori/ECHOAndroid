@@ -132,19 +132,20 @@ class EchoRemoteClientTest {
     fun selectedTrackStartsWithoutResolvingTheRestOfTheQueue() = runBlocking {
         val transport = FakeEchoLinkTransport()
         val client = EchoRemoteClient(this, transport)
-        client.connect(endpoint, false)
-        delay(20)
-        var uris = emptyList<String>()
-        var start = -1
-        client.playTracksOnPhone((0..599).map { remoteTrack("$it") }, 300,
-            onQueueReady = { queue, index -> uris = queue.map { it.uri }; start = index })
-        delay(20)
-        assertEquals(300, start)
-        assertEquals(600, uris.size)
-        assertEquals(1, transport.streamCalls)
-        assertTrue(uris[0].startsWith("echo-link://track/"))
-        assertTrue(uris[300].startsWith("http://"))
-        client.disconnect()
+        try {
+            client.connect(endpoint, false)
+            val ready = CompletableDeferred<Pair<List<EchoTrack>, Int>>()
+            client.playTracksOnPhone((0..599).map { remoteTrack("$it") }, 300,
+                onQueueReady = { queue, index -> ready.complete(queue to index) })
+            val (queue, start) = withTimeout(2_000) { ready.await() }
+            assertEquals(300, start)
+            assertEquals(600, queue.size)
+            assertEquals(1, transport.streamCalls)
+            assertTrue(queue[0].uri.startsWith("echo-link://track/"))
+            assertTrue(queue[300].uri.startsWith("http://"))
+        } finally {
+            client.disconnect()
+        }
     }
 
     @Test
