@@ -40,7 +40,6 @@ import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 
 /**
  * The song page of the groove spiral style: a record whose groove carries the track's facts, then the
@@ -116,17 +115,8 @@ internal fun GrooveSpiralCoverPage(
                     Modifier.weight(1f).horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    GrooveToggle(stringResource(R.string.feature_player_shuffle), status.shuffleEnabled, actions.shuffle)
-                    GrooveToggle(
-                        stringResource(
-                            when (status.repeatMode) {
-                                EchoRepeatMode.Off -> R.string.feature_player_repeat_off_254ca2
-                                EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
-                                EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
-                            },
-                        ),
-                        status.repeatMode != EchoRepeatMode.Off, actions.repeat,
-                    )
+                    val mode = QueuePlaybackMode.from(status.repeatMode, status.shuffleEnabled)
+                    GrooveToggle(stringResource(mode.label()), mode != QueuePlaybackMode.Sequential, actions.cyclePlaybackMode, animateMode = true)
                     GrooveToggle(stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
                     if (status.track.showsMusicFavorite()) GrooveToggle(
                         stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
@@ -175,12 +165,15 @@ private fun GrooveChip(text: String, hot: Boolean) {
 }
 
 @Composable
-private fun GrooveToggle(label: String, active: Boolean, onClick: () -> Unit) {
-    Text(
-        label.uppercase(java.util.Locale.ROOT),
-        Modifier.clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
-            .semantics { contentDescription = label; selected = active }.padding(vertical = 8.dp),
-        color = if (active) GrooveSpiralStyle.Accent else GrooveSpiralStyle.Dim, fontFamily = FontFamily.Monospace,
-        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal, fontSize = 11.sp, letterSpacing = 1.4.sp, maxLines = 1,
-    )
+private fun GrooveToggle(label: String, active: Boolean, onClick: () -> Unit, animateMode: Boolean = false) {
+    Box(Modifier.clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+        .semantics { contentDescription = label; selected = active }.padding(vertical = 8.dp)) {
+        PlaybackModeContent(label, animateMode) { text ->
+            Text(
+                text.uppercase(java.util.Locale.ROOT),
+                color = if (active) GrooveSpiralStyle.Accent else GrooveSpiralStyle.Dim, fontFamily = FontFamily.Monospace,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal, fontSize = 11.sp, letterSpacing = 1.4.sp, maxLines = 1,
+            )
+        }
+    }
 }

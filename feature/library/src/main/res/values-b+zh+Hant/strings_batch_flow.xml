@@ -2,4 +2,8 @@
     <string name="batch_deleting">正在刪除…</string>
     <string name="batch_playlists_empty">暫無可編輯的歌單，先到歌單頁新增一個吧。</string>
     <string name="batch_playlist_added">已加入「%1$s」</string>
+    <string name="batch_working">正在處理…</string>
+    <string name="batch_limit_reached">已達選取上限</string>
+    <string name="batch_favorites_added">已加入收藏</string>
+    <string name="batch_favorites_removed">已取消收藏</string>
 </resources>

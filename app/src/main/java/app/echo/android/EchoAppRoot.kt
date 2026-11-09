@@ -8,7 +8,6 @@ import app.echo.android.model.playback.PlaybackQueueState
 import app.echo.android.plugin.EchoPluginsOverlay
 import androidx.compose.ui.res.stringResource
 
-import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.playback.EchoOutputDeviceKind
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -214,11 +213,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     var hasAudioPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
     }
-    var pendingScanOptions by rememberSaveable { mutableStateOf(LibraryScanOptions()) }
     var scanAllAfterPermission by rememberSaveable { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasAudioPermission = granted
-        if (granted && scanAllAfterPermission) viewModel.refreshLibrary(pendingScanOptions)
+        if (granted && scanAllAfterPermission) viewModel.refreshLibrary()
         scanAllAfterPermission = false
     }
     val notifPermName = remember { notificationPermissionName() }
@@ -275,7 +273,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val folderScanLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { treeUri ->
             persistReadPermission(treeUri, write = true)
-            viewModel.refreshLibraryFolder(treeUri, pendingScanOptions)
+            viewModel.refreshLibraryFolder(treeUri)
         }
     }
     val sshfsFolderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -595,7 +593,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                         ContextCompat.checkSelfPermission(context, notifPermName) == PackageManager.PERMISSION_GRANTED
                     hasOverlayPermission = Settings.canDrawOverlays(context)
                 }
-                Lifecycle.Event.ON_STOP -> appVisible = false
+                Lifecycle.Event.ON_STOP -> {
+                    appVisible = false
+                    viewModel.onLibraryBackground()
+                }
                 else -> Unit
             }
         }
@@ -603,7 +604,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             viewModel.onLibraryForeground()
         }
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.onLibraryBackground()
+        }
     }
     DisposableEffect(appVisible) {
         EchoPlaybackProcessRuntime.setUiVisible(appVisible)
@@ -1549,10 +1553,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                     (detailReturnPage != null && detailReturnPage != EchoPagerPage.Library),
                                 detailBackProgress = { libraryDetailBack.value },
                                 onRequestPermission = { permissionLauncher.launch(permission) },
-                                onScanFolder = { options ->
-                                    pendingScanOptions = options
-                                    folderScanLauncher.launch(null)
-                                },
+                                onScanFolder = { folderScanLauncher.launch(null) },
                                 onAddMusic = { addMusicVisible = true },
                                 onEditTrackTags = tagEditor::open,
                                 onImportLyricsForTrack = { track ->
@@ -1908,8 +1909,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             val lanRendererState by viewModel.lanRendererDiscoveryState.collectAsStateWithLifecycle()
                             ConnectScreen(
                                 bottomInset = bottomDockInset,
-                                onOpenWifiTransfer = app.echo.android.ui.connect.rememberWifiTransferAction(viewModel, appSettings.libraryScanOptions, localNetwork),
-                                onOpenLinkSongTransfer = app.echo.android.ui.connect.rememberEchoLinkSongTransferAction(viewModel, remoteClient, appSettings.libraryScanOptions),
+                                onOpenWifiTransfer = app.echo.android.ui.connect.rememberWifiTransferAction(viewModel, localNetwork),
+                                onOpenLinkSongTransfer = app.echo.android.ui.connect.rememberEchoLinkSongTransferAction(viewModel, remoteClient),
                                 phoneLibraryShareStatus = phoneLibraryShareStatus,
                                 phonePresenceEnabled = appSettings.echoLinkPhonePresenceEnabled,
                                 phonePresenceSupported = remoteStatus.supportsPhonePresence,
@@ -2200,11 +2201,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             sendLinkPlayback(EchoRemoteCommand.SetPlaybackOrder(next))
                         }
                     },
-                    onLinkToggleRepeat = linkOrder?.let { order ->
+                    onLinkCyclePlaybackMode = linkOrder?.let { order ->
                         {
-                            val next = if (order == EchoRemotePlaybackOrder.RepeatOne) {
-                                EchoRemotePlaybackOrder.Sequential
-                            } else EchoRemotePlaybackOrder.RepeatOne
+                            val next = when (order) {
+                                EchoRemotePlaybackOrder.Sequential -> EchoRemotePlaybackOrder.RepeatOne
+                                EchoRemotePlaybackOrder.RepeatOne -> EchoRemotePlaybackOrder.Shuffle
+                                EchoRemotePlaybackOrder.Shuffle -> EchoRemotePlaybackOrder.Sequential
+                            }
                             sendLinkPlayback(EchoRemoteCommand.SetPlaybackOrder(next))
                         }
                     },
@@ -2368,10 +2371,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             if (libraryRepairVisible) {
                 app.echo.android.ui.library.EchoLibraryRepairHost(
                     viewModel = viewModel,
-                    onScanFolder = {
-                        pendingScanOptions = appSettings.libraryScanOptions
-                        folderScanLauncher.launch(null)
-                    },
+                    onScanFolder = { folderScanLauncher.launch(null) },
                     onDismiss = { libraryRepairVisible = false },
                 )
             }
@@ -2384,14 +2384,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     viewModel = viewModel,
                     settings = appSettings,
                     onBack = { addMusicVisible = false },
-                    onScanFolder = { options ->
-                        pendingScanOptions = options
-                        folderScanLauncher.launch(null)
-                    },
-                    onScanAll = { options ->
-                        pendingScanOptions = options
+                    onScanAll = {
                         if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
-                            viewModel.refreshLibrary(options)
+                            viewModel.refreshLibrary()
                         } else {
                             scanAllAfterPermission = true
                             permissionLauncher.launch(permission)

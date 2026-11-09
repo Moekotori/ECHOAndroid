@@ -45,7 +45,10 @@ internal fun AlbumWall(
         return
     }
     if (albums.isInitialPagingError()) {
-        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_albums_8a8685))
+        LibraryCollectionEmpty(
+            stringResource(L10nR.string.feature_library_failed_to_load_albums_8a8685),
+            actionLabel = stringResource(L10nR.string.library_retry), onAction = albums::retry,
+        )
         return
     }
     if (albums.itemCount == 0) {

@@ -230,7 +230,7 @@ object LibraryScanPolicy {
         fileName: String? = null,
         removeExcludedFromLibrary: Boolean = true,
     ): MediaStoreProbeAction {
-        if ((!options.includesDirectory(relativePath) || !options.includesFileName(fileName))) {
+        if (options.explicitRejection(relativePath, fileName) != null) {
             return if (existing != null && !removeExcludedFromLibrary) {
                 MediaStoreProbeAction.RememberSeen
             } else {
@@ -256,7 +256,7 @@ object LibraryScanPolicy {
         options: LibraryScanOptions,
         removeExcludedFromLibrary: Boolean,
         fileName: String? = null,
-    ): Boolean = removeExcludedFromLibrary || (options.includesDirectory(relativePath) && options.includesFileName(fileName))
+    ): Boolean = removeExcludedFromLibrary || options.explicitRejection(relativePath, fileName) == null
 
     fun shouldRefreshLocalLibraryAfterPermissionGrant(localMediaStoreCount: Int): Boolean =
         localMediaStoreCount <= 0

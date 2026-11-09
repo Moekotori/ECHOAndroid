@@ -5,9 +5,9 @@ import app.echo.android.model.library.PlaylistExportFormat
 
 /** A portable reading list; text exports never contain device-specific media URLs. */
 fun exportPlaylistText(tracks: List<EchoTrack>, format: PlaylistExportFormat): String {
-    require(format != PlaylistExportFormat.M3u)
+    require(format == PlaylistExportFormat.Csv || format == PlaylistExportFormat.Text)
     fun field(value: String): String {
-        val safe = if (value.firstOrNull() in listOf('=', '+', '-', '@', '\t', '\r', '\n')) "'$value" else value
+        val safe = if (value.trimStart('\'').startsWithSpreadsheetFormula()) "'$value" else value
         return "\"${safe.replace("\"", "\"\"")}\""
     }
     val rows = tracks.mapIndexed { index, track ->
@@ -18,3 +18,5 @@ fun exportPlaylistText(tracks: List<EchoTrack>, format: PlaylistExportFormat): S
         (listOf(listOf("#", "Title", "Artist", "Album", "Duration")) + rows).joinToString("\r\n", postfix = "\r\n") { it.joinToString(",", transform = ::field) }
     else rows.joinToString("\n", postfix = "\n") { row -> row.joinToString("\t") { it.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ') } }
 }
+
+internal fun String.startsWithSpreadsheetFormula() = firstOrNull()?.let { it in "=+-@\t\r\n" } == true

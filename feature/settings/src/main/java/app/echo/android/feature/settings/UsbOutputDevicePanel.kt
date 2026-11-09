@@ -87,6 +87,7 @@ internal fun UsbOutputDevicePanel(output: UsbOutputPresentation) {
         val guidance = when {
             !output.connected -> R.string.usb_page_connect_note
             output.verified -> R.string.usb_page_verified_note
+            output.streaming && output.assessment == DacAssessment.Compatible -> R.string.usb_page_compatible_note
             output.streaming && !output.failed -> R.string.usb_page_streaming_note
             else -> output.assessment.guidanceResource()
         }

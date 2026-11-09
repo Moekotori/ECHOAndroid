@@ -21,4 +21,8 @@
     <string name="file_playlist_label">File playlist</string>
     <string name="file_playlist_add_files">Add audio files</string>
     <string name="file_playlist_add_library">Add from music library</string>
+    <string name="playlist_import_no_suggestions">No suggested matches. Search by song title or artist.</string>
+    <string name="playlist_export_json_label">ECHO JSON · playlist backup</string>
+    <string name="playlist_export_choose_location">Choose save location</string>
+    <string name="playlist_export_writing">Saving playlist file…</string>
 </resources>

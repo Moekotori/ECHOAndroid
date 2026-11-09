@@ -149,7 +149,10 @@ internal fun LibraryLayoutEditor(
 @Composable
 internal fun LibraryCustomizeButton(onCustomize: (() -> Unit)?) {
     if (onCustomize == null) return
-    IconButton(onClick = onCustomize, modifier = Modifier.size(LibraryCategoryBarHeight)) {
+    IconButton(
+        onClick = onCustomize,
+        modifier = Modifier.size(width = LibraryToolbarActionSize, height = LibraryCategoryBarHeight),
+    ) {
         EchoIcon(Icons.Rounded.Tune,
             stringResource(R.string.library_layout_title), Modifier.size(20.dp))
     }

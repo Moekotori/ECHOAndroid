@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import app.echo.android.model.library.LibraryScanOptions
+import app.echo.android.model.library.LibraryFolderScanRules
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -13,6 +14,7 @@ data class WatchedLibraryTree(
     val minSizeBytes: Long = LibraryScanOptions().minSizeBytes,
     val excludeNonMusicFolders: Boolean = LibraryScanOptions().excludeNonMusicFolders,
     val excludeHiddenFolders: Boolean = LibraryScanOptions().excludeHiddenFolders,
+    val rules: LibraryFolderScanRules = LibraryFolderScanRules(),
 )
 
 object LibraryFolderWatchPolicy {
@@ -44,12 +46,13 @@ object LibraryFolderWatchPolicy {
         existing: List<WatchedLibraryTree>,
         incoming: WatchedLibraryTree,
         maxTrees: Int = MaxTrees,
+        keepNested: Boolean = false,
     ): List<WatchedLibraryTree> {
         val uri = incoming.uri.trim()
         val documentId = normalizeDocumentId(incoming.documentId)
         if (uri.isBlank() || documentId.isBlank()) return existing
         val nextIncoming = incoming.copy(uri = uri, documentId = documentId)
-        val parent = existing.firstOrNull { tree ->
+        val parent = existing.takeUnless { keepNested }?.firstOrNull { tree ->
             tree.uri != uri && documentIdCovers(tree.documentId, documentId)
         }
         if (parent != null) {
@@ -62,7 +65,7 @@ object LibraryFolderWatchPolicy {
             }
         }
         val withoutCovered = existing.filterNot { tree ->
-            tree.uri == uri || documentIdCovers(documentId, tree.documentId)
+            tree.uri == uri || if (keepNested) tree.documentId == documentId else documentIdCovers(documentId, tree.documentId)
         }
         val merged = withoutCovered + nextIncoming
         if (merged.size <= maxTrees) return merged
@@ -99,7 +102,7 @@ object LibraryFolderWatchPolicy {
         if (!enabled || storageBusy || trees.isEmpty()) return emptyList()
         val minInterval = autoRescanMinIntervalMs(lightweight)
         return trees
-            .filter { nowEpochMs - it.lastScanEpochMs >= minInterval }
+            .filter { it.rules.watch && nowEpochMs - it.lastScanEpochMs >= minInterval }
             .sortedBy { it.lastScanEpochMs }
     }
 
@@ -157,6 +160,12 @@ internal fun parseWatchedLibraryTrees(value: String?): List<WatchedLibraryTree> 
                             .coerceAtLeast(0L),
                         excludeNonMusicFolders = obj.optBoolean("excludeNonMusicFolders", true),
                         excludeHiddenFolders = obj.optBoolean("excludeHiddenFolders", true),
+                        rules = LibraryFolderScanRules(
+                            watch = obj.optBoolean("watch", true),
+                            importITunes = obj.optBoolean("importITunes", false),
+                            importOtherPlaylists = obj.optBoolean("importOtherPlaylists", false),
+                            ignoredPaths = obj.optString("ignoredPaths").take(LibraryFolderScanRules.MaxIgnoredPathsLength),
+                        ),
                     ),
                 )
             }
@@ -176,6 +185,10 @@ internal fun formatWatchedLibraryTrees(trees: List<WatchedLibraryTree>): String 
                 put("minSizeBytes", tree.minSizeBytes)
                 put("excludeNonMusicFolders", tree.excludeNonMusicFolders)
                 put("excludeHiddenFolders", tree.excludeHiddenFolders)
+                put("watch", tree.rules.watch)
+                put("importITunes", tree.rules.importITunes)
+                put("importOtherPlaylists", tree.rules.importOtherPlaylists)
+                put("ignoredPaths", tree.rules.ignoredPaths.take(LibraryFolderScanRules.MaxIgnoredPathsLength))
             },
         )
     }

@@ -19,9 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.RepeatOne
-import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -53,7 +50,6 @@ import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 import kotlin.math.abs
 import kotlin.math.sin
 
@@ -94,15 +90,20 @@ internal fun ChatCoverPage(
         details = {
             Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 VoiceMessage(track?.id, position, duration, status.isPlaying, actions)
-                // Six controls: shrink the buttons on narrow windows instead of pushing "more" off the bar.
+                // Shrink the buttons on narrow windows to keep "more" visible.
                 BoxWithConstraints(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
-                val button = minOf(48.dp, (maxWidth - 12.dp) / 6)
+                val button = minOf(48.dp, (maxWidth - 12.dp) / 5)
+                val mode = QueuePlaybackMode.from(status.repeatMode, status.shuffleEnabled)
                 Row(
                     Modifier.fillMaxWidth().shadow(4.dp, RoundedCornerShape(30.dp)).clip(RoundedCornerShape(30.dp))
                         .background(Color.White).height(60.dp).padding(horizontal = 6.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    ChatIconButton(Icons.Rounded.Shuffle, stringResource(R.string.feature_player_shuffle), status.shuffleEnabled, actions.shuffle, button)
+                    ChatIconButton(
+                        mode.icon(), stringResource(mode.label()),
+                        mode != QueuePlaybackMode.Sequential, actions.cyclePlaybackMode, button,
+                        animateMode = true,
+                    )
                     ChatIconButton(PlayerControlIcons.Previous, stringResource(R.string.feature_player_previous_af0264), false, actions.previous, button)
                     Box(
                         Modifier.size(button).clip(CircleShape).background(ChatStyle.Accent)
@@ -115,17 +116,6 @@ internal fun ChatCoverPage(
                         )
                     }
                     ChatIconButton(PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904), false, actions.next, button)
-                    ChatIconButton(
-                        if (status.repeatMode == EchoRepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                        stringResource(
-                            when (status.repeatMode) {
-                                EchoRepeatMode.Off -> R.string.feature_player_repeat_off_254ca2
-                                EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
-                                EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
-                            },
-                        ),
-                        status.repeatMode != EchoRepeatMode.Off, actions.repeat, button,
-                    )
                     ChatIconButton(
                         PlayerControlIcons.More,
                         stringResource(R.string.feature_player_expand_playback_settings_cf64a0), false, actions.more, button,
@@ -170,6 +160,7 @@ private fun ChatIconButton(
     active: Boolean,
     onClick: () -> Unit,
     size: androidx.compose.ui.unit.Dp = 48.dp,
+    animateMode: Boolean = false,
 ) {
     val haptics = rememberEchoHapticPerformer()
     Box(
@@ -178,7 +169,7 @@ private fun ChatIconButton(
             .semantics { selected = active },
         contentAlignment = Alignment.Center,
     ) {
-        EchoIcon(icon, label, tint = ChatStyle.Ink, modifier = Modifier.size(if (size >= 48.dp) 24.dp else 22.dp))
+        PlaybackModeIcon(icon, label, ChatStyle.Ink, Modifier.size(if (size >= 48.dp) 24.dp else 22.dp), animateMode)
     }
 }
 

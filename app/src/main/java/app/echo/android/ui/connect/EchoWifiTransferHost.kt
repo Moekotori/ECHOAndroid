@@ -49,12 +49,11 @@ internal fun EchoWifiTransferHost(scanning: Boolean, onScan: (Uri) -> Unit, onCl
 
 @Composable
 internal fun rememberWifiTransferAction(viewModel: app.echo.android.EchoAndroidViewModel,
-    options: app.echo.android.model.library.LibraryScanOptions,
     access: app.echo.android.EchoLocalNetworkPermission): () -> Unit {
     var visible by remember { mutableStateOf(false) }
     if (visible) {
         val scan by viewModel.scanState.collectAsStateWithLifecycle()
-        EchoWifiTransferHost(scan.isScanning, onScan = { viewModel.refreshReceivedMusicFolder(it, options) },
+        EchoWifiTransferHost(scan.isScanning, onScan = viewModel::refreshReceivedMusicFolder,
             onClose = { visible = false })
     }
     return { access.run { visible = true } }

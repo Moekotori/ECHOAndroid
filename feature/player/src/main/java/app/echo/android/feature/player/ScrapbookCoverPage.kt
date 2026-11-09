@@ -51,7 +51,6 @@ import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 
 /** Song details as a diary page: taped photo, handwritten title, a dashed path for progress, sticker buttons. */
 @Composable
@@ -170,17 +169,9 @@ internal fun ScrapbookCoverPage(
                 StickerButton(PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904), ScrapbookStyle.Sky, 58.dp, 7f, actions.next)
             }
             Row(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                ChipButton(stringResource(R.string.feature_player_shuffle), status.shuffleEnabled, -2f, actions.shuffle)
-                ChipButton(
-                    stringResource(
-                        when (status.repeatMode) {
-                            EchoRepeatMode.Off -> R.string.feature_player_repeat_off_254ca2
-                            EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
-                            EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
-                        },
-                    ),
-                    status.repeatMode != EchoRepeatMode.Off, 1.5f, actions.repeat,
-                )
+                val mode = QueuePlaybackMode.from(status.repeatMode, status.shuffleEnabled)
+                ChipButton(stringResource(mode.label()), mode != QueuePlaybackMode.Sequential, -2f, actions.cyclePlaybackMode,
+                    animateMode = true)
                 ChipButton(stringResource(R.string.feature_player_queue_37fa6a), false, -1f, actions.queue)
                 ChipButton(stringResource(R.string.feature_player_expand_playback_settings_cf64a0), false, 1f, actions.more, visibleText = "···")
             }
@@ -204,12 +195,17 @@ private fun StickerButton(
 }
 
 @Composable
-private fun ChipButton(label: String, active: Boolean, degrees: Float, onClick: () -> Unit, visibleText: String = label) {
+private fun ChipButton(
+    label: String, active: Boolean, degrees: Float, onClick: () -> Unit,
+    visibleText: String = label, animateMode: Boolean = false,
+) {
     Box(
         Modifier.clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = label }
             .padding(6.dp),
     ) {
-        LabelChip(visibleText.uppercase(java.util.Locale.ROOT), active, degrees)
+        PlaybackModeContent(visibleText, animateMode) {
+            LabelChip(it.uppercase(java.util.Locale.ROOT), active, degrees)
+        }
     }
 }

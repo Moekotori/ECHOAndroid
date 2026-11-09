@@ -33,6 +33,9 @@
     <string name="volume_device_section">輸出裝置設定</string>
     <string name="volume_mute_action">靜音</string>
     <string name="volume_unmute_action">取消靜音</string>
+    <string name="volume_muted_adjustable">已靜音，可先調好音量</string>
+    <string name="volume_quick_reduce">降低 %1$d dB</string>
+    <string name="volume_step_hold_hint">長按加減鍵可連續微調</string>
     <string name="volume_gain_zero">增益歸零</string>
     <string name="volume_reset_confirm_detail">應用程式音量和增益將恢復至 0 dB，上限和步長將恢復預設，並解除靜音。播放音量可能升高。</string>
 </resources>

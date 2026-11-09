@@ -1,9 +1,7 @@
 package app.echo.android.feature.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.IconButton
@@ -26,18 +24,15 @@ internal fun LibrarySortButton(
     contentDescription: String,
     onClick: () -> Unit,
     filterCount: Int = 0,
-    showBackground: Boolean = true,
 ) {
-    IconButton(onClick = onClick, modifier = Modifier.size(LibraryCategoryBarHeight)) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(width = LibraryToolbarActionSize, height = LibraryCategoryBarHeight),
+    ) {
         BadgedBox(
             badge = { if (filterCount > 0) Badge { Text(filterCount.toString()) } },
         ) {
-            val background = if (showBackground) {
-                Modifier.background(MaterialTheme.colorScheme.surfaceContainer, CircleShape)
-            } else {
-                Modifier
-            }
-            Box(Modifier.size(28.dp).then(background), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
                 EchoIcon(
                     LibrarySortIcon,
                     contentDescription = contentDescription,

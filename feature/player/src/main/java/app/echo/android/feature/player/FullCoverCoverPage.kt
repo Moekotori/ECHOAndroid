@@ -12,9 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
-import androidx.compose.material.icons.sharp.Repeat
-import androidx.compose.material.icons.sharp.RepeatOne
-import androidx.compose.material.icons.sharp.Shuffle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -38,7 +35,6 @@ import app.echo.android.design.displayTrack
 import app.echo.android.design.formatDuration
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 
 internal val FullCoverTextShadow = Shadow(Color.Black.copy(alpha = 0.64f), Offset(0f, 2f), 12f)
 
@@ -115,17 +111,16 @@ internal fun FullCoverCoverPage(
                             textAlign = TextAlign.End, style = timeStyle, maxLines = 1)
                     }
                 },
-            ) { fraction, engaged, enabled ->
+            ) { fraction, _, enabled ->
                 val y = center.y
                 val inset = seekInset.toPx().coerceAtMost(center.x)
                 val end = size.width - inset
-                val thumb = inset + (end - inset) * fraction
+                val playedEnd = inset + (end - inset) * fraction
                 val stroke = 2.dp.toPx()
                 drawLine(Color.White.copy(alpha = 0.22f), Offset(inset, y), Offset(end, y), stroke, StrokeCap.Round)
                 if (enabled && fraction > 0f) {
-                    drawLine(Color.White.copy(alpha = 0.92f), Offset(inset, y), Offset(thumb, y), stroke, StrokeCap.Round)
+                    drawLine(Color.White.copy(alpha = 0.92f), Offset(inset, y), Offset(playedEnd, y), stroke, StrokeCap.Round)
                 }
-                if (enabled) drawCircle(Color.White, (if (engaged) 5.5.dp else 3.dp).toPx(), Offset(thumb, y))
             }
             Row(
                 Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -154,22 +149,13 @@ internal fun FullCoverCoverPage(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val mode = QueuePlaybackMode.from(status.repeatMode, status.shuffleEnabled)
                 PlayerControlButton(
-                    Icons.Sharp.Shuffle, stringResource(R.string.feature_player_shuffle),
-                    onClick = { haptics.tick(); actions.shuffle() },
-                    touchSize = 48.dp, iconSize = 21.dp, tint = if (status.shuffleEnabled) Color.White else muted,
-                )
-                PlayerControlButton(
-                    if (status.repeatMode == EchoRepeatMode.One) Icons.Sharp.RepeatOne else Icons.Sharp.Repeat,
-                    stringResource(
-                        when (status.repeatMode) {
-                            EchoRepeatMode.Off -> R.string.feature_player_repeat_off_254ca2
-                            EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
-                            EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
-                        },
-                    ),
-                    onClick = { haptics.tick(); actions.repeat() },
-                    touchSize = 48.dp, iconSize = 21.dp, tint = if (status.repeatMode != EchoRepeatMode.Off) Color.White else muted,
+                    mode.icon(), stringResource(mode.label()),
+                    onClick = { haptics.tick(); actions.cyclePlaybackMode() },
+                    touchSize = 48.dp, iconSize = 21.dp,
+                    tint = if (mode == QueuePlaybackMode.Sequential) muted else Color.White,
+                    animateMode = true,
                 )
                 PlayerControlButton(
                     PlayerControlIcons.Queue, stringResource(R.string.feature_player_queue_37fa6a), actions.queue,

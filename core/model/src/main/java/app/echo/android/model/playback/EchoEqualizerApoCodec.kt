@@ -1,52 +1,70 @@
 package app.echo.android.model.playback
 
 object EchoEqualizerApoCodec {
-    private const val MaxFilters = 32
-    private val FilterHeader = Regex("""^\s*Filter\s*\d*\s*:\s*(ON|OFF)\s+([A-Za-z]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
-    private val PreampLine = Regex("""^\s*Preamp:\s*([+-]?\d+(?:\.\d+)?)\s*dB""", RegexOption.IGNORE_CASE)
-    private val GraphicLine = Regex("""^\s*GraphicEQ:\s*(.+)$""", RegexOption.IGNORE_CASE)
-    private val Frequency = Regex("""Fc\s+([+-]?\d+(?:\.\d+)?)\s*Hz""", RegexOption.IGNORE_CASE)
-    private val Gain = Regex("""Gain\s+([+-]?\d+(?:\.\d+)?)\s*dB""", RegexOption.IGNORE_CASE)
-    private val Quality = Regex("""(?:^|[\s])Q\s+([+-]?\d+(?:\.\d+)?)""", RegexOption.IGNORE_CASE)
-    private val Comment = Regex("""^\s*#\s*(.+)$""")
+    private const val MaxFilters = EchoParametricEq.MaxBands
+    private const val Number = """[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"""
+    private val FilterCommand = Regex("""Filter\s*\d*""", RegexOption.IGNORE_CASE)
+    private val FilterParams = Regex(
+        """(ON|OFF)\s+([A-Za-z_]+)\s+Fc\s+($Number)\s*Hz(?:\s+Gain\s+($Number)\s*dB)?(?:\s+Q\s+($Number))?""",
+        RegexOption.IGNORE_CASE,
+    )
+    private val PreampValue = Regex("""($Number)\s*dB""", RegexOption.IGNORE_CASE)
+    private val GraphicPair = Regex("""($Number)\s+($Number)""")
+    private val UnsupportedCommands = setOf(
+        "include", "copy", "convolution", "vstplugin", "delay", "device", "stage",
+        "if", "elseif", "else", "endif", "eval",
+    )
 
     fun parse(text: String, id: String): EchoEqualizerUserPreset? {
-        val lines = text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
-        if (lines.isEmpty()) return null
         var preamp = 0f
+        var hasPreamp = false
         var name: String? = null
         val filters = ArrayList<OpraEqBand>(8)
         var graphic = emptyList<OpraEqBand>()
         var scope = EchoEqBandScope.Stereo
-        for (line in lines) {
-            val comment = Comment.matchEntire(line)?.groupValues?.get(1)?.trim()
-            if (comment != null) {
+        for (rawLine in text.trimStart().removePrefix("\uFEFF").lineSequence()) {
+            val line = rawLine.trim()
+            if (line.startsWith('#')) {
+                val comment = line.drop(1).trim()
                 if (name == null && comment.isNotEmpty() && !comment.startsWith("http", ignoreCase = true)) {
                     name = comment
                 }
                 continue
             }
-            val preampMatch = PreampLine.matchEntire(line)
-            if (preampMatch != null) {
-                preamp = preampMatch.groupValues[1].toFloatOrNull() ?: preamp
-                continue
+            if (':' !in line) continue
+            val command = line.substringBefore(':').trim().lowercase()
+            val params = line.substringAfter(':').substringBefore('#').trim()
+            when {
+                command == "preamp" -> {
+                    if (scope != EchoEqBandScope.Stereo) return null
+                    val match = PreampValue.matchEntire(params) ?: return null
+                    val gain = match.groupValues[1].toFloatOrNull()?.takeIf { it.isFinite() } ?: return null
+                    preamp += gain
+                    hasPreamp = true
+                }
+                command == "graphiceq" -> {
+                    if (graphic.isNotEmpty() || filters.isNotEmpty()) return null
+                    graphic = parseGraphic(params, scope) ?: return null
+                }
+                command == "channel" -> {
+                    scope = when (params.uppercase()) {
+                        "L", "LEFT" -> EchoEqBandScope.Left
+                        "R", "RIGHT" -> EchoEqBandScope.Right
+                        "ALL", "L R", "R L" -> EchoEqBandScope.Stereo
+                        else -> return null
+                    }
+                }
+                command in UnsupportedCommands -> return null
+                FilterCommand.matches(command) -> {
+                    if (params.equals("OFF", ignoreCase = true)) continue
+                    if (graphic.isNotEmpty() || filters.size >= MaxFilters) return null
+                    val band = parseFilter(params) ?: return null
+                    filters.add(band.copy(scope = scope))
+                }
             }
-            val graphicMatch = GraphicLine.matchEntire(line)
-            if (graphicMatch != null) {
-                graphic = parseGraphic(graphicMatch.groupValues[1])
-                continue
-            }
-            if (line.startsWith("Channel:", true)) {
-                scope = when (line.substringAfter(':').trim().uppercase()) { "L", "LEFT" -> EchoEqBandScope.Left; "R", "RIGHT" -> EchoEqBandScope.Right
-                    "ALL", "L R", "R L" -> EchoEqBandScope.Stereo; else -> return null }; continue
-            }
-            if (Regex("^(Include|Copy|Convolution|VSTPlugin):", RegexOption.IGNORE_CASE).containsMatchIn(line)) return null
-            val filter = parseFilter(line) ?: continue
-            if (filters.size >= MaxFilters) return null
-            filters.add(filter.copy(scope = scope))
         }
         val bands = filters.ifEmpty { graphic }
-        if (bands.isEmpty() && kotlin.math.abs(preamp) < 0.05f) return null
+        if (preamp !in -60f..24f || (bands.isEmpty() && !hasPreamp)) return null
         return EchoEqualizerUserPresets.normalize(
             EchoEqualizerUserPreset(
                 id = id,
@@ -84,17 +102,17 @@ object EchoEqualizerApoCodec {
         }.trimEnd()
     }
 
-    private fun parseFilter(line: String): OpraEqBand? {
-        val match = FilterHeader.matchEntire(line) ?: return null
-        val type = apoType(match.groupValues[2]) ?: return null
-        val rest = match.groupValues[3]
-        val frequency = Frequency.find(rest)?.groupValues?.get(1)?.toFloatOrNull() ?: return null
-        if (!frequency.isFinite() || frequency <= 0f) return null
-        val gain = Gain.find(rest)?.groupValues?.get(1)?.toFloatOrNull()?.takeIf { it.isFinite() } ?: 0f
-        val q = Quality.find(rest)?.groupValues?.get(1)?.toFloatOrNull()?.takeIf { it.isFinite() && it > 0f }
+    private fun parseFilter(params: String): OpraEqBand? {
+        val match = FilterParams.matchEntire(params) ?: return null
+        val (toggle, rawType, frequencyText, gainText, qText) = match.destructured
+        val type = apoType(rawType) ?: return null
+        val frequency = frequencyText.toFloatOrNull()?.takeIf { it in 1f..EchoParametricEq.MaxFrequencyHz } ?: return null
+        val gain = if (gainText.isEmpty()) 0f else gainText.toFloatOrNull()?.takeIf { it in -60f..30f } ?: return null
+        val q = if (qText.isEmpty()) null else qText.toFloatOrNull()?.takeIf { it in 0.001f..EchoParametricEq.MaxQ } ?: return null
+        if (type in EchoEqOptions.GainTypes && gainText.isEmpty()) return null
         return OpraEqBand(
             type = type,
-            enabled = match.groupValues[1].equals("ON", true),
+            enabled = toggle.equals("ON", true),
             frequencyHz = frequency,
             gainDb = gain,
             q = q,
@@ -106,15 +124,15 @@ object EchoEqualizerApoCodec {
         )
     }
 
-    private fun parseGraphic(raw: String): List<OpraEqBand> {
-        val pairs = Regex("""([+-]?\d+(?:\.\d+)?)\s+([+-]?\d+(?:\.\d+)?)""")
-            .findAll(raw)
-            .map { match -> match.groupValues[1].toFloat() to match.groupValues[2].toFloat() }
-            .filter { (frequency, gain) -> frequency.isFinite() && frequency > 0f && gain.isFinite() }
-            .take(MaxFilters)
-            .toList()
-        return pairs.map { (frequency, gain) ->
-            OpraEqBand(EchoEqFilterType.PeakDip, frequency, gain, 1.2f, null)
+    private fun parseGraphic(raw: String, scope: EchoEqBandScope): List<OpraEqBand>? {
+        val pairs = raw.trim().removeSuffix(";").split(';')
+        if (pairs.size > MaxFilters) return null
+        return pairs.map { pair ->
+            val match = GraphicPair.matchEntire(pair.trim()) ?: return null
+            val (frequencyText, gainText) = match.destructured
+            val frequency = frequencyText.toFloatOrNull()?.takeIf { it in 1f..EchoParametricEq.MaxFrequencyHz } ?: return null
+            val gain = gainText.toFloatOrNull()?.takeIf { it in -60f..30f } ?: return null
+            OpraEqBand(EchoEqFilterType.PeakDip, frequency, gain, 1.2f, null, scope = scope)
         }
     }
 

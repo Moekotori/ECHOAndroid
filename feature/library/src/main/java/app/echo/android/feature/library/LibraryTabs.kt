@@ -171,17 +171,21 @@ internal fun FolderList(
     folders: LazyPagingItems<FolderSummary>,
     onOpenFolder: (FolderSummary) -> Unit,
     modifier: Modifier = Modifier,
+    onClearSearch: (() -> Unit)? = null,
 ) {
     if (folders.isInitialPagingLoad()) {
         LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_folders_54c760))
         return
     }
     if (folders.isInitialPagingError()) {
-        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_folders_d4887b))
+        LibraryCollectionEmpty(
+            stringResource(L10nR.string.feature_library_failed_to_load_folders_d4887b),
+            actionLabel = stringResource(L10nR.string.library_retry), onAction = folders::retry,
+        )
         return
     }
     if (folders.itemCount == 0) {
-        LibraryPlaceholderPage(
+        if (onClearSearch != null) LibrarySearchEmpty(onClearSearch) else LibraryPlaceholderPage(
             title = stringResource(L10nR.string.feature_library_folder_view_2b3c84),
             subtitle = stringResource(L10nR.string.feature_library_this_library_has_no_browsable_storage_paths_yet_fb0395),
         )
@@ -506,17 +510,18 @@ internal fun GenreWall(
     loadingLabel: String = stringResource(L10nR.string.feature_library_loading_genres_4e91aa),
     errorLabel: String = stringResource(L10nR.string.feature_library_failed_to_load_genres_b7c102),
     emptyLabel: String = stringResource(L10nR.string.feature_library_this_library_has_no_genres_to_show_yet_11a90e),
+    onClearSearch: (() -> Unit)? = null,
 ) {
     if (genres.isInitialPagingLoad()) {
         LibraryCollectionEmpty(loadingLabel)
         return
     }
     if (genres.isInitialPagingError()) {
-        LibraryCollectionEmpty(errorLabel)
+        LibraryCollectionEmpty(errorLabel, actionLabel = stringResource(L10nR.string.library_retry), onAction = genres::retry)
         return
     }
     if (genres.itemCount == 0) {
-        LibraryCollectionEmpty(emptyLabel)
+        if (onClearSearch != null) LibrarySearchEmpty(onClearSearch) else LibraryCollectionEmpty(emptyLabel)
         return
     }
     LazyVerticalGrid(
@@ -552,17 +557,21 @@ internal fun ArtistWall(
     artists: LazyPagingItems<ArtistSummary>,
     onOpenArtist: (ArtistSummary) -> Unit,
     modifier: Modifier = Modifier,
+    onClearSearch: (() -> Unit)? = null,
 ) {
     if (artists.isInitialPagingLoad()) {
         LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_loading_artists_e9b16d))
         return
     }
     if (artists.isInitialPagingError()) {
-        LibraryCollectionEmpty(stringResource(L10nR.string.feature_library_failed_to_load_artists_da82a6))
+        LibraryCollectionEmpty(
+            stringResource(L10nR.string.feature_library_failed_to_load_artists_da82a6),
+            actionLabel = stringResource(L10nR.string.library_retry), onAction = artists::retry,
+        )
         return
     }
     if (artists.itemCount == 0) {
-        LibraryCollectionEmpty(
+        if (onClearSearch != null) LibrarySearchEmpty(onClearSearch) else LibraryCollectionEmpty(
             stringResource(L10nR.string.feature_library_this_library_has_no_artists_to_show_yet_d95101),
         )
         return

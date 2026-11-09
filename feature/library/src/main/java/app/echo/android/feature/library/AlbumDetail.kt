@@ -1103,6 +1103,9 @@ internal fun AlbumTrackRow(
     showCard: Boolean = true,
 ) {
     val colors = rememberDetailGlassColors()
+    val swipePlayNext = onPlayNext?.takeIf {
+        LocalAlbumDetail.current && LocalLibraryBatchSelection.current?.active != true
+    }
     TrackContextMenu(
         track = track,
         onPlay = onClick,
@@ -1140,6 +1143,7 @@ internal fun AlbumTrackRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
+                .albumTrackPlayNextSwipe(track.id, swipePlayNext?.let { action -> { action(track) } })
                 .clip(rowShape)
                 .then(cardModifier)
                 .then(pressModifier)

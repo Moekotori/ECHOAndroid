@@ -37,10 +37,28 @@ class LinkedLibrarySortingTest {
         })
         val tracks = List(256) { EchoRemoteTrack("$it", "song$it", "artist", null, null, 0) }
         worker = launch {
-            LinkedLibraryCatalog.build(cache, tracks, emptyList(), "song", "song", LibraryTrackSortMode.Title)
+            LinkedLibraryCatalog.build(cache, tracks, emptyList(), "song", null, LibraryTrackSortMode.Title)
         }
         worker.join()
         assertTrue(worker.isCancelled)
         assertTrue(conversions < 100)
+    }
+
+    @Test fun appendingPageToLargeLibraryPreservesStableOrderAndDetectsReplacements() {
+        val all = List(20_000) { index ->
+            EchoRemoteTrack("$index", "Song ${index % 301}", "Artist ${index % 11}", "Album ${index % 7}", null, 0)
+        }
+        val firstPage = all.take(19_900)
+        val mode = LibraryTrackSortMode.Title
+        val first = LinkedLibraryTrackOrder.build(firstPage, mode, null) {}
+        val merged = LinkedLibraryTrackOrder.build(all, mode, first) {}
+        val comparator = compareBy<EchoRemoteTrack> { it.title.lowercase() }
+            .thenBy { it.artist.lowercase() }.thenBy { it.album.orEmpty().lowercase() }
+        assertEquals(all.sortedWith(comparator), merged.tracks)
+
+        val replacement = all.first().copy(title = "A new title")
+        val refreshed = listOf(replacement) + all.drop(1)
+        val updated = LinkedLibraryTrackOrder.build(refreshed, mode, merged) {}
+        assertEquals(replacement, updated.tracks.first())
     }
 }

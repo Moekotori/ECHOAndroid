@@ -99,8 +99,12 @@ internal fun LibraryBatchToolbar(
                         )
                     }
                     Text(
-                        if (deleting) stringResource(R.string.batch_deleting)
-                        else stringResource(R.string.batch_selection_limit, LibraryBatchSelection.Limit),
+                        when {
+                            deleting -> stringResource(R.string.batch_deleting)
+                            busy -> stringResource(R.string.batch_working)
+                            count >= LibraryBatchSelection.Limit -> stringResource(R.string.batch_limit_reached)
+                            else -> stringResource(R.string.batch_selection_limit, LibraryBatchSelection.Limit)
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = scheme.onSurfaceVariant,
                         maxLines = 1,

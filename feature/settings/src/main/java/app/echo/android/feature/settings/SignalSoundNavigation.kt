@@ -19,10 +19,13 @@ import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.design.rememberEchoBackProgress
 
+private data class SoundDestination(val panel: Int, val parent: Int = -1)
+
 /** Sound editors own a page; the index retains its scroll position when returning. */
 @Composable
 internal fun SignalSoundNavigation(
     selectedPanel: Int,
+    parentPanel: Int,
     title: @Composable (Int) -> String,
     isActive: Boolean,
     onBack: () -> Unit,
@@ -50,13 +53,13 @@ internal fun SignalSoundNavigation(
         close()
     }
     EchoPageContent(
-        targetState = selectedPanel,
-        contentKey = { if (it < 0) "sound-home" else "sound-tool-$it" },
-        isBackward = { _, target -> target < 0 },
+        targetState = SoundDestination(selectedPanel, parentPanel),
+        contentKey = { if (it.panel < 0) "sound-home" else "sound-tool-${it.panel}" },
+        isBackward = { initial, target -> target.panel == initial.parent },
         modifier = Modifier.fillMaxSize(),
         label = "signal-sound-navigation",
-        back = if (selectedPanel >= 0) EchoPageBack(-1) { back.value } else null,
-    ) { panel ->
+        back = if (selectedPanel >= 0) EchoPageBack(SoundDestination(parentPanel)) { back.value } else null,
+    ) { (panel) ->
         stateHolder.SaveableStateProvider(panel) {
             if (panel < 0) {
                 home()

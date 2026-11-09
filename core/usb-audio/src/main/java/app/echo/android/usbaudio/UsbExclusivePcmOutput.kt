@@ -42,17 +42,18 @@ class UsbExclusivePcmOutput(context: Context) {
         }
 
         val quirks = UsbDeviceQuirks.resolve(device.vendorId, device.productId)
-        val snapshot = probe.snapshot()
+        val snapshot = probe.snapshotForDevice(device)
         val selectedFormat = (if (bitPerfect) UsbPcmFormatSelector.chooseBitPerfectFormat(snapshot.descriptor, spec)
             else UsbPcmFormatSelector.chooseClosestFormat(snapshot.descriptor, spec))
-            ?: return UsbExclusivePcmSession.closed(
-                UsbExclusiveOpenResult(
-                    state = UsbExclusiveOutputState.FormatUnavailable,
-                    message = "No compatible USB PCM output format for ${spec.sampleRateHz}Hz/${spec.bitDepth}bit/${spec.channelCount}ch",
-                ),
-            )
+            ?: return UsbExclusivePcmSession.closed(if (UsbPcmFormatSelector.hasImplicitFeedbackFormat(snapshot.descriptor, spec)) {
+                UsbExclusiveOpenResult(UsbExclusiveOutputState.UnsupportedTransport,
+                    message = "This USB audio format requires implicit feedback from a capture endpoint")
+            } else {
+                UsbExclusiveOpenResult(UsbExclusiveOutputState.FormatUnavailable,
+                    message = "No compatible USB PCM output format for ${spec.sampleRateHz}Hz/${spec.bitDepth}bit/${spec.channelCount}ch")
+            })
 
-        val audioInterface = device.findInterface(selectedFormat)
+        val audioInterface = device.findInterface(selectedFormat.interfaceNumber, selectedFormat.alternateSetting)
             ?: return UsbExclusivePcmSession.closed(
                 UsbExclusiveOpenResult(
                     state = UsbExclusiveOutputState.FormatUnavailable,
@@ -71,6 +72,7 @@ class UsbExclusivePcmOutput(context: Context) {
             )
 
         val controlInterface = device.findControlInterface(selectedFormat)
+        val idleInterface = device.findInterface(audioInterface.id, 0)
         val connection = usbManager.openDevice(device)
             ?: return UsbExclusivePcmSession.closed(
                 UsbExclusiveOpenResult(
@@ -80,34 +82,43 @@ class UsbExclusivePcmOutput(context: Context) {
                 ),
             )
 
+        var claimedControl: UsbInterface? = null
+        var audioClaimed = false
         val opened = runCatching {
-            val claimedControl = controlInterface?.takeIf { interfaceToClaim ->
+            claimedControl = controlInterface?.takeIf { interfaceToClaim ->
                 interfaceToClaim.id != audioInterface.id &&
                     connection.claimInterface(interfaceToClaim, true)
             }
             if (!connection.claimInterface(audioInterface, true)) {
                 error("Unable to claim USB audio streaming interface")
             }
-            if (!connection.setInterface(audioInterface)) {
-                error("Unable to select USB streaming alternate setting ${selectedFormat.alternateSetting}")
+            audioClaimed = true
+            fun activateStreaming() {
+                if (!connection.setInterface(audioInterface)) {
+                    error("Unable to select USB streaming alternate setting ${selectedFormat.alternateSetting}")
+                }
             }
+            val configureWhileIdle = selectedFormat.audioClassVersion == UsbAudioClassVersion.Uac2 &&
+                !quirks.reselectStreamingAfterRateChange && idleInterface != null &&
+                connection.setInterface(idleInterface)
+            if (!configureWhileIdle) activateStreaming()
             val clock = UsbAudioClock.configureSampleRate(
                 UsbAudioControlTransfer(connection::controlTransfer), selectedFormat, spec.sampleRateHz,
+                activateStreaming = if (configureWhileIdle) ::activateStreaming else null,
             ) {
-                if (quirks.reselectStreamingAfterRateChange && !connection.setInterface(audioInterface)) {
-                    error("Unable to reselect TEAC USB streaming interface after setting sample rate")
-                }
+                if (quirks.reselectStreamingAfterRateChange) activateStreaming()
             }
             if ((bitPerfect && !clock.verified) || !clock.accepted) {
                 val reason = if (bitPerfect) "bit-perfect:clock-unverified" else "USB audio clock rejected rate"
                 error("$reason (requested=${clock.requestedHz}Hz, read=${clock.readBackHz ?: "unavailable"}, " +
                     "set=${clock.setSucceeded}, clock=${clock.clockId ?: "endpoint"}, " +
-                    "ac=${selectedFormat.acInterfaceNumber}, endpoint=${selectedFormat.endpointAddress})")
+                    "valid=${clock.clockValid}, ac=${selectedFormat.acInterfaceNumber}, endpoint=${selectedFormat.endpointAddress})")
             }
             val session = UsbExclusivePcmSession(
                 connection = connection,
                 audioInterface = audioInterface,
                 controlInterface = claimedControl,
+                idleInterface = idleInterface,
                 endpoint = endpoint,
                 spec = spec,
                 selectedFormat = selectedFormat,
@@ -131,11 +142,11 @@ class UsbExclusivePcmOutput(context: Context) {
         }
 
         return opened.getOrElse { error ->
-            runCatching { connection.setInterfaceAlt(audioInterface.id, 0) }
-            runCatching { connection.releaseInterface(audioInterface) }
-            if (controlInterface != null && controlInterface.id != audioInterface.id) {
-                runCatching { connection.releaseInterface(controlInterface) }
+            if (audioClaimed) {
+                runCatching { connection.stopStreamingInterface(audioInterface.id, idleInterface) }
+                runCatching { connection.releaseInterface(audioInterface) }
             }
+            claimedControl?.let { runCatching { connection.releaseInterface(it) } }
             connection.close()
             UsbExclusivePcmSession.closed(
                 UsbExclusiveOpenResult(
@@ -147,13 +158,12 @@ class UsbExclusivePcmOutput(context: Context) {
         }
     }
 
-    private fun UsbDevice.findInterface(format: UsbAudioStreamingFormat): UsbInterface? =
+    private fun UsbDevice.findInterface(number: Int, alternate: Int): UsbInterface? =
         (0 until interfaceCount)
             .asSequence()
             .map(::getInterface)
             .firstOrNull { usbInterface ->
-                usbInterface.id == format.interfaceNumber &&
-                    usbInterface.alternateSetting == format.alternateSetting
+                usbInterface.id == number && usbInterface.alternateSetting == alternate
             }
 
     private fun UsbDevice.findControlInterface(format: UsbAudioStreamingFormat): UsbInterface? {
@@ -179,6 +189,7 @@ class UsbExclusivePcmSession internal constructor(
     private val connection: UsbDeviceConnection?,
     private val audioInterface: UsbInterface?,
     private val controlInterface: UsbInterface? = null,
+    private val idleInterface: UsbInterface? = null,
     private val endpoint: UsbEndpoint?,
     private val spec: UsbPcmFormatSpec? = null,
     private val selectedFormat: UsbAudioStreamingFormat? = null,
@@ -385,14 +396,20 @@ class UsbExclusivePcmSession internal constructor(
     }
 
     fun hasTransferError(): Boolean = synchronized(lock) {
-        val failed = closed || UsbIsochronousNative.hasTransferError(nativeHandle)
+        val failed = closed || (transport == UsbEndpointTransferType.Isochronous &&
+            UsbIsochronousNative.hasTransferError(nativeHandle))
         updateSnapshot(force = failed)
         failed
     }
 
     fun queuedFrames(): Long = synchronized(lock) { UsbIsochronousNative.queuedFrames(nativeHandle) }
 
-    fun completedFrames(): Long = synchronized(lock) { UsbIsochronousNative.completedFrames(nativeHandle) }
+    /** Returns -1 if a transport failure interrupted playout. */
+    fun completedFrames(): Long = synchronized(lock) {
+        val frames = UsbIsochronousNative.completedFrames(nativeHandle)
+        if (frames < 0) updateSnapshot(force = true)
+        frames
+    }
 
     fun capacityFrames(): Long = synchronized(lock) { UsbIsochronousNative.capacityFrames(nativeHandle) }
 
@@ -410,17 +427,16 @@ class UsbExclusivePcmSession internal constructor(
             keepAlive = false
             val running = keepAliveThread
             keepAliveThread = null
+            UsbIsochronousNative.stop(nativeHandle)
             updateSnapshot(force = true)
-            UsbIsochronousNative.close(nativeHandle)
-            nativeHandle = 0L
             val connection = connection
             val audioInterface = audioInterface
             val controlInterface = controlInterface
-            if (connection != null) {
+            if (connection != null) try {
                 // Stop the DAC stream before restoring a higher hardware baseline; otherwise
                 // residual FIFO samples could be replayed at the restored gain.
                 val streamStopped = audioInterface != null &&
-                    runCatching { connection.setInterfaceAlt(audioInterface.id, 0) }.getOrDefault(false)
+                    runCatching { connection.stopStreamingInterface(audioInterface.id, idleInterface) }.getOrDefault(false)
                 volumeControl?.close(restoreHardware = streamStopped)
                 if (audioInterface != null) {
                     runCatching { connection.releaseInterface(audioInterface) }
@@ -428,7 +444,11 @@ class UsbExclusivePcmSession internal constructor(
                 if (controlInterface != null) {
                     runCatching { connection.releaseInterface(controlInterface) }
                 }
+            } finally {
+                // Closing usbfs disposes of completions that could not be reaped during stop.
                 connection.close()
+                UsbIsochronousNative.close(nativeHandle)
+                nativeHandle = 0L
             }
             running
         }
@@ -461,11 +481,11 @@ class UsbExclusivePcmSession internal constructor(
     }
 }
 
-internal fun UsbDeviceConnection.setInterfaceAlt(interfaceNumber: Int, alternateSetting: Int): Boolean =
-    controlTransfer(
+private fun UsbDeviceConnection.stopStreamingInterface(interfaceNumber: Int, idle: UsbInterface?): Boolean =
+    if (idle != null) setInterface(idle) else controlTransfer(
         USB_RECIPIENT_INTERFACE,
         USB_SET_INTERFACE,
-        alternateSetting,
+        0,
         interfaceNumber,
         null,
         0,

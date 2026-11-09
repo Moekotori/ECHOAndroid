@@ -111,7 +111,7 @@ object EchoEqualizerPresets {
     val preciseFrequenciesHz: List<Float> = EchoPcEqPresets.frequencies
     val defaultFrequenciesHz: List<Int> = preciseFrequenciesHz.map { kotlin.math.round(it).toInt() }
     val legacyFrequenciesHz: List<Int> = listOf(60, 230, 910, 3600, 14000)
-    val presets: List<EchoEqualizerPresetDefinition> = EchoPcEqPresets.definitions
+    val presets: List<EchoEqualizerPresetDefinition> = EchoPcEqPresets.definitions + EchoAndroidEqPresets.definitions
     private val aliases = mapOf("harman" to "harman-target", "warm" to "headphone-warm", "bass" to "bass-boost",
         "vocal" to "vocal-clear", "bright" to "treble-sparkle", "acoustic" to "acoustic-silk", "electronic" to "classic-smiley")
     fun preampFor(id: String): Float = presets.firstOrNull { it.id == normalizePresetId(id) }?.preampDb ?: 0f

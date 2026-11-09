@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
+private const val MaxLocalSearchPreviewTracks = 500
+
 @Composable
 internal fun rememberLinkedLibraryCatalog(
     mode: LinkedLibraryMode,
@@ -26,11 +28,13 @@ internal fun rememberLinkedLibraryCatalog(
 ): LinkedLibraryCatalog {
     if (mode == LinkedLibraryMode.Folders) return LinkedLibraryCatalog.Empty
 
+    val trackResultQuery = state.trackResultQuery
+    val waitingForTracks = query.isNotEmpty() && (query != remoteQuery || state.isLoading) && query != trackResultQuery
     val tracks = when (mode) {
         LinkedLibraryMode.Songs, LinkedLibraryMode.Artists -> state.tracks
         LinkedLibraryMode.Albums -> state.tracks.takeIf { state.albums.isEmpty() }.orEmpty()
         else -> emptyList()
-    }
+    }.takeUnless { waitingForTracks && it.size > MaxLocalSearchPreviewTracks }.orEmpty()
     val albums = state.albums.takeIf { mode == LinkedLibraryMode.Albums }.orEmpty()
     val playlists = state.playlists.takeIf { mode == LinkedLibraryMode.Playlists }.orEmpty()
     val trackSort = if (mode == LinkedLibraryMode.Songs) linkedTrackSort(trackSortMode) else LibraryTrackSortMode.Title
@@ -39,16 +43,17 @@ internal fun rememberLinkedLibraryCatalog(
     val catalog by key(query) {
         produceState(
             LinkedLibraryCatalog.Empty,
-            tracks, albums, playlists, remoteQuery, trackSort, albumSort, artistSort,
+            tracks, albums, playlists, remoteQuery, trackResultQuery, trackSort, albumSort, artistSort,
         ) {
             if (query.isNotEmpty() && query != remoteQuery) delay(150)
+            val previousTrackOrder = value.trackOrder
             value = withContext(Dispatchers.Default) {
                 LinkedLibraryCatalog.build(
                     searchText = searchText,
                     tracks = tracks,
                     playlists = playlists,
                     query = query,
-                    remoteQuery = remoteQuery,
+                    trackResultQuery = trackResultQuery,
                     sortMode = trackSort,
                     albumSortMode = albumSort,
                     artistSortMode = artistSort,
@@ -58,6 +63,7 @@ internal fun rememberLinkedLibraryCatalog(
                     includePlaylists = mode == LinkedLibraryMode.Playlists,
                     remoteAlbums = albums,
                     randomOrder = randomOrder,
+                    previousTrackOrder = previousTrackOrder,
                 )
             }
         }

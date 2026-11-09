@@ -13,10 +13,10 @@ import app.echo.android.model.playback.EchoUsbOutputOptions
 import kotlin.math.roundToInt
 
 @Composable
-internal fun UsbFineVolumeControl(options: EchoUsbOutputOptions, strict: Boolean, onChange: (EchoUsbOutputOptions) -> Unit) {
-    var step by remember(options.effectiveVolumeStep, strict) { mutableIntStateOf(if (strict) 300 else options.effectiveVolumeStep) }
-    var edited by remember(options.volumePercent, options.volumeStep, strict) { mutableStateOf(false) }
-    val displayedDb = if (!strict && !edited && options.volumeStep == null && options.volumeGain > 0f)
+internal fun UsbFineVolumeControl(options: EchoUsbOutputOptions, onChange: (EchoUsbOutputOptions) -> Unit) {
+    var step by remember(options.effectiveVolumeStep) { mutableIntStateOf(options.effectiveVolumeStep) }
+    var edited by remember(options.volumePercent, options.volumeStep) { mutableStateOf(false) }
+    val displayedDb = if (!edited && options.volumeStep == null && options.volumeGain > 0f)
         (20.0 * kotlin.math.log10(options.volumeGain.toDouble())).toFloat() else EchoUsbFineVolume.db(step)
     val value = if (step == 0) stringResource(R.string.usb_fine_muted)
         else stringResource(R.string.usb_fine_value, displayedDb)
@@ -25,17 +25,16 @@ internal fun UsbFineVolumeControl(options: EchoUsbOutputOptions, strict: Boolean
             Text(stringResource(R.string.usb_fine_title), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
             Text(value, style = MaterialTheme.typography.titleMedium)
         }
-        EchoSlider(step.toFloat(), { edited = true; step = it.roundToInt() }, valueRange = 0f..300f, enabled = !strict,
-            onValueChangeFinished = { if (!strict) onChange(options.withVolumeStep(step)) })
+        EchoSlider(step.toFloat(), { edited = true; step = it.roundToInt() },
+            valueRange = 0f..EchoUsbFineVolume.MaxStep.toFloat(),
+            onValueChangeFinished = { onChange(options.withVolumeStep(step)) })
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(enabled = !strict && step > 0, onClick = { edited = true; step--; onChange(options.withVolumeStep(step)) }) {
+            TextButton(enabled = step > 0, onClick = { edited = true; step--; onChange(options.withVolumeStep(step)) }) {
                 Text(stringResource(R.string.usb_fine_down))
             }
-            TextButton(enabled = !strict && step < 300, onClick = { edited = true; step++; onChange(options.withVolumeStep(step)) }) {
+            TextButton(enabled = step < EchoUsbFineVolume.MaxStep, onClick = { edited = true; step++; onChange(options.withVolumeStep(step)) }) {
                 Text(stringResource(R.string.usb_fine_up))
             }
         }
-        Text(stringResource(if (strict) R.string.usb_param_volume_fixed else R.string.usb_fine_note),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

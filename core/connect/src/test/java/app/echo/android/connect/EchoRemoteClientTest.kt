@@ -432,6 +432,7 @@ class EchoRemoteClientTest {
         delay(20)
 
         assertEquals("new", client.library.value.query)
+        assertEquals("new", client.library.value.trackResultQuery)
         assertEquals(false, client.library.value.isLoading)
         assertNull(client.library.value.error)
         client.disconnect()
@@ -1017,6 +1018,7 @@ class EchoRemoteClientTest {
         delay(50)
         assertEquals(6, client.library.value.tracks.size)
         assertEquals("radiohead", client.library.value.query)
+        assertNull(client.library.value.trackResultQuery)
         client.disconnect()
     }
 

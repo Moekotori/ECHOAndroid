@@ -16,6 +16,7 @@
 
 #define URB_COUNT 32
 #define FEEDBACK_URB_COUNT 4
+#define FEEDBACK_RETRY_LIMIT 5
 #define KEEPALIVE_URB_COUNT 4
 #define USBDEVFS_URB_TYPE_ISO 0
 #define WRITE_FATAL -2
@@ -29,7 +30,7 @@ struct UrbSlot {
     uint8_t* buffer;
     int in_flight;
     int frames;
-    int is_feedback;
+    int feedback_submit_failures;
     int is_silence;
 };
 
@@ -39,24 +40,33 @@ struct Writer {
     int packets_per_urb;
     int urb_count;
     int max_packet;
+    int max_frames_per_packet;
     int sample_rate;
     int channels;
     int bytes_per_sample;
     int pps;
     int service_interval;
-    int high_speed;
     int fatal;
     int transfer_error;
-    int64_t acc_q16;
+    int packet_phase;
+    int nominal_frames_per_packet;
+    int nominal_frames_remainder;
     int64_t feedback_q16;
     int64_t nominal_q16;
+    bool feedback_scale_known;
+    int feedback_shift;
+    int pending_feedback_shift;
+    int feedback_shift_votes;
     uint8_t feedback_ep;
     int feedback_max;
+    int64_t feedback_retry_ns;
     struct UrbSlot slots[URB_COUNT];
     struct UrbSlot feedback_slots[FEEDBACK_URB_COUNT];
     int64_t submitted_frames;
     int64_t completed_frames;
     int64_t audio_completed_frames;
+    int64_t out_progress_ns;
+    int64_t out_timeout_ns;
     UsbTransferMetrics metrics;
 };
 
@@ -71,11 +81,20 @@ static int bytes_per_frame(const Writer* writer) {
 }
 
 static int next_packet_samples(Writer* writer) {
+    if (!writer->feedback_scale_known) {
+        // Exact rational packetization for synchronous and adaptive endpoints,
+        // and while an asynchronous endpoint is waiting for usable feedback.
+        writer->packet_phase += writer->nominal_frames_remainder;
+        if (writer->packet_phase < writer->pps) return writer->nominal_frames_per_packet;
+        writer->packet_phase -= writer->pps;
+        return writer->nominal_frames_per_packet + 1;
+    }
     // Feedback is expressed per bus (micro)frame, not per endpoint service interval.
-    writer->acc_q16 += writer->feedback_q16 * writer->service_interval;
-    int samples = (int)(writer->acc_q16 >> 16);
-    writer->acc_q16 &= 0xffff;
-    return samples > 0 ? samples : 1;
+    const int64_t phase = writer->packet_phase + writer->feedback_q16 * writer->service_interval;
+    const int samples = (int)(phase >> 16);
+    writer->packet_phase = (int)(phase & 0xffff);
+    if (samples <= 0) return 1;
+    return samples > writer->max_frames_per_packet ? writer->max_frames_per_packet : samples;
 }
 
 static size_t urb_alloc_size(int packets_per_urb) {
@@ -91,39 +110,64 @@ static int is_fatal_urb_status(int status) {
     return status == -ENODEV || status == -ESHUTDOWN || status == -ENOENT || status == -EPERM;
 }
 
+static bool feedback_fits(const Writer* writer, int64_t measured) {
+    const int64_t slack = 1LL << 16;
+    return measured > 0 && measured >= writer->nominal_q16 - slack &&
+           measured <= writer->nominal_q16 + slack &&
+           measured * writer->service_interval <= ((int64_t)writer->max_frames_per_packet << 16);
+}
+
+static int64_t shift_feedback(int64_t measured, int shift) {
+    return shift < 0 ? measured >> -shift : measured << shift;
+}
+
+static int64_t normalize_feedback(Writer* writer, int64_t measured) {
+    if (writer->feedback_scale_known) {
+        measured = shift_feedback(measured, writer->feedback_shift);
+        return feedback_fits(writer, measured) ? measured : -1;
+    }
+    int shift = 0;
+    if (!feedback_fits(writer, measured)) {
+        // Some firmware reports samples per USB frame or service interval
+        // instead of per microframe. Learn a power-of-two scale only from
+        // two consecutive near-nominal readings. Never switch scale midstream.
+        const int64_t tolerance = writer->nominal_q16 / 64;
+        for (shift = -8; shift <= 8; ++shift) {
+            const int64_t scaled = shift_feedback(measured, shift);
+            if (scaled >= writer->nominal_q16 - tolerance && scaled <= writer->nominal_q16 + tolerance &&
+                feedback_fits(writer, scaled)) break;
+        }
+        if (shift > 8) return -1;
+        if (writer->feedback_shift_votes == 0 || writer->pending_feedback_shift != shift) {
+            writer->pending_feedback_shift = shift;
+            writer->feedback_shift_votes = 1;
+            return 0;
+        }
+        measured = shift_feedback(measured, shift);
+    }
+    writer->packet_phase = (writer->packet_phase << 16) / writer->pps;
+    writer->feedback_shift = shift;
+    writer->feedback_scale_known = true;
+    return measured;
+}
+
 static void apply_feedback(Writer* writer, const uint8_t* data, int length) {
     if (data == nullptr || length < 3) {
+        writer->feedback_shift_votes = 0;
         ++writer->metrics.invalid_feedback;
         writer->metrics.error(7, EPROTO);
         return;
     }
-    int64_t measured;
-    if (writer->high_speed && length >= 4) {
-        measured = (int64_t)data[0] |
-                   ((int64_t)data[1] << 8) |
-                   ((int64_t)data[2] << 16) |
-                   ((int64_t)data[3] << 24);
-    } else {
-        measured = ((int64_t)data[0] |
-                    ((int64_t)data[1] << 8) |
-                    ((int64_t)data[2] << 16)) << 2;
-    }
-    if (measured <= 0) {
+    const int64_t low = (int64_t)data[0] | ((int64_t)data[1] << 8) | ((int64_t)data[2] << 16);
+    const int64_t raw = length >= 4 ? low | ((int64_t)data[3] << 24) : low << 2;
+    const int64_t measured = normalize_feedback(writer, raw);
+    if (measured < 0) {
+        writer->feedback_shift_votes = 0;
         ++writer->metrics.invalid_feedback;
         writer->metrics.error(7, ERANGE);
-        return;
+    } else if (measured > 0) {
+        writer->feedback_q16 = (writer->feedback_q16 * 3 + measured) / 4;
     }
-    const int64_t slack = 1LL << 16;
-    int64_t minv = writer->nominal_q16 - slack;
-    if (minv < 1) minv = 1;
-    int64_t maxv = writer->nominal_q16 + slack;
-    if (measured < minv || measured > maxv) {
-        ++writer->metrics.invalid_feedback;
-        writer->metrics.error(7, ERANGE);
-    }
-    if (measured < minv) measured = minv;
-    if (measured > maxv) measured = maxv;
-    writer->feedback_q16 = (writer->feedback_q16 * 3 + measured) / 4;
 }
 
 static int submit_urb(Writer* writer, struct usbdevfs_urb* urb) {
@@ -150,9 +194,15 @@ static int submit_feedback(Writer* writer, int index) {
     urb->buffer_length = writer->feedback_max;
     urb->number_of_packets = 1;
     urb->iso_frame_desc[0].length = (unsigned int)writer->feedback_max;
-    if (submit_urb(writer, urb) != 0) return -1;
+    if (submit_urb(writer, urb) != 0) {
+        if (!writer->fatal && ++slot->feedback_submit_failures <= FEEDBACK_RETRY_LIMIT &&
+            writer->feedback_retry_ns == 0) {
+            writer->feedback_retry_ns = monotonic_ns() + 20000000LL;
+        }
+        return -1;
+    }
+    slot->feedback_submit_failures = 0;
     slot->in_flight = 1;
-    slot->is_feedback = 1;
     return 0;
 }
 
@@ -161,21 +211,24 @@ static void mark_completed(Writer* writer, UrbSlot* slot) {
     if (!writer->metrics.discarding) {
         ++writer->metrics.audio_urbs;
         if (slot->urb->status != 0) writer->metrics.error(3, slot->urb->status);
+        bool failed = slot->urb->status != 0;
+        int played_frames = 0;
+        const int frame_bytes = bytes_per_frame(writer);
         for (int p = 0; p < slot->urb->number_of_packets; ++p) {
             const auto& packet = slot->urb->iso_frame_desc[p];
             if (packet.status != 0 || packet.actual_length != packet.length) {
                 ++writer->metrics.audio_packet_errors;
                 writer->metrics.error(4, packet.status != 0 ? packet.status : -EPROTO);
+                failed = true;
+            }
+            if (packet.status == 0 && packet.actual_length <= packet.length) {
+                played_frames += packet.actual_length / frame_bytes;
             }
         }
-    }
-    if (!slot->is_silence && !writer->metrics.discarding) {
-        if (slot->urb->status != 0) writer->transfer_error = 1;
-        for (int p = 0; p < slot->urb->number_of_packets; ++p) {
-            const auto& packet = slot->urb->iso_frame_desc[p];
-            if (packet.status != 0 || packet.actual_length != packet.length) writer->transfer_error = 1;
+        if (!slot->is_silence) {
+            writer->transfer_error |= failed;
+            writer->audio_completed_frames += played_frames;
         }
-        writer->audio_completed_frames += slot->frames;
     }
     slot->in_flight = 0;
     slot->frames = 0;
@@ -183,17 +236,18 @@ static void mark_completed(Writer* writer, UrbSlot* slot) {
 }
 
 static void reap(Writer* writer) {
+    const int64_t completed_before = writer->completed_frames;
     while (true) {
         struct usbdevfs_urb* urb = nullptr;
         int rc = ioctl(writer->fd, USBDEVFS_REAPURBNDELAY, &urb);
         if (rc < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) return;
-            if (!writer->metrics.discarding && is_fatal_errno(errno)) writer->fatal = 1;
-            if (!writer->metrics.discarding) {
+            const int err = errno;
+            if (!writer->metrics.discarding && err != EAGAIN && err != EWOULDBLOCK && err != EINTR) {
+                if (is_fatal_errno(err)) writer->fatal = 1;
                 ++writer->metrics.reap_failures;
-                writer->metrics.error(2, errno);
+                writer->metrics.error(2, err);
             }
-            return;
+            break;
         }
         for (int i = 0; i < writer->urb_count; ++i) {
             if (writer->slots[i].urb == urb) {
@@ -219,18 +273,36 @@ static void reap(Writer* writer) {
                     writer->fatal = 1;
                     break;
                 }
-                int actual = (int)urb->iso_frame_desc[0].actual_length;
-                if (actual <= 0) actual = urb->actual_length;
-                if (actual > 0 && urb->status == 0 && urb->iso_frame_desc[0].status == 0) {
-                    apply_feedback(writer, writer->feedback_slots[i].buffer, actual);
-                } else if (actual <= 0 && urb->status == 0 && urb->iso_frame_desc[0].status == 0) {
-                    ++writer->metrics.invalid_feedback;
-                    writer->metrics.error(7, EPROTO);
+                if (urb->status == 0 && urb->iso_frame_desc[0].status == 0) {
+                    const unsigned int actual = urb->iso_frame_desc[0].actual_length;
+                    apply_feedback(writer, writer->feedback_slots[i].buffer,
+                                   actual <= (unsigned int)writer->feedback_max ? (int)actual : 0);
+                } else {
+                    writer->feedback_shift_votes = 0;
                 }
-                submit_feedback(writer, i);
+                if (!writer->transfer_error) submit_feedback(writer, i);
                 break;
             }
         }
+    }
+    if (writer->metrics.discarding || writer->fatal || writer->transfer_error) return;
+    const bool out_pending = writer->submitted_frames != writer->completed_frames;
+    if (!out_pending && writer->feedback_retry_ns == 0) return;
+    const int64_t now = monotonic_ns();
+    if (writer->feedback_retry_ns != 0 && now >= writer->feedback_retry_ns) {
+        writer->feedback_retry_ns = 0;
+        for (int i = 0; i < FEEDBACK_URB_COUNT; ++i) {
+            const UrbSlot& slot = writer->feedback_slots[i];
+            if (!slot.in_flight && slot.feedback_submit_failures > 0 &&
+                slot.feedback_submit_failures <= FEEDBACK_RETRY_LIMIT) submit_feedback(writer, i);
+        }
+    }
+    if (!out_pending || writer->fatal) return;
+    if (writer->completed_frames != completed_before) writer->out_progress_ns = now;
+    // Bound a stalled OUT queue even during EOS. Feedback completions don't advance it.
+    if (now - writer->out_progress_ns >= writer->out_timeout_ns) {
+        writer->transfer_error = 1;
+        writer->metrics.error(8, ETIMEDOUT);
     }
 }
 
@@ -245,7 +317,7 @@ static int inflight_count(const Writer* writer) {
     return count;
 }
 
-static void discard_inflight(Writer* writer) {
+static bool discard_inflight(Writer* writer) {
     writer->metrics.discarding = true;
     writer->metrics.set_active(false);
     for (int i = 0; i < writer->urb_count; ++i) {
@@ -260,22 +332,14 @@ static void discard_inflight(Writer* writer) {
     }
     for (int attempt = 0; attempt < 64; ++attempt) {
         reap(writer);
-        if (inflight_count(writer) == 0) break;
+        if (inflight_count(writer) == 0) return true;
         usleep(2000);
     }
-    for (int i = 0; i < writer->urb_count; ++i) {
-        writer->slots[i].in_flight = 0;
-        writer->slots[i].frames = 0;
-        writer->slots[i].is_silence = 0;
-    }
-    for (int i = 0; i < FEEDBACK_URB_COUNT; ++i) {
-        writer->feedback_slots[i].in_flight = 0;
-    }
+    return false;
 }
 
 static void free_writer(Writer* writer) {
     if (writer == nullptr) return;
-    discard_inflight(writer);
     for (int i = 0; i < writer->urb_count; ++i) {
         free(writer->slots[i].urb);
         free(writer->slots[i].buffer);
@@ -302,10 +366,8 @@ static int submit_filled_urb(Writer* writer, int slot_index, int used_bytes, int
     urb->error_count = 0;
     urb->signr = 0;
     urb->usercontext = writer;
-    if (submit_urb(writer, urb) != 0) {
-        if (is_fatal_errno(errno)) writer->fatal = 1;
-        return -1;
-    }
+    if (submit_urb(writer, urb) != 0) return -1;
+    if (writer->submitted_frames == writer->completed_frames) writer->out_progress_ns = monotonic_ns();
     slot->in_flight = 1;
     return 0;
 }
@@ -315,13 +377,13 @@ static int fill_and_submit_silence(Writer* writer, int slot_index) {
     int packets = 0;
     int frames_this_urb = 0;
     const int frame_bytes = bytes_per_frame(writer);
-    int64_t saved_acc = writer->acc_q16;
+    const int start_phase = writer->packet_phase;
     for (int p = 0; p < writer->packets_per_urb; ++p) {
         const int samples = next_packet_samples(writer);
         const int packet_bytes = samples * frame_bytes;
         if (packet_bytes <= 0 || packet_bytes > writer->max_packet ||
             used + packet_bytes > writer->max_packet * writer->packets_per_urb) {
-            writer->acc_q16 = saved_acc;
+            writer->packet_phase = start_phase;
             return -1;
         }
         memset(writer->slots[slot_index].buffer + used, 0, (size_t)packet_bytes);
@@ -331,11 +393,11 @@ static int fill_and_submit_silence(Writer* writer, int slot_index) {
         used += packet_bytes;
         frames_this_urb += samples;
         packets += 1;
-        saved_acc = writer->acc_q16;
     }
     writer->slots[slot_index].frames = frames_this_urb;
     writer->slots[slot_index].is_silence = 1;
     if (submit_filled_urb(writer, slot_index, used, packets) != 0) {
+        writer->packet_phase = start_phase;
         writer->slots[slot_index].frames = 0;
         writer->slots[slot_index].is_silence = 0;
         return -1;
@@ -353,7 +415,7 @@ static int inflight_out_count(const Writer* writer) {
 }
 
 static void fill_keepalive(Writer* writer) {
-    if (writer->fatal) return;
+    if (writer->fatal || writer->transfer_error) return;
     int needed = KEEPALIVE_URB_COUNT - inflight_out_count(writer);
     for (int i = 0; i < writer->urb_count && needed > 0; ++i) {
         if (writer->slots[i].in_flight) continue;
@@ -363,18 +425,25 @@ static void fill_keepalive(Writer* writer) {
     }
 }
 
+static int bus_packets_per_second(int fd) {
+    const int speed = ioctl(fd, USBDEVFS_GET_SPEED);
+    if (speed >= 3) return 8000;
+    if (speed == 1 || speed == 2) return 1000;
+    return 0;
+}
+
 static void apply_bus_speed(Writer* writer, int requested_pps, int endpoint_interval) {
-    writer->pps = requested_pps >= 8000 ? 8000 : 1000;
-    int speed = ioctl(writer->fd, USBDEVFS_GET_SPEED);
-    if (speed >= 3) {
-        writer->pps = 8000;
-    } else if (speed == 1 || speed == 2) {
-        writer->pps = 1000;
-    }
-    writer->high_speed = writer->pps >= 8000 ? 1 : 0;
+    const int detected_pps = bus_packets_per_second(writer->fd);
+    writer->pps = detected_pps > 0 ? detected_pps : (requested_pps >= 8000 ? 8000 : 1000);
     writer->service_interval = 1 << (endpoint_interval - 1);
-    const int packets_per_ms = (writer->high_speed ? 8 : 1) / writer->service_interval;
+    const int packets_per_ms = (writer->pps / 1000) / writer->service_interval;
     writer->packets_per_urb = packets_per_ms > 0 ? packets_per_ms : 1;
+    const int64_t rate_per_interval = (int64_t)writer->sample_rate * writer->service_interval;
+    writer->nominal_frames_per_packet = (int)(rate_per_interval / writer->pps);
+    writer->nominal_frames_remainder = (int)(rate_per_interval % writer->pps);
+    writer->max_frames_per_packet = writer->max_packet / bytes_per_frame(writer);
+    const int64_t urb_ns = 1000000000LL * writer->service_interval * writer->packets_per_urb / writer->pps;
+    writer->out_timeout_ns = urb_ns > 100000000LL ? 2 * urb_ns : 200000000LL;
 }
 
 static bool packet_fits(const Writer* writer) {
@@ -384,6 +453,11 @@ static bool packet_fits(const Writer* writer) {
                              writer->pps - 1) / writer->pps;
     // Reject an impossible alternate setting; changing the assumed bus speed loses audio.
     return samples * frame <= writer->max_packet;
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeBusPacketsPerSecond(JNIEnv*, jclass, jint fd) {
+    return bus_packets_per_second(fd);
 }
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -423,7 +497,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
     writer->nominal_q16 = ((int64_t)sample_rate_hz << 16) / writer->pps;
     writer->feedback_q16 = writer->nominal_q16;
     writer->feedback_ep = (uint8_t)feedback_endpoint;
-    writer->feedback_max = feedback_max_packet > 0 ? feedback_max_packet : (writer->high_speed ? 4 : 3);
+    writer->feedback_max = feedback_max_packet > 0 ? feedback_max_packet : (writer->pps >= 8000 ? 4 : 3);
     const int buffer_bytes = writer->max_packet * writer->packets_per_urb;
     for (int i = 0; i < writer->urb_count; ++i) {
         writer->slots[i].urb = (struct usbdevfs_urb*)calloc(1, urb_alloc_size(writer->packets_per_urb));
@@ -437,13 +511,12 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCreate(
         for (int i = 0; i < FEEDBACK_URB_COUNT; ++i) {
             writer->feedback_slots[i].urb = (struct usbdevfs_urb*)calloc(1, urb_alloc_size(1));
             writer->feedback_slots[i].buffer = (uint8_t*)malloc((size_t)writer->feedback_max);
-            writer->feedback_slots[i].is_feedback = 1;
             if (writer->feedback_slots[i].urb == nullptr || writer->feedback_slots[i].buffer == nullptr) {
                 free_writer(writer);
                 return 0;
             }
-            submit_feedback(writer, i);
         }
+        for (int i = 0; i < FEEDBACK_URB_COUNT; ++i) submit_feedback(writer, i);
     }
     LOGI("iso writer fd=%d ep=0x%x rate=%d ch=%d bps=%d bus_pps=%d interval=%d fb=0x%x",
          fd, endpoint_address, sample_rate_hz, channel_count, bytes_per_sample,
@@ -468,6 +541,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
     if (writer->fatal) return WRITE_FATAL;
     reap(writer);
     if (writer->fatal) return WRITE_FATAL;
+    if (writer->transfer_error) return -1;
     if (end_of_stream) writer->metrics.set_active(false);
     const int64_t write_now_ns = writer->metrics.active ? monotonic_ns() : 0;
     writer->metrics.before_audio(write_now_ns,
@@ -485,17 +559,17 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
         }
         if (free_slot < 0) break;
         const int urb_start_consumed = consumed;
-        const int64_t urb_start_acc = writer->acc_q16;
+        const int urb_start_phase = writer->packet_phase;
         int used = 0;
         int packets = 0;
         int frames_this_urb = 0;
-        int64_t saved_acc = writer->acc_q16;
+        int saved_phase = writer->packet_phase;
         for (int p = 0; p < writer->packets_per_urb; ++p) {
             int samples = next_packet_samples(writer);
             int packet_bytes = samples * frame_bytes;
             if (packet_bytes <= 0 || packet_bytes > writer->max_packet) {
                 LOGE("iso packet %d exceeds max %d", packet_bytes, writer->max_packet);
-                writer->acc_q16 = urb_start_acc;
+                writer->packet_phase = urb_start_phase;
                 env->ReleaseByteArrayElements(packed, src, JNI_ABORT);
                 return -1;
             }
@@ -506,7 +580,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
             }
             if (used + packet_bytes > writer->max_packet * writer->packets_per_urb ||
                 consumed + packet_bytes > length) {
-                writer->acc_q16 = saved_acc;
+                writer->packet_phase = saved_phase;
                 break;
             }
             memcpy(writer->slots[free_slot].buffer + used, src + offset + consumed, (size_t)packet_bytes);
@@ -517,7 +591,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
             consumed += packet_bytes;
             frames_this_urb += samples;
             packets += 1;
-            saved_acc = writer->acc_q16;
+            saved_phase = writer->packet_phase;
         }
         if (packets == 0) {
             consumed = urb_start_consumed;
@@ -527,7 +601,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite(
         writer->slots[free_slot].is_silence = 0;
         if (submit_filled_urb(writer, free_slot, used, packets) != 0) {
             writer->slots[free_slot].frames = 0;
-            writer->acc_q16 = urb_start_acc;
+            writer->packet_phase = urb_start_phase;
             consumed = urb_start_consumed;
             env->ReleaseByteArrayElements(packed, src, JNI_ABORT);
             if (writer->fatal) return WRITE_FATAL;
@@ -561,7 +635,7 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCompletedFrames(JNIEnv
     auto* writer = reinterpret_cast<Writer*>(handle);
     if (writer == nullptr) return 0;
     reap(writer);
-    return writer->audio_completed_frames;
+    return writer->fatal || writer->transfer_error ? -1 : writer->audio_completed_frames;
 }
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -577,16 +651,25 @@ extern "C" JNIEXPORT void JNICALL
 Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeFlush(JNIEnv*, jclass, jlong handle) {
     auto* writer = reinterpret_cast<Writer*>(handle);
     if (writer == nullptr) return;
-    discard_inflight(writer);
+    if (!discard_inflight(writer)) {
+        writer->transfer_error = 1;
+        writer->metrics.error(9, ETIMEDOUT);
+        return;
+    }
     writer->metrics.discarding = false;
-    writer->acc_q16 = 0;
+    writer->packet_phase = 0;
     writer->feedback_q16 = writer->nominal_q16;
+    writer->feedback_scale_known = false;
+    writer->feedback_shift_votes = 0;
+    writer->feedback_retry_ns = 0;
     writer->submitted_frames = 0;
     writer->completed_frames = 0;
     writer->audio_completed_frames = 0;
+    writer->out_progress_ns = 0;
     writer->transfer_error = 0;
     if (writer->feedback_ep != 0 && !writer->fatal) {
         for (int i = 0; i < FEEDBACK_URB_COUNT; ++i) {
+            writer->feedback_slots[i].feedback_submit_failures = 0;
             submit_feedback(writer, i);
         }
     }
@@ -602,6 +685,13 @@ Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeCapacityFrames(JNIEnv*
     return (jlong)per_urb * writer->urb_count;
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeStop(JNIEnv*, jclass, jlong handle) {
+    auto* writer = reinterpret_cast<Writer*>(handle);
+    if (writer != nullptr && !discard_inflight(writer)) writer->metrics.error(9, ETIMEDOUT);
+}
+
+// Called only after the owning UsbDeviceConnection has closed its usbfs fd.
 extern "C" JNIEXPORT void JNICALL
 Java_app_echo_android_usbaudio_UsbIsochronousNative_nativeClose(JNIEnv*, jclass, jlong handle) {
     auto* writer = reinterpret_cast<Writer*>(handle);

@@ -196,6 +196,8 @@ fun ConnectScreen(
         stringResource(L10nR.string.echo_link_cast_tab),
     )
     val shortLandscape = echoShortLandscape()
+    val canDiscoverPc = remoteState == EchoRemoteConnectionState.Disconnected ||
+        remoteState == EchoRemoteConnectionState.Error
     Surface(Modifier.fillMaxSize(), color = echoPageBackgroundColor(), contentColor = scheme.onBackground) {
         Column(Modifier.statusBarsPadding().imePadding(), horizontalAlignment = Alignment.CenterHorizontally) {
             val heading: @Composable () -> Unit = {
@@ -232,8 +234,15 @@ fun ConnectScreen(
                 pageNestedScrollConnection = innerNestedScroll,
             ) { tab ->
                 savedTabs.SaveableStateProvider(tab) {
-                    Column(
-                        Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()
+                    val canRefreshDevices = remoteControlsActive && pagerState.settledPage == tab &&
+                        ((tab == 0 && canDiscoverPc) || (tab == 2 && !casting))
+                    val searchingDevices = discoveryState == EchoLinkDiscoveryState.Searching ||
+                        (tab == 2 && lanRendererState == EchoLinkDiscoveryState.Searching)
+                    ConnectDiscoveryRefresh(
+                        enabled = canRefreshDevices,
+                        refreshing = searchingDevices,
+                        onRefresh = onRefreshLanDevices,
+                        modifier = Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()
                             .windowInsetsPadding(WindowInsets(bottom = bottomInset))
                             .verticalScroll(scrollStates[tab])
                             .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),

@@ -39,6 +39,7 @@ internal fun PlayerControlButton(
     touchSize: Dp = 52.dp,
     iconSize: Dp = 26.dp,
     tint: Color = OnArt.copy(alpha = 0.86f),
+    animateMode: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -54,24 +55,28 @@ internal fun PlayerControlButton(
         ),
         contentAlignment = Alignment.Center,
     ) {
-        AnimatedContent(
-            targetState = icon,
-            transitionSpec = {
-                ContentTransform(
-                    targetContentEnter = fadeIn(tween(if (lightweight) 0 else 180, easing = EchoMotion.Silk)) +
-                        scaleIn(initialScale = if (lightweight) 1f else 0.78f,
-                            animationSpec = EchoMotion.silkFloat(240)),
-                    initialContentExit = fadeOut(tween(if (lightweight) 0 else 90, easing = EchoMotion.SilkExit)) +
-                        scaleOut(targetScale = if (lightweight) 1f else 0.88f,
-                            animationSpec = EchoMotion.silkFloat(180)),
-                    sizeTransform = null,
-                )
-            },
-            contentAlignment = Alignment.Center,
-            label = "player-control-icon",
-        ) { current ->
-            EchoIcon(current, contentDescription = description, tint = tint,
-                modifier = Modifier.size(iconSize).graphicsLayer { scaleX = scale.value; scaleY = scale.value })
+        val iconModifier = Modifier.size(iconSize).graphicsLayer { scaleX = scale.value; scaleY = scale.value }
+        if (animateMode) {
+            PlaybackModeIcon(icon, description, tint, iconModifier, animate = true)
+        } else {
+            AnimatedContent(
+                targetState = icon,
+                transitionSpec = {
+                    ContentTransform(
+                        targetContentEnter = fadeIn(tween(if (lightweight) 0 else 180, easing = EchoMotion.Silk)) +
+                            scaleIn(initialScale = if (lightweight) 1f else 0.78f,
+                                animationSpec = EchoMotion.silkFloat(240)),
+                        initialContentExit = fadeOut(tween(if (lightweight) 0 else 90, easing = EchoMotion.SilkExit)) +
+                            scaleOut(targetScale = if (lightweight) 1f else 0.88f,
+                                animationSpec = EchoMotion.silkFloat(180)),
+                        sizeTransform = null,
+                    )
+                },
+                contentAlignment = Alignment.Center,
+                label = "player-control-icon",
+            ) { current ->
+                EchoIcon(current, contentDescription = description, tint = tint, modifier = iconModifier)
+            }
         }
     }
 }

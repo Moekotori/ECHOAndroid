@@ -41,8 +41,7 @@ internal fun PlayerCoverPage(
     onOpenQueue: () -> Unit,
     onCast: (() -> Unit)?,
     onMore: () -> Unit,
-    onToggleShuffle: () -> Unit,
-    onCycleRepeatMode: () -> Unit,
+    onCyclePlaybackMode: () -> Unit,
     isCurrentTrackFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onOpenLyrics: () -> Unit,
@@ -59,7 +58,7 @@ internal fun PlayerCoverPage(
         { CoverLyricsPreview(trackId, previewLyrics, lyricsPositionMsState, presentationExpanded, onOpenLyrics) }
     } else null
     val actions = ExpressivePlayerActions(onPlayPause, onNext, onPrevious, onSeek, onOpenQueue,
-        onCast, onToggleShuffle, onCycleRepeatMode, onToggleFavorite, onOpenLyrics, onOpenArtist, onMore)
+        onCast, onCyclePlaybackMode, onToggleFavorite, onOpenLyrics, onOpenArtist, onMore)
     // Scale cover-page typography while leaving transport hit targets and the drawer unchanged.
     CompositionLocalProvider(
         LocalDensity provides Density(density.density, density.fontScale * appearance.textScale),
@@ -95,7 +94,7 @@ internal fun PlayerCoverPage(
         } else if (appearance.isRecordSleeve) {
             RecordSleeveCoverPage(
                 status, positionMsState, durationMsState, onPlayPause, onNext, onPrevious,
-                onSeek, onOpenQueue, onMore, onToggleShuffle, onCycleRepeatMode,
+                onSeek, onOpenQueue, onMore, onCyclePlaybackMode,
                 isCurrentTrackFavorite, onToggleFavorite, onOpenLyrics,
                 onOpenArtist = onOpenArtist,
                 modifier = modifier, artworkScale = appearance.artworkScale,

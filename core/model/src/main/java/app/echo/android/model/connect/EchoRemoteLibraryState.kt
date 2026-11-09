@@ -6,6 +6,8 @@ data class EchoRemoteLibraryState(
     val isLoadingMore: Boolean = false,
     val query: String = "",
     val tracks: List<EchoRemoteTrack> = emptyList(),
+    /** Query that produced these rows on the PC. Null for local fallback rows. */
+    val trackResultQuery: String? = null,
     val albums: List<EchoRemoteAlbum> = emptyList(),
     val albumTotalCount: Int = 0,
     val albumTracks: Map<String, List<EchoRemoteTrack>> = emptyMap(),

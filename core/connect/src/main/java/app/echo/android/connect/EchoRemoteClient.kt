@@ -553,6 +553,7 @@ class EchoRemoteClient internal constructor(
                 isLoadingMore = keepTracks && !sameQuery,
                 query = query,
                 tracks = if (keepTracks) current.tracks else cachedBrowse?.tracks.orEmpty(),
+                trackResultQuery = if (keepTracks) current.trackResultQuery else cachedBrowse?.let { "" },
                 albums = if (sameQuery) current.albums else emptyList(),
                 albumTotalCount = if (sameQuery) current.albumTotalCount else 0,
                 albumTracks = emptyMap(),
@@ -660,6 +661,7 @@ class EchoRemoteClient internal constructor(
                         isLoadingMore = false,
                         query = query,
                         tracks = loadedTracks,
+                        trackResultQuery = query.trim().takeUnless { keepPrevious },
                         totalCount = totalCount,
                     )
                 }

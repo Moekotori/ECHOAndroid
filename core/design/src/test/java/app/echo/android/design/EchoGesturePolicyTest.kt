@@ -50,6 +50,14 @@ class EchoGesturePolicyTest {
         assertFalse(echoHorizontalGestureOwnsScroll(Offset.Zero, Offset(10f, -10f)))
     }
 
+    @Test fun rowSwipeOnlyClaimsAnIntentionalHorizontalStartInItsDirection() {
+        assertFalse(echoRowSwipeStarts(Offset(7f, 0f), 1f, 8f))
+        assertFalse(echoRowSwipeStarts(Offset(12f, 11f), 1f, 8f))
+        assertFalse(echoRowSwipeStarts(Offset(24f, 2f), -1f, 8f))
+        assertTrue(echoRowSwipeStarts(Offset(24f, 2f), 1f, 8f))
+        assertTrue(echoRowSwipeStarts(Offset(-24f, 2f), -1f, 8f))
+    }
+
     @Test fun nestedPagingUsesTheSameDirectionForDraggingAndFlinging() {
         assertEquals(-1f, echoPagerScrollSign(rtl = false, reverseLayout = false), 0f)
         assertEquals(1f, echoPagerScrollSign(rtl = true, reverseLayout = false), 0f)

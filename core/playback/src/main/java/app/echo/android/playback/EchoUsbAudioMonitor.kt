@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.media.AudioDeviceCallback
@@ -78,14 +77,14 @@ object EchoUsbExclusiveApplyPolicy {
         isConnected: Boolean,
         previouslyGranted: Boolean,
         currentlyGranted: Boolean,
+        previousDeviceName: String? = null,
+        currentDeviceName: String? = null,
     ): Boolean {
         if (!exclusiveEnabled) return false
         if (wasConnected && !isConnected) return true
-        return shouldReapplyAfterHostPermissionGranted(
-            exclusiveEnabled = true,
-            previouslyGranted = previouslyGranted,
-            currentlyGranted = currentlyGranted,
-        )
+        if (previouslyGranted && !currentlyGranted) return true
+        if (shouldReapplyAfterHostPermissionGranted(exclusiveEnabled, previouslyGranted, currentlyGranted)) return true
+        return currentlyGranted && previousDeviceName != currentDeviceName
     }
 }
 
@@ -111,6 +110,7 @@ data class EchoUsbAudioStatus(
     val bitPerfectActive: Boolean = false,
     val lastRequestedSampleRateHz: Int? = null,
     val lastRequestError: EchoPlaybackError? = null,
+    val hostDeviceName: String? = null,
 ) {
     val outputRoute: String
         get() = when {
@@ -169,9 +169,13 @@ class EchoUsbAudioMonitor(context: Context) {
 
                 UsbManager.ACTION_USB_DEVICE_ATTACHED,
                 UsbManager.ACTION_USB_DEVICE_DETACHED -> {
-                    permissionRequestPendingDeviceName = null
-                    refresh()
+                    if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED &&
+                        intent.getParcelableExtraCompat<UsbDevice>(UsbManager.EXTRA_DEVICE)?.deviceName ==
+                        permissionRequestPendingDeviceName) {
+                        permissionRequestPendingDeviceName = null
+                    }
                     if (exclusiveEnabled) requestUsbHostPermissionIfNeeded()
+                    refresh()
                 }
             }
         }
@@ -251,10 +255,11 @@ class EchoUsbAudioMonitor(context: Context) {
 
     private fun scan(): Pair<EchoUsbAudioStatus, UsbAudioDeviceSnapshot> {
         val device = findUsbOutputDevice()
+        val usbDevice = usbAudioProbe.findBestDevice()
+        val pendingDeviceName = permissionRequestPendingDeviceName
         val usbSnapshot = if (exclusiveEnabled) {
-            usbAudioProbe.snapshot(permissionRequestPendingDeviceName)
+            usbAudioProbe.snapshotForDevice(usbDevice, pendingDeviceName)
         } else {
-            val usbDevice = findUsbAudioDevice()
             UsbAudioDeviceSnapshot(
                 connected = device != null || usbDevice != null,
                 deviceName = usbDevice?.deviceName,
@@ -262,16 +267,10 @@ class EchoUsbAudioMonitor(context: Context) {
                 permissionGranted = usbDevice?.let(usbManager::hasPermission) == true,
             )
         }
-        val usbDevice = findUsbAudioDevice()
-        val hostPermissionGranted = usbSnapshot.permissionGranted || usbDevice?.let(usbManager::hasPermission) == true
-        val pendingDeviceName = permissionRequestPendingDeviceName
-        val pendingDeviceMatches = pendingDeviceName != null &&
-            (usbSnapshot.deviceName == pendingDeviceName || usbDevice?.deviceName == pendingDeviceName)
-        if (hostPermissionGranted && pendingDeviceMatches &&
+        if (pendingDeviceName != null && usbSnapshot.permissionGranted && usbSnapshot.deviceName == pendingDeviceName &&
             permissionRequestPendingDeviceName == pendingDeviceName) {
             permissionRequestPendingDeviceName = null
         }
-        val hostPermissionPending = !hostPermissionGranted && (usbSnapshot.permissionPending || pendingDeviceMatches)
         if (device == null || !exclusiveEnabled) {
             return EchoUsbAudioStatus(
                 exclusiveEnabled = exclusiveEnabled,
@@ -279,8 +278,9 @@ class EchoUsbAudioMonitor(context: Context) {
                 productId = usbSnapshot.productId ?: usbDevice?.productId,
                 deviceName = usbSnapshot.displayName ?: usbDevice?.getDisplayName() ?: device?.getDisplayName(),
                 connected = usbSnapshot.connected || usbDevice != null || device != null,
-                hostPermissionGranted = hostPermissionGranted,
-                hostPermissionPending = hostPermissionPending,
+                hostDeviceName = usbSnapshot.deviceName,
+                hostPermissionGranted = usbSnapshot.permissionGranted,
+                hostPermissionPending = usbSnapshot.permissionPending,
                 audioClass = usbSnapshot.audioClassLabel(),
                 audioInterfaceCount = usbSnapshot.descriptor.audioInterfaceCount,
                 audioStreamingInterfaceCount = usbSnapshot.descriptor.audioStreamingInterfaceCount,
@@ -310,12 +310,11 @@ class EchoUsbAudioMonitor(context: Context) {
             exclusiveEnabled = exclusiveEnabled,
             vendorId = usbSnapshot.vendorId ?: usbDevice?.vendorId,
             productId = usbSnapshot.productId ?: usbDevice?.productId,
-            deviceName = device.getDisplayName().ifBlank {
-                usbSnapshot.displayName ?: usbDevice?.getDisplayName().orEmpty()
-            },
+            deviceName = usbSnapshot.displayName ?: device.getDisplayName(),
             connected = true,
-            hostPermissionGranted = hostPermissionGranted,
-            hostPermissionPending = hostPermissionPending,
+            hostDeviceName = usbSnapshot.deviceName,
+            hostPermissionGranted = usbSnapshot.permissionGranted,
+            hostPermissionPending = usbSnapshot.permissionPending,
             audioClass = usbSnapshot.audioClassLabel(),
             audioInterfaceCount = usbSnapshot.descriptor.audioInterfaceCount,
             audioStreamingInterfaceCount = usbSnapshot.descriptor.audioStreamingInterfaceCount,
@@ -354,7 +353,7 @@ class EchoUsbAudioMonitor(context: Context) {
     }
 
     private fun requestUsbHostPermissionIfNeeded() {
-        val device = findUsbAudioDevice() ?: return
+        val device = usbAudioProbe.findBestDevice() ?: return
         if (usbManager.hasPermission(device)) {
             if (permissionRequestPendingDeviceName == device.deviceName) {
                 permissionRequestPendingDeviceName = null
@@ -391,11 +390,6 @@ class EchoUsbAudioMonitor(context: Context) {
                 }
             }
 
-    private fun findUsbAudioDevice(): UsbDevice? =
-        usbManager.deviceList.values
-            .filter { it.isUsbAudioDevice() }
-            .maxByOrNull { it.interfaceCount }
-
     private fun findBitPerfectAttributes(
         device: AudioDeviceInfo,
         sampleRateHz: Int,
@@ -422,12 +416,6 @@ class EchoUsbAudioMonitor(context: Context) {
         val value = address.trim()
         return value.takeIf { it.isNotEmpty() }
     }
-
-    private fun UsbDevice.isUsbAudioDevice(): Boolean =
-        deviceClass == UsbConstants.USB_CLASS_AUDIO ||
-            (0 until interfaceCount).any { index ->
-                getInterface(index).interfaceClass == UsbConstants.USB_CLASS_AUDIO
-            }
 
     private fun UsbDevice.getDisplayName(): String =
         productName?.takeIf { it.isNotBlank() }

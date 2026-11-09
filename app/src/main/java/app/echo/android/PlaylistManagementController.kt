@@ -87,14 +87,17 @@ internal class PlaylistManagementController(
         documentJob = scope.launch {
             mutableImport.value = PlaylistImportUiState.Reading
             try {
-                val (name, text) = read(uri)
-                val preview = repository.preparePlaylistImport(text)
-                mutableImport.value = PlaylistImportUiState.Preview(name, preview)
+                val (fileName, text) = read(uri)
+                val preview = repository.preparePlaylistImport(text, fileName)
+                mutableImport.value = PlaylistImportUiState.Preview(playlistName(fileName), preview)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: ImportFailure) { mutableImport.value = PlaylistImportUiState.Failed(failure.reason) }
             catch (failure: IllegalArgumentException) {
-                mutableImport.value = PlaylistImportUiState.Failed(
-                    if (failure.message == "Empty playlist") PlaylistImportFailure.Empty else PlaylistImportFailure.TooMany)
+                mutableImport.value = PlaylistImportUiState.Failed(when (failure.message) {
+                    "Empty playlist" -> PlaylistImportFailure.Empty
+                    "Too many playlist entries" -> PlaylistImportFailure.TooMany
+                    else -> PlaylistImportFailure.Read
+                })
             } catch (_: Exception) { mutableImport.value = PlaylistImportUiState.Failed(PlaylistImportFailure.Read) }
         }
     }
@@ -122,26 +125,20 @@ internal class PlaylistManagementController(
         val session = importSession
         val pendingCorrection = correctionJob
         documentJob = scope.launch {
+            pendingCorrection?.join()
+            if (session != importSession) return@launch
+            val preview = mutableImport.value as? PlaylistImportUiState.Preview ?: return@launch
+            if (preview.saving || preview.result.trackIds.isEmpty()) return@launch
+            mutableImport.value = preview.copy(saving = true, saveFailed = false)
             try {
-                pendingCorrection?.join()
-                if (session != importSession) return@launch
-                val preview = mutableImport.value as? PlaylistImportUiState.Preview ?: return@launch
-                if (preview.saving || preview.result.trackIds.isEmpty()) return@launch
-                mutableImport.value = preview.copy(saving = true)
-                val created = repository.createImportedPlaylist(name, preview.result)
-                mutableImport.value = if (created != null) PlaylistImportUiState.Imported(created)
-                    else PlaylistImportUiState.Failed(PlaylistImportFailure.Save)
+                val created = checkNotNull(repository.createImportedPlaylist(name, preview.result))
+                mutableImport.value = PlaylistImportUiState.Imported(created)
             } catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { mutableImport.value = PlaylistImportUiState.Failed(PlaylistImportFailure.Save) }
+            catch (_: Exception) { mutableImport.value = preview.copy(saveFailed = true) }
         }
     }
 
     fun dismiss() { importSession++; documentJob?.cancel(); documentJob = null; mutableImport.value = null }
-
-    suspend fun importImmediately(uri: Uri): EchoPlaylist? {
-        val (name, text) = read(uri)
-        return repository.importM3uPlaylist(name, text)
-    }
 
     suspend fun textExport(id: String, format: PlaylistExportFormat): String = withContext(Dispatchers.IO) {
         val tracks = repository.playlistTracksForPlayback(id, 10_001)
@@ -149,13 +146,13 @@ internal class PlaylistManagementController(
         exportPlaylistText(tracks.map { it.toEchoTrack() }, format)
     }
 
-    fun export(id: String, uri: Uri, format: PlaylistExportFormat = PlaylistExportFormat.M3u) {
+    fun export(id: String, uri: Uri, format: PlaylistExportFormat = PlaylistExportFormat.M3u, name: String = "") {
         importSession++
         documentJob?.cancel()
         documentJob = scope.launch {
+            mutableImport.value = PlaylistImportUiState.Exporting
             try {
-                val text = if (format == PlaylistExportFormat.M3u) repository.exportM3uPlaylist(id) ?: throw IllegalStateException("Empty playlist")
-                    else textExport(id, format)
+                val text = repository.exportPlaylistFile(id, name, format) ?: error("Empty playlist")
                 documentIo.withLock { withContext(Dispatchers.IO) {
                     val output = resolver.openOutputStream(uri, "wt") ?: throw IllegalStateException("No output stream")
                     output.use { it.write(text.toByteArray(StandardCharsets.UTF_8)) }
@@ -190,8 +187,10 @@ internal class PlaylistManagementController(
         }
         val text = decodeLegacyTagText(bytes) ?: bytes.toString(StandardCharsets.UTF_8)
         if (text.isBlank()) throw ImportFailure(PlaylistImportFailure.Empty)
-        name.substringBeforeLast('.').trim().take(80) to text
+        name to text
     } }
+
+    private fun playlistName(fileName: String) = fileName.substringBeforeLast('.').trim().take(80).ifBlank { "Playlist" }
 
     private class ImportFailure(val reason: PlaylistImportFailure) : IllegalArgumentException()
 }

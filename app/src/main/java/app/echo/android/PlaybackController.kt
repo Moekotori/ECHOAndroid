@@ -269,10 +269,6 @@ internal class PlaybackController(
         equalizerController.setPreset(presetId)
     }
 
-    fun setEqualizerBandGain(index: Int, gainDb: Float) {
-        equalizerController.setBandGain(index, gainDb)
-    }
-
     fun resetEqualizer() {
         equalizerController.reset()
     }
@@ -655,6 +651,18 @@ internal class PlaybackController(
         }
     }
 
+    fun setPlaybackMode(repeat: EchoRepeatMode, shuffle: Boolean) {
+        withController {
+            val targetRepeatMode = repeat.toPlayerRepeatMode()
+            val shuffleChanged = shuffleModeEnabled != shuffle
+            if (!shuffleChanged && repeatMode == targetRepeatMode) return@withController
+
+            if (shuffleChanged) shuffleModeEnabled = shuffle
+            if (repeatMode != targetRepeatMode) repeatMode = targetRepeatMode
+            updatePlaybackCore(this, remapQueue = shuffleChanged)
+        }
+    }
+
     fun setPlaybackSpeed(speed: Float, nightcore: Boolean) {
         val safeSpeed = speed.coerceIn(MIN_PLAYBACK_SPEED, MAX_PLAYBACK_SPEED)
         val pitch = if (nightcore) safeSpeed else 1f
@@ -973,23 +981,23 @@ internal class PlaybackController(
                     updateUsbDiagnostics(usbAudioMonitor.status.value)
                 }
             }
-            var previousPermissionGranted = usbAudioMonitor.status.value.hostPermissionGranted
-            var previousConnected = usbAudioMonitor.status.value.connected
+            var previous = usbAudioMonitor.status.value
             usbAudioMonitor.status.collect { status ->
                 if (
                     EchoUsbExclusiveApplyPolicy.shouldRebuildSinkAfterUsbRouteChange(
                         exclusiveEnabled = status.exclusiveEnabled,
-                        wasConnected = previousConnected,
+                        wasConnected = previous.connected,
                         isConnected = status.connected,
-                        previouslyGranted = previousPermissionGranted,
+                        previouslyGranted = previous.hostPermissionGranted,
                         currentlyGranted = status.hostPermissionGranted,
+                        previousDeviceName = previous.hostDeviceName,
+                        currentDeviceName = status.hostDeviceName,
                     )
                 ) {
                     usbAudioMonitor.prepareForTrack(_playbackDiagnostics.value.diagnostics.sampleRateHz)
                     EchoPlaybackProcessRuntime.reconfigureAudioPipeline(forceSinkReset = true)
                 }
-                previousPermissionGranted = status.hostPermissionGranted
-                previousConnected = status.connected
+                previous = status
                 updateUsbDiagnostics(status)
             }
         }

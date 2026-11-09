@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 
-import app.echo.android.model.library.LibraryScanOptions
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,7 +51,7 @@ internal fun EchoLibraryPage(
     outerNavigationOwnsTransition: Boolean,
     detailBackProgress: () -> Float,
     onRequestPermission: () -> Unit,
-    onScanFolder: (LibraryScanOptions) -> Unit,
+    onScanFolder: () -> Unit,
     onAddMusic: () -> Unit,
     onEditTrackTags: (EchoTrack, Boolean) -> Unit,
     onImportLyricsForTrack: (EchoTrack) -> Unit,
@@ -71,7 +70,7 @@ internal fun EchoLibraryPage(
     bottomInset: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp(0f),
 ) {
     EchoLibraryDestinations(viewModel, pageInteractive, bottomInset) { _, openPodcasts ->
-    val experienceActions = rememberLibraryExperienceActions(viewModel) { onScanFolder(appSettings.libraryScanOptions) }
+    val experienceActions = rememberLibraryExperienceActions(viewModel, onScanFolder)
     val shortcutContext = androidx.compose.ui.platform.LocalContext.current
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
     val playbackMetadata by viewModel.playbackMetadata.collectAsStateWithLifecycle()
@@ -118,11 +117,7 @@ internal fun EchoLibraryPage(
     }
     val exportPlaylist = rememberPlaylistExport(viewModel)
     val sharePlaylist = rememberPlaylistShare(viewModel.playlistTools)
-    val playlistImportState by viewModel.playlistTools.importState.collectAsStateWithLifecycle()
-    app.echo.android.feature.library.PlaylistImportDialog(playlistImportState,
-        onConfirm = viewModel.playlistTools::confirm, onDismiss = viewModel.playlistTools::dismiss,
-        searchCandidates = viewModel.playlistTools::importCandidates, onCorrect = viewModel.playlistTools::correctImport,
-        onOpen = onOpenPlaylist)
+    val importPlaylist = rememberPlaylistImport(viewModel, active = pageInteractive, onOpen = onOpenPlaylist)
     val batchContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
     var batchConsent by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<Boolean>?>(null) }
     val batchWriteLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
@@ -197,12 +192,6 @@ internal fun EchoLibraryPage(
     val playlistDetailTracks = selectedPlaylistId?.let { playlistId ->
         remember(playlistId) { viewModel.playlistTrackPaging(playlistId) }.collectAsLazyPagingItems()
     }
-    val importM3uLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        uri?.let(viewModel::importM3uPlaylist)
-    }
-
     val detailScope = rememberCoroutineScope()
     val openAlbumArtist = remember(selectedAlbum, onOpenArtist) {
         val album = selectedAlbum
@@ -426,20 +415,7 @@ internal fun EchoLibraryPage(
                 !appSettings.smbServerUrl.isNullOrBlank() ||
                 !appSettings.subsonicServerUrl.isNullOrBlank() ||
                 !appSettings.jellyfinServerUrl.isNullOrBlank(),
-            onImportM3uPlaylist = {
-                importM3uLauncher.launch(
-                    arrayOf(
-                        "audio/x-mpegurl",
-                        "audio/mpegurl",
-                        "application/vnd.apple.mpegurl",
-                        "application/x-mpegurl",
-                        "audio/x-scpls",
-                        "application/pls+xml",
-                        "text/plain",
-                        "*/*",
-                    ),
-                )
-            },
+            onImportM3uPlaylist = importPlaylist,
             onExportM3uPlaylist = exportPlaylist,
             onSharePlaylist = sharePlaylist,
             onEnqueuePlaylist = { playlist -> viewModel.enqueuePlaylist(playlist.id, playlist.name) },

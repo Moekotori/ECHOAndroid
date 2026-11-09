@@ -57,4 +57,17 @@ class UsbOutputPresentationTest {
         assertFalse(disconnected.canTest)
         assertNull(disconnected.clockHz)
     }
+
+    @Test fun compatibleHeadlineRequiresAStreamingTrack() {
+        val compatible = playing.copy(
+            diagnostics = playing.diagnostics.copy(bitPerfectState = EchoBitPerfectState.Compatible),
+        )
+        val live = compatible.usbOutputPresentation()
+        assertEquals(R.string.usb_page_compatible_active, live.headlineResource())
+        assertFalse(live.verified)
+        assertNull(live.clockHz)
+
+        val paused = compatible.copy(state = EchoPlaybackState.Paused, isPlaying = false)
+        assertEquals(R.string.usb_page_waiting_playback, paused.usbOutputPresentation().headlineResource())
+    }
 }

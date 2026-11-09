@@ -33,6 +33,9 @@
     <string name="volume_device_section">Output settings</string>
     <string name="volume_mute_action">Mute</string>
     <string name="volume_unmute_action">Unmute</string>
+    <string name="volume_muted_adjustable">Muted. You can still set the volume.</string>
+    <string name="volume_quick_reduce">Lower by %1$d dB</string>
+    <string name="volume_step_hold_hint">Hold − or + to adjust continuously.</string>
     <string name="volume_gain_zero">Set gain to 0 dB</string>
     <string name="volume_reset_confirm_detail">This restores app volume and gain to 0 dB, resets the ceiling and step size, and clears mute. Playback may get louder.</string>
 </resources>

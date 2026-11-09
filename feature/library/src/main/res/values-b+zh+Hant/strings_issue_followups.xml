@@ -21,4 +21,8 @@
     <string name="file_playlist_label">檔案播放清單</string>
     <string name="file_playlist_add_files">加入音訊檔案</string>
     <string name="file_playlist_add_library">從音樂庫加入</string>
+    <string name="playlist_import_no_suggestions">目前沒有候選項目，試試搜尋歌名或歌手。</string>
+    <string name="playlist_export_json_label">ECHO JSON · 播放清單備份</string>
+    <string name="playlist_export_choose_location">選擇儲存位置</string>
+    <string name="playlist_export_writing">正在儲存播放清單檔案…</string>
 </resources>

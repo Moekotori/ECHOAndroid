@@ -6,6 +6,14 @@ import org.junit.Test
 
 class QueuePlaybackModeTest {
     @Test
+    fun cyclingReturnsToSequentialAfterAllModes() {
+        assertEquals(QueuePlaybackMode.RepeatAll, QueuePlaybackMode.Sequential.next())
+        assertEquals(QueuePlaybackMode.RepeatOne, QueuePlaybackMode.RepeatAll.next())
+        assertEquals(QueuePlaybackMode.Shuffle, QueuePlaybackMode.RepeatOne.next())
+        assertEquals(QueuePlaybackMode.Sequential, QueuePlaybackMode.Shuffle.next())
+    }
+
+    @Test
     fun selectingAnyModeFromAnyExistingCombinationSetsBothFlags() {
         EchoRepeatMode.entries.forEach { repeat ->
             listOf(false, true).forEach { shuffle ->

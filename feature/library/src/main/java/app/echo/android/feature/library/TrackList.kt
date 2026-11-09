@@ -258,6 +258,7 @@ internal fun TrackContextMenu(
                 progress = selectionProgress,
                 label = displayMetadataOrUnknown(track.libraryDisplayTitle(LocalLibraryFileNames.current), unknownTrackLabel()),
                 onToggle = { selection?.toggle(track) },
+                dragModifier = Modifier.libraryBatchDrag(track, selection),
             )
             Box(Modifier.weight(1f)) {
                 CompositionLocalProvider(LocalRippleConfiguration provides TrackRowRippleConfiguration) {

@@ -19,9 +19,7 @@ internal fun LibraryScanOptions.includesFileName(name: String?): Boolean =
     name == null || excludedNameKeywords.none { it.isNotBlank() && name.contains(it, ignoreCase = true) }
 
 internal fun LibraryScanOptions.rejectionReason(durationMs: Long, sizeBytes: Long,
-    relativePath: String?, name: String?): LibraryScanSkipReason? = when {
-    !includesDirectory(relativePath) -> LibraryScanSkipReason.Directory
-    !includesFileName(name) -> LibraryScanSkipReason.Name
+    relativePath: String?, name: String?): LibraryScanSkipReason? = explicitRejection(relativePath, name) ?: when {
     durationMs > 0 && durationMs < minDurationMs -> LibraryScanSkipReason.Duration
     sizeBytes > 0 && sizeBytes < minSizeBytes -> LibraryScanSkipReason.Size
     else -> null

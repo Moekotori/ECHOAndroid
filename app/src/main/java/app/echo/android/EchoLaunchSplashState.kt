@@ -16,7 +16,7 @@ internal class EchoLaunchSplashState {
     /** Null until the effective performance mode has been resolved. */
     var lightweight by mutableStateOf<Boolean?>(null)
 
-    /** Optional user startup image drawn instead of the pastel wash. */
+    /** Optional user startup image drawn behind the launch mark. */
     var background by mutableStateOf<Bitmap?>(null)
 
     var finished by mutableStateOf(false)

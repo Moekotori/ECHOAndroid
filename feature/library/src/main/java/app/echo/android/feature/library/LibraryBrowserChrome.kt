@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.echo.android.design.EchoIcon
+import app.echo.android.design.EchoOverlayBackHandler
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoPageBackgroundColor
 
@@ -40,8 +41,8 @@ internal fun LibraryBrowserFrame(
     sourcePicker: @Composable () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
     navigationActions: @Composable RowScope.() -> Unit = {},
-    sortAction: @Composable () -> Unit = {},
     searchEnabled: Boolean = true,
+    searchBackEnabled: Boolean = true,
     searchPlaceholder: String = stringResource(R.string.feature_library_search_songs_artists_albums_14dc2c),
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -50,6 +51,16 @@ internal fun LibraryBrowserFrame(
     val searchFocus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    fun closeSearch() {
+        focusManager.clearFocus()
+        keyboard?.hide()
+        onQueryChange("")
+        searchExpanded = false
+    }
+    EchoOverlayBackHandler(
+        enabled = searchBackEnabled && searching && LocalLibraryBatchSelection.current?.active != true,
+        onDismiss = ::closeSearch,
+    )
 
     LaunchedEffect(searchExpanded, searchEnabled) {
         if (!searchEnabled) {
@@ -70,12 +81,7 @@ internal fun LibraryBrowserFrame(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (searching) {
-                        IconButton(onClick = {
-                            focusManager.clearFocus()
-                            keyboard?.hide()
-                            onQueryChange("")
-                            searchExpanded = false
-                        }) {
+                        IconButton(onClick = ::closeSearch) {
                             EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack,
                                 stringResource(R.string.feature_library_close_search_50a720))
                         }
@@ -102,7 +108,6 @@ internal fun LibraryBrowserFrame(
                         }
                         actions()
                     }
-                    sortAction()
                 }
                 content()
             }
@@ -116,7 +121,7 @@ internal val LibraryCategoryBarHeight = 42.dp
 internal fun LibraryCategoryBar(tabs: @Composable () -> Unit, actions: @Composable () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.weight(1f)) { tabs() }
-        Box(Modifier.width(LibraryToolbarActionSize), contentAlignment = Alignment.Center) { actions() }
+        actions()
     }
 }
 
@@ -173,7 +178,7 @@ private fun LibraryInlineSearch(
 @Composable
 internal fun LibraryCollectionEmpty(title: String, detail: String? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 40.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        EchoIcon(Icons.Rounded.LibraryMusic, contentDescription = null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+        EchoIcon(Icons.Rounded.LibraryMusic, contentDescription = null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         if (detail != null) Text(detail, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)

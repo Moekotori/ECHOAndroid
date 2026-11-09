@@ -61,7 +61,6 @@ internal fun LibraryArtistSortMenu(
         onSelect = onSortModeChange,
         onCustomize = onCustomize,
         scopeNote = if (linked) stringResource(R.string.library_sort_loaded_items) else null,
-        showButtonBackground = !linked,
         additionalOptions = { dismiss ->
             if (onShowAlbumArtistsChange != null) {
                 Row(
@@ -99,15 +98,10 @@ internal fun <T> LibrarySortMenu(
     onCustomize: (() -> Unit)? = null,
     scopeNote: String? = null,
     section: (T) -> Int = { 0 },
-    showButtonBackground: Boolean = true,
     additionalOptions: @Composable (dismiss: () -> Unit) -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
-    LibrarySortButton(
-        contentDescription = contentDescription,
-        onClick = { expanded = true },
-        showBackground = showButtonBackground,
-    )
+    LibrarySortButton(contentDescription = contentDescription, onClick = { expanded = true })
     if (!expanded) return
 
     val maxContentHeight = minOf(720.dp, with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() * 0.82f })

@@ -61,7 +61,6 @@ import app.echo.android.design.ArtworkTile
 import app.echo.android.design.EchoIconBadge
 import app.echo.android.design.EchoPanel
 import app.echo.android.design.EchoTextButton
-import app.echo.android.design.EmptyState
 import app.echo.android.design.echoTheme
 import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.LibrarySmartPlaylistKind
@@ -70,6 +69,7 @@ import app.echo.android.model.library.LibrarySmartPlaylistKind
 internal fun LocalPlaylistPanel(
     playlists: List<EchoPlaylist>,
     query: String,
+    onClearSearch: () -> Unit,
     sort: PlaylistCatalogSort,
     onOpenLikedAlbums: () -> Unit,
     onRestoreBuiltinPlaylists: () -> Unit,
@@ -133,7 +133,7 @@ internal fun LocalPlaylistPanel(
                 )
             }
             if (sections.isEmpty() && query.isNotBlank()) {
-                item { EmptyState(stringResource(L10nR.string.playlist_no_search_results)) }
+                item { LibrarySearchEmpty(onClearSearch, stringResource(L10nR.string.playlist_no_search_results)) }
             } else {
                 sections.forEach { section ->
                     section.label?.let { label -> item(key = "section-${section.key}", contentType = "section") {
@@ -310,7 +310,11 @@ private fun LocalPlaylistHeader(
     var menuOpen by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(L10nR.string.feature_library_playlistcount_playlists_220ceb, playlistCount.toString()),
-            Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+        TextButton(onClick = onImportM3uPlaylist) {
+            Text(stringResource(L10nR.string.playlist_import))
+        }
         Box {
             androidx.compose.material3.IconButton(onClick = { menuOpen = true }) {
                 EchoIcon(Icons.Rounded.Add, contentDescription = stringResource(L10nR.string.feature_library_new_playlist_22cdbd))
@@ -332,10 +336,6 @@ private fun LocalPlaylistHeader(
                         onClick = { menuOpen = false; createFile() },
                     )
                 }
-                androidx.compose.material3.DropdownMenuItem(
-                    text = { Text(stringResource(L10nR.string.playlist_import)) },
-                    onClick = { menuOpen = false; onImportM3uPlaylist() },
-                )
                 onManageRemote?.let { manage ->
                     androidx.compose.material3.DropdownMenuItem(
                         text = { Text(stringResource(L10nR.string.nav_manage)) },

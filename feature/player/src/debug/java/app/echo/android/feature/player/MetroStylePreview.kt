@@ -35,7 +35,7 @@ fun MetroStylePreview(lyrics: Boolean = false, artworkUri: String? = null) {
     }
     val status = EchoPlaybackStatus(track = track, isPlaying = playing)
     val actions = ExpressivePlayerActions({ playing = !playing }, {}, {}, { position.longValue = it }, {}, null,
-        {}, {}, { favorite = !favorite }, { lyricPage = true })
+        {}, { favorite = !favorite }, { lyricPage = true })
     EchoMobileTheme {
         CompositionLocalProvider(LocalPlayerPageStyle provides EchoPlayerPageStyle.MetroLine) {
             LyricsPageTheme(EchoLyricsPageStyle.Paper) {

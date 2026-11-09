@@ -6,7 +6,7 @@
     <string name="usb_page_waiting_playback">Waiting for playback</string>
     <string name="usb_page_connect_title">Connect your USB DAC</string>
     <string name="usb_page_connect_note">Connect a DAC via OTG, enable exclusive output and grant USB access.</string>
-    <string name="usb_page_verified_note">App passthrough verified; DAC hardware is unmeasured.</string>
+    <string name="usb_page_verified_note">App passthrough is verified. Use the DAC to adjust volume.</string>
     <string name="usb_page_streaming_note">Sending audio; clock and precision are unverified.</string>
     <string name="usb_page_step_device">Device</string>
     <string name="usb_page_step_permission">Access</string>
@@ -15,7 +15,16 @@
     <string name="usb_page_step_pending">Pending</string>
     <string name="usb_page_output_mode">Output mode</string>
     <string name="usb_page_exclusive_note">Send audio directly to the DAC.</string>
-    <string name="usb_page_volume_note">Bit-perfect fixes digital volume at 100%. Lower DAC volume first.</string>
+    <string name="usb_page_volume_note">During bit-perfect playback, you cannot adjust volume on your phone. Lower the DAC volume before enabling.</string>
+    <string name="usb_page_compatible_active">Compatible exclusive output</string>
+    <string name="usb_page_compatible_note">This track is using compatible USB exclusive output. You can adjust volume on your phone.</string>
+    <string name="usb_volume_control_on_dac">Adjust volume on the DAC</string>
+    <string name="usb_volume_control_layers">This is what the phone buttons adjust while ECHO is in the foreground during compatible exclusive playback.</string>
+    <string name="volume_usb_shortcut_note">See the current USB output mode and how to adjust its volume.</string>
+    <string name="usb_volume_control_mode">USB volume control</string>
+    <string name="usb_volume_auto_short">Prefer DAC volume</string>
+    <string name="usb_volume_checking">Checking USB volume control</string>
+    <string name="usb_volume_control_details">Volume details</string>
     <string name="usb_page_connection_preferences">Connection</string>
     <string name="usb_page_checks">Checks and diagnostics</string>
     <string name="usb_page_test_pause">Stop USB output or turn off exclusive mode to test.</string>

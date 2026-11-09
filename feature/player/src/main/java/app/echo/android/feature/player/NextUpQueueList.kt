@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -65,6 +66,7 @@ internal fun NextUpQueueList(
         }
     }
     var dragSource by remember(queue) { mutableStateOf<QueueDragTarget?>(null) }
+    var revealedEntry by remember(queue) { mutableStateOf<String?>(null) }
     var dropTarget by remember(queue) { mutableStateOf<QueueDragTarget?>(null) }
     var released by remember(queue) { mutableStateOf(false) }
     var awaitingQueue by remember(queue) { mutableStateOf(false) }
@@ -139,11 +141,14 @@ internal fun NextUpQueueList(
                     val info = state.layoutInfo.visibleItemsInfo.firstOrNull {
                         offset.y >= it.offset && offset.y < it.offset + it.size
                     }
-                    info?.let { dragTargets[it.key]?.let { target -> target to it } }
+                    info?.takeUnless { it.key == revealedEntry }?.let { item ->
+                        dragTargets[item.key]?.let { target -> target to item }
+                    }
                 },
                 onStart = { (target, info), offset ->
                     val current = state.layoutInfo.visibleItemsInfo.firstOrNull { it.key == info.key }
                         ?: return@detectEchoTargetDrag
+                    revealedEntry = null
                     dragSource = target
                     dropTarget = target
                     released = false
@@ -163,6 +168,7 @@ internal fun NextUpQueueList(
                 },
                 onStop = { finishDrag(commit = true) },
                 onCancel = { finishDrag(commit = false) },
+                dragPass = PointerEventPass.Initial,
             )
         },
         contentPadding = PaddingValues(bottom = 12.dp),
@@ -185,13 +191,21 @@ internal fun NextUpQueueList(
                     modifier = queueItemMotion(animateItems))
             }
             itemsIndexed(nextUp, key = { _, index -> queue.items[index].queueContext?.entryId ?: "queue-$index" }) { row, index ->
-                QueueTrackRow(queue.items[index], row, nextUp.lastIndex, false,
-                    { entryAt(index)?.let(onPlay) }, { entryAt(index)?.let(onRemove) },
-                    { nextUp.getOrNull(row - 1)?.let { moveEntries(index, it) } },
-                    { nextUp.getOrNull(row + 1)?.let { moveEntries(index, it) } },
+                val entry = entryAt(index)
+                val revealed = entry != null && revealedEntry == entry
+                val remove: () -> Unit = { revealedEntry = null; entry?.let(onRemove) }
+                QueueTrackSwipe(entry, dragSource == null, revealed,
+                    onReveal = { revealedEntry = if (it) entry else null }, onRemove = remove,
                     modifier = queueItemMotion(animateItems).queueDragPreview(
                         row, 0, index, dragSource, dropTarget, rowHeight, lightweight),
-                    interactive = dragSource == null)
+                ) { swipe ->
+                    QueueTrackRow(queue.items[index], row, nextUp.lastIndex, false,
+                        { revealedEntry = null; if (!revealed) entry?.let(onPlay) }, remove,
+                        { nextUp.getOrNull(row - 1)?.let { moveEntries(index, it) } },
+                        { nextUp.getOrNull(row + 1)?.let { moveEntries(index, it) } },
+                        modifier = swipe,
+                        interactive = dragSource == null)
+                }
             }
         }
         if (continuation.isNotEmpty()) {
@@ -201,13 +215,21 @@ internal fun NextUpQueueList(
                     modifier = queueItemMotion(animateItems))
             }
             itemsIndexed(continuation, key = { _, index -> queue.items[index].queueContext?.entryId ?: "queue-$index" }) { row, index ->
-                QueueTrackRow(queue.items[index], row, continuation.lastIndex, false,
-                    { entryAt(index)?.let(onPlay) }, { entryAt(index)?.let(onRemove) },
-                    { continuation.getOrNull(row - 1)?.let { moveEntries(index, it) } },
-                    { continuation.getOrNull(row + 1)?.let { moveEntries(index, it) } },
+                val entry = entryAt(index)
+                val revealed = entry != null && revealedEntry == entry
+                val remove: () -> Unit = { revealedEntry = null; entry?.let(onRemove) }
+                QueueTrackSwipe(entry, dragSource == null, revealed,
+                    onReveal = { revealedEntry = if (it) entry else null }, onRemove = remove,
                     modifier = queueItemMotion(animateItems).queueDragPreview(
                         row, 1, index, dragSource, dropTarget, rowHeight, lightweight),
-                    interactive = dragSource == null)
+                ) { swipe ->
+                    QueueTrackRow(queue.items[index], row, continuation.lastIndex, false,
+                        { revealedEntry = null; if (!revealed) entry?.let(onPlay) }, remove,
+                        { continuation.getOrNull(row - 1)?.let { moveEntries(index, it) } },
+                        { continuation.getOrNull(row + 1)?.let { moveEntries(index, it) } },
+                        modifier = swipe,
+                        interactive = dragSource == null)
+                }
             }
         }
         if (queue.currentItem != null && nextUp.isEmpty() && continuation.isEmpty()) {

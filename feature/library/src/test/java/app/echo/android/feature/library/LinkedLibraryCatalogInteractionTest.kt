@@ -35,12 +35,28 @@ class LinkedLibraryCatalogInteractionTest {
         try {
             withContext(job) {
                 LinkedLibraryCatalog.build(cache, (0 until 2_000).map(::track), emptyList(),
-                    query = "song", remoteQuery = "song", sortMode = LibraryTrackSortMode.Title)
+                    query = "song", trackResultQuery = null, sortMode = LibraryTrackSortMode.Title)
             }
             fail("Cancelled search must not publish a catalog")
         } catch (_: CancellationException) {
             assertTrue("Stop before converting the rest of the library", conversions < 10)
         }
+    }
+
+    @Test fun pcMatchesSkipLocalFilteringButFallbackStillFilters() = runBlocking {
+        val remoteMatch = track(1).copy(title = "Blue Sky")
+        val literalMatch = track(2).copy(title = "Blue-Sky cover")
+        val tracks = listOf(remoteMatch, literalMatch)
+        var conversions = 0
+        val cache = LinkedLibrarySearchTextCache(transliterate = { conversions++; "" })
+        val matches = LinkedLibraryCatalog.build(cache, tracks, emptyList(),
+            query = "blue-sky", trackResultQuery = "blue-sky", sortMode = LibraryTrackSortMode.Title)
+        assertEquals(tracks, matches.tracks)
+        assertEquals(0, conversions)
+
+        val fallback = LinkedLibraryCatalog.build(cache, tracks, emptyList(),
+            query = "blue-sky", trackResultQuery = null, sortMode = LibraryTrackSortMode.Title)
+        assertEquals(listOf(literalMatch), fallback.tracks)
     }
 
     private fun track(index: Int) = EchoRemoteTrack(index.toString(), "song $index", "artist $index",

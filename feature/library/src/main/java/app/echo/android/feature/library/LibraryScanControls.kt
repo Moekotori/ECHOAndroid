@@ -6,6 +6,8 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -15,10 +17,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoIcon
 import app.echo.android.model.library.LibraryScanOptions
+import java.util.Locale
 
-private val LosslessScanExtensions = setOf("flac", "ape", "wv", "tta", "tak", "wav", "w64", "alac", "aiff", "aif", "aifc", "dsf", "dff")
 private val DurationScanChoices = listOf(0L to R.string.scan_any, 30_000L to R.string.scan_30_seconds, 60_000L to R.string.scan_60_seconds)
 private val SizeScanChoices = listOf(0L to R.string.scan_any, 102_400L to R.string.scan_100_kb, 1_048_576L to R.string.scan_1_mb)
 
@@ -31,9 +32,12 @@ private val ScanPresets = listOf(
         R.string.add_music_preset_lossless, R.string.scan_rules_lossless_hint),
 )
 
+private fun LibraryScanOptions.forPresetComparison() =
+    copy(excludedRelativePaths = emptySet(), blockedExtensions = emptySet())
+
 @Composable
-internal fun libraryScanPresetLabel(options: LibraryScanOptions): String = stringResource(
-    ScanPresets.firstOrNull { it.options == options.copy(excludedRelativePaths = emptySet()) }?.title
+private fun libraryScanPresetLabel(options: LibraryScanOptions): String = stringResource(
+    ScanPresets.firstOrNull { it.options == options.forPresetComparison() }?.title
         ?: R.string.add_music_preset_custom,
 )
 
@@ -45,47 +49,53 @@ internal fun LibraryScanFilters(
     onChange: (LibraryScanOptions) -> Unit,
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        ScanNameKeywords(options, enabled, onChange)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ScanRulesHeading(stringResource(R.string.scan_rules_folder_filters))
-            AddMusicToggle(stringResource(R.string.scan_rules_non_music), stringResource(R.string.scan_rules_non_music_hint),
-                options.excludeNonMusicFolders, enabled) { onChange(options.copy(excludeNonMusicFolders = it)) }
-            AddMusicToggle(stringResource(R.string.scan_skip_hidden), stringResource(R.string.scan_rules_hidden_hint),
-                options.excludeHiddenFolders, enabled) { onChange(options.copy(excludeHiddenFolders = it)) }
-            Text(stringResource(R.string.scan_rules_folder_filters_hint), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+    var showBlockedFormats by rememberSaveable { mutableStateOf(false) }
+    val blocked = options.blockedExtensions
+    val blockedPreview = remember(blocked) {
+        blocked.sorted().take(4).joinToString(" · ") { it.uppercase(Locale.ROOT) }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+            Column {
+                AddMusicActionRow(
+                    Icons.Rounded.Block,
+                    stringResource(R.string.scan_rules_block_formats),
+                    when {
+                        blocked.isEmpty() -> stringResource(R.string.scan_rules_block_none)
+                        showBlockedFormats -> stringResource(R.string.scan_rules_blocked_count, blocked.size)
+                        blocked.size > 4 -> "$blockedPreview +${blocked.size - 4}"
+                        else -> blockedPreview
+                    },
+                    enabled,
+                    trailingIcon = if (showBlockedFormats) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                ) { showBlockedFormats = !showBlockedFormats }
+                if (showBlockedFormats) Column(
+                    Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(stringResource(R.string.scan_rules_block_formats_hint),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    LibraryScanFormatOptions(options.blockedExtensions, enabled = enabled, blocking = true) {
+                        onChange(options.copy(blockedExtensions = it))
+                    }
+                }
+            }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         LibraryScanExcludedFolders(options.excludedRelativePaths, enabled, onChooseExcludedFolder) { path ->
             onChange(options.copy(excludedRelativePaths = options.excludedRelativePaths - path))
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Surface(
-                onClick = { advanced = !advanced },
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.surface,
-            ) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(if (advanced) R.string.add_music_hide_advanced else R.string.scan_advanced_options),
-                            style = MaterialTheme.typography.titleSmall)
-                        Text(stringResource(R.string.scan_rules_advanced_hint), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            stringResource(R.string.scan_rules_advanced_summary,
-                                scanChoiceLabel(options.minDurationMs, DurationScanChoices),
-                                scanChoiceLabel(options.minSizeBytes, SizeScanChoices),
-                                stringResource(if (options.allowedExtensions.isEmpty()) R.string.scan_all_formats
-                                    else R.string.scan_rules_selected_formats)),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    EchoIcon(if (advanced) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, null)
-                }
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                AddMusicActionRow(
+                    Icons.Rounded.Tune,
+                    stringResource(R.string.scan_advanced_options),
+                    null,
+                    enabled,
+                    trailingIcon = if (advanced) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                ) { advanced = !advanced }
             }
             if (advanced) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -97,12 +107,15 @@ internal fun LibraryScanFilters(
                     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
                         Column(Modifier.fillMaxWidth().selectableGroup()) {
                             ScanPresets.forEachIndexed { index, preset ->
-                                val selected = options.copy(excludedRelativePaths = emptySet()) == preset.options
+                                val selected = options.forPresetComparison() == preset.options
                                 Surface(color = if (selected) MaterialTheme.colorScheme.primaryContainer
                                     else MaterialTheme.colorScheme.surface) {
                                     Row(
                                         Modifier.fillMaxWidth().selectable(selected, enabled = enabled, role = Role.RadioButton,
-                                            onClick = { onChange(preset.options.copy(excludedRelativePaths = options.excludedRelativePaths)) })
+                                            onClick = { onChange(preset.options.copy(
+                                                excludedRelativePaths = options.excludedRelativePaths,
+                                                blockedExtensions = options.blockedExtensions,
+                                            )) })
                                             .heightIn(min = 72.dp).padding(horizontal = 16.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -138,15 +151,21 @@ internal fun LibraryScanFilters(
                 LibraryScanFormatOptions(options.allowedExtensions, enabled = enabled) {
                     onChange(options.copy(allowedExtensions = it))
                 }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ScanRulesHeading(stringResource(R.string.scan_rules_folder_filters))
+                    AddMusicToggle(stringResource(R.string.scan_rules_non_music), stringResource(R.string.scan_rules_non_music_hint),
+                        options.excludeNonMusicFolders, enabled) { onChange(options.copy(excludeNonMusicFolders = it)) }
+                    AddMusicToggle(stringResource(R.string.scan_skip_hidden), stringResource(R.string.scan_rules_hidden_hint),
+                        options.excludeHiddenFolders, enabled) { onChange(options.copy(excludeHiddenFolders = it)) }
+                    Text(stringResource(R.string.scan_rules_folder_filters_hint), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                ScanNameKeywords(options, enabled, onChange)
             }
         }
         Spacer(Modifier.height(8.dp))
     }
 }
-
-@Composable
-private fun scanChoiceLabel(value: Long, choices: List<Pair<Long, Int>>): String =
-    stringResource(choices.firstOrNull { it.first == value }?.second ?: R.string.add_music_preset_custom)
 
 @Composable
 private fun ScanRulesHeading(title: String, modifier: Modifier = Modifier) {

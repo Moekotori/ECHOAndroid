@@ -15,7 +15,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import app.echo.android.design.EchoSwitch
 import app.echo.android.model.playback.*
 import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -38,10 +37,6 @@ internal fun SignalEqAdvancedOptions(options: EchoEqOptions, enabled: Boolean,
 internal fun SignalEqBandAdvanced(band: OpraEqBand, enabled: Boolean, dynamicAvailable: Boolean,
     onCommit: (OpraEqBand) -> Unit, onPreview: (OpraEqBand) -> Unit = onCommit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(stringResource(R.string.eq_pc_band_enabled))
-            EchoSwitch(band.enabled, { onCommit(band.copy(enabled = it)) }, enabled = enabled && (band.enabled || band.dynamicMode == EchoEqDynamicMode.Off || dynamicAvailable))
-        }
         Text(stringResource(R.string.eq_pc_scope), style = MaterialTheme.typography.labelLarge)
         val scopes = EchoEqBandScope.entries
         DspChoices(listOf(stringResource(R.string.eq_pc_stereo), stringResource(R.string.eq_pc_left),

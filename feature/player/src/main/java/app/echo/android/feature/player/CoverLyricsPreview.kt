@@ -150,36 +150,38 @@ private fun CoverLyricsRows(
     ) {
         for (lineSlot in (slot - radius)..(slot + radius)) {
             key(lineSlot) {
-                val line = remember(timeline, lineSlot) { timeline.textAt(lineSlot) } ?: return@key
-                val inWindow = abs(lineSlot - slot) <= 1
-                Box(
-                    Modifier.fillMaxWidth().height(rowHeight)
-                        .graphicsLayer {
-                            val viewport = scroll?.value ?: slot.toFloat()
-                            val travel = viewport - slot
-                            val offset = if (abs(travel) <= MaxAnimatedLyricTravel) travel else 0f
-                            val relative = lineSlot - slot - offset
-                            val distance = abs(relative)
-                            val emphasis = (1f - distance).coerceAtLeast(0f) * (animatedSinging?.value ?: singing)
-                            val edgeFade = (2f - distance).coerceIn(0f, 1f)
-                            translationY = (relative + 1f) * rowHeight.toPx()
-                            transformOrigin = TransformOrigin(if (startIsLeft) 0f else 1f, 0.5f)
-                            scaleX = 0.94f + 0.06f * emphasis
-                            scaleY = scaleX
-                            alpha = edgeFade * (contextAlpha + (1f - contextAlpha) * emphasis)
-                        }
-                        .then(if (inWindow) Modifier else Modifier.clearAndSetSemantics {})
-                        .padding(start = 10.dp),
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    Text(
-                        line,
-                        color = ink,
-                        style = textStyle,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                val line = remember(timeline, lineSlot) { timeline.textAt(lineSlot) }
+                if (line != null) {
+                    val inWindow = abs(lineSlot - slot) <= 1
+                    Box(
+                        Modifier.fillMaxWidth().height(rowHeight)
+                            .graphicsLayer {
+                                val viewport = scroll?.value ?: slot.toFloat()
+                                val travel = viewport - slot
+                                val offset = if (abs(travel) <= MaxAnimatedLyricTravel) travel else 0f
+                                val relative = lineSlot - slot - offset
+                                val distance = abs(relative)
+                                val emphasis = (1f - distance).coerceAtLeast(0f) * (animatedSinging?.value ?: singing)
+                                val edgeFade = (2f - distance).coerceIn(0f, 1f)
+                                translationY = (relative + 1f) * rowHeight.toPx()
+                                transformOrigin = TransformOrigin(if (startIsLeft) 0f else 1f, 0.5f)
+                                scaleX = 0.94f + 0.06f * emphasis
+                                scaleY = scaleX
+                                alpha = edgeFade * (contextAlpha + (1f - contextAlpha) * emphasis)
+                            }
+                            .then(if (inWindow) Modifier else Modifier.clearAndSetSemantics {})
+                            .padding(start = 10.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text(
+                            line,
+                            color = ink,
+                            style = textStyle,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }

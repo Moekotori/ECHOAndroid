@@ -69,12 +69,7 @@ class MainActivity : ComponentActivity() {
         applyEdgeToEdge(startupDarkTheme)
         val animateSplash = savedInstanceState == null && ValueAnimator.areAnimatorsEnabled()
         fun showContent(snapshot: EchoStartupThemeSnapshot) {
-            // Let a fresh installation draw the introduction without a competing splash animation.
-            val launchSplash = if (animateSplash && (hasStartupThemeSnapshot || snapshot.startupBackgroundUri != null)) {
-                EchoLaunchSplashState()
-            } else {
-                null
-            }
+            val launchSplash = if (animateSplash) EchoLaunchSplashState() else null
             var launchDark = startupDarkTheme
             if (!hasStartupThemeSnapshot) {
                 applicationContext.initializeEchoAppLocale(snapshot.appLanguage)

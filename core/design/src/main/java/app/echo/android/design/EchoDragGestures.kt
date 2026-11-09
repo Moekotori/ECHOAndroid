@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -68,7 +69,10 @@ fun Modifier.echoDrag(
     }
 }
 
-/** Hit-test the initial down before any movement is consumed. */
+/**
+ * Hit-test the initial down before any movement is consumed. A target that owns a completed
+ * long press can use the Initial pass to stop child click handlers from acting on release.
+ */
 suspend fun <T : Any> PointerInputScope.detectEchoTargetDrag(
     longPress: Boolean = false,
     targetAt: (Offset) -> T?,
@@ -76,6 +80,7 @@ suspend fun <T : Any> PointerInputScope.detectEchoTargetDrag(
     onDrag: (PointerInputChange, Offset) -> Unit,
     onStop: () -> Unit,
     onCancel: () -> Unit,
+    dragPass: PointerEventPass = PointerEventPass.Main,
 ) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
@@ -94,7 +99,7 @@ suspend fun <T : Any> PointerInputScope.detectEchoTargetDrag(
             onStart(target, start.position)
             if (!longPress) onDrag(start, overSlop)
             while (true) {
-                val event = awaitPointerEvent()
+                val event = awaitPointerEvent(dragPass)
                 // Compose's general drag helper can transfer to another finger. Reordering and
                 // editing an explicit target must instead cancel, without consuming that finger.
                 val change = event.changes.firstOrNull { it.id == down.id } ?: break

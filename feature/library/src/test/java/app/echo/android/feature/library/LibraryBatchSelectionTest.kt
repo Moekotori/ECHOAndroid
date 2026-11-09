@@ -128,6 +128,24 @@ class LibraryBatchSelectionTest {
         assertEquals(listOf("1"), selection.selected.keys.toList())
     }
 
+    @Test
+    fun draggingAddsTracksOnceAndHonorsTheSelectionModeLockAndLimit() {
+        val selection = LibraryBatchSelection()
+        selection.selectByDrag(track(0))
+        assertFalse(selection.active)
+        selection.start(track(1))
+        selection.selectByDrag(track(2))
+        selection.selectByDrag(track(1))
+        selection.selectByDrag(track(2))
+        selection.locked = true
+        selection.selectByDrag(track(0))
+        assertEquals(listOf("1", "2"), selection.tracks().map(EchoTrack::id))
+        selection.locked = false
+        (3..LibraryBatchSelection.Limit + 1).forEach { selection.selectByDrag(track(it)) }
+        assertEquals(LibraryBatchSelection.Limit, selection.selected.size)
+        assertEquals(LibraryBatchSelection.Limit.toString(), selection.tracks().last().id)
+    }
+
     private fun track(index: Int) = EchoTrack(
         id = index.toString(), uri = "content://tracks/$index", title = "Track $index", artist = "Artist",
     )

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -27,7 +26,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +61,7 @@ internal fun SignalEqUserPresets(
     onApply: (String) -> Unit,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
-    onImportShareCode: (String) -> Unit,
+    onOpenImport: () -> Unit,
     onImportBundle: suspend (List<app.echo.android.model.playback.EchoEqualizerUserPreset>, app.echo.android.model.playback.EchoEqImportConflict) -> Unit = { _, _ -> },
     outputDeviceLabel: String? = null,
     outputBound: Boolean = false,
@@ -74,9 +72,7 @@ internal fun SignalEqUserPresets(
     var editor by remember { mutableStateOf<EqUserPresetEditor?>(null) }
     var sharePreset by remember { mutableStateOf<EchoEqualizerUserPreset?>(null) }
     var shareCurve by remember { mutableStateOf<List<EchoEqResponsePoint>>(emptyList()) }
-    var showImport by remember { mutableStateOf(false) }
     val canApply = enabled && applyEnabled
-    LaunchedEffect(canApply) { if (!canApply) showImport = false }
     val canSave = presets.size < EchoEqualizerUserPresets.MaxCount
     val activePreset = presets.firstOrNull { it.id == activeId }
     val activeName = activePreset?.name
@@ -127,8 +123,8 @@ internal fun SignalEqUserPresets(
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { showImport = true }, enabled = canApply && canSave, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                Text(stringResource(R.string.eq_share_import))
+            TextButton(onClick = onOpenImport, enabled = canApply && canSave, contentPadding = PaddingValues(horizontal = 0.dp)) {
+                Text(stringResource(R.string.eq_share_import_title))
             }
             TextButton(
                 onClick = {
@@ -182,15 +178,6 @@ internal fun SignalEqUserPresets(
     }
     sharePreset?.let { preset ->
         EqShareCodeDialog(preset = preset, curve = shareCurve, onDismiss = { sharePreset = null })
-    }
-    if (showImport) {
-        EqImportShareCodeDialog(
-            onDismiss = { showImport = false },
-            onImport = { code ->
-                if (canApply) onImportShareCode(code)
-                showImport = false
-            },
-        )
     }
 }
 
@@ -287,48 +274,6 @@ internal fun EqShareCodeDialog(
     )
 }
 
-@Composable
-private fun EqImportShareCodeDialog(onDismiss: () -> Unit, onImport: (String) -> Unit) {
-    val context = LocalContext.current
-    var raw by remember { mutableStateOf("") }
-    val parsed = remember(raw) { EchoEqualizerShareCodec.decode(raw, "import") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.eq_share_import_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = raw,
-                    onValueChange = { raw = it },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
-                    label = { Text(stringResource(R.string.eq_share_import_hint)) },
-                    minLines = 3,
-                )
-                TextButton(
-                    onClick = { pasteEqShareCode(context)?.let { raw = it } },
-                    contentPadding = PaddingValues(horizontal = 0.dp),
-                ) { Text(stringResource(R.string.eq_share_paste)) }
-                if (raw.isNotBlank() && parsed == null) {
-                    SignalNote(stringResource(R.string.eq_share_import_invalid), error = true)
-                } else {
-                    parsed?.let { preset ->
-                        val bandCount = if (preset.parametric) preset.filters.size else preset.gainsDb.size
-                        SignalNote(stringResource(R.string.eq_share_preview, preset.name, bandCount, formatEqGain(preset.preampDb)))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { parsed?.let { onImport(raw) } }, enabled = parsed != null) {
-                Text(stringResource(R.string.eq_share_import))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.error_log_clear_cancel)) }
-        },
-    )
-}
-
 private fun copyEqShareCode(context: Context, name: String, code: String): Boolean {
     copyPlain(context, name, "$name\n$code")
     return true
@@ -348,12 +293,6 @@ private fun shareEqShareCode(context: Context, name: String, code: String) {
     runCatching {
         context.startActivity(Intent.createChooser(intent, context.getString(R.string.eq_share)))
     }
-}
-
-private fun pasteEqShareCode(context: Context): String? {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val text = clipboard.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString() ?: return null
-    return EchoEqualizerShareCodec.extract(text) ?: text.trim().takeIf { it.isNotEmpty() }
 }
 
 private sealed class EqUserPresetEditor {

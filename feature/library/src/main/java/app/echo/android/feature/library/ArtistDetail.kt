@@ -135,6 +135,7 @@ internal fun ArtistDetailListPage(
     onMatchNeteaseMetadata: ((EchoTrack) -> Unit)? = null,
     onOpenTrackAlbum: ((EchoTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
+    trackListNotice: @Composable () -> Unit,
 ) {
     val onlineQuery = remember(artist.artistKey, artist.name, tracks) {
         ArtistOnlineQuery(artist.name, tracks.take(24).mapNotNull { it.album }.distinct().take(3))
@@ -153,16 +154,11 @@ internal fun ArtistDetailListPage(
                 ArtistHero(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist)
             }
             item(key = "sections") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentWidth(Alignment.CenterHorizontally)
-                        .widthIn(max = EchoContentMaxWidth)
-                        .padding(horizontal = 24.dp),
-                ) {
+                ArtistSectionItem {
                     Spacer(Modifier.height(20.dp))
                     ArtistTracksHeading(count = artist.trackCount)
                     Spacer(Modifier.height(10.dp))
+                    trackListNotice()
                 }
             }
 

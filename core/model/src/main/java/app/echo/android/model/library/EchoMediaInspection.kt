@@ -15,7 +15,10 @@ data class EchoDiscoveredPlaylist(
     val preview: PlaylistImportPreview?, val alreadyImported: Boolean = false,
     val error: Boolean = false,
     val existingUpdatedAt: Long? = null,
-)
+    val sourcePlaylistKey: String? = null,
+) {
+    val selectionKey: String get() = sourcePlaylistKey?.let { "$uri#$it" } ?: uri
+}
 
 data class EchoPlaylistDiscoveryResult(val items: List<EchoDiscoveredPlaylist>, val truncated: Boolean = false,
     val unavailableDirectories: Int = 0)

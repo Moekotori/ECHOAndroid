@@ -2,4 +2,8 @@
     <string name="batch_deleting">Deleting…</string>
     <string name="batch_playlists_empty">No editable playlists yet. Create one on the Playlists tab first.</string>
     <string name="batch_playlist_added">Added to “%1$s”</string>
+    <string name="batch_working">Working…</string>
+    <string name="batch_limit_reached">Selection limit reached</string>
+    <string name="batch_favorites_added">Added to favorites</string>
+    <string name="batch_favorites_removed">Removed from favorites</string>
 </resources>

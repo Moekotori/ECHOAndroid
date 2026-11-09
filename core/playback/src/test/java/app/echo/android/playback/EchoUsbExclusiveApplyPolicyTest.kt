@@ -65,6 +65,32 @@ class EchoUsbExclusiveApplyPolicyTest {
     }
 
     @Test
+    fun switchingAuthorizedDacsRebuildsEvenWhenConnectionAndPermissionStayTrue() {
+        assertTrue(
+            EchoUsbExclusiveApplyPolicy.shouldRebuildSinkAfterUsbRouteChange(
+                exclusiveEnabled = true,
+                wasConnected = true,
+                isConnected = true,
+                previouslyGranted = true,
+                currentlyGranted = true,
+                previousDeviceName = "/dev/bus/usb/001/002",
+                currentDeviceName = "/dev/bus/usb/001/003",
+            ),
+        )
+        assertFalse(
+            EchoUsbExclusiveApplyPolicy.shouldRebuildSinkAfterUsbRouteChange(
+                exclusiveEnabled = true,
+                wasConnected = true,
+                isConnected = true,
+                previouslyGranted = true,
+                currentlyGranted = true,
+                previousDeviceName = "/dev/bus/usb/001/002",
+                currentDeviceName = "/dev/bus/usb/001/002",
+            ),
+        )
+    }
+
+    @Test
     fun mixerFallbackOnlyWhenUsbIsMissingOrUnauthorized() {
         assertTrue(
             EchoUsbExclusiveApplyPolicy.shouldFallBackToMixer(

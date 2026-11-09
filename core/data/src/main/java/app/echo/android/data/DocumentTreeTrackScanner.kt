@@ -115,6 +115,7 @@ class DocumentTreeTrackScanner(
                 val childUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, child.documentId)
                 val childRelative = combineRelativePath(relativePathPrefix, directory.relativePath)
                 if (LocalAudioFileTypes.isCueSheet(child.name, child.mimeType)) {
+                    if (options.explicitRejection(childRelative, child.name) != null) continue
                     cueRows += DocumentAudioRow(
                         documentId = child.documentId,
                         documentUri = childUri,
@@ -169,9 +170,10 @@ class DocumentTreeTrackScanner(
             }
             for (row in audioRows) {
                 coroutineContext.ensureActive()
-                if (!options.includesFileName(row.displayName)) {
+                val rejection = options.explicitRejection(row.relativePath, row.displayName)
+                if (rejection != null) {
                     scannedCount++; onSkipped()
-                    onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(app.echo.android.model.library.LibraryScanSkipReason.Name, row.displayName, row.documentUri.toString()))
+                    onSkippedDetail(app.echo.android.model.library.LibraryScanSkippedItem(rejection, row.displayName, row.documentUri.toString()))
                     onProgress(scannedCount, null)
                     continue
                 }

@@ -22,6 +22,7 @@ import app.echo.android.model.library.LibraryScanPhase
 import app.echo.android.model.library.LibraryScanOptions
 import app.echo.android.model.library.LibraryScanProgress
 import app.echo.android.model.library.EchoPlaylist
+import app.echo.android.model.library.PlaylistExportFormat
 import app.echo.android.model.library.EchoTrackMetadataUpdate
 import app.echo.android.model.library.LibrarySmartPlaylistKind
 import app.echo.android.model.library.LibrarySource
@@ -2230,26 +2231,8 @@ class EchoLibraryRepository(
         return createImportedPlaylist(name, preview)
     }
 
-    suspend fun exportM3uPlaylist(playlistId: String): String? {
-        val tracks = playlistTracksForPlayback(playlistId, limit = 10_001)
-        require(tracks.size <= 10_000) { "Playlist exceeds 10,000 tracks" }
-        if (tracks.isEmpty()) return null
-        val locations = withContext(Dispatchers.IO) {
-            resolveLibraryFileNames(appContext.contentResolver, tracks.map {
-                M3uMatchRow(it.id, it.title, it.artist, it.relativePath, it.contentUri, it.fileName)
-            }).associate { it.id to (it.fileLocation() ?: it.contentUri) }
-        }
-        return M3uPlaylistCodec.write(
-            tracks.map { track ->
-                M3uExportTrack(
-                    title = track.title,
-                    artist = track.artist,
-                    durationMs = track.durationMs,
-                    location = if (CueSheetPolicy.isCueTrackId(track.id)) track.contentUri else locations.getValue(track.id),
-                )
-            },
-        )
-    }
+    suspend fun exportM3uPlaylist(playlistId: String): String? =
+        exportPlaylistFile(playlistId, "", PlaylistExportFormat.M3u)
 
     suspend fun countTracks(): Int = database.trackDao().countTracks()
 

@@ -120,4 +120,35 @@ class UsbPcmFormatSelectorTest {
         assertNull(exact)
         assertEquals(24, closest?.bitResolution)
     }
+
+    @Test
+    fun choosesOnlyIntegerPcmWithSupportedFeedbackAndRequiresClockReadbackForStrictMode() {
+        val pcm = UsbAudioStreamingFormat(1, 3, UsbAudioClassVersion.Uac1, formatType = 1,
+            pcmIntegerSupported = true, channelCount = 2, subslotSize = 2, bitResolution = 16,
+            sampleRates = listOf(48_000), endpointDirection = UsbEndpointDirection.Out,
+            endpointTransferType = UsbEndpointTransferType.Isochronous, uac1SampleRateControl = false)
+        val descriptor = UsbAudioDescriptorInfo(streamingFormats = listOf(
+            pcm.copy(alternateSetting = 1, pcmIntegerSupported = false),
+            pcm.copy(alternateSetting = 2, requiresImplicitFeedback = true),
+            pcm,
+        ))
+        val spec = UsbPcmFormatSpec(48_000, 2, 16)
+        assertEquals(pcm, UsbPcmFormatSelector.chooseClosestFormat(descriptor, spec))
+        assertNull(UsbPcmFormatSelector.chooseBitPerfectFormat(descriptor, spec))
+    }
+
+    @Test
+    fun skipsAlternateSettingsThatCannotFitTheRateAtTheNegotiatedBusSpeed() {
+        val narrow = UsbAudioStreamingFormat(1, 1, UsbAudioClassVersion.Uac2, formatType = 1,
+            pcmIntegerSupported = true, channelCount = 2, subslotSize = 3, bitResolution = 24,
+            endpointDirection = UsbEndpointDirection.Out, endpointTransferType = UsbEndpointTransferType.Isochronous,
+            maxPacketSize = 72, endpointInterval = 2)
+        val wide = narrow.copy(alternateSetting = 2, maxPacketSize = 144)
+        val spec = UsbPcmFormatSpec(96_000, 2, 24)
+        val descriptor = UsbAudioDescriptorInfo(streamingFormats = listOf(narrow, wide), busPacketsPerSecond = 8_000)
+        assertEquals(wide, UsbPcmFormatSelector.chooseClosestFormat(descriptor, spec))
+        assertEquals(wide, UsbPcmFormatSelector.chooseBitPerfectFormat(descriptor, spec))
+        assertNull(UsbPcmFormatSelector.chooseClosestFormat(descriptor.copy(busPacketsPerSecond = 1_000), spec))
+        assertEquals(narrow, UsbPcmFormatSelector.chooseClosestFormat(descriptor.copy(busPacketsPerSecond = null), spec))
+    }
 }

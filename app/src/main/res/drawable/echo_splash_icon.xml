@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keep the 128dp badge inside the system splash's 192dp safe circle. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/echo_desktop_launch_mark"
+    android:inset="27.78%" />

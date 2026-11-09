@@ -33,6 +33,7 @@ class LibraryBatchActions(
 
 internal class LibraryBatchSelection {
     val selected = mutableStateMapOf<String, EchoTrack>()
+    val drag = LibraryBatchDrag()
     private val orderedIds = ArrayList<String>()
     var active by mutableStateOf(false)
         private set
@@ -67,6 +68,9 @@ internal class LibraryBatchSelection {
             orderedIds.add(track.id)
             selected[track.id] = track
         }
+    }
+    fun selectByDrag(track: EchoTrack) {
+        if (active && track.id !in selected) start(track)
     }
     fun tracks(): List<EchoTrack> = orderedIds.mapNotNull { selected[it] }
     fun remove(ids: Set<String>) {
@@ -184,8 +188,12 @@ fun LibraryBatchProvider(actions: LibraryBatchActions, pageInteractive: Boolean 
                     onClear = { selection.clear(); error = false },
                     onCommand = { command ->
                         when (command) {
-                            LibraryBatchCommand.Favorite -> operate { actions.favorites(it.map(EchoTrack::id), true) }
-                            LibraryBatchCommand.Unfavorite -> operate { actions.favorites(it.map(EchoTrack::id), false) }
+                            LibraryBatchCommand.Favorite -> operate(resources.getString(R.string.batch_favorites_added)) {
+                                actions.favorites(it.map(EchoTrack::id), true)
+                            }
+                            LibraryBatchCommand.Unfavorite -> operate(resources.getString(R.string.batch_favorites_removed)) {
+                                actions.favorites(it.map(EchoTrack::id), false)
+                            }
                             LibraryBatchCommand.Playlist -> choosingPlaylist = true
                             LibraryBatchCommand.Queue -> operate { actions.queue(it, 0) }
                             LibraryBatchCommand.Next -> operate { actions.queue(it, 1) }

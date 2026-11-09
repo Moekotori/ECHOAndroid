@@ -1,6 +1,7 @@
 package app.echo.android
 
 import app.echo.android.model.library.LibraryScanOptions
+import app.echo.android.model.library.LibraryFolderScanRules
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
@@ -11,12 +12,15 @@ import app.echo.android.data.EchoLibraryRepository
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.data.EmbeddedTagWriteResult
 import app.echo.android.data.LibraryFolderWatchPolicy
-import app.echo.android.data.WatchedLibraryTree
 import app.echo.android.data.TrackMetadataUpdateResult
 import app.echo.android.data.LibraryScanPolicy
 import app.echo.android.data.LibraryHomeRecommendationPolicy
 import app.echo.android.data.LocalLibrarySearchResults
 import app.echo.android.data.MediaStoreAudioFolder
+import app.echo.android.data.ScannedPlaylistRepository
+import app.echo.android.data.observeDocumentTreeChanges
+import app.echo.android.data.skipManagedFolders
+import app.echo.android.data.withFolderIgnoredPaths
 import app.echo.android.data.JellyfinEndpoint
 import app.echo.android.data.SubsonicEndpoint
 import app.echo.android.data.WebDavEndpoint
@@ -62,6 +66,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
@@ -79,6 +84,7 @@ internal class LibraryController(
     private val settingsStore: EchoSettingsStore,
     private val resolver: ContentResolver,
     private val appContext: Context,
+    private val scannedPlaylists: () -> ScannedPlaylistRepository,
 ) {
     private val listSharingStarted = SharingStarted.WhileSubscribed(5_000L)
     private val _libraryQuery = MutableStateFlow("")
@@ -100,6 +106,9 @@ internal class LibraryController(
 
     private var playbackOccupiesStorage: () -> Boolean = { false }
     private var mediaStoreObserver: app.echo.android.data.MediaStoreLibraryObserver? = null
+    private var libraryForeground = false
+    private var folderChangeObserverJob: Job? = null
+    private var watchedFolderChangePending = false
 
     private val libraryMutationInProgress: Flow<Boolean> =
         combine(_scanState, _remoteScanState) { local, remote ->
@@ -345,8 +354,8 @@ internal class LibraryController(
         }
     }
 
-    fun refreshLibrary(options: LibraryScanOptions? = null) {
-        refreshLibrary(relativePathPrefix = null, options = options)
+    fun refreshLibrary() {
+        refreshLibrary(relativePathPrefix = null)
     }
 
     fun startWatchingMediaStore(resolver: ContentResolver) {
@@ -360,6 +369,7 @@ internal class LibraryController(
                     else -> {
                         pendingMediaStoreRefresh = true
                         drainPendingScans()
+                        onWatchedFolderChanged()
                     }
                 }
             },
@@ -372,19 +382,51 @@ internal class LibraryController(
     }
 
     fun onForeground() {
+        libraryForeground = true
+        if (folderChangeObserverJob == null) {
+            folderChangeObserverJob = scope.launch {
+                settingsStore.observedLibraryTreeUris
+                    .flatMapLatest { uris ->
+                        if (uris.isEmpty()) emptyFlow() else observeDocumentTreeChanges(resolver, uris)
+                    }
+                    .collect { onWatchedFolderChanged() }
+            }
+        }
         drainPendingScans()
+        scheduleWatchedFolderCheck()
+    }
+
+    fun onBackground() {
+        libraryForeground = false
+        folderChangeObserverJob?.cancel()
+        folderChangeObserverJob = null
+        clearPendingFolderCheck()
+    }
+
+    private fun onWatchedFolderChanged() {
+        if (!libraryForeground) return
+        watchedFolderChangePending = true
+        scheduleWatchedFolderCheck()
+    }
+
+    private fun scheduleWatchedFolderCheck(waitMs: Long = LibraryFolderWatchPolicy.ForegroundDebounceMs) {
         foregroundWatchJob?.cancel()
         foregroundWatchJob = scope.launch {
-            delay(LibraryFolderWatchPolicy.ForegroundDebounceMs)
+            delay(waitMs)
             if (!settingsStore.watchedFolderRescanEnabled()) return@launch
             refreshWatchedTreesIfDue()
         }
     }
 
     fun cancelWatchedFolderRescan() {
+        clearPendingFolderCheck()
+        if (autoWatchRunning) scanJob?.cancel()
+    }
+
+    private fun clearPendingFolderCheck() {
         foregroundWatchJob?.cancel()
         pendingAutoWatch = false
-        if (autoWatchRunning) scanJob?.cancel()
+        watchedFolderChangePending = false
     }
 
     fun refreshLibraryIfEmpty() {
@@ -396,11 +438,16 @@ internal class LibraryController(
             if (!LibraryScanPolicy.shouldRefreshLocalLibraryAfterPermissionGrant(localMediaStoreCount)) {
                 return@launch
             }
-            refreshLibrary(relativePathPrefix = null, options = null, auto = true)
+            refreshLibrary(relativePathPrefix = null, auto = true)
         }
     }
 
-    fun refreshLibraryFolder(treeUri: Uri, options: LibraryScanOptions = LibraryScanOptions()) {
+    suspend fun saveLibraryFolderScanRules(treeUri: Uri, rules: LibraryFolderScanRules) {
+        val documentId = requireNotNull(MediaStoreAudioFolder.fromTreeUri(treeUri)?.documentId)
+        settingsStore.rememberWatchedLibraryTree(treeUri.toString(), documentId, rules)
+    }
+
+    fun refreshLibraryFolder(treeUri: Uri) {
         val folder = MediaStoreAudioFolder.fromTreeUri(treeUri)
         if (folder == null) {
             val message = "Unsupported folder source. Please choose a local music folder or scan all audio."
@@ -412,30 +459,30 @@ internal class LibraryController(
             EchoErrorLog.record(EchoErrorSource.Library, message)
             return
         }
-        rememberWatchedTree(treeUri, folder, options)
         if (folder.treeUri == null) {
-            refreshLibrary(relativePathPrefix = folder.relativePathPrefix, options = options)
+            refreshLibrary(relativePathPrefix = folder.relativePathPrefix)
         } else {
             startScanJob(auto = false) {
-                scanDocumentTree(folder, options, quiet = false)
+                scanRegisteredFolder(treeUri, folder)
             }
         }
     }
 
-    fun refreshReceivedMusicFolder(treeUri: Uri, options: LibraryScanOptions) {
+    fun refreshReceivedMusicFolder(treeUri: Uri) {
         val folder = MediaStoreAudioFolder.fromTreeUri(treeUri) ?: return
-        rememberWatchedTree(treeUri, folder, options)
         // SAF has the completed files immediately, before MediaStore indexing catches up.
         startScanJob(auto = false) {
-            scanDocumentTree(folder.copy(treeUri = treeUri), options, quiet = false, freshListing = true)
+            scanRegisteredFolder(treeUri, folder.copy(treeUri = treeUri), freshListing = true)
         }
     }
 
-    private fun refreshLibrary(relativePathPrefix: String?, options: LibraryScanOptions?, auto: Boolean = false) {
+    private fun refreshLibrary(relativePathPrefix: String?, auto: Boolean = false) {
         startScanJob(auto = auto) {
             try {
-                if (options != null) settingsStore.setLibraryScanOptions(options)
-                val effectiveOptions = settingsStore.libraryScanOptions()
+                val managedFolders = settingsStore.watchedLibraryTrees()
+                val savedOptions = settingsStore.libraryScanOptions()
+                val effectiveOptions = if (auto) savedOptions.skipManagedFolders(managedFolders)
+                    else savedOptions.withFolderIgnoredPaths(managedFolders)
                 repository.refreshMediaStoreSnapshot(
                     relativePathPrefix = relativePathPrefix,
                     skipSampleRateRead = skipSampleRateRead(),
@@ -509,54 +556,80 @@ internal class LibraryController(
         }
         if (pendingMediaStoreRefresh && !playbackOccupiesStorage()) {
             pendingMediaStoreRefresh = false
-            refreshLibrary(relativePathPrefix = null, options = null, auto = true)
+            refreshLibrary(relativePathPrefix = null, auto = true)
         }
     }
 
-    private fun rememberWatchedTree(
+    private suspend fun scanRegisteredFolder(
         treeUri: Uri,
         folder: MediaStoreAudioFolder,
-        options: LibraryScanOptions,
+        freshListing: Boolean = false,
     ) {
-        val documentId = folder.documentId?.takeIf { it.isNotBlank() } ?: return
-        if (folder.treeUri == null) return
-        scope.launch(Dispatchers.IO) {
-            val incoming = WatchedLibraryTree(
-                uri = treeUri.toString(),
-                documentId = documentId,
-                lastScanEpochMs = System.currentTimeMillis(),
-                minDurationMs = options.minDurationMs,
-                minSizeBytes = options.minSizeBytes,
-                excludeNonMusicFolders = options.excludeNonMusicFolders,
-                excludeHiddenFolders = options.excludeHiddenFolders,
-            )
-            settingsStore.rememberWatchedLibraryTree(incoming)
+        try {
+            val documentId = folder.documentId ?: return
+            val uri = treeUri.toString()
+            settingsStore.rememberWatchedLibraryTree(uri, documentId)
+            val folders = settingsStore.watchedLibraryTrees()
+            val normalizedId = LibraryFolderWatchPolicy.normalizeDocumentId(documentId)
+            val configured = folders.firstOrNull { it.uri == uri || it.documentId == normalizedId }
+            val options = settingsStore.libraryScanOptions().withFolderIgnoredPaths(folders)
+            if (scanDocumentTree(folder, options, configured?.rules ?: LibraryFolderScanRules(),
+                    quiet = false, freshListing = freshListing)
+            ) configured?.let { settingsStore.markWatchedLibraryTreeScanned(it.uri, System.currentTimeMillis()) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            publishScanFailure(_scanState, error.message ?: "Could not save music folder", error)
         }
     }
 
     private fun refreshWatchedTreesIfDue() {
-        if (playbackOccupiesStorage()) return
+        if (!libraryForeground) return
+        if (playbackOccupiesStorage()) {
+            pendingAutoWatch = true
+            return
+        }
         startScanJob(auto = true) {
+            if (!settingsStore.watchedFolderRescanEnabled()) return@startScanJob
             val granted = resolver.persistedUriPermissions
                 .filter { it.isReadPermission }
                 .map { it.uri.toString() }
                 .toSet()
             val pruned = withContext(Dispatchers.IO) { settingsStore.pruneWatchedLibraryTrees(granted) }
+            val now = System.currentTimeMillis()
+            if (watchedFolderChangePending) {
+                val mostRecent = pruned.filter { it.rules.watch }.maxOfOrNull { it.lastScanEpochMs } ?: 0L
+                val wait = LibraryFolderWatchPolicy.autoRescanMinIntervalMs(effectivePerformanceMode.isLightweight) -
+                    (now - mostRecent).coerceAtLeast(0)
+                if (wait > 0 && libraryForeground) {
+                    scheduleWatchedFolderCheck(wait)
+                    return@startScanJob
+                }
+                watchedFolderChangePending = false
+            }
             val due = LibraryFolderWatchPolicy.treesDueForAutoScan(
                 trees = pruned,
-                nowEpochMs = System.currentTimeMillis(),
+                nowEpochMs = now,
                 storageBusy = playbackOccupiesStorage(),
                 lightweight = effectivePerformanceMode.isLightweight,
-                enabled = settingsStore.watchedFolderRescanEnabled(),
+                enabled = true,
             )
-            val globalOptions = settingsStore.libraryScanOptions()
+            if (due.isEmpty()) return@startScanJob
+            val globalOptions = settingsStore.libraryScanOptions().withFolderIgnoredPaths(pruned)
             for (tree in due) {
-                if (playbackOccupiesStorage()) break
-                if (settingsStore.watchedLibraryTrees().none { it.uri == tree.uri }) continue
+                if (!libraryForeground) break
+                if (playbackOccupiesStorage()) {
+                    pendingAutoWatch = true
+                    break
+                }
+                val current = settingsStore.watchedLibraryTrees().firstOrNull { it.uri == tree.uri && it.rules.watch } ?: continue
                 val uri = runCatching { Uri.parse(tree.uri) }.getOrNull() ?: continue
                 val folder = MediaStoreAudioFolder.fromTreeUri(uri) ?: continue
                 if (folder.treeUri == null) continue
-                scanDocumentTree(folder, globalOptions, quiet = true)
+                val managedChildren = pruned.filter {
+                    it.uri != tree.uri && LibraryFolderWatchPolicy.documentIdCovers(tree.documentId, it.documentId)
+                }
+                scanDocumentTree(folder, globalOptions.skipManagedFolders(managedChildren), current.rules, quiet = true)
                 val now = System.currentTimeMillis()
                 withContext(Dispatchers.IO) { settingsStore.markWatchedLibraryTreeScanned(tree.uri, now) }
             }
@@ -566,32 +639,42 @@ internal class LibraryController(
     private suspend fun scanDocumentTree(
         folder: MediaStoreAudioFolder,
         options: LibraryScanOptions,
+        rules: LibraryFolderScanRules,
         quiet: Boolean,
         freshListing: Boolean = false,
-    ) {
-        val treeUri = folder.treeUri ?: return
+    ): Boolean {
+        val treeUri = folder.treeUri ?: return false
+        var completed = false
         try {
-            if (!quiet) settingsStore.setLibraryScanOptions(options)
-            val effectiveOptions = options.copy(
-                excludedRelativePaths = settingsStore.libraryScanOptions().excludedRelativePaths,
-            )
             repository.refreshDocumentTreeSnapshot(
                 treeUri = treeUri,
                 relativePathPrefix = folder.relativePathPrefix,
                 skipSampleRateRead = skipSampleRateRead(),
-                options = effectiveOptions,
+                options = options,
                 removeExcludedFromLibrary = !quiet,
                 reuseDirectoryListings = !freshListing && LibraryFolderWatchPolicy.shouldReuseCachedDirectoryListing(),
-            ).collect { progress ->
+            ).collect { snapshot ->
+                completed = snapshot.phase == LibraryScanPhase.Completed
+                val progress = if (completed && (rules.importITunes || rules.importOtherPlaylists)) {
+                    val (imported, partial) = try {
+                        scannedPlaylists().importNew(treeUri.toString(), options, rules)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        EchoErrorLog.record(EchoErrorSource.Library, "Playlist import failed", throwable = error)
+                        0 to true
+                    }
+                    snapshot.copy(importedPlaylistCount = imported, playlistImportPartial = partial)
+                } else snapshot
                 if (!quiet) {
                     publishScanProgress(_scanState, progress, "Document tree scan failed")
                 } else if (
                     progress.isCompleted &&
-                    LibraryFolderWatchPolicy.scanMadeLibraryChanges(
+                    (progress.importedPlaylistCount > 0 || LibraryFolderWatchPolicy.scanMadeLibraryChanges(
                         inserted = progress.insertedCount,
                         updated = progress.updatedCount,
                         deleted = progress.deletedCount,
-                    )
+                    ))
                 ) {
                     publishScanProgress(_scanState, progress.copy(isAutomatic = true), "Document tree scan failed")
                 } else if (progress.phase == LibraryScanPhase.Error) {
@@ -601,6 +684,7 @@ internal class LibraryController(
                     )
                 }
             }
+            return completed
         } catch (error: CancellationException) {
             if (!quiet) {
                 _scanState.value = _scanState.value.copy(
@@ -622,6 +706,7 @@ internal class LibraryController(
             } else {
                 publishScanFailure(_scanState, error.message ?: "Document tree scan failed", error)
             }
+            return false
         }
     }
 
@@ -974,8 +1059,7 @@ internal class LibraryController(
     fun clear() {
         mediaStoreObserver?.stop()
         mediaStoreObserver = null
-        foregroundWatchJob?.cancel()
-        pendingAutoWatch = false
+        onBackground()
         pendingMediaStoreRefresh = false
         scanJob?.cancel()
         remoteScanJob?.cancel()

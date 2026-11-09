@@ -5,7 +5,6 @@ import app.echo.android.design.EchoIcon
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -58,33 +57,42 @@ internal fun RemoteMusicPicker(
         }
     }
     val source = if (showQueue) queueItems else library.tracks
-    // Filtering is cancellable and off the UI thread, including for a large PC queue.
-    var rows by remember(source, search, showQueue) { mutableStateOf<List<IndexedValue<EchoRemoteTrack>>?>(null) }
-    LaunchedEffect(source, search, showQueue) {
-        rows = withContext(Dispatchers.Default) {
+    val needsFilter = search.isNotEmpty() && (showQueue || library.trackResultQuery != search)
+    val awaitingQuery = !showQueue && (
+        requestedQuery != search || library.query.trim() != search || (needsFilter && library.isLoading)
+        )
+    // Keep server matches as-is. Only queue searches and local fallbacks need to scan rows.
+    var matchingIndices by remember(source, search, needsFilter, awaitingQuery) { mutableStateOf<List<Int>?>(null) }
+    LaunchedEffect(source, search, needsFilter, awaitingQuery) {
+        if (!needsFilter || awaitingQuery) return@LaunchedEffect
+        matchingIndices = withContext(Dispatchers.Default) {
             buildList {
                 source.forEachIndexed { index, track ->
                     ensureActive()
-                    if (search.isEmpty() || track.title.contains(search, true) ||
+                    if (track.title.contains(search, true) ||
                         track.artist.contains(search, true) || track.album.orEmpty().contains(search, true)) {
-                        add(IndexedValue(index, track))
+                        add(index)
                     }
                 }
             }
         }
     }
-    val awaitingQuery = !showQueue && (requestedQuery != search || library.query.trim() != search)
-    val loading = rows == null || (!showQueue && (awaitingQuery || library.isLoading || library.isLoadingMore))
-    val visibleRows = if (awaitingQuery) emptyList() else rows.orEmpty()
+    val filtered = matchingIndices
+    val loading = (needsFilter && filtered == null) || (!showQueue && (awaitingQuery || library.isLoading || library.isLoadingMore))
+    val visibleCount = when {
+        awaitingQuery -> 0
+        needsFilter -> filtered?.size ?: 0
+        else -> source.size
+    }
     val listState = rememberLazyListState()
     val loadMore = rememberUpdatedState(onLoadMoreLibrary)
-    val pageableCount = if (showQueue || visibleRows.size < source.size) visibleRows.size else library.totalCount
-    LaunchedEffect(listState, visibleRows.size, pageableCount, library.isLoadingMore, showQueue) {
-        if (showQueue || library.isLoadingMore || visibleRows.isEmpty() || pageableCount <= visibleRows.size) return@LaunchedEffect
+    val pageableCount = if (showQueue || needsFilter) visibleCount else library.totalCount
+    LaunchedEffect(listState, visibleCount, pageableCount, library.isLoadingMore, showQueue) {
+        if (showQueue || library.isLoadingMore || visibleCount == 0 || pageableCount <= visibleCount) return@LaunchedEffect
         snapshotFlow {
             val visible = listState.layoutInfo.visibleItemsInfo
             EchoLinkLibraryQueryPolicy.shouldRequestNextPage(
-                loadedCount = visibleRows.size,
+                loadedCount = visibleCount,
                 totalCount = pageableCount,
                 lastVisibleIndex = visible.lastOrNull()?.index ?: -1,
                 visibleItemCount = visible.size,
@@ -136,7 +144,7 @@ internal fun RemoteMusicPicker(
                     }
                 }
             }
-            if (visibleRows.isEmpty()) {
+            if (visibleCount == 0) {
                 Box(Modifier.weight(1f).fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text(stringResource(when {
                         loading -> R.string.remote_loading
@@ -150,13 +158,17 @@ internal fun RemoteMusicPicker(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp)) {
                     // Queue entries may repeat the same track; preserve their original positions.
-                    items(visibleRows, key = { "${it.value.id.orEmpty()}:${it.index}" }, contentType = { "pcTrack" }) { row ->
+                    items(visibleCount, key = { position ->
+                        val index = filtered?.get(position) ?: position
+                        "${source[index].id.orEmpty()}:$index"
+                    }, contentType = { "pcTrack" }) { position ->
+                        val track = source[filtered?.get(position) ?: position]
                         Column {
                             RemoteMusicRow(
-                                track = row.value,
-                                current = !row.value.id.isNullOrBlank() && row.value.id == currentTrackId,
+                                track = track,
+                                current = !track.id.isNullOrBlank() && track.id == currentTrackId,
                                 onClick = {
-                                    row.value.id?.takeIf(String::isNotBlank)?.let {
+                                    track.id?.takeIf(String::isNotBlank)?.let {
                                         onPlayTrack(it)
                                         onDismiss()
                                     }

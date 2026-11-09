@@ -5,6 +5,9 @@ internal object UsbIsochronousNative {
 
     val available: Boolean = runCatching { System.loadLibrary("echo_usb_isoc") }.isSuccess
 
+    fun busPacketsPerSecond(fileDescriptor: Int): Int? =
+        if (available && fileDescriptor >= 0) nativeBusPacketsPerSecond(fileDescriptor).takeIf { it > 0 } else null
+
     fun create(
         fileDescriptor: Int,
         endpointAddress: Int,
@@ -55,6 +58,10 @@ internal object UsbIsochronousNative {
         if (handle != 0L) nativeFlush(handle)
     }
 
+    fun stop(handle: Long) {
+        if (handle != 0L) nativeStop(handle)
+    }
+
     fun close(handle: Long) {
         if (handle != 0L) nativeClose(handle)
     }
@@ -72,6 +79,9 @@ internal object UsbIsochronousNative {
 
     @JvmStatic
     private external fun nativeSnapshot(handle: Long, target: LongArray)
+
+    @JvmStatic
+    private external fun nativeBusPacketsPerSecond(fd: Int): Int
 
     @JvmStatic
     private external fun nativeCreate(
@@ -108,6 +118,9 @@ internal object UsbIsochronousNative {
 
     @JvmStatic
     private external fun nativeFlush(handle: Long)
+
+    @JvmStatic
+    private external fun nativeStop(handle: Long)
 
     @JvmStatic
     private external fun nativeClose(handle: Long)

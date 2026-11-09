@@ -26,6 +26,7 @@ data class UsbTransferSnapshot(
             val source = when (values[14].toInt()) {
                 1 -> "submit"; 2 -> "reap"; 3 -> "audio-urb"; 4 -> "audio-packet"
                 5 -> "feedback-urb"; 6 -> "feedback-packet"; 7 -> "feedback-value"
+                8 -> "out-timeout"; 9 -> "cancel-timeout"
                 else -> null
             }
             return UsbTransferSnapshot(values[0], values[1].takeIf { it >= 0 }, values[2],

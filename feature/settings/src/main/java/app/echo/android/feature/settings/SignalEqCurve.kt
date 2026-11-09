@@ -4,9 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import app.echo.android.design.detectEchoTargetDrag
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,12 +13,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -38,19 +34,11 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.setProgress
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.drawEchoControlRail
-import app.echo.android.design.drawEchoControlThumb
 import app.echo.android.model.playback.EchoEqResponsePoint
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -103,13 +91,17 @@ internal fun SignalEqPlot(
     onMarkerSelected: ((Int) -> Unit)? = null,
     onMarkerDragFinished: (() -> Unit)? = null,
     markerSupportsGain: List<Boolean> = emptyList(),
+    selectByFrequency: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val stroke = if (live) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.75f)
     val grid = scheme.outlineVariant
     val zero = scheme.onSurface.copy(alpha = 0.22f)
     val description = stringResource(R.string.eq_curve_reference)
-    val autoRange = maxOf(12f, ceil((points.maxOfOrNull { abs(it.gainDb) } ?: 0f) / 6f) * 6f).coerceAtMost(48f)
+    val peakMarker = if (selectByFrequency) abs(markerGainsDb.getOrElse(selectedMarkerIndex) { 0f })
+    else markerGainsDb.maxOfOrNull { abs(it) } ?: 0f
+    val peak = maxOf(peakMarker, points.maxOfOrNull { abs(it.gainDb) } ?: 0f)
+    val autoRange = (ceil(peak / 6f) * 6f).coerceIn(12f, 48f)
     var heldRange by remember { mutableStateOf<Float?>(null) }
     val range = heldRange ?: autoRange
     val interactive = onMarkerDrag != null &&
@@ -121,6 +113,7 @@ internal fun SignalEqPlot(
     val gainEditable = rememberUpdatedState(markerSupportsGain)
     val frequencies = rememberUpdatedState(markerFrequenciesHz)
     val gains = rememberUpdatedState(markerGainsDb)
+    val selectedMarker = rememberUpdatedState(selectedMarkerIndex)
     var dragIndex by remember { mutableIntStateOf(-1) }
     var localFreq by remember { mutableFloatStateOf(0f) }
     var localGain by remember { mutableFloatStateOf(0f) }
@@ -130,8 +123,14 @@ internal fun SignalEqPlot(
             Modifier
                 .fillMaxSize()
                 .padding(start = 34.dp, end = 12.dp, top = 30.dp, bottom = bottomPad)
-                .then(if (onMarkerSelected == null || markerGainsDb.size != markerFrequenciesHz.size) Modifier else Modifier.pointerInput(markerFrequenciesHz.size, range) {
+                .then(if (onMarkerSelected == null || markerGainsDb.size != markerFrequenciesHz.size) Modifier else Modifier.pointerInput(markerFrequenciesHz.size, range, selectByFrequency) {
                     detectTapGestures { position ->
+                        if (selectByFrequency) {
+                            frequencies.value.indices.minByOrNull { index ->
+                                abs(position.x - eqLogX(frequencies.value[index].toFloat(), size.width.toFloat()))
+                            }?.let { selectCallback.value?.invoke(it) }
+                            return@detectTapGestures
+                        }
                         val index = frequencies.value.indices.minByOrNull { index ->
                             (position - Offset(eqLogX(frequencies.value[index].toFloat(), size.width.toFloat()), eqGainY(gains.value[index], size.height.toFloat(), range))).getDistance()
                         }
@@ -151,6 +150,7 @@ internal fun SignalEqPlot(
                             minGainDb,
                             maxGainDb,
                             range,
+                            selectByFrequency,
                         ) {
                             val hit = 28.dp.toPx()
                             fun nearest(offset: Offset): Int {
@@ -159,6 +159,7 @@ internal fun SignalEqPlot(
                                 val width = size.width.toFloat()
                                 val height = size.height.toFloat()
                                 frequencies.value.forEachIndexed { index, frequencyHz ->
+                                    if (selectByFrequency && index != selectedMarker.value) return@forEachIndexed
                                     val gain = if (dragIndex == index) localGain else gains.value[index]
                                     val freq = if (dragIndex == index) localFreq else frequencyHz.toFloat()
                                     val x = eqLogX(freq, width)
@@ -262,6 +263,9 @@ internal fun SignalEqPlot(
                     val gain = if (dragIndex == index) localGain else markerGainsDb[index]
                     val center = Offset(eqLogX(freq, size.width), eqGainY(gain, size.height, range))
                     val selected = index == selectedMarkerIndex || index == dragIndex
+                    if (selectByFrequency && !selected) return@forEachIndexed
+                    if (selectByFrequency) drawLine(stroke.copy(alpha = 0.26f),
+                        Offset(center.x, 0f), Offset(center.x, size.height), 1.dp.toPx())
                     if (selected) drawCircle(stroke.copy(alpha = 0.12f), 11.dp.toPx(), center)
                     drawCircle(scheme.surface, if (selected) 6.dp.toPx() else 4.dp.toPx(), center)
                     drawCircle(stroke, if (selected) 6.dp.toPx() else 4.dp.toPx(), center, style = Stroke(if (selected) 2.dp.toPx() else 1.5.dp.toPx()))
@@ -305,10 +309,11 @@ internal fun SignalEqSparkline(
     frequenciesHz: List<Int>,
     modifier: Modifier = Modifier,
     active: Boolean = true,
+    rangeDb: Float = 12f,
 ) {
     val scheme = MaterialTheme.colorScheme
     val stroke = if (active) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.70f)
-    val range = 12f
+    val range = rangeDb
     Canvas(modifier.fillMaxWidth().height(42.dp)) {
         if (gainsDb.isEmpty() || frequenciesHz.isEmpty()) return@Canvas
         val zeroY = eqGainY(0f, size.height, range)
@@ -332,216 +337,6 @@ internal fun SignalEqSparkline(
         area.close()
         drawPath(area, stroke.copy(alpha = if (active) 0.34f else 0.14f))
         drawPath(line, stroke, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-}
-
-@Composable
-internal fun SignalEqFader(
-    frequencyHz: Int,
-    gainDb: Float,
-    minGainDb: Float,
-    maxGainDb: Float,
-    enabled: Boolean,
-    onGainChange: (Float) -> Unit,
-    modifier: Modifier = Modifier,
-    preciseFrequencyHz: Float = frequencyHz.toFloat(),
-) {
-    val scheme = MaterialTheme.colorScheme
-    val frequency = if (preciseFrequencyHz == 31.5f) "31.5" else formatEqFrequency(frequencyHz)
-    val active = if (enabled) scheme.primary else scheme.onSurface.copy(alpha = 0.38f)
-    var dragging by remember { mutableStateOf(false) }
-    var localGain by remember { mutableFloatStateOf(gainDb) }
-    LaunchedEffect(gainDb) { if (!dragging) localGain = gainDb }
-    val display = localGain.coerceIn(minGainDb, maxGainDb)
-    Column(
-        modifier
-            .semantics(mergeDescendants = true) {
-                contentDescription = frequency
-                if (!enabled) disabled()
-                progressBarRangeInfo = ProgressBarRangeInfo(
-                    current = eqUnitValue(display, minGainDb, maxGainDb),
-                    range = 0f..1f,
-                )
-                setProgress {
-                    if (!enabled) return@setProgress false
-                    onGainChange(snapEqGain(eqValueFromUnit(it, minGainDb, maxGainDb)))
-                    true
-                }
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            formatEqGain(display),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = active,
-            maxLines = 1,
-            overflow = TextOverflow.Clip,
-        )
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .pointerInput(enabled, minGainDb, maxGainDb) {
-                    if (enabled) detectTapGestures { offset ->
-                        if (!enabled) return@detectTapGestures
-                        val inset = 12.dp.toPx()
-                        val next = snapEqGain(
-                            eqLinearValue(offset.y, size.height.toFloat(), maxGainDb, minGainDb, inset),
-                        )
-                        localGain = next
-                        onGainChange(next)
-                    }
-                }
-                .pointerInput(enabled, minGainDb, maxGainDb) {
-                    if (enabled) detectVerticalDragGestures(
-                        onDragStart = { offset ->
-                            if (!enabled) return@detectVerticalDragGestures
-                            dragging = true
-                            val inset = 12.dp.toPx()
-                            val next = snapEqGain(
-                                eqLinearValue(offset.y, size.height.toFloat(), maxGainDb, minGainDb, inset),
-                            )
-                            localGain = next
-                            onGainChange(next)
-                        },
-                        onVerticalDrag = { change, _ ->
-                            if (!enabled) return@detectVerticalDragGestures
-                            change.consume()
-                            val inset = 12.dp.toPx()
-                            val dragged = snapEqGain(
-                                eqLinearValue(change.position.y, size.height.toFloat(), maxGainDb, minGainDb, inset),
-                            )
-                            localGain = dragged
-                            onGainChange(dragged)
-                        },
-                        onDragEnd = { dragging = false },
-                        onDragCancel = { dragging = false },
-                    )
-                },
-        ) {
-            Canvas(Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
-                val x = size.width / 2f
-                val inset = 12.dp.toPx()
-                val zeroY = eqLinearPosition(0f, size.height, maxGainDb, minGainDb, inset)
-                val gainY = eqLinearPosition(display, size.height, maxGainDb, minGainDb, inset)
-                drawLine(
-                    color = scheme.outlineVariant,
-                    start = Offset(x, inset),
-                    end = Offset(x, size.height - inset),
-                    strokeWidth = 4.dp.toPx(),
-                    cap = StrokeCap.Round,
-                )
-                drawLine(
-                    color = scheme.onSurfaceVariant.copy(alpha = 0.4f),
-                    start = Offset(x - 7.dp.toPx(), zeroY),
-                    end = Offset(x + 7.dp.toPx(), zeroY),
-                    strokeWidth = 1.dp.toPx(),
-                )
-                drawLine(
-                    color = active,
-                    start = Offset(x, zeroY),
-                    end = Offset(x, gainY),
-                    strokeWidth = 6.dp.toPx(),
-                    cap = StrokeCap.Round,
-                )
-                drawEchoControlThumb(Offset(x, gainY), active, scheme.surface, dragging, enabled)
-            }
-        }
-        Text(
-            frequency,
-            style = MaterialTheme.typography.labelSmall,
-            color = scheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-internal fun SignalGainStrip(
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    enabled: Boolean,
-    contentDescription: String,
-    onValueChange: (Float) -> Unit,
-    modifier: Modifier = Modifier,
-    snap: (Float) -> Float = ::snapEqGain,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val track = scheme.onSurface.copy(alpha = if (enabled) 0.14f else 0.07f)
-    val active = if (enabled) scheme.primary else scheme.onSurface.copy(alpha = 0.38f)
-    var dragging by remember { mutableStateOf(false) }
-    var localValue by remember { mutableFloatStateOf(value) }
-    LaunchedEffect(value) { if (!dragging) localValue = value }
-    val display = localValue.coerceIn(valueRange.start, valueRange.endInclusive)
-    val min = valueRange.start
-    val max = valueRange.endInclusive
-    Box(
-        modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .semantics(mergeDescendants = true) {
-                this.contentDescription = contentDescription
-                if (!enabled) disabled()
-                progressBarRangeInfo = ProgressBarRangeInfo(
-                    current = eqUnitValue(display, min, max),
-                    range = 0f..1f,
-                )
-                setProgress {
-                    if (!enabled) return@setProgress false
-                    onValueChange(snap(eqValueFromUnit(it, min, max)))
-                    true
-                }
-            }
-            .pointerInput(enabled, min, max) {
-                if (enabled) detectTapGestures { offset ->
-                    if (!enabled) return@detectTapGestures
-                    val next = snap(eqLinearValue(offset.x, size.width.toFloat(), min, max, 12.dp.toPx()))
-                    localValue = next
-                    onValueChange(next)
-                }
-            }
-            .pointerInput(enabled, min, max) {
-                if (enabled) detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        if (!enabled) return@detectHorizontalDragGestures
-                        dragging = true
-                        val next = snap(eqLinearValue(offset.x, size.width.toFloat(), min, max, 12.dp.toPx()))
-                        localValue = next
-                        onValueChange(next)
-                    },
-                    onHorizontalDrag = { change, _ ->
-                        if (!enabled) return@detectHorizontalDragGestures
-                        change.consume()
-                        val next = snap(eqLinearValue(change.position.x, size.width.toFloat(), min, max, 12.dp.toPx()))
-                        localValue = next
-                        onValueChange(next)
-                    },
-                    onDragEnd = { dragging = false },
-                    onDragCancel = { dragging = false },
-                )
-            },
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Canvas(Modifier.fillMaxWidth().height(28.dp)) {
-            val inset = 12.dp.toPx().coerceAtMost(size.width / 2f)
-            val x = eqLinearPosition(display, size.width, min, max, inset)
-            val zeroX = eqLinearPosition(0f, size.width, min, max, inset)
-            drawEchoControlRail(
-                Offset(inset, center.y), Offset(size.width - inset, center.y),
-                Offset(zeroX, center.y), Offset(x, center.y), active, track,
-            )
-            drawLine(
-                color = scheme.onSurface.copy(alpha = 0.32f),
-                start = Offset(zeroX, center.y - 6.dp.toPx()),
-                end = Offset(zeroX, center.y + 6.dp.toPx()),
-                strokeWidth = 1.dp.toPx(), cap = StrokeCap.Round,
-            )
-            drawEchoControlThumb(Offset(x, center.y), active, scheme.surface, dragging, enabled)
-        }
     }
 }
 
@@ -572,26 +367,3 @@ internal fun eqFreqFromX(x: Float, width: Float): Float {
     val t = (x / width).coerceIn(0f, 1f)
     return exp(min + t * span).coerceIn(EqMinHz, EqMaxHz)
 }
-
-internal fun eqLinearValue(position: Float, size: Float, start: Float, end: Float, inset: Float = 0f): Float {
-    val inner = size - 2f * inset
-    if (inner <= 0f) return start
-    val t = ((position - inset) / inner).coerceIn(0f, 1f)
-    return start + t * (end - start)
-}
-
-internal fun eqLinearPosition(value: Float, size: Float, start: Float, end: Float, inset: Float = 0f): Float {
-    val inner = size - 2f * inset
-    val span = end - start
-    if (inner <= 0f || span == 0f) return inset
-    return inset + ((value - start) / span * inner).coerceIn(0f, inner)
-}
-
-private fun eqUnitValue(value: Float, min: Float, max: Float): Float {
-    val span = max - min
-    if (span == 0f) return 0f
-    return ((value - min) / span).coerceIn(0f, 1f)
-}
-
-private fun eqValueFromUnit(unit: Float, min: Float, max: Float): Float =
-    min + unit.coerceIn(0f, 1f) * (max - min)

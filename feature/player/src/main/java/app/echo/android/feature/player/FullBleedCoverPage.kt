@@ -42,7 +42,6 @@ import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.design.formatDuration
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.settings.EchoPlayerPageStyle
 
 internal object FullBleedStyle {
@@ -127,17 +126,8 @@ internal fun FullBleedCoverPage(
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Toggle(stringResource(R.string.feature_player_shuffle), status.shuffleEnabled, actions.shuffle)
-                Toggle(
-                    stringResource(
-                        when (status.repeatMode) {
-                            EchoRepeatMode.Off -> R.string.feature_player_repeat_off_254ca2
-                            EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
-                            EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
-                        },
-                    ),
-                    status.repeatMode != EchoRepeatMode.Off, actions.repeat,
-                )
+                val mode = QueuePlaybackMode.from(status.repeatMode, status.shuffleEnabled)
+                Toggle(stringResource(mode.label()), mode != QueuePlaybackMode.Sequential, actions.cyclePlaybackMode, animateMode = true)
                 Toggle(stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
                 if (status.track.showsMusicFavorite()) Toggle(
                     stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
@@ -170,15 +160,18 @@ private fun GlyphKey(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
 }
 
 @Composable
-private fun Toggle(label: String, active: Boolean, onClick: () -> Unit) {
-    Text(
-        label.uppercase(java.util.Locale.ROOT),
-        Modifier.clickable(role = Role.Button, onClickLabel = label, onClick = onClick).semantics { contentDescription = label; selected = active }
-            .padding(vertical = 8.dp),
-        color = Color.White.copy(alpha = if (active) 1f else 0.6f), fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal, fontSize = 11.sp, letterSpacing = 1.4.sp, maxLines = 1,
-        style = TextStyle(textDecoration = if (active) androidx.compose.ui.text.style.TextDecoration.Underline else null),
-    )
+private fun Toggle(label: String, active: Boolean, onClick: () -> Unit, animateMode: Boolean = false) {
+    Box(Modifier.clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+        .semantics { contentDescription = label; selected = active }.padding(vertical = 8.dp)) {
+        PlaybackModeContent(label, animateMode) { text ->
+            Text(
+                text.uppercase(java.util.Locale.ROOT),
+                color = Color.White.copy(alpha = if (active) 1f else 0.6f), fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal, fontSize = 11.sp, letterSpacing = 1.4.sp, maxLines = 1,
+                style = TextStyle(textDecoration = if (active) androidx.compose.ui.text.style.TextDecoration.Underline else null),
+            )
+        }
+    }
 }
 
 /** Styles that paint the cover as a field behind both pages instead of showing it as a picture. */

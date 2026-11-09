@@ -164,8 +164,12 @@ interface LibraryTrackDao {
     )
     suspend fun getLocalM3uMatchRows(): List<M3uMatchRow>
 
-    @Query("SELECT id, title, artist, relativePath, contentUri, fileName FROM library_tracks WHERE id > :after ORDER BY id LIMIT 512")
-    suspend fun playlistMatchBatch(after: String): List<M3uMatchRow>
+    @Query("""
+        SELECT id, title, artist, relativePath, contentUri, fileName FROM library_tracks
+        WHERE id > :after AND (:localOnly = 0 OR source IN ('mediastore', 'saf'))
+        ORDER BY id LIMIT 512
+    """)
+    suspend fun playlistMatchBatch(after: String, localOnly: Boolean = false): List<M3uMatchRow>
 
     @Query("SELECT id FROM library_tracks WHERE id > :after ORDER BY id LIMIT 500")
     suspend fun backupIdsAfter(after: String): List<String>

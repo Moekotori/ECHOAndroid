@@ -24,9 +24,14 @@ internal data class UsbAudioClockConfiguration(
     val setSucceeded: Boolean = false,
     val readBackHz: Int? = null,
     val clockId: Int? = null,
+    val descriptorRateAccepted: Boolean = false,
+    val clockValidityAdvertised: Boolean = false,
+    val clockValid: Boolean? = null,
 ) {
-    val accepted: Boolean get() = UsbAudioClock.accepted(requestedHz, setSucceeded, readBackHz)
-    val verified: Boolean get() = requestedHz > 0 && readBackHz == requestedHz
+    val accepted: Boolean get() = clockValid != false &&
+        (descriptorRateAccepted || UsbAudioClock.accepted(requestedHz, setSucceeded, readBackHz))
+    val verified: Boolean get() = requestedHz > 0 && readBackHz == requestedHz &&
+        (!clockValidityAdvertised || clockValid == true)
 }
 
 object UsbAudioClock {
@@ -49,9 +54,14 @@ object UsbAudioClock {
         connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
         sampleRateHz: Int,
+        activateStreaming: (() -> Unit)? = null,
         afterRateSet: () -> Unit = {},
     ): UsbAudioClockConfiguration {
         if (sampleRateHz <= 0) return UsbAudioClockConfiguration(sampleRateHz)
+        if (format.audioClassVersion == UsbAudioClassVersion.Uac1 && format.uac1SampleRateControl == false) {
+            val rates = getSupportedSampleRates(connection, format)
+            return UsbAudioClockConfiguration(sampleRateHz, descriptorRateAccepted = supportsRate(rates, sampleRateHz))
+        }
         val uac2 = format.audioClassVersion == UsbAudioClassVersion.Uac2 ||
             format.audioClassVersion == UsbAudioClassVersion.Uac3
         // Resolve once: RANGE, SET and readback must address the same active source.
@@ -66,15 +76,29 @@ object UsbAudioClock {
         val payload = if (uac2) sampleRateHz.toUac2RateBytes() else sampleRateHz.toUac1RateBytes()
         val index = if (clockId != null) clockIndex(clockId, format.acInterfaceNumber)
             else format.endpointAddress ?: return UsbAudioClockConfiguration(sampleRateHz)
-        val transferred = connection.controlTransfer(
-            if (uac2) UAC2_INTERFACE_SET else UAC1_ENDPOINT_SET,
-            SET_CUR, CS_SAM_FREQ shl 8, index, payload, payload.size, TIMEOUT_MS,
-        )
-        val setSucceeded = transferred == payload.size
+        fun setRate(): Boolean = connection.controlTransfer(
+            if (uac2) UAC2_INTERFACE_SET else UAC1_ENDPOINT_SET, SET_CUR,
+            CS_SAM_FREQ shl 8, index, payload, payload.size, TIMEOUT_MS,
+        ) == payload.size
+        var setSucceeded = setRate()
         if (setSucceeded) afterRateSet()
-        val readBack = if (clockId != null) getUac2ClockRate(connection, resolved, clockId)
+        activateStreaming?.invoke()
+        val validityAdvertised = clockId != null && clockId in format.clockValiditySources
+        var valid = if (validityAdvertised) waitForUac2Clock(connection, index) else null
+        var readBack = if (clockId != null) getUac2ClockRate(connection, resolved, clockId)
             else getUac1EndpointRate(connection, resolved)
-        return UsbAudioClockConfiguration(sampleRateHz, setSucceeded, readBack, clockId)
+        // Some DACs accept the frequency change only once their streaming alt is active.
+        if (activateStreaming != null && clockId != null && readBack != sampleRateHz &&
+            (!setSucceeded || readBack != null)) {
+            setSucceeded = setRate()
+            if (validityAdvertised) {
+                // A previous unlock stays actionable if the retry cannot read validity.
+                valid = waitForUac2Clock(connection, index) ?: false.takeIf { valid == false }
+            }
+            readBack = getUac2ClockRate(connection, resolved, clockId)
+        }
+        return UsbAudioClockConfiguration(sampleRateHz, setSucceeded, readBack, clockId,
+            clockValidityAdvertised = validityAdvertised, clockValid = valid)
     }
 
     internal fun getSampleRate(
@@ -128,8 +152,8 @@ object UsbAudioClock {
     fun parseRangePayload(payload: ByteArray, length: Int): List<UsbAudioClockRange> {
         if (length < 2 || payload.size < 2) return emptyList()
         val count = payload.le16(0).coerceAtLeast(0)
-        if (count == 0) return emptyList()
         val available = minOf(length, payload.size)
+        if (count == 0 || count > (available - 2) / 12) return emptyList()
         return (0 until count).mapNotNull { index ->
             val offset = 2 + index * 12
             if (offset + 12 > available) return@mapNotNull null
@@ -145,6 +169,7 @@ object UsbAudioClock {
         connection: UsbAudioControlTransfer,
         format: UsbAudioStreamingFormat,
     ): Int? {
+        if (format.uac1SampleRateControl == false) return null
         val endpoint = format.endpointAddress ?: return null
         val payload = ByteArray(3)
         val transferred = connection.controlTransfer(
@@ -176,6 +201,21 @@ object UsbAudioClock {
             TIMEOUT_MS,
         )
         return if (transferred == payload.size) payload.toUac2Rate() else null
+    }
+
+    private fun waitForUac2Clock(connection: UsbAudioControlTransfer, index: Int): Boolean? {
+        val payload = ByteArray(1)
+        var observedInvalid = false
+        repeat(CLOCK_VALID_ATTEMPTS) { attempt ->
+            val received = connection.controlTransfer(UAC2_INTERFACE_GET, UAC2_CUR, 0x0200, index,
+                payload, payload.size, CLOCK_VALID_TIMEOUT_MS)
+            if (received == 1) {
+                if (payload[0] == 1.toByte()) return true
+                if (payload[0] == 0.toByte()) observedInvalid = true
+            }
+            if (attempt + 1 < CLOCK_VALID_ATTEMPTS) Thread.sleep(CLOCK_VALID_RETRY_DELAY_MS)
+        }
+        return false.takeIf { observedInvalid }
     }
 
     private fun resolveClockSource(connection: UsbAudioControlTransfer, format: UsbAudioStreamingFormat): Int? {
@@ -251,5 +291,8 @@ object UsbAudioClock {
     private const val UAC2_INTERFACE_SET = 0x21
     private const val UAC2_INTERFACE_GET = 0xA1
     private const val TIMEOUT_MS = 1_000
+    private const val CLOCK_VALID_TIMEOUT_MS = 30
+    private const val CLOCK_VALID_ATTEMPTS = 4
+    private const val CLOCK_VALID_RETRY_DELAY_MS = 15L
     private const val RANGE_BUFFER_BYTES = 256
 }

@@ -22,7 +22,7 @@ internal fun rememberPlaylistExport(viewModel: EchoAndroidViewModel): (EchoPlayl
         val uri = result.data?.data
         if (result.resultCode == Activity.RESULT_OK && id != null && uri != null) {
             val format = PlaylistExportFormat.entries.firstOrNull { it.name == pendingFormat } ?: PlaylistExportFormat.M3u
-            viewModel.playlistTools.export(id, uri, format)
+            viewModel.playlistTools.export(id, uri, format, chosenName)
         }
     }
     if (chosenId != null) PlaylistExportDialog(chosenName, onChoose = { format ->

@@ -115,7 +115,7 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
         }
         val current = format!!
         if (firstPts == C.TIME_UNSET || discontinuity) {
-            firstPts = presentationTimeUs - completedFrames() * 1_000_000L / current.sampleRate
+            firstPts = presentationTimeUs - completedFrames().coerceAtLeast(0) * 1_000_000L / current.sampleRate
             discontinuity = false
             listener?.onPositionDiscontinuity()
         }
@@ -182,9 +182,12 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
     }
 
     private fun completedFrames(): Long = session?.completedFrames()?.coerceAtMost(submittedFrames) ?: 0
-    override fun getCurrentPositionUs(sourceEnded: Boolean): Long =
-        if (firstPts == C.TIME_UNSET) CURRENT_POSITION_NOT_SET
-        else firstPts + completedFrames() * 1_000_000L / format!!.sampleRate
+    override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
+        if (firstPts == C.TIME_UNSET) return CURRENT_POSITION_NOT_SET
+        val completed = completedFrames()
+        if (completed < 0) return CURRENT_POSITION_NOT_SET
+        return firstPts + completed * 1_000_000L / format!!.sampleRate
+    }
     override fun hasPendingData(): Boolean = pendingEnd > pendingStart || completedFrames() < submittedFrames
     override fun isEnded(): Boolean = ended && !hasPendingData()
     override fun playToEndOfStream() { ended = true; session?.setPlaybackActive(false); drain(endOfStream = true) }

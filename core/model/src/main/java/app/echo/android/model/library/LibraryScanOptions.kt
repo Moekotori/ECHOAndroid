@@ -11,4 +11,8 @@ data class LibraryScanOptions(
     /** Allowed filename extensions without a dot; empty means all supported formats. */
     val allowedExtensions: Set<String> = emptySet(),
     val excludedNameKeywords: Set<String> = emptySet(),
+    /** Explicitly blocked format families. Takes precedence over the import allowlist. */
+    val blockedExtensions: Set<String> = emptySet(),
+    /** Effective per-scan rules, keyed by storage-relative source directory. */
+    val ignoredPathsByFolder: Map<String, Set<String>> = emptyMap(),
 ) : java.io.Serializable

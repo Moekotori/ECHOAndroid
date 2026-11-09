@@ -12,6 +12,9 @@ internal fun normalizeScanExcludedPath(path: String): String? =
 internal fun LibraryScanOptions.normalizedForStorage(): LibraryScanOptions = copy(
     allowedExtensions = allowedExtensions.map { it.trim().removePrefix(".").lowercase(java.util.Locale.ROOT) }
         .filter { it.isNotEmpty() }.toSet(),
+    blockedExtensions = blockedExtensions.map { scanFormatFamily(it.trim().removePrefix(".")) }
+        .filter { it.isNotEmpty() }.toSet(),
+    ignoredPathsByFolder = emptyMap(),
     minDurationMs = minDurationMs.coerceAtLeast(0),
     minSizeBytes = minSizeBytes.coerceAtLeast(0),
     excludedRelativePaths = excludedRelativePaths.mapNotNull(::normalizeScanExcludedPath).toSet(),
@@ -26,6 +29,7 @@ internal fun encodeLibraryScanOptions(options: LibraryScanOptions): String =
             put("excludeNonMusicFolders", value.excludeNonMusicFolders)
             put("excludeHiddenFolders", value.excludeHiddenFolders)
             put("allowedExtensions", JSONArray(value.allowedExtensions.toList()))
+            put("blockedExtensions", JSONArray(value.blockedExtensions.toList()))
             put("excludedRelativePaths", JSONArray(value.excludedRelativePaths.toList()))
             put("excludedNameKeywords", JSONArray(value.excludedNameKeywords.toList()))
         }.toString()
@@ -38,10 +42,13 @@ internal fun decodeLibraryScanOptions(raw: String?): LibraryScanOptions {
         val obj = JSONObject(raw)
         val paths = obj.optJSONArray("excludedRelativePaths")
         val extensions = obj.optJSONArray("allowedExtensions")
+        val blocked = obj.optJSONArray("blockedExtensions")
         val keywords = obj.optJSONArray("excludedNameKeywords")
         defaults.copy(
             allowedExtensions = (0 until (extensions?.length() ?: 0))
                 .mapNotNull { extensions?.optString(it) }.toSet(),
+            blockedExtensions = (0 until (blocked?.length() ?: 0))
+                .mapNotNull { blocked?.optString(it) }.toSet(),
             minDurationMs = obj.optLong("minDurationMs", defaults.minDurationMs),
             minSizeBytes = obj.optLong("minSizeBytes", defaults.minSizeBytes),
             excludeNonMusicFolders = obj.optBoolean("excludeNonMusicFolders", true),

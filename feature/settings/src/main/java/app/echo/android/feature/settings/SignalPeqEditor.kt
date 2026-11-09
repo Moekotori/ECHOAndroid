@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoSwitch
+import app.echo.android.model.playback.EchoEqDynamicMode
 import app.echo.android.model.playback.EchoEqFilterType
 import app.echo.android.model.playback.EchoParametricEq
 import app.echo.android.model.playback.OpraEqBand
@@ -135,6 +138,7 @@ private fun PeqBandEditor(
 ) {
     var typeMenu by remember { mutableStateOf(false) }
     var slopeMenu by remember { mutableStateOf(false) }
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
     val types = listOf(
         EchoEqFilterType.PeakDip to R.string.dsp_peak,
         EchoEqFilterType.LowShelf to R.string.dsp_low_shelf,
@@ -174,8 +178,18 @@ private fun PeqBandEditor(
                 EchoIcon(Icons.Outlined.Delete, null, Modifier.size(18.dp))
             }
         }
+        val bandEnabledLabel = stringResource(R.string.eq_pc_band_enabled)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(bandEnabledLabel)
+            EchoSwitch(
+                checked = band.enabled,
+                onCheckedChange = { onCommit(band.copy(enabled = it)) },
+                enabled = enabled && (band.enabled || band.dynamicMode == EchoEqDynamicMode.Off || dynamicAvailable),
+                modifier = Modifier.semantics { contentDescription = bandEnabledLabel },
+            )
+        }
         PeqBandControls(band, enabled, onCommit, onPreview)
-        SignalEqBandAdvanced(band, enabled, dynamicAvailable, onCommit, onPreview)
         if (pass) {
             Box {
                 TextButton(onClick = { slopeMenu = true }, enabled = enabled, contentPadding = PaddingValues(0.dp)) {
@@ -191,5 +205,12 @@ private fun PeqBandEditor(
                 }
             }
         }
+        SettingsDisclosureRow(
+            title = stringResource(R.string.eq_filter_options),
+            detail = stringResource(R.string.eq_filter_options_detail),
+            expanded = showAdvanced,
+            onExpandedChange = { showAdvanced = it },
+        )
+        if (showAdvanced) SignalEqBandAdvanced(band, enabled, dynamicAvailable, onCommit, onPreview)
     }
 }

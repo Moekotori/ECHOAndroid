@@ -56,6 +56,22 @@ class EchoEqualizerControllerTest {
         assertEquals(controller.state.value.responseCurve, restored.state.value.responseCurve)
     }
 
+    @Test fun fullGraphicAdjustmentKeepsPreampAndCanBeSavedAfterPreview() {
+        val controller = EchoEqualizerController()
+        controller.setConfig(true, EchoEqualizerPreset.Bass, emptyList(), -5f)
+        val gains = controller.state.value.gainsDb.toMutableList().apply {
+            this[0] = 3f
+            this[1] = 2f
+        }
+
+        assertTrue(controller.setBandGains(gains))
+        assertTrue(controller.setBandGains(gains))
+        assertFalse(controller.setBandGains(gains.dropLast(1)))
+        assertEquals(gains, controller.state.value.gainsDb)
+        assertEquals(EchoEqualizerPreset.Custom, controller.state.value.presetId)
+        assertEquals(-5f, controller.state.value.preampDb, 0f)
+    }
+
     @Test fun graphicEventCannotAccidentallyDiscardOpraFilters() {
         val controller = EchoEqualizerController()
         val filters = listOf(OpraEqBand("peak_dip", 1500f, -3f, 2.1f, null))

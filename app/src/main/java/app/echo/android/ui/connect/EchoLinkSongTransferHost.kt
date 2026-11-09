@@ -10,11 +10,9 @@ import app.echo.android.EchoApplication
 import app.echo.android.connect.EchoRemoteClient
 import app.echo.android.feature.connect.EchoLinkSongTransferDialog
 import app.echo.android.model.connect.EchoRemoteConnectionState
-import app.echo.android.model.library.LibraryScanOptions
 
 @Composable
-internal fun rememberEchoLinkSongTransferAction(viewModel: EchoAndroidViewModel, client: EchoRemoteClient,
-    options: LibraryScanOptions): () -> Unit {
+internal fun rememberEchoLinkSongTransferAction(viewModel: EchoAndroidViewModel, client: EchoRemoteClient): () -> Unit {
     val application = LocalContext.current.applicationContext as EchoApplication
     val session = application.echoLinkSession.songTransfer
     var visible by remember { mutableStateOf(false) }
@@ -30,7 +28,7 @@ internal fun rememberEchoLinkSongTransferAction(viewModel: EchoAndroidViewModel,
         val send = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { session.send(it) }
         EchoLinkSongTransferDialog(state, scan.isScanning,
             onSend = { send.launch(arrayOf("audio/*", "application/octet-stream")) }, onChoose = { choose.launch(session.directoryUri) },
-            onScan = { session.directoryUri?.let { viewModel.refreshReceivedMusicFolder(it, options) } },
+            onScan = { session.directoryUri?.let(viewModel::refreshReceivedMusicFolder) },
             onClose = { visible = false })
     }
     return { if (client.status.value.connectionState == EchoRemoteConnectionState.Connected) visible = true }

@@ -8,7 +8,8 @@ class EchoPcEqParityTest {
     @Test fun catalogueHasTheExactPcCentersAndAll35Presets() {
         assertEquals(31, EchoEqualizerPresets.preciseFrequenciesHz.size)
         assertEquals(31.5f, EchoEqualizerPresets.preciseFrequenciesHz[2], 0f)
-        assertEquals(35, EchoEqualizerPresets.presets.size)
+        assertEquals(35, EchoPcEqPresets.definitions.size)
+        assertEquals(EchoPcEqPresets.definitions, EchoEqualizerPresets.presets.take(35))
         assertTrue(EchoEqualizerPresets.presets.all { it.gainsDb.size == 31 })
         assertEquals(4.318f, EchoEqualizerPresets.GraphicQ, 0f)
         assertEquals(-2.3f, EchoEqualizerPresets.preampFor("harman-target"), 0f)

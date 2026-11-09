@@ -12,10 +12,14 @@ import app.echo.android.design.LocalEchoLayout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
@@ -23,14 +27,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import app.echo.android.design.LocalEchoPageInteractive
+import app.echo.android.design.detectEchoTargetDrag
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -55,8 +65,16 @@ internal fun LibraryAlphabetIndex(
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
+    val jumpTo by rememberUpdatedState(onJump)
     var jumpJob by remember { mutableStateOf<Job?>(null) }
-    DisposableEffect(Unit) { onDispose { jumpJob?.cancel() } }
+    var activeLetter by remember { mutableStateOf<Char?>(null) }
+    val scroll = rememberScrollState()
+    val interactive = LocalEchoPageInteractive.current
+    DisposableEffect(interactive) { onDispose { jumpJob?.cancel() } }
+    fun jump(letter: Char) {
+        jumpJob?.cancel()
+        jumpJob = scope.launch { jumpTo(letter) }
+    }
     val colors = MaterialTheme.colorScheme
     val layout = LocalEchoLayout.current
     val bottomPadding = if (layout.heightDp < 600f) {
@@ -72,20 +90,43 @@ internal fun LibraryAlphabetIndex(
     ) {
         val letterHeight = 18.dp * fontScale
         Box(Modifier.fillMaxWidth().heightIn(max = letterHeight * 26)
-            .fillMaxHeight().align(Alignment.CenterEnd)) {
+            .fillMaxHeight().align(Alignment.CenterEnd)
+            .pointerInput(scroll, letterHeight, interactive) {
+                if (!interactive) return@pointerInput
+                val rowHeight = letterHeight.roundToPx().coerceAtLeast(1)
+                fun scrub(y: Float) {
+                    val lastVisiblePixel = (size.height - 1).coerceAtLeast(0).toFloat()
+                    val index = ((y.coerceIn(0f, lastVisiblePixel) + scroll.value) / rowHeight)
+                        .toInt().coerceIn(0, 25)
+                    val letter = 'A' + index
+                    if (activeLetter != letter) {
+                        activeLetter = letter
+                        jump(letter)
+                    }
+                }
+                detectEchoTargetDrag(
+                    longPress = true,
+                    targetAt = { it },
+                    onStart = { _, position -> scrub(position.y) },
+                    onDrag = { change, _ -> scrub(change.position.y) },
+                    onStop = { activeLetter = null },
+                    onCancel = {
+                        activeLetter = null
+                        jumpJob?.cancel()
+                    },
+                    dragPass = PointerEventPass.Initial,
+                )
+            }) {
             // Keep every letter readable in short windows; scroll rather than overlap labels.
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                 for (letter in 'A'..'Z') {
                     val label = stringResource(R.string.library_jump_to_letter, letter.toString())
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(letterHeight)
-                            .clickable(onClickLabel = label) {
-                                jumpJob?.cancel()
-                                jumpJob = scope.launch {
-                                    onJump(letter)
-                                }
+                            .clickable(enabled = interactive, onClickLabel = label) {
+                                if (activeLetter == null) jump(letter)
                             },
                         contentAlignment = Alignment.CenterEnd,
                     ) {
@@ -97,6 +138,19 @@ internal fun LibraryAlphabetIndex(
                             fontWeight = FontWeight.Normal,
                             maxLines = 1,
                         )
+                    }
+                }
+            }
+            activeLetter?.let { letter ->
+                Surface(
+                    modifier = Modifier.align(Alignment.CenterEnd).offset(x = (-30).dp)
+                        .requiredSize(48.dp).clearAndSetSemantics {},
+                    shape = CircleShape,
+                    color = colors.inverseSurface,
+                    contentColor = colors.inverseOnSurface,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(letter.toString(), style = MaterialTheme.typography.titleLarge)
                     }
                 }
             }

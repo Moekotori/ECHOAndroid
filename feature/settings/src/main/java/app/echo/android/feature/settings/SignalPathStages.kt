@@ -74,10 +74,9 @@ internal fun signalPathStages(
         add(SignalPathStage(
             label = stringResource(R.string.diag_decoder),
             value = when {
-                decoderName != null -> decoderName
-                !reported -> stringResource(R.string.diag_waiting_decode)
-                d.isDsdDopOutput() -> stringResource(R.string.diag_dsd_dop)
-                d.isDsdSource() -> stringResource(R.string.diag_dsd_converted)
+                !reported -> decoderName ?: stringResource(R.string.diag_waiting_decode)
+                d.isDsdDopOutput() -> "${stringResource(R.string.diag_dsd_dop)} · ${formatSampleRate(streamRate)}"
+                d.isDsdSource() -> "${stringResource(R.string.diag_dsd_converted)} · ${formatSampleRate(streamRate)}"
                 else -> "PCM · ${formatSampleRate(streamRate)}"
             },
             detail = when {
@@ -89,12 +88,13 @@ internal fun signalPathStages(
                 else -> stringResource(R.string.path_stream_format_note)
             },
             icon = Icons.Rounded.Memory, highlighted = live && reported,
-            facts = listOf(
-                stringResource(R.string.decoder_runtime_kind) to decoderImplementationText(d.decoder.implementation),
-                stringResource(R.string.evidence_source_label) to stringResource(R.string.evidence_decoder_events),
-                stringResource(R.string.path_stream_rate) to (streamRate?.let(::formatSampleRate) ?: unknown),
-                stringResource(R.string.path_decoded_bits) to (d.bitPerfectDecodedBits?.takeIf { it > 0 }?.let { "$it bit" } ?: unknown),
-            ),
+            facts = buildList {
+                if (reported && !decoderName.isNullOrBlank()) add(stringResource(R.string.diag_decoder) to decoderName)
+                add(stringResource(R.string.decoder_runtime_kind) to decoderImplementationText(d.decoder.implementation))
+                add(stringResource(R.string.evidence_source_label) to stringResource(R.string.evidence_decoder_events))
+                add(stringResource(R.string.path_stream_rate) to (streamRate?.let(::formatSampleRate) ?: unknown))
+                add(stringResource(R.string.path_decoded_bits) to (d.bitPerfectDecodedBits?.takeIf { it > 0 }?.let { "$it bit" } ?: unknown))
+            },
         ))
         add(signalProcessingStage(status, equalizer, balance, dsp, volume))
         add(SignalPathStage(

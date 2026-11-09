@@ -30,24 +30,27 @@ internal class PlaylistImportMatcher(private val entries: List<M3uEntry>) {
 
     init {
         require(entries.size <= PlaylistImportLimits.MaxEntries)
-        val indexed = hashMapOf<Pair<String, String?>, Int>()
+        val indexed = hashMapOf<Triple<String, String?, String?>, Int>()
         entries.forEachIndexed { index, entry ->
-            val previous = indexed.putIfAbsent(entry.location to entry.title, index)
+            val previous = indexed.putIfAbsent(Triple(entry.location, entry.title, entry.artist), index)
             if (previous != null) {
                 candidates[index] = candidates[previous]
                 corroborated[index] = corroborated[previous]
                 return@forEachIndexed
             }
-            uris.getOrPut(entry.location) { arrayListOf() }.add(index)
-            val path = normalizeM3uLocation(entry.location).folded()
-            paths.getOrPut(path) { arrayListOf() }.add(index)
-            suffixes(path).forEach { suffixPaths.getOrPut(it) { arrayListOf() }.add(index) }
-            files.getOrPut(path.substringAfterLast('/')) { arrayListOf() }.add(index)
+            val path = locations[index]
+            if (path.isNotBlank()) {
+                uris.getOrPut(entry.location) { arrayListOf() }.add(index)
+                paths.getOrPut(path) { arrayListOf() }.add(index)
+                suffixes(path).forEach { suffixPaths.getOrPut(it) { arrayListOf() }.add(index) }
+                files.getOrPut(path.substringAfterLast('/')) { arrayListOf() }.add(index)
+            }
             entry.title?.trim()?.takeIf(String::isNotBlank)?.let { display ->
-                val separator = display.indexOf(" - ")
-                if (separator > 0) {
-                    metadata.getOrPut(display.substring(0, separator).folded() + "\u0000" + display.substring(separator + 3).folded()) { arrayListOf() }.add(index)
-                } else titles.getOrPut(display.folded()) { arrayListOf() }.add(index)
+                val separator = if (entry.artist == null) display.indexOf(" - ") else -1
+                val title = if (separator > 0) display.substring(separator + 3) else display
+                val artist = entry.artist ?: if (separator > 0) display.substring(0, separator) else ""
+                if (artist.isBlank()) titles.getOrPut(title.folded()) { arrayListOf() }.add(index)
+                else metadata.getOrPut(artist.folded() + "\u0000" + title.folded()) { arrayListOf() }.add(index)
             }
         }
     }
@@ -64,7 +67,7 @@ internal class PlaylistImportMatcher(private val entries: List<M3uEntry>) {
             fun metadataMatch(index: Int) {
                 candidates[index][3].add(row)
                 val location = locations[index]
-                if (path != null && (path == location || path.endsWith("/$location") ||
+                if (location.isNotEmpty() && path != null && (path == location || path.endsWith("/$location") ||
                     location.endsWith("/$path") || path.substringAfterLast('/') == location.substringAfterLast('/'))) {
                     corroborated[index].add(row)
                 }

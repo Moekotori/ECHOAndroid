@@ -11,6 +11,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.EchoAndroidViewModel
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.feature.player.NowPlayingScreen
+import app.echo.android.feature.settings.SignalPathButton
 import app.echo.android.model.library.ArtistSummary
 import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoPlaybackStatus
@@ -48,13 +49,22 @@ internal fun EchoNowPlayingHost(
     linkLyrics: EchoLyricsLoadState? = null,
     linkControls: (@Composable () -> Unit)? = null,
     onLinkToggleShuffle: (() -> Unit)? = null,
-    onLinkToggleRepeat: (() -> Unit)? = null,
+    onLinkCyclePlaybackMode: (() -> Unit)? = null,
     playbackNotice: String? = null,
 ) {
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
     EchoPlayerOrientationEffect(appSettings.playerOrientationLocked, presentationExpanded)
     val playbackPosition = positionFlow.collectAsStateWithLifecycle()
     val localPlayback = linkControls == null
+    val signalPathAvailable = localPlayback && !castActive
+    var showSignalPath by rememberSaveable { mutableStateOf(false) }
+    val signalPathVisible = presentationExpanded && signalPathAvailable && showSignalPath
+    if (signalPathVisible) {
+        EchoSignalPathSheetHost(viewModel, playbackStatus, appSettings.dsp, onDismiss = { showSignalPath = false })
+    }
+    LaunchedEffect(presentationExpanded, signalPathAvailable) {
+        if (!presentationExpanded || !signalPathAvailable) showSignalPath = false
+    }
     val smartTransition = if (localPlayback) {
         app.echo.android.playback.EchoPlaybackProcessRuntime.smartTransitionVisual.collectAsStateWithLifecycle()
     } else null
@@ -199,7 +209,8 @@ internal fun EchoNowPlayingHost(
         onCast = onCast,
         castActive = castActive,
         onSetRepeatMode = viewModel::setRepeatMode,
-        onCycleRepeatMode = if (localPlayback) viewModel::cycleRepeatMode else onLinkToggleRepeat,
+        onSetPlaybackMode = if (localPlayback) viewModel::setPlaybackMode else null,
+        onCycleExternalPlaybackMode = onLinkCyclePlaybackMode,
         onToggleShuffle = if (localPlayback) viewModel::toggleShuffle else onLinkToggleShuffle,
         onSetPlaybackSpeed = viewModel::setPlaybackSpeed,
         onSetSleepTimer = viewModel::setSleepTimer,
@@ -240,6 +251,10 @@ internal fun EchoNowPlayingHost(
             }
         }) else null,
         externalPlaybackControls = linkControls,
+        signalPathControl = if (signalPathAvailable) {
+            { tint -> SignalPathButton(playbackStatus, tint) { showSignalPath = true } }
+        } else null,
+        signalPathVisible = signalPathVisible,
         playbackNotice = playbackNotice,
         openLyricsRequestId = openLyricsRequestId,
         predictiveBackProgress = predictiveBackProgress,

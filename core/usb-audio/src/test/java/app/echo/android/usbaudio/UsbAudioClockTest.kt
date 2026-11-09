@@ -85,6 +85,69 @@ class UsbAudioClockTest {
         assertFalse(UsbAudioClock.accepted(48_000, setSucceeded = false, readBackHz = null))
     }
 
+    @Test
+    fun acceptsAdvertisedUac1RateWithoutEndpointControlsInCompatibleMode() {
+        val fixed = uac2.copy(audioClassVersion = UsbAudioClassVersion.Uac1,
+            uac1SampleRateControl = false, sampleRates = listOf(48_000))
+        val noTransfers = UsbAudioControlTransfer { _, _, _, _, _, _, _ ->
+            throw AssertionError("No endpoint sample-rate controls are advertised")
+        }
+        val accepted = UsbAudioClock.configureSampleRate(noTransfers, fixed, 48_000)
+        assertTrue(accepted.accepted)
+        assertFalse(accepted.verified)
+        assertFalse(UsbAudioClock.configureSampleRate(noTransfers, fixed, 44_100).accepted)
+    }
+
+    @Test
+    fun retriesRateAfterActivationAndVerifiesClockLock() {
+        var active = false
+        var rateSets = 0
+        var validityReads = 0
+        val connection = UsbAudioControlTransfer { type, request, value, index, payload, length, _ ->
+            assertEquals(0x1203, index)
+            when {
+                request == 2 -> -1
+                type == 0x21 -> {
+                    rateSets++
+                    if (active) length else -1
+                }
+                value == 0x0200 -> {
+                    assertTrue(active)
+                    payload[0] = if (++validityReads == 1) 0 else 1
+                    1
+                }
+                else -> {
+                    assertTrue(active)
+                    val rate = if (rateSets == 1) byteArrayOf(0x44, 0xac.toByte(), 0, 0)
+                        else byteArrayOf(0x80.toByte(), 0xbb.toByte(), 0, 0)
+                    rate.copyInto(payload)
+                    4
+                }
+            }
+        }
+        val result = UsbAudioClock.configureSampleRate(connection, uac2.copy(clockValiditySources = setOf(0x12)),
+            48_000, activateStreaming = { active = true })
+        assertTrue(result.verified)
+        assertEquals(2, rateSets)
+        assertEquals(3, validityReads)
+    }
+
+    @Test
+    fun rejectsExplicitlyUnlockedClockEvenWithMatchingReadback() {
+        val connection = UsbAudioControlTransfer { type, request, value, _, payload, length, _ ->
+            when {
+                request == 2 -> -1
+                type == 0x21 -> length
+                value == 0x0200 -> { payload[0] = 0; 1 }
+                else -> { byteArrayOf(0x80.toByte(), 0xbb.toByte(), 0, 0).copyInto(payload); 4 }
+            }
+        }
+        val result = UsbAudioClock.configureSampleRate(connection, uac2.copy(clockValiditySources = setOf(0x12)), 48_000)
+        assertEquals(48_000, result.readBackHz)
+        assertFalse(result.verified)
+        assertFalse(result.accepted)
+    }
+
     @Test fun selectedClockIsSetAndReadOnlyAfterStreamingInterfaceIsReapplied() {
         val selected = uac2.copy(clockSourceIds = listOf(0x20),
             clockSelectorSources = mapOf(0x20 to listOf(0x11, 0x12)))
@@ -170,6 +233,7 @@ class UsbAudioClockTest {
         assertTrue(UsbAudioClock.supportsRate(ranges, 192_000))
         assertTrue(UsbAudioClock.supportsRate(ranges, 96_000))
         assertFalse(UsbAudioClock.supportsRate(ranges, 88_200))
+        assertTrue(UsbAudioClock.parseRangePayload(payload, 14).isEmpty())
     }
 
     @Test

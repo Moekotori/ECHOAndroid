@@ -226,20 +226,7 @@ macOS 可双击根目录的 `打开Echo.command`，或执行：
 
 文档修改只检查 diff；局部逻辑运行相关模块／用例，语言资源改动加跑 `checkLocalization`。收尾时可运行相关模块的 `lintDebug` 作为参考，lint 不作为 CI 门禁；默认 CI 不运行仪器测试。
 
-依赖方向为 **`app` → `feature:*` → `core:*` → `core:model`**，feature 之间不互相依赖。
-
-| 模块 | 职责 |
-| --- | --- |
-| `app` | 应用入口、导航、权限与模块接线 |
-| `feature/home`、`library`、`player`、`connect`、`settings` | 首页、曲库、播放器、连接与设置 UI |
-| `feature/listening`、`plugins`、`radio`、`podcasts` | 听歌记录、插件、电台与播客 UI |
-| `core/model` | 共享模型与 Echo Link 协议形状 |
-| `core/data`、`connect`、`smb` | 数据、设置、远程来源与连接传输 |
-| `core/playback`、`usb-audio` | 播放、声音处理与 USB 音频 |
-| `core/listening`、`plugin` | 听歌记录与插件运行能力 |
-| `core/design`、`lyrics`、`i18n` | 设计组件、歌词与国际化 |
-
-开发前阅读 [AGENTS.md](./AGENTS.md)。新增依赖同步维护 [模块图](./gradle/allowed-module-graph.txt)；参与翻译请看 [本地化指南](./docs/localization.md)。
+从[项目地图与 CI](./docs/project-map.md)查看各模块的入口、依赖图和构建产物。开发前阅读 [AGENTS.md](./AGENTS.md)，新增依赖同步维护[模块依赖白名单](./gradle/allowed-module-graph.txt)，参与翻译请看[本地化指南](./docs/localization.md)。
 
 ## 文档导航
 

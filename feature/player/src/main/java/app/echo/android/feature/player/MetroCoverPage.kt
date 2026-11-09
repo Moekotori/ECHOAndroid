@@ -19,9 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.sharp.Shuffle
-import androidx.compose.material.icons.sharp.Repeat
-import androidx.compose.material.icons.sharp.RepeatOne
 import androidx.compose.material.icons.sharp.Favorite
 import androidx.compose.material.icons.sharp.FavoriteBorder
 import androidx.compose.runtime.Composable
@@ -44,7 +41,6 @@ import app.echo.android.design.EchoIcon
 import app.echo.android.design.displayArtist
 import app.echo.android.design.displayTrack
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 
 /** The song as a metro line: arrival sign, platform board, a diagram where the train is the playhead, door-button controls. */
 @Composable
@@ -89,17 +85,11 @@ internal fun MetroCoverPage(
                 DoorButton(PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904), 56.dp, false, actions.next)
             }
             Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetroUtilityButton(Icons.Sharp.Shuffle, stringResource(R.string.feature_player_shuffle), status.shuffleEnabled, actions.shuffle)
+                val mode = QueuePlaybackMode.from(status.repeatMode, status.shuffleEnabled)
                 MetroUtilityButton(
-                    if (status.repeatMode == EchoRepeatMode.One) Icons.Sharp.RepeatOne else Icons.Sharp.Repeat,
-                    stringResource(
-                        when (status.repeatMode) {
-                            EchoRepeatMode.Off -> R.string.feature_player_repeat_off_254ca2
-                            EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
-                            EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
-                        },
-                    ),
-                    status.repeatMode != EchoRepeatMode.Off, actions.repeat,
+                    mode.icon(), stringResource(mode.label()),
+                    mode != QueuePlaybackMode.Sequential, actions.cyclePlaybackMode,
+                    animateMode = true,
                 )
                 MetroUtilityButton(PlayerControlIcons.Queue, stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
                 if (status.track.showsMusicFavorite()) MetroUtilityButton(
@@ -149,6 +139,7 @@ private fun androidx.compose.foundation.layout.RowScope.MetroUtilityButton(
     label: String,
     active: Boolean,
     onClick: () -> Unit,
+    animateMode: Boolean = false,
 ) {
     Box(
         Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(4.dp))
@@ -160,5 +151,5 @@ private fun androidx.compose.foundation.layout.RowScope.MetroUtilityButton(
                 if (active) drawCircle(MetroStyle.Line, 2.dp.toPx(), Offset(size.width / 2f, size.height - 6.dp.toPx()))
             },
         contentAlignment = Alignment.Center,
-    ) { EchoIcon(icon, label, tint = MetroStyle.Ink, modifier = Modifier.size(21.dp)) }
+    ) { PlaybackModeIcon(icon, label, MetroStyle.Ink, Modifier.size(21.dp), animateMode) }
 }

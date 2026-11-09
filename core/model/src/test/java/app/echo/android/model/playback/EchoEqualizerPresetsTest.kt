@@ -32,4 +32,15 @@ class EchoEqualizerPresetsTest {
         assertEquals(EchoEqualizerPreset.Flat, EchoEqualizerPresets.normalizePresetId("nope"))
         assertEquals(EchoEqualizerPreset.Flat, EchoEqualizerPresets.normalizePresetId(null))
     }
+
+    @Test
+    fun androidPresetsHaveDistinctIdsAndSurviveLookup() {
+        val presets = EchoEqualizerPresets.presets
+        assertEquals(presets.size, presets.map { it.id }.toSet().size)
+        EchoAndroidEqPresets.definitions.forEach { preset ->
+            assertEquals(preset.id, EchoEqualizerPresets.normalizePresetId(preset.id))
+            assertEquals(preset.gainsDb, EchoEqualizerPresets.gainsForPreset(preset.id))
+            assertEquals(preset.preampDb, EchoEqualizerPresets.preampFor(preset.id), 0f)
+        }
+    }
 }

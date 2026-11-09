@@ -54,7 +54,6 @@ internal fun LibraryAlbumSortMenu(
     LibrarySortButton(
         contentDescription = stringResource(R.string.feature_library_set_album_sort_order_7c2d91),
         onClick = { open = true },
-        showBackground = !linked,
     )
     if (open) LibraryAlbumSortSheet(
         selected = selectedSortMode,

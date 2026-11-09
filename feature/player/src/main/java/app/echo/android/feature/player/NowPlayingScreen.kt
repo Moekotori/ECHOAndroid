@@ -211,7 +211,8 @@ fun NowPlayingScreen(
     onCast: (() -> Unit)? = null,
     castActive: Boolean = false,
     onSetRepeatMode: (app.echo.android.model.playback.EchoRepeatMode) -> Unit,
-    onCycleRepeatMode: (() -> Unit)?,
+    onSetPlaybackMode: ((app.echo.android.model.playback.EchoRepeatMode, Boolean) -> Unit)?,
+    onCycleExternalPlaybackMode: (() -> Unit)?,
     onToggleShuffle: (() -> Unit)?,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
     onSetSleepTimer: (Int) -> Unit,
@@ -288,6 +289,8 @@ fun NowPlayingScreen(
     onPlayerAppearanceChange: (String, Float, Float) -> Unit = { _, _, _ -> },
     appearancePacks: @Composable (SnackbarHostState) -> Unit = {},
     externalPlaybackControls: (@Composable () -> Unit)? = null,
+    signalPathControl: (@Composable (Color) -> Unit)? = null,
+    signalPathVisible: Boolean = false,
     playbackNotice: String? = null,
 ) {
     val lyricsMotionMode = DefaultLyricsMotionMode
@@ -427,7 +430,7 @@ fun NowPlayingScreen(
     val dismissFlingPx = remember(density) { with(density) { 1080.dp.toPx() } }
     var playerHeightPx by remember { mutableFloatStateOf(0f) }
     val suppressArtworkFlight = rememberUpdatedState(onSuppressArtworkFlight)
-    val overlayBlocking = lyricsSettingsVisible || playbackSettingsVisible || fullSettingsPageVisible
+    val overlayBlocking = lyricsSettingsVisible || playbackSettingsVisible || fullSettingsPageVisible || signalPathVisible
     val dismissEnabledState = rememberUpdatedState(presentationExpanded && !overlayBlocking)
     LaunchedEffect(overlayBlocking) {
         if (overlayBlocking && dismissDrag.offsetPx > 0f) {
@@ -646,6 +649,7 @@ fun NowPlayingScreen(
                     lyricsReveal = lyricsReveal,
                     onCast = onCast,
                     castActive = castActive,
+                    signalPathControl = signalPathControl,
                 )
                 status.diagnostics.lastError?.let { playbackError ->
                     NowPlayingErrorBanner(
@@ -735,8 +739,12 @@ fun NowPlayingScreen(
                             onOpenQueue = onOpenQueue,
                             onCast = onCast,
                             onMore = openPlaybackSettings,
-                            onToggleShuffle = onToggleShuffle ?: openPlaybackSettings,
-                            onCycleRepeatMode = onCycleRepeatMode ?: openPlaybackSettings,
+                            onCyclePlaybackMode = onCycleExternalPlaybackMode ?: if (onSetPlaybackMode != null) {
+                                {
+                                    val next = QueuePlaybackMode.from(status.repeatMode, status.shuffleEnabled).next()
+                                    onSetPlaybackMode(next.repeatMode, next.shuffleEnabled)
+                                }
+                            } else openPlaybackSettings,
                             isCurrentTrackFavorite = isCurrentTrackFavorite,
                             onToggleFavorite = onToggleFavorite,
                             onOpenLyrics = {
@@ -980,9 +988,14 @@ private fun NowPlayingTopBar(
     radioColors: RadioPlayerColors? = null,
     onCast: (() -> Unit)?,
     castActive: Boolean,
+    signalPathControl: (@Composable (Color) -> Unit)?,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val headerInk = radioColors?.ink ?: if (editorial) appearance.headerInk else OnArt
+    val showPosterFavorite = editorial && appearance.style == "type_poster" && favoriteAvailable
+    val trailingWidth = (if (showPosterFavorite) 48.dp else 0.dp) +
+        (if (signalPathControl != null) 48.dp else 0.dp) +
+        (if (onCast != null) 48.dp else 0.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1027,31 +1040,34 @@ private fun NowPlayingTopBar(
                             fontFamily = if (displayedEditorial && appearance.style == "pixel_handheld") ExpressivePlayerStyle.PixelDisplay else RecordSleeveStyle.BodyFont,
                             fontSize = if (displayedEditorial && appearance.style == "pixel_handheld") 32.sp else 14.sp,
                             letterSpacing = if (radioColors != null) 0.sp else if (displayedEditorial && appearance.style == "pixel_handheld") 1.sp else 3.5.sp,
-                            modifier = if (displayedEditorial && appearance.style == "type_poster") Modifier.align(Alignment.CenterStart).padding(start = 46.dp)
-                                else Modifier.align(Alignment.Center),
+                            modifier = if (displayedEditorial && appearance.style == "type_poster") {
+                                Modifier.align(Alignment.CenterStart).padding(start = 46.dp, end = trailingWidth + 4.dp)
+                            } else Modifier.align(Alignment.Center),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
-            if (editorial && appearance.style == "type_poster" && favoriteAvailable) {
-                GlyphButton(
+            Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+                if (showPosterFavorite) GlyphButton(
                     icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                     description = stringResource(if (isFavorite) L10nR.string.feature_player_unfavorite_3a27e4 else L10nR.string.feature_player_favorite_b5d1f5),
                     touchSize = 48.dp, iconSize = 28.dp, tint = appearance.headerInk,
                     background = Color.Transparent, onClick = onToggleFavorite,
-                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 48.dp),
+                )
+                signalPathControl?.invoke(headerInk)
+                if (onCast != null) GlyphButton(
+                    icon = if (editorial && appearance.style == "pixel_handheld") PixelPlayerIcons.Cast else PlayerControlIcons.Cast,
+                    description = stringResource(if (castActive) L10nR.string.feature_player_cast_active else L10nR.string.feature_player_cast),
+                    touchSize = 48.dp,
+                    iconSize = 26.dp,
+                    tint = if (castActive) radioColors?.accent ?: MaterialTheme.colorScheme.primary else headerInk,
+                    background = Color.Transparent,
+                    onClick = onCast,
+                    modifier = Modifier.castSemantics(castActive),
                 )
             }
-            if (onCast != null) GlyphButton(
-                icon = if (editorial && appearance.style == "pixel_handheld") PixelPlayerIcons.Cast else PlayerControlIcons.Cast,
-                description = stringResource(if (castActive) L10nR.string.feature_player_cast_active else L10nR.string.feature_player_cast),
-                touchSize = 48.dp,
-                iconSize = 26.dp,
-                tint = if (castActive) radioColors?.accent ?: MaterialTheme.colorScheme.primary else headerInk,
-                background = Color.Transparent,
-                onClick = onCast,
-                modifier = Modifier.align(Alignment.CenterEnd).castSemantics(castActive),
-            )
         }
         // Reserve the indicator strip on both classic pages. Removing it at the
         // pager midpoint used to resize the viewport while it was still sliding.

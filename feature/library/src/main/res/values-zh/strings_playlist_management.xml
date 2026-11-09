@@ -22,14 +22,14 @@
     <string name="playlist_user_section">我的歌单</string>
     <string name="playlist_smart_section">智能歌单</string>
     <string name="playlist_import">导入歌单</string>
-    <string name="playlist_import_hint">支持 M3U、M3U8、PLS；匹配当前曲库中的歌曲，不下载音频。</string>
+    <string name="playlist_import_hint">导入时会匹配当前曲库中的歌曲。</string>
     <string name="playlist_import_reading">正在匹配歌曲…</string>
     <string name="playlist_import_summary">%1$d 首可导入 · 共 %2$d 条记录</string>
     <string name="playlist_import_name">歌单名称</string>
     <string name="playlist_import_saving">正在保存…</string>
     <string name="playlist_import_confirm">导入已匹配歌曲</string>
     <string name="playlist_import_empty">文件中没有歌单记录。</string>
-    <string name="playlist_import_failed">无法读取这个歌单文件。</string>
+    <string name="playlist_import_failed">无法读取歌单。请选择有效的 M3U、M3U8、PLS、XSPF、WPL、ASX、CSV、TXT 或 ECHO JSON 文件。</string>
     <string name="playlist_import_no_matches">没有找到匹配的歌曲，请先扫描音乐文件，再重新导入。</string>
     <string name="playlist_import_too_large">请选择不超过 256 KiB 的歌单文件。</string>
     <string name="playlist_import_too_many">单个文件最多包含 2,000 条记录。</string>

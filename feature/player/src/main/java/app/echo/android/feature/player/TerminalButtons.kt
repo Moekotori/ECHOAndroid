@@ -23,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 
 /** Transport and toggles as bracketed commands; a filled cell is an active toggle. */
 @Composable
@@ -42,17 +41,16 @@ internal fun TerminalButtons(
             Command(">| next", stringResource(R.string.feature_player_next_d67904), false, actions.next)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Command("~ shuf", stringResource(R.string.feature_player_shuffle), status.shuffleEnabled, actions.shuffle)
+            val mode = QueuePlaybackMode.from(status.repeatMode, status.shuffleEnabled)
             Command(
-                if (status.repeatMode == EchoRepeatMode.One) "@1 rep" else "@ rep",
-                stringResource(
-                    when (status.repeatMode) {
-                        EchoRepeatMode.Off -> R.string.feature_player_repeat_off_254ca2
-                        EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
-                        EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
-                    },
-                ),
-                status.repeatMode != EchoRepeatMode.Off, actions.repeat,
+                when (mode) {
+                    QueuePlaybackMode.Sequential -> "> seq"
+                    QueuePlaybackMode.RepeatAll -> "@ rep"
+                    QueuePlaybackMode.RepeatOne -> "@1 rep"
+                    QueuePlaybackMode.Shuffle -> "~ shuf"
+                },
+                stringResource(mode.label()), mode != QueuePlaybackMode.Sequential, actions.cyclePlaybackMode,
+                animateMode = true,
             )
             Command("= queue", stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
             if (status.track.showsMusicFavorite()) Command(
@@ -66,7 +64,7 @@ internal fun TerminalButtons(
 }
 
 @Composable
-private fun RowScope.Command(text: String, label: String, active: Boolean, onClick: () -> Unit) {
+private fun RowScope.Command(text: String, label: String, active: Boolean, onClick: () -> Unit, animateMode: Boolean = false) {
     val green = TerminalStyle.Green
     Box(
         Modifier.weight(1f).height(40.dp)
@@ -76,7 +74,9 @@ private fun RowScope.Command(text: String, label: String, active: Boolean, onCli
             .semantics { contentDescription = label; selected = active },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = if (active) TerminalStyle.Screen else green, fontFamily = TerminalStyle.Mono, fontSize = 12.sp,
-            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+        PlaybackModeContent(text, animateMode) {
+            Text(it, color = if (active) TerminalStyle.Screen else green, fontFamily = TerminalStyle.Mono, fontSize = 12.sp,
+                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+        }
     }
 }

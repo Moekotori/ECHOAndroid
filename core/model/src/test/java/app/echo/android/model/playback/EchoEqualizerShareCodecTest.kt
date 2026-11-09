@@ -1,6 +1,7 @@
 package app.echo.android.model.playback
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -111,5 +112,32 @@ class EchoEqualizerShareCodecTest {
         assertEquals(60f, imported.filters[0].frequencyHz, 0.01f)
         assertEquals(4f, imported.filters[0].gainDb, 0.01f)
         assertEquals(-2.5f, imported.preampDb, 0.01f)
+    }
+
+    @Test
+    fun importsApoTextFromWindowsAndPreservesFilterSettings() {
+        val text = "\uFEFF# My EQ\r\nPreamp: -3 dB\r\nPreamp: -.5 dB\r\n" +
+            "Channel: R\r\nFilter 1: ON PK Fc 1e3 Hz Gain 2.75 dB Q 1.25 # custom\r\n" +
+            "Filter 2: OFF HS Fc 5000 Hz Gain -1 dB\r\nFilter 3: OFF"
+
+        val preset = EchoEqualizerShareCodec.decode(text, "windows")!!
+        assertEquals("My EQ", preset.name)
+        assertEquals(-3.5f, preset.preampDb, 0f)
+        assertEquals(2, preset.filters.size)
+        assertEquals(EchoEqBandScope.Right, preset.filters[0].scope)
+        assertEquals(1000f, preset.filters[0].frequencyHz, 0f)
+        assertEquals(2.75f, preset.filters[0].gainDb, 0f)
+        assertEquals(1.25f, preset.filters[0].q!!, 0f)
+        assertFalse(preset.filters[1].enabled)
+    }
+
+    @Test
+    fun refusesToImportPartialApoConfiguration() {
+        val preamp = "Preamp: -4 dB"
+        assertNull(EchoEqualizerShareCodec.decode("$preamp\nFilter: ON IIR Order 2 Coefficients 1 0 0 1 0 0", "iir"))
+        assertNull(EchoEqualizerShareCodec.decode("$preamp\nFilter: ON PK Fc 1000 Hz Gain 2 dB BW Oct 1", "bandwidth"))
+        assertNull(EchoEqualizerShareCodec.decode("$preamp\nInclude: other.txt", "include"))
+        val points = (1..33).joinToString("; ") { "${it * 100} 1" }
+        assertNull(EchoEqualizerShareCodec.decode("$preamp\nGraphicEQ: $points", "too-many"))
     }
 }

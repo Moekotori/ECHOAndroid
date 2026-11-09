@@ -21,8 +21,8 @@ internal fun UsbOutputModeControl(strict: Boolean, onChange: (Boolean) -> Unit) 
     }
     SettingsSwitchRow(
         title = stringResource(R.string.settings_usb_bitperfect),
-        detail = stringResource(R.string.settings_usb_bitperfect_detail) +
-            if (strict) "\n${stringResource(R.string.usb_page_volume_note)}" else "",
+        detail = stringResource(R.string.usb_page_volume_note) +
+            "\n${stringResource(R.string.settings_usb_bitperfect_detail)}",
         checked = strict,
         onCheckedChange = { enabled ->
             if (enabled) confirming = true else onChange(false)

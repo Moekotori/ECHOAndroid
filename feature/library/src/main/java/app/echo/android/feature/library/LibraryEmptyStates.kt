@@ -7,6 +7,16 @@ import androidx.paging.compose.LazyPagingItems
 import app.echo.android.feature.library.R as L10nR
 import app.echo.android.model.library.AlbumSummary
 
+@Composable
+internal fun LibrarySearchEmpty(onClearSearch: () -> Unit, title: String = stringResource(L10nR.string.library_no_matches)) {
+    LibraryCollectionEmpty(
+        title = title,
+        detail = stringResource(L10nR.string.library_search_hint),
+        actionLabel = stringResource(L10nR.string.library_clear_search),
+        onAction = onClearSearch,
+    )
+}
+
 internal data class LibraryAlbumEmptyCopy(
     val titleRes: Int,
     val detailRes: Int,

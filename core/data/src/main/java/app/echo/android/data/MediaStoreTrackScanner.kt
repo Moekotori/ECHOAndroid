@@ -123,7 +123,7 @@ class MediaStoreTrackScanner(
                 coroutineContext.ensureActive()
                 val parsed = runCatching {
                     val row = listing.toAudioRow(collection, columns)
-                    if ((!options.includesDirectory(row.relativePath) || !options.includesFileName(row.fileName))) {
+                    if (options.explicitRejection(row.relativePath, row.fileName) != null) {
                         val trackId = row.libraryId()
                         if (existingTracks[trackId] != null && !removeExcludedFromLibrary) {
                             onUnchangedIds(listOf(trackId))
@@ -247,7 +247,7 @@ class MediaStoreTrackScanner(
                         idPrefix = LibraryScanPolicy.MediaStoreFileIdPrefix,
                     )
                     val trackId = row.libraryId()
-                    val cached = if (options.includesDirectory(row.relativePath) && options.includesFileName(row.fileName)) cueCache?.reuse(
+                    val cached = if (options.explicitRejection(row.relativePath, row.fileName) == null) cueCache?.reuse(
                         cueSourceFacts(trackId, row.contentUri, row.sizeBytes, row.dateModifiedSeconds, row.relativePath, row.fileName),
                         row.fileName?.let { cueSheets[cueFolderKey(row.relativePath.orEmpty(), it)] }, existingTracks,
                         cueCatalog.isUncertain(row.relativePath),
@@ -274,7 +274,7 @@ class MediaStoreTrackScanner(
                             fileName = row.fileName,
                         )
                     ) {
-                        val excluded = (!options.includesDirectory(row.relativePath) || !options.includesFileName(row.fileName))
+                        val excluded = options.explicitRejection(row.relativePath, row.fileName) != null
                         if (excluded && removeExcludedFromLibrary) {
                             scannedCount++
                             onSkipped()
@@ -295,7 +295,7 @@ class MediaStoreTrackScanner(
                         continue
                     }
                     val parsed = runCatching {
-                        if ((!options.includesDirectory(row.relativePath) || !options.includesFileName(row.fileName))) {
+                        if (options.explicitRejection(row.relativePath, row.fileName) != null) {
                             val trackId = row.libraryId()
                             if (existingTracks[trackId] != null && !removeExcludedFromLibrary) {
                                 onUnchangedIds(listOf(trackId))
@@ -427,7 +427,7 @@ class MediaStoreTrackScanner(
                     )
                     rememberAudio(relativePath, fileName)
                     val hasSheet = hasCueSheet(relativePath, fileName, cueSheets)
-                    val cached = if (options.includesDirectory(relativePath) && options.includesFileName(fileName)) cueCache?.reuse(
+                    val cached = if (options.explicitRejection(relativePath, fileName) == null) cueCache?.reuse(
                         cueSourceFacts(trackId, Uri.withAppendedPath(collection.uri, mediaId.toString()).toString(), sizeBytes,
                             dateModifiedSeconds, relativePath, fileName),
                         fileName?.let { cueSheets[cueFolderKey(relativePath.orEmpty(), it)] }, existingTracks,

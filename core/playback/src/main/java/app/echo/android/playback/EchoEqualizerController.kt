@@ -164,22 +164,22 @@ class EchoEqualizerController {
     fun setBandGain(index: Int, gainDb: Float) {
         if (desiredParametric || !gainDb.isFinite()) return
         val bands = currentBands()
-        val safeIndex = index.coerceIn(0, (bands.size - 1).coerceAtLeast(0))
-        val band = bands.getOrNull(safeIndex)
-        desiredGainsDb = bands.mapIndexed { bandIndex, currentBand ->
-            if (bandIndex == safeIndex) {
-                gainDb.coerceIn(currentBand.minGainDb, currentBand.maxGainDb)
-            } else {
-                currentBand.gainDb
-            }
-        }.ifEmpty { listOf(gainDb) }
+        val safeIndex = index.coerceIn(bands.indices)
+        setBandGains(bands.map { if (it.index == safeIndex) gainDb else it.gainDb })
+    }
+
+    /** Publishes a complete graphic adjustment in one update, including multi-band tone edits. */
+    fun setBandGains(gainsDb: List<Float>): Boolean {
+        if (desiredParametric || gainsDb.any { !it.isFinite() }) return false
+        val bands = currentBands()
+        if (gainsDb.size != bands.size) return false
+        val gains = bands.mapIndexed { index, band -> gainsDb[index].coerceIn(band.minGainDb, band.maxGainDb) }
+        if (desiredPresetId == EchoEqualizerPreset.Custom && gains == desiredGainsDb) return true
+        desiredGainsDb = gains
         desiredPresetId = EchoEqualizerPreset.Custom
         clearParametric(resetPreamp = false)
-        if (band == null && desiredGainsDb.isNotEmpty()) {
-            publish()
-            return
-        }
         publish()
+        return true
     }
 
     fun reset() {

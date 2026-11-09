@@ -42,7 +42,8 @@ fun DiagnosticsScreen(
     opraState: OpraHeadphoneCorrectionState,
     onEqualizerEnabledChange: (Boolean) -> Unit,
     onEqualizerPresetSelected: (String) -> Unit,
-    onEqualizerBandGainChange: (Int, Float) -> Unit,
+    onEqualizerBandGainsChange: (List<Float>) -> Unit,
+    onEqualizerBandGainsPreview: (List<Float>) -> Unit,
     onEqualizerReset: () -> Unit,
     onEqualizerPreampChange: (Float) -> Unit,
     onChannelBalanceChange: (EchoChannelBalanceState) -> Unit,
@@ -96,17 +97,23 @@ fun DiagnosticsScreen(
     audioSettingsRequested: Boolean = false,
     audioSettingsAnchor: String? = null,
     audioSettingsContent: @Composable (onOpenUsbOutput: () -> Unit) -> Unit,
-    usbOutputContent: @Composable (onOpenSound: () -> Unit) -> Unit,
+    usbOutputContent: @Composable (onOpenSound: () -> Unit, onOpenAppVolume: () -> Unit) -> Unit,
 ) {
     val pagerState = rememberPagerState { 3 }
     // -1 is the tabbed page; sound editors and diagnostics open as child pages.
     var soundPanel by rememberSaveable { mutableIntStateOf(-1) }
+    var parentPanel by rememberSaveable { mutableIntStateOf(-1) }
+    fun openPanel(panel: Int, from: Int = -1) {
+        // Following the reverse shortcut returns to the parent without creating a loop.
+        parentPanel = if (panel == parentPanel) -1 else from
+        soundPanel = panel
+    }
     var handledSoundRequestId by rememberSaveable { mutableIntStateOf(0) }
     var audioSettingsFocus by rememberSaveable { mutableStateOf<String?>(null) }
     val usbAnchors = usbAudioSettingsSearchAnchors.map { stringResource(it) }
     LaunchedEffect(soundRequestId) {
         if (soundRequestId != 0 && soundRequestId != handledSoundRequestId) {
-            soundPanel = if (audioSettingsRequested && audioSettingsAnchor in usbAnchors) UsbOutputPanel else -1
+            openPanel(if (audioSettingsRequested && audioSettingsAnchor in usbAnchors) UsbOutputPanel else -1)
             audioSettingsFocus = audioSettingsAnchor.takeIf { audioSettingsRequested }
             pagerState.scrollToPage(if (audioSettingsRequested) 2 else 1)
             handledSoundRequestId = soundRequestId
@@ -118,7 +125,7 @@ fun DiagnosticsScreen(
     val innerFling = rememberSilkPagerFlingBehavior(pagerState)
     val innerNestedScroll = rememberContentPagerNestedScroll(pagerState, innerFling)
     fun selectTab(index: Int) {
-        soundPanel = -1
+        openPanel(-1)
         audioSettingsFocus = null
         scope.launch { pagerState.animateSilkToPage(index, lightweight) }
     }
@@ -137,7 +144,7 @@ fun DiagnosticsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(error, Modifier.weight(1f), color = scheme.error, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
-                TextButton(onClick = { soundPanel = DiagnosticsPanel }) {
+                TextButton(onClick = { openPanel(DiagnosticsPanel) }) {
                     Text(stringResource(L10nR.string.feature_settings_diagnostics_b6e487), color = scheme.error)
                 }
             }
@@ -146,6 +153,7 @@ fun DiagnosticsScreen(
     CompositionLocalProvider(LocalContentColor provides scheme.onBackground) {
         SignalSoundNavigation(
             selectedPanel = soundPanel,
+            parentPanel = parentPanel,
             title = { panel ->
                 stringResource(when (panel) {
                     DiagnosticsPanel -> L10nR.string.feature_settings_diagnostics_b6e487
@@ -154,7 +162,7 @@ fun DiagnosticsScreen(
                 })
             },
             isActive = isActive,
-            onBack = { soundPanel = -1 },
+            onBack = { openPanel(parentPanel) },
             scrollingTool = SignalSoundTool.HeadphoneCorrection.panel,
             compactTool = UsbOutputPanel,
             onNavigateUp = if (soundPanel == SignalSoundTool.HeadphoneCorrection.panel && opraState.selectedBrandId != null) {
@@ -165,7 +173,10 @@ fun DiagnosticsScreen(
                     CompositionLocalProvider(LocalSettingsSearchFocus provides audioSettingsFocus?.let {
                         SettingsSearchFocus(it, handledSoundRequestId)
                     }) {
-                        usbOutputContent { selectTab(1) }
+                        usbOutputContent(
+                            { selectTab(1) },
+                            { openPanel(SignalSoundTool.Volume.panel, from = UsbOutputPanel) },
+                        )
                     }
                 } else if (panel == DiagnosticsPanel) {
                     SignalDiagnosticDetails(status, positionFlow, bluetoothCodecNeedsPermission,
@@ -183,7 +194,8 @@ fun DiagnosticsScreen(
                             onPreampChange = onEqualizerPreampChange,
                             onEnabledChange = onEqualizerEnabledChange,
                             onPresetSelected = onEqualizerPresetSelected,
-                            onBandGainChange = onEqualizerBandGainChange,
+                            onBandGainsChange = onEqualizerBandGainsChange,
+                            onBandGainsPreview = onEqualizerBandGainsPreview,
                             onReset = onEqualizerReset,
                             onParametricChange = onParametricChange,
                             onParametricPreview = onParametricPreview,
@@ -230,7 +242,8 @@ fun DiagnosticsScreen(
                         SignalSoundTool.HeadphoneSoundstage -> SignalHeadphoneSoundstage(dspSettings, !bitPerfect, onDspSettings)
                         SignalSoundTool.Mseb -> SignalMsebPanel(equalizerState, status, onMsebChange, onMsebPreview, msebPersonal)
                         SignalSoundTool.Volume -> SignalVolumePanel(volumeSettings, status, dspSettings, replayGainScan,
-                            onVolumeSettings, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan, outputDeviceLabel)
+                            onVolumeSettings, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan, outputDeviceLabel,
+                            onOpenUsb = { openPanel(UsbOutputPanel, from = SignalSoundTool.Volume.panel) })
                     }
                 }
             },
@@ -277,14 +290,14 @@ fun DiagnosticsScreen(
                         ) {
                             errorContent()
                             when (tab) {
-                                0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { soundPanel = DiagnosticsPanel }, volume = volumeSettings)
+                                0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { openPanel(DiagnosticsPanel) }, volume = volumeSettings)
                                 1 -> {
                                     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                                         SignalSoundMenu(states = signalSoundMenuStates(
                                             equalizerState, channelBalanceState, dspSettings,
                                             status.replayGainEnabled, volumeSettings,
                                             status.diagnostics.usbBitPerfectEnabled,
-                                        ), onSelect = { soundPanel = it.panel })
+                                        ), onSelect = { openPanel(it.panel) })
                                         OutputAudioProfileControl(outputDeviceLabel, outputAudioProfileBound,
                                             status.diagnostics.usbBitPerfectEnabled, onSaveOutputAudioProfile, onRemoveOutputAudioProfile)
                                     }
@@ -293,7 +306,7 @@ fun DiagnosticsScreen(
                                     CompositionLocalProvider(LocalSettingsSearchFocus provides audioSettingsFocus?.let {
                                         SettingsSearchFocus(it, handledSoundRequestId)
                                     }) {
-                                        audioSettingsContent { soundPanel = UsbOutputPanel }
+                                        audioSettingsContent { openPanel(UsbOutputPanel) }
                                     }
                                 }
                             }

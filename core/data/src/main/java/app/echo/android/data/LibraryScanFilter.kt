@@ -2,6 +2,7 @@ package app.echo.android.data
 
 import app.echo.android.model.library.CueSheetPolicy
 import app.echo.android.model.library.LibraryScanOptions
+import app.echo.android.model.library.LibraryScanSkipReason
 
 internal fun LibraryScanOptions.accepts(durationMs: Long, sizeBytes: Long, relativePath: String?): Boolean {
     // Some supported formats/providers cannot report duration or size. Unknown is not zero-length audio.
@@ -17,8 +18,8 @@ internal fun importedLocalScanIds(ids: Set<String>): Set<String> = buildSet(ids.
 }
 
 internal fun LibraryScanOptions.includesDirectory(relativePath: String?): Boolean {
-    val path = relativePath.orEmpty().replace('\\', '/').trim('/')
-    val pathKey = path.lowercase(java.util.Locale.ROOT)
+    val pathKey = relativePath.orEmpty().scanPathKey()
+    if (ignoresFolderPath(pathKey)) return false
     if (excludedRelativePaths.any { excluded ->
         val excludedKey = excluded.lowercase(java.util.Locale.ROOT)
         pathKey == excludedKey || pathKey.startsWith("$excludedKey/")
@@ -41,8 +42,9 @@ internal fun filterLocalScanBatch(
     options: LibraryScanOptions,
     onRejected: (LibraryTrackEntity, app.echo.android.model.library.LibraryScanSkipReason) -> Unit = { _, _ -> },
 ): List<LibraryTrackEntity> = batch.filter {
-    if (!options.includesDirectory(it.relativePath) || !options.includesFileName(it.fileName)) {
-        onRejected(it, if (!options.includesDirectory(it.relativePath)) app.echo.android.model.library.LibraryScanSkipReason.Directory else app.echo.android.model.library.LibraryScanSkipReason.Name)
+    val rejection = options.explicitRejection(it.relativePath, it.fileName)
+    if (rejection != null) {
+        onRejected(it, rejection)
         return@filter false
     }
     if (it.id in existingIds) return@filter true
@@ -52,6 +54,15 @@ internal fun filterLocalScanBatch(
         if (!accepted) onRejected(it, options.rejectionReason(it.durationMs, it.sizeBytes, null, it.fileName)
             ?: app.echo.android.model.library.LibraryScanSkipReason.Duration)
     }
+}
+
+internal fun LibraryScanOptions.explicitRejection(relativePath: String?, name: String?): LibraryScanSkipReason? = when {
+    !includesDirectory(relativePath) -> LibraryScanSkipReason.Directory
+    !includesFileName(name) -> LibraryScanSkipReason.Name
+    name != null && ignoredPathsByFolder.isNotEmpty() &&
+        ignoresFolderPath("${relativePath.orEmpty().trimEnd('/')}/$name".scanPathKey()) -> LibraryScanSkipReason.Name
+    blocksFileFormat(name) -> LibraryScanSkipReason.Format
+    else -> null
 }
 
 private val NonMusicFolderNames = setOf(

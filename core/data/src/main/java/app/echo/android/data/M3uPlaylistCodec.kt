@@ -4,6 +4,7 @@ data class M3uEntry(
     val location: String,
     val title: String? = null,
     val durationSeconds: Int? = null,
+    val artist: String? = null,
 )
 
 data class M3uExportTrack(
@@ -11,6 +12,7 @@ data class M3uExportTrack(
     val artist: String,
     val durationMs: Long,
     val location: String,
+    val album: String? = null,
 )
 
 data class M3uMatchRow(
@@ -66,7 +68,7 @@ object M3uPlaylistCodec {
             append("#EXTINF:")
             append(seconds)
             append(',')
-            appendLine(display)
+            appendLine(display.playlistSingleLine())
             appendLine(track.location)
         }
     }

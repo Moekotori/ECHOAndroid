@@ -31,7 +31,8 @@ internal fun SignalPathPanel(
 ) {
     val scheme = MaterialTheme.colorScheme
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val stages = signalPathStages(status, equalizer, balance, dsp, volume)
+    val tone = status.signalPathTone()
+    val hasTrack = status.track != null
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -41,23 +42,36 @@ internal fun SignalPathPanel(
     ) {
         Column {
             Row(
-                Modifier.fillMaxWidth().clickable(role = Role.Button) { expanded = !expanded }
+                Modifier.fillMaxWidth().then(
+                    if (hasTrack) Modifier.clickable(
+                        role = Role.Button,
+                        onClickLabel = stringResource(if (expanded) R.string.path_hide_details else R.string.path_show_details),
+                        onClick = { expanded = !expanded },
+                    ) else Modifier,
+                )
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(stringResource(R.string.feature_settings_signal_path_2fed34),
-                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    SignalNote(stringResource(if (expanded) R.string.path_hide_details else R.string.path_show_details))
+                SignalPathGlyph(tone, scheme.onSurfaceVariant)
+                Text(stringResource(R.string.feature_settings_signal_path_2fed34), Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                if (hasTrack) {
+                    EchoIcon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = null, modifier = Modifier.size(20.dp))
                 }
-                EchoIcon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = null, modifier = Modifier.size(20.dp))
             }
             HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.6f))
-            Column(Modifier.padding(start = 14.dp, top = 12.dp, end = 14.dp, bottom = 8.dp)) {
-                stages.forEachIndexed { index, stage ->
-                    SignalPathStep(stage, index, last = index == stages.lastIndex, expanded = expanded)
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                if (hasTrack) {
+                    val stages = signalPathStages(status, equalizer, balance, dsp, volume)
+                    val ink = tone.tint(scheme.onSurfaceVariant)
+                    stages.forEachIndexed { index, stage ->
+                        SignalPathStep(stage, index, last = index == stages.lastIndex, expanded = expanded, accent = ink)
+                    }
+                } else {
+                    Text(stringResource(R.string.diag_waiting_playback), Modifier.padding(4.dp),
+                        style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                 }
             }
             HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.6f))

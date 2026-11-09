@@ -55,16 +55,26 @@ internal fun SignalVolumePanel(
     onMode: (EchoReplayGainMode) -> Unit,
     onScan: () -> Unit,
     deviceLabel: String? = null,
+    onOpenUsb: () -> Unit,
 ) {
     val enabled = !status.diagnostics.usbVolumeLocked
     val canProcess = !status.diagnostics.usbBitPerfectEnabled
+    val outputLabel = deviceLabel ?: stringResource(R.string.volume_current_output)
     Column {
-        // Discard a draft or open editor when the output route changes.
-        key(volume.deviceKey, deviceLabel, enabled) {
-            SignalVolumeHero(
-                volume, enabled,
-                deviceLabel = deviceLabel ?: stringResource(R.string.volume_current_output),
-                onVolume = onVolume,
+        if (enabled) {
+            // Discard a draft or open editor when the output route changes.
+            key(volume.deviceKey, deviceLabel) {
+                SignalVolumeHero(volume, outputLabel, onVolume)
+            }
+        } else {
+            SettingsInfoRow(outputLabel, stringResource(R.string.volume_bypassed))
+        }
+        if (status.diagnostics.usbConnected || !enabled) {
+            HorizontalDivider()
+            SettingsActionRow(
+                title = stringResource(R.string.usb_fine_title),
+                detail = stringResource(R.string.volume_usb_shortcut_note),
+                onClick = onOpenUsb,
             )
         }
         SignalVolumeDisclosure(

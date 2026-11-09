@@ -11,6 +11,18 @@ import org.junit.Test
 import kotlin.math.abs
 
 class EchoEqualizerEngineTest {
+    @Test fun androidPresetsHaveHeadroomAtCommonSampleRates() {
+        val newPresets = EchoEqualizerPresets.presets.drop(35)
+        assertTrue(newPresets.isNotEmpty())
+        newPresets.forEach { preset ->
+            val filters = EchoEqualizerEngine.graphicFilters(preset.gainsDb)
+            listOf(44_100f, 48_000f, 96_000f).forEach { rate ->
+                val peak = EchoEqualizerEngine.responseCurve(filters, preset.preampDb, rate).maxOf { it.gainDb }
+                assertTrue("${preset.id} at $rate Hz reached $peak dB", peak < 0.01f)
+            }
+        }
+    }
+
     @Test fun shelfUsesOpraQRatherThanShelfSlopeS() {
         // Independent RBJ cookbook reference at Fs=48k, f0=100, gain=6, Q=.7, probe=50 Hz.
         val band = OpraEqBand(EchoEqFilterType.LowShelf, 100f, 6f, 0.7f, null)

@@ -21,4 +21,8 @@
     <string name="file_playlist_label">文件歌单</string>
     <string name="file_playlist_add_files">添加音频文件</string>
     <string name="file_playlist_add_library">从音乐库添加</string>
+    <string name="playlist_import_no_suggestions">暂无候选，试试搜索歌名或歌手。</string>
+    <string name="playlist_export_json_label">ECHO JSON · 歌单备份</string>
+    <string name="playlist_export_choose_location">选择保存位置</string>
+    <string name="playlist_export_writing">正在保存歌单文件…</string>
 </resources>

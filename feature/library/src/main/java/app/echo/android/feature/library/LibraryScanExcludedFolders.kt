@@ -26,39 +26,44 @@ internal fun LibraryScanExcludedFolders(
     onRemove: (String) -> Unit,
 ) {
     val sortedPaths = remember(paths) { paths.sortedWith(String.CASE_INSENSITIVE_ORDER) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.scan_rules_excluded_folders_title),
-            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-        Text(stringResource(R.string.scan_rules_excluded_folders_hint),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (paths.isEmpty()) Text(stringResource(R.string.scan_rules_excluded_folders_empty),
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 8.dp))
-        sortedPaths.forEach { path -> key(path) {
-            val name = path.trimEnd('/').substringAfterLast('/')
-            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 EchoIcon(Icons.Rounded.FolderOpen, null, Modifier.size(22.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(excludedFolderDisplayPath(path), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-                IconButton(enabled = enabled, onClick = { onRemove(path) }) {
-                    EchoIcon(Icons.Rounded.Close, stringResource(R.string.scan_rules_remove_excluded_folder, name))
-                }
+                Text(stringResource(R.string.scan_rules_excluded_folders_title), Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                if (paths.isNotEmpty()) AddMusicBadge(paths.size.toString())
             }
-        } }
-        if (paths.size >= MaxExcludedScanFolders) Text(
-            stringResource(R.string.scan_rules_excluded_folders_limit, MaxExcludedScanFolders),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedButton(enabled = enabled && paths.size < MaxExcludedScanFolders,
-            onClick = onChooseFolder, shape = MaterialTheme.shapes.medium,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            EchoIcon(Icons.Rounded.FolderOpen, null, Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.scan_rules_add_excluded_folder))
+            Text(stringResource(R.string.scan_rules_excluded_folders_hint),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            sortedPaths.forEach { path -> key(path) {
+                val name = path.trimEnd('/').substringAfterLast('/')
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(excludedFolderDisplayPath(path), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                    IconButton(enabled = enabled, onClick = { onRemove(path) }) {
+                        EchoIcon(Icons.Rounded.Close, stringResource(R.string.scan_rules_remove_excluded_folder, name))
+                    }
+                }
+            } }
+            if (paths.size >= MaxExcludedScanFolders) Text(
+                stringResource(R.string.scan_rules_excluded_folders_limit, MaxExcludedScanFolders),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedButton(enabled = enabled && paths.size < MaxExcludedScanFolders,
+                onClick = onChooseFolder, shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.scan_rules_add_excluded_folder))
+            }
         }
     }
 }

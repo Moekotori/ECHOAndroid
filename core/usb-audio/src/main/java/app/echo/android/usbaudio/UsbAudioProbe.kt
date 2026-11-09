@@ -12,15 +12,17 @@ class UsbAudioProbe(context: Context) {
 
     fun findBestDevice(): UsbDevice? =
         usbManager.deviceList.values
-            .filter { it.isUsbAudioDevice() }
+            .filter { it.hasUsbAudioOutput() }
             .maxWithOrNull(
                 compareBy<UsbDevice> { if (usbManager.hasPermission(it)) 1 else 0 }
-                    .thenBy { it.interfaceCount },
+                    .thenBy { it.interfaceCount }
+                    .thenByDescending { it.deviceName },
             )
 
-    fun snapshot(permissionPendingDeviceName: String? = null): UsbAudioDeviceSnapshot {
-        val device = findBestDevice()
-            ?: return UsbAudioDeviceSnapshot()
+    fun snapshot(): UsbAudioDeviceSnapshot = snapshotForDevice(findBestDevice())
+
+    fun snapshotForDevice(device: UsbDevice?, permissionPendingDeviceName: String? = null): UsbAudioDeviceSnapshot {
+        if (device == null) return UsbAudioDeviceSnapshot()
         val permissionGranted = usbManager.hasPermission(device)
         val pending = device.deviceName == permissionPendingDeviceName && !permissionGranted
         val descriptorResult = if (permissionGranted) readDescriptorInfo(device) else null
@@ -44,20 +46,35 @@ class UsbAudioProbe(context: Context) {
             val connection = usbManager.openDevice(device)
                 ?: error("Unable to open USB audio device")
             try {
-                descriptorParser.parse(connection.rawDescriptors ?: ByteArray(0))
+                descriptorParser.parse(connection.rawDescriptors ?: ByteArray(0)).copy(
+                    busPacketsPerSecond = UsbIsochronousNative.busPacketsPerSecond(connection.fileDescriptor),
+                )
             } finally {
                 connection.close()
             }
         }
 
-    private fun UsbDevice.isUsbAudioDevice(): Boolean =
-        deviceClass == UsbConstants.USB_CLASS_AUDIO ||
-            (0 until interfaceCount).any { index ->
-                getInterface(index).interfaceClass == UsbConstants.USB_CLASS_AUDIO
+    private fun UsbDevice.hasUsbAudioOutput(): Boolean = (0 until interfaceCount).any { index ->
+        val usbInterface = getInterface(index)
+        usbInterface.interfaceClass == UsbConstants.USB_CLASS_AUDIO &&
+            usbInterface.interfaceSubclass == AUDIO_STREAMING_SUBCLASS &&
+            (0 until usbInterface.endpointCount).any { endpointIndex ->
+                val endpoint = usbInterface.getEndpoint(endpointIndex)
+                endpoint.direction == UsbConstants.USB_DIR_OUT &&
+                    ((endpoint.type == UsbConstants.USB_ENDPOINT_XFER_ISOC &&
+                        endpoint.attributes and USB_ENDPOINT_USAGE_MASK != USB_ENDPOINT_USAGE_FEEDBACK) ||
+                        endpoint.type == UsbConstants.USB_ENDPOINT_XFER_BULK)
             }
+    }
 
     private fun UsbDevice.getDisplayName(): String =
         productName?.takeIf { it.isNotBlank() }
             ?: manufacturerName?.takeIf { it.isNotBlank() }
             ?: deviceName
+
+    private companion object {
+        const val AUDIO_STREAMING_SUBCLASS = 2
+        const val USB_ENDPOINT_USAGE_MASK = 0x30
+        const val USB_ENDPOINT_USAGE_FEEDBACK = 0x10
+    }
 }

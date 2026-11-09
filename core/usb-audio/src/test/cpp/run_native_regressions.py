@@ -153,20 +153,48 @@ int main() {
   assert(next_packet_samples(&f.w)==(6<<(interval-1)));
   preserves_stream(48000,interval,2);
   preserves_stream(44100,interval,3);
+  for (int rate:{44100,88200,176400}) {
+   Fixture nominal(rate,interval);
+   int frames=0;
+   for(int i=0;i<nominal.w.pps/nominal.w.service_interval;i++) frames+=next_packet_samples(&nominal.w);
+   assert(frames==rate && nominal.w.packet_phase==0);
+  }
  }
  preserves_stream(176400,1,3); // DoP carrier width/rate; byte preservation includes markers.
  {
   bus_speed=2; Fixture f(48000,1,2,192);
-  assert(f.w.pps==1000 && f.w.high_speed==0);
+  assert(f.w.pps==1000);
+  assert(next_packet_samples(&f.w)==48);
+  const uint8_t fs_feedback_16_16[]={0,0,48,0};
+  apply_feedback(&f.w,fs_feedback_16_16,4);
+  assert(f.w.feedback_scale_known && f.w.feedback_shift==0);
   assert(next_packet_samples(&f.w)==48);
   f.w.sample_rate=96000;
   assert(!packet_fits(&f.w)); // Never pretend FS is HS to make a packet fit.
  }
  {
   bus_speed=3; Fixture f(48000,4,2,192);
-  assert(f.w.pps==8000 && f.w.high_speed==1);
+  assert(f.w.pps==8000);
   assert(next_packet_samples(&f.w)==48); // bInterval 4 means one packet per millisecond.
   f.w.max_packet=191; assert(!packet_fits(&f.w));
+ }
+ {
+  Fixture f(48000,3);
+  const uint8_t per_service_interval[]={0,0,24,0};
+  apply_feedback(&f.w,per_service_interval,4);
+  assert(!f.w.feedback_scale_known);
+  apply_feedback(&f.w,per_service_interval,4);
+  assert(f.w.feedback_scale_known && f.w.feedback_shift==-2 && next_packet_samples(&f.w)==24);
+  const uint8_t per_microframe[]={0,0,6,0};
+  apply_feedback(&f.w,per_microframe,4);
+  assert(f.w.metrics.invalid_feedback==1 && f.w.feedback_shift==-2);
+ }
+ {
+  Fixture f(48000,1);
+  const uint8_t legacy_per_frame[]={0,0,12}; // 48 samples per frame in 10.14, on a HS bus.
+  apply_feedback(&f.w,legacy_per_frame,3);
+  apply_feedback(&f.w,legacy_per_frame,3);
+  assert(f.w.feedback_scale_known && f.w.feedback_shift==-3 && next_packet_samples(&f.w)==6);
  }
  for(int depth:{8,16,32}) {
   Fixture f(48000,1); f.w.urb_count=depth;
@@ -177,12 +205,12 @@ int main() {
 }
 '''
 code = (preamble + (Path(__file__).resolve().parents[2] / 'main/cpp/usb_transfer_metrics.h').read_text().replace('#pragma once', '') + section('struct UrbSlot', 'static size_t urb_alloc_size') + stubs
-        + section('static void apply_feedback', 'static int submit_urb')
-        + section('static void apply_bus_speed', 'extern "C" JNIEXPORT jlong JNICALL')
+        + section('static bool feedback_fits', 'static int submit_urb')
+        + section('static int bus_packets_per_second', 'extern "C" JNIEXPORT jlong JNICALL')
         + section('extern "C" JNIEXPORT jint JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativeWrite',
                   'extern "C" JNIEXPORT void JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativePrime')
         + section('extern "C" JNIEXPORT jlong JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativeCapacityFrames',
-                  'extern "C" JNIEXPORT void JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativeClose')
+                  'extern "C" JNIEXPORT void JNICALL\nJava_app_echo_android_usbaudio_UsbIsochronousNative_nativeStop')
         + main)
 with tempfile.TemporaryDirectory(prefix='echo-usb-regression-') as directory:
     cpp = Path(directory) / 'regression.cpp'

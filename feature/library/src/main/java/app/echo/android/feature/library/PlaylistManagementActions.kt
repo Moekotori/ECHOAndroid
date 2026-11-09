@@ -25,12 +25,18 @@ class PlaylistManagementActions(
     val appendFilePlaylist: ((EchoPlaylist, Boolean) -> Unit)? = null,
 )
 
-enum class PlaylistImportFailure { Read, TooLarge, TooMany, Empty, NoMatches, Save, Export, Cover }
+enum class PlaylistImportFailure { Read, TooLarge, TooMany, Empty, NoMatches, Export, Cover }
 
 sealed interface PlaylistImportUiState {
     data object Reading : PlaylistImportUiState
-    data class Preview(val name: String, val result: PlaylistImportPreview, val saving: Boolean = false) : PlaylistImportUiState
+    data class Preview(
+        val name: String,
+        val result: PlaylistImportPreview,
+        val saving: Boolean = false,
+        val saveFailed: Boolean = false,
+    ) : PlaylistImportUiState
     data class Imported(val playlist: EchoPlaylist) : PlaylistImportUiState
+    data object Exporting : PlaylistImportUiState
     data object Exported : PlaylistImportUiState
     data class Failed(val reason: PlaylistImportFailure) : PlaylistImportUiState
 }

@@ -18,6 +18,7 @@ internal data class LinkedLibraryCatalog(
     val albums: List<AlbumSummary>,
     val artists: List<ArtistSummary>,
     val playlists: List<EchoRemotePlaylist>,
+    val trackOrder: LinkedLibraryTrackOrder? = null,
 ) {
     companion object {
         val Empty = LinkedLibraryCatalog(
@@ -32,7 +33,7 @@ internal data class LinkedLibraryCatalog(
             tracks: List<EchoRemoteTrack>,
             playlists: List<EchoRemotePlaylist>,
             query: String,
-            remoteQuery: String,
+            trackResultQuery: String?,
             sortMode: LibraryTrackSortMode,
             albumSortMode: AlbumSortMode = AlbumSortMode.Title,
             artistSortMode: ArtistSortMode = ArtistSortMode.Name,
@@ -42,15 +43,16 @@ internal data class LinkedLibraryCatalog(
             includePlaylists: Boolean = true,
             remoteAlbums: List<EchoRemoteAlbum> = emptyList(),
             randomOrder: LinkedLibraryRandomOrder = LinkedLibraryRandomOrder(),
+            previousTrackOrder: LinkedLibraryTrackOrder? = null,
         ): LinkedLibraryCatalog {
             val normalizedQuery = query.trim()
             val computationContext = currentCoroutineContext()
             val checkActive = { computationContext.ensureActive() }
             val needsTracks = includeSortedTracks || includeArtists || (includeAlbums && remoteAlbums.isEmpty())
-            val filteredTracks = if (!needsTracks) {
-                emptyList()
-            } else {
-                tracks.filterLinkedLibraryQuery(normalizedQuery, searchText, checkActive)
+            val filteredTracks = when {
+                !needsTracks -> emptyList()
+                trackResultQuery == normalizedQuery -> tracks
+                else -> tracks.filterLinkedLibraryQuery(normalizedQuery, searchText, checkActive)
             }
             val filteredPlaylists = if (!includePlaylists) {
                 emptyList()
@@ -63,12 +65,14 @@ internal data class LinkedLibraryCatalog(
                 else -> filteredTracks.toLinkedAlbums(checkActive)
             }
             checkActive()
-            currentCoroutineContext().ensureActive()
+            val trackOrder = if (includeSortedTracks && sortMode != LibraryTrackSortMode.Random) {
+                LinkedLibraryTrackOrder.build(filteredTracks, sortMode, previousTrackOrder, checkActive)
+            } else null
             return LinkedLibraryCatalog(
-                tracks = if (includeSortedTracks) {
-                    filteredTracks.sortedForLinkedLibrary(sortMode, randomOrder, checkActive)
-                } else {
-                    filteredTracks
+                tracks = when {
+                    !includeSortedTracks -> filteredTracks
+                    trackOrder != null -> trackOrder.tracks
+                    else -> randomOrder.order(filteredTracks, checkActive)
                 },
                 albums = catalogAlbums.sortedForLibrary(linkedAlbumSort(albumSortMode)).also { checkActive() },
                 artists = if (includeArtists) {
@@ -77,6 +81,7 @@ internal data class LinkedLibraryCatalog(
                     emptyList()
                 },
                 playlists = filteredPlaylists,
+                trackOrder = trackOrder,
             )
         }
     }
@@ -178,42 +183,6 @@ private suspend fun List<EchoRemotePlaylist>.filterLinkedPlaylistQuery(query: St
             playlist.sourceLabel.orEmpty(),
         )
         terms.all(searchableText::contains)
-    }
-}
-
-private fun List<EchoRemoteTrack>.sortedForLinkedLibrary(
-    sortMode: LibraryTrackSortMode,
-    randomOrder: LinkedLibraryRandomOrder,
-    checkActive: () -> Unit,
-): List<EchoRemoteTrack> {
-    val compare = when (sortMode) {
-        LibraryTrackSortMode.Title,
-        LibraryTrackSortMode.FrequentlyPlayed,
-        LibraryTrackSortMode.RecentlyPlayed,
-        LibraryTrackSortMode.RecentlyUpdated,
-        ->
-            compareBy<EchoRemoteTrack> { it.title.lowercase() }
-                .thenBy { it.artist.lowercase() }
-                .thenBy { it.album.orEmpty().lowercase() }
-        LibraryTrackSortMode.Duration ->
-            compareByDescending<EchoRemoteTrack> { it.durationMs }
-                .thenBy { it.title.lowercase() }
-        LibraryTrackSortMode.Random -> return randomOrder.order(this, checkActive)
-        LibraryTrackSortMode.Artist ->
-            compareBy<EchoRemoteTrack> { it.artist.lowercase() }
-                .thenBy { it.album.orEmpty().lowercase() }
-                .thenBy { it.title.lowercase() }
-        LibraryTrackSortMode.Album ->
-            compareBy<EchoRemoteTrack> { it.album.orEmpty().lowercase() }
-                .thenBy { it.artist.lowercase() }
-                .thenBy { it.title.lowercase() }
-        // Local-only modes are never offered for a linked catalog.
-        else -> compareBy<EchoRemoteTrack> { it.title.lowercase() }
-            .thenBy { it.artist.lowercase() }.thenBy { it.album.orEmpty().lowercase() }
-    }
-    return sortedWith { left, right ->
-        checkActive()
-        compare.compare(left, right)
     }
 }
 

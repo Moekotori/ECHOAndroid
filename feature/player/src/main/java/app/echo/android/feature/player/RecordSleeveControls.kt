@@ -6,16 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.QueueMusic
-import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.RepeatOne
-import androidx.compose.material.icons.outlined.Shuffle
-import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,21 +53,22 @@ internal fun RecordSleeveTransport(
     isPlaying: Boolean,
     shuffleEnabled: Boolean,
     repeatMode: EchoRepeatMode,
-    onToggleShuffle: () -> Unit,
-    onCycleRepeatMode: () -> Unit,
+    onCyclePlaybackMode: () -> Unit,
     onPrevious: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
 ) {
     val haptics = rememberEchoHapticPerformer()
+    val mode = QueuePlaybackMode.from(repeatMode, shuffleEnabled)
     Row(
         Modifier.fillMaxWidth().height(78.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RecordSleeveIconButton(
-            Icons.Outlined.Shuffle, stringResource(R.string.feature_player_shuffle),
-            onClick = onToggleShuffle, selected = shuffleEnabled, iconSize = 20.dp,
+            mode.icon(), stringResource(mode.label()),
+            onClick = onCyclePlaybackMode, selected = mode != QueuePlaybackMode.Sequential, iconSize = 20.dp,
+            animateMode = true,
         )
         RecordSleeveIconButton(
             PlayerControlIcons.Previous, stringResource(R.string.feature_player_previous_af0264),
@@ -86,15 +84,7 @@ internal fun RecordSleeveTransport(
             PlayerControlIcons.Next, stringResource(R.string.feature_player_next_d67904),
             onClick = { haptics.tick(); onNext() }, iconSize = 28.dp,
         )
-        RecordSleeveIconButton(
-            if (repeatMode == EchoRepeatMode.One) Icons.Outlined.RepeatOne else Icons.Outlined.Repeat,
-            stringResource(when (repeatMode) {
-                EchoRepeatMode.Off -> R.string.feature_player_repeat_off_254ca2
-                EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
-                EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
-            }),
-            onClick = onCycleRepeatMode, selected = repeatMode != EchoRepeatMode.Off, iconSize = 20.dp,
-        )
+        Spacer(Modifier.size(48.dp))
     }
 }
 
@@ -126,6 +116,7 @@ internal fun RecordSleeveIconButton(
     iconSize: Dp = 25.dp,
     selected: Boolean? = null,
     enabled: Boolean = true,
+    animateMode: Boolean = false,
 ) {
     IconButton(
         onClick = onClick,
@@ -133,10 +124,9 @@ internal fun RecordSleeveIconButton(
         modifier = modifier.size(48.dp).semantics { selected?.let { this.selected = it } },
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            EchoIcon(
-                icon, contentDescription = description,
-                tint = RecordSleeveStyle.Wine.copy(alpha = if (enabled) 1f else 0.38f),
-                modifier = Modifier.size(iconSize),
+            PlaybackModeIcon(
+                icon, description, RecordSleeveStyle.Wine.copy(alpha = if (enabled) 1f else 0.38f),
+                Modifier.size(iconSize), animateMode,
             )
             if (selected != null) {
                 Box(Modifier.size(3.dp).background(

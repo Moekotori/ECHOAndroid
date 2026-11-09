@@ -22,14 +22,14 @@
     <string name="playlist_user_section">我的歌單</string>
     <string name="playlist_smart_section">智慧歌單</string>
     <string name="playlist_import">匯入歌單</string>
-    <string name="playlist_import_hint">支援 M3U、M3U8、PLS；比對目前曲庫中的歌曲，不下載音訊。</string>
+    <string name="playlist_import_hint">匯入時會比對目前曲庫中的歌曲。</string>
     <string name="playlist_import_reading">正在比對歌曲…</string>
     <string name="playlist_import_summary">%1$d 首可匯入 · 共 %2$d 筆記錄</string>
     <string name="playlist_import_name">歌單名稱</string>
     <string name="playlist_import_saving">正在儲存…</string>
     <string name="playlist_import_confirm">匯入已比對歌曲</string>
     <string name="playlist_import_empty">檔案中沒有歌單記錄。</string>
-    <string name="playlist_import_failed">無法讀取這個歌單檔案。</string>
+    <string name="playlist_import_failed">無法讀取播放清單。請選擇有效的 M3U、M3U8、PLS、XSPF、WPL、ASX、CSV、TXT 或 ECHO JSON 檔案。</string>
     <string name="playlist_import_no_matches">找不到符合的歌曲，請先掃描音樂檔案，再重新匯入。</string>
     <string name="playlist_import_too_large">請選擇不超過 256 KiB 的歌單檔案。</string>
     <string name="playlist_import_too_many">單一檔案最多包含 2,000 筆記錄。</string>

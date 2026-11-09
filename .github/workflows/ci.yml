@@ -14,8 +14,38 @@ permissions:
   contents: read
 
 jobs:
+  preflight:
+    name: Check workflows and release tooling
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check Actions workflow syntax and expressions
+        env:
+          ACTIONLINT_VERSION: '1.7.12'
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}" \
+            --output "$RUNNER_TEMP/$archive"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test release tooling
+        run: python3 -m unittest discover -s scripts -p 'test_prepare_android_release.py'
+
   verify:
     name: Test and assemble
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -32,7 +62,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: "tools platform-tools platforms;android-37.0 ndk;27.2.12479018 cmake;3.22.1"
+          packages: "tools platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;27.2.12479018 cmake;3.22.1"
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -51,11 +81,24 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Check module graph
+      - name: Check module graph and localization
         run: ./gradlew checkModules checkLocalization --no-configuration-cache
+
+      - name: Upload module map
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-map
+          path: build/reports/module-map.md
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Unit tests and assemble debug
         run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+
+      - name: Verify debug APK
+        run: |
+          python3 scripts/verify-android-apk.py app/build/outputs/apk/debug/*.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/*.apk
 
       - name: Upload test reports
         if: ${{ !cancelled() }}

@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.FormatListNumbered
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
@@ -51,6 +51,8 @@ internal enum class QueuePlaybackMode(val repeatMode: EchoRepeatMode, val shuffl
     RepeatAll(EchoRepeatMode.All, false),
     RepeatOne(EchoRepeatMode.One, false),
     Shuffle(EchoRepeatMode.All, true);
+
+    fun next(): QueuePlaybackMode = entries[(ordinal + 1) % entries.size]
 
     companion object {
         fun from(repeatMode: EchoRepeatMode, shuffleEnabled: Boolean): QueuePlaybackMode = when {
@@ -150,15 +152,15 @@ private fun QueueModeLabel(mode: QueuePlaybackMode, modifier: Modifier = Modifie
     }
 }
 
-private fun QueuePlaybackMode.label(): Int = when (this) {
+internal fun QueuePlaybackMode.label(): Int = when (this) {
     QueuePlaybackMode.Sequential -> R.string.feature_player_in_order_47b60a
     QueuePlaybackMode.RepeatAll -> R.string.feature_player_repeat_all_b8cce1
     QueuePlaybackMode.RepeatOne -> R.string.feature_player_repeat_one_3df94f
     QueuePlaybackMode.Shuffle -> R.string.feature_player_shuffle
 }
 
-private fun QueuePlaybackMode.icon() = when (this) {
-    QueuePlaybackMode.Sequential -> Icons.AutoMirrored.Rounded.QueueMusic
+internal fun QueuePlaybackMode.icon() = when (this) {
+    QueuePlaybackMode.Sequential -> Icons.Rounded.FormatListNumbered
     QueuePlaybackMode.RepeatAll -> Icons.Rounded.Repeat
     QueuePlaybackMode.RepeatOne -> Icons.Rounded.RepeatOne
     QueuePlaybackMode.Shuffle -> Icons.Rounded.Shuffle

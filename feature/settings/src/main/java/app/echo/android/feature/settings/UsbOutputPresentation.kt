@@ -30,6 +30,7 @@ internal data class UsbOutputPresentation(
         assessment == DacAssessment.ClockUnverified -> R.string.usb_page_clock_unverified
         failed -> R.string.usb_page_output_stopped
         verified -> R.string.dac_status_direct_short
+        streaming && assessment == DacAssessment.Compatible -> R.string.usb_page_compatible_active
         streaming -> R.string.dac_status_exclusive_short
         permissionPending -> R.string.diag_usb_wait_permission
         !permissionGranted -> R.string.diag_unauthorized

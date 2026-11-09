@@ -65,9 +65,12 @@ internal class EchoUsbExclusiveAudioOutput(
         if (!session.openResult.isReady) return
         session.setKeepAlive(false)
         publishOutputStatus(streaming = reportedPositionAdvancing)
-        // Propagate per the AudioOutput contract: a failed drain must surface now instead
-        // of corrupting position state until the next write.
-        drainPending()
+        // Media3's play() does not declare WriteException.
+        try {
+            drainPending()
+        } catch (error: AudioOutput.WriteException) {
+            throw IllegalStateException("USB PCM resume failed", error)
+        }
     }
 
     private fun publishOutputStatus(streaming: Boolean) {
@@ -203,7 +206,11 @@ internal class EchoUsbExclusiveAudioOutput(
                 throw IllegalStateException("USB PCM drain failed", error)
             }
         }
-        return session.completedFrames() * 1_000_000L / sampleRateHz
+        val completed = session.completedFrames()
+        if (completed < 0) {
+            throw IllegalStateException("USB PCM transport failed", AudioOutput.WriteException(-1, false))
+        }
+        return completed * 1_000_000L / sampleRateHz
     }
 
     override fun getPlaybackParameters(): PlaybackParameters = playbackParameters
@@ -248,7 +255,8 @@ internal class EchoUsbExclusiveAudioOutput(
         if (result.state == UsbExclusiveOutputState.OpenFailed || result.state == UsbExclusiveOutputState.Closed ||
             result.state == UsbExclusiveOutputState.UnsupportedTransport ||
             result.bytesWritten !in 0..packedBytes || result.bytesWritten % destFrameBytes != 0) {
-            throw AudioOutput.WriteException(-1, result.state == UsbExclusiveOutputState.OpenFailed)
+            val canRetry = result.state == UsbExclusiveOutputState.OpenFailed && !session.hasTransferError()
+            throw AudioOutput.WriteException(-1, canRetry)
         }
         return result.bytesWritten
     }

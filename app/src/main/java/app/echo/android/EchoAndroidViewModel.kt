@@ -186,6 +186,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         settingsStore = settingsStore,
         resolver = application.contentResolver,
         appContext = application,
+        scannedPlaylists = { mediaInspection.playlists },
     )
     private val lyricsController = (application as EchoApplication).lyricsSession.controller
     internal val libraryMigration = LibraryMigrationController(application, repository, settingsStore, lyricsController)
@@ -318,6 +319,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val rediscoveredAlbums: StateFlow<List<AlbumSummary>> = libraryController.rediscoveredAlbums
     val scanState: StateFlow<LibraryScanProgress> = libraryController.scanState
     internal val watchedLibraryTrees = settingsStore.watchedLibraryTreesFlow
+    internal val libraryScanOptions = settingsStore.libraryScanOptionsFlow
 
     internal suspend fun saveLibraryScanOptions(options: LibraryScanOptions) =
         settingsStore.setLibraryScanOptions(options)
@@ -542,22 +544,31 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     suspend fun cleanupLocalLibrary(): app.echo.android.data.LibraryHygieneResult =
         libraryController.cleanupLocalLibrary()
 
-    fun refreshLibrary(options: LibraryScanOptions? = null) {
-        libraryController.refreshLibrary(options)
+    fun refreshLibrary() {
+        libraryController.refreshLibrary()
     }
 
     fun refreshLibraryIfEmpty() {
         libraryController.refreshLibraryIfEmpty()
     }
 
-    internal fun refreshReceivedMusicFolder(treeUri: Uri, options: LibraryScanOptions) = libraryController.refreshReceivedMusicFolder(treeUri, options)
+    internal fun refreshReceivedMusicFolder(treeUri: Uri) = libraryController.refreshReceivedMusicFolder(treeUri)
 
-    fun refreshLibraryFolder(treeUri: Uri, options: LibraryScanOptions = LibraryScanOptions()) {
-        libraryController.refreshLibraryFolder(treeUri, options)
+    internal suspend fun saveLibraryFolderScanRules(
+        treeUri: Uri,
+        rules: app.echo.android.model.library.LibraryFolderScanRules,
+    ) = libraryController.saveLibraryFolderScanRules(treeUri, rules)
+
+    fun refreshLibraryFolder(treeUri: Uri) {
+        libraryController.refreshLibraryFolder(treeUri)
     }
 
     fun onLibraryForeground() {
         libraryController.onForeground()
+    }
+
+    fun onLibraryBackground() {
+        libraryController.onBackground()
     }
 
     fun cancelScan() {
@@ -1203,12 +1214,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun importM3uPlaylist(uri: Uri) {
-        playlistTools.prepare(uri)
-    }
-
-    internal suspend fun importM3uPlaylistWithResult(uri: Uri): EchoPlaylist? = playlistTools.importImmediately(uri)
-
     fun exportBackup(uri: Uri) {
         viewModelScope.launch {
             try { libraryMigration.export(uri); _backupNotice.value = app.echo.android.model.backup.EchoBackupNotice.Exported }
@@ -1326,6 +1331,10 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun toggleShuffle() {
         playbackController.toggleShuffle()
+    }
+
+    fun setPlaybackMode(repeat: app.echo.android.model.playback.EchoRepeatMode, shuffle: Boolean) {
+        playbackController.setPlaybackMode(repeat, shuffle)
     }
 
     fun setPlaybackSpeed(speed: Float, nightcore: Boolean) {
@@ -1764,18 +1773,16 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun setEqualizerBandGain(index: Int, gainDb: Float) {
-        if (playbackController.equalizerState.value.parametric) return
-        playbackController.setEqualizerBandGain(index, gainDb)
-        // Sliders fire per drag frame; the DSP follows live but the DataStore write is
-        // coalesced into one trailing save.
-        equalizerBandGainsPersistJob?.cancel()
-        equalizerBandGainsPersistJob = viewModelScope.launch {
-            delay(SignalDragPersistDebounceMs)
-            updateSettings {
-                setEqualizerBandGains(playbackController.equalizerState.value.gainsDb)
-            }
-        }
+    fun previewEqualizerBandGains(gainsDb: List<Float>) {
+        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) return
+        EchoPlaybackProcessRuntime.equalizerController().setBandGains(gainsDb)
+    }
+
+    fun setEqualizerBandGains(gainsDb: List<Float>) {
+        val controller = EchoPlaybackProcessRuntime.equalizerController()
+        if (!controller.setBandGains(gainsDb)) return
+        val appliedGains = controller.state.value.gainsDb
+        updateSettings { setEqualizerBandGains(appliedGains) }
     }
 
     fun resetEqualizer() {
@@ -1793,7 +1800,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setChannelBalance(state: EchoChannelBalanceState) {
         playbackController.setChannelBalance(state)
-        // Same drag-frame coalescing as band gains: controller live, settings trailing.
+        // Keep the controller live during a drag and save the trailing value.
         channelBalancePersistJob?.cancel()
         channelBalancePersistJob = viewModelScope.launch {
             delay(SignalDragPersistDebounceMs)
@@ -1802,7 +1809,6 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private var channelBalancePersistJob: Job? = null
-    private var equalizerBandGainsPersistJob: Job? = null
 
     fun resetChannelBalance() {
         playbackController.resetChannelBalance()

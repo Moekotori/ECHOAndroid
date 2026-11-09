@@ -6,7 +6,7 @@
     <string name="usb_page_waiting_playback">等待播放</string>
     <string name="usb_page_connect_title">连接你的 USB DAC</string>
     <string name="usb_page_connect_note">用 OTG 连接 DAC，开启独占并授权。</string>
-    <string name="usb_page_verified_note">应用直通已验证，未测量 DAC 硬件。</string>
+    <string name="usb_page_verified_note">应用直通已验证。请用 DAC 调节音量。</string>
     <string name="usb_page_streaming_note">正在输出，时钟与精度未验证。</string>
     <string name="usb_page_step_device">设备</string>
     <string name="usb_page_step_permission">授权</string>
@@ -15,7 +15,16 @@
     <string name="usb_page_step_pending">待就绪</string>
     <string name="usb_page_output_mode">输出模式</string>
     <string name="usb_page_exclusive_note">绕过系统混音，直接输出到 DAC。</string>
-    <string name="usb_page_volume_note">直通时数字音量固定 100%，请先调低 DAC 音量。</string>
+    <string name="usb_page_volume_note">开启后，严格直通播放时无法使用手机调节音量。请先调低 DAC 音量。</string>
+    <string name="usb_page_compatible_active">兼容独占输出</string>
+    <string name="usb_page_compatible_note">当前曲目走兼容 USB 独占，可以使用手机调节音量。</string>
+    <string name="usb_volume_control_on_dac">请用 DAC 调节音量</string>
+    <string name="usb_volume_control_layers">兼容独占播放时，在 ECHO 前台按手机音量键即可调节。</string>
+    <string name="volume_usb_shortcut_note">查看 USB 输出模式和音量调节方式。</string>
+    <string name="usb_volume_control_mode">USB 音量方式</string>
+    <string name="usb_volume_auto_short">优先 DAC 音量</string>
+    <string name="usb_volume_checking">正在确认 USB 音量方式</string>
+    <string name="usb_volume_control_details">音量详情</string>
     <string name="usb_page_connection_preferences">连接偏好</string>
     <string name="usb_page_checks">检查与诊断</string>
     <string name="usb_page_test_pause">停止 USB 输出或关闭独占后再检测。</string>

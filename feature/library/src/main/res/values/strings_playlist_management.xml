@@ -22,14 +22,14 @@
     <string name="playlist_user_section">Your playlists</string>
     <string name="playlist_smart_section">Smart playlists</string>
     <string name="playlist_import">Import playlist</string>
-    <string name="playlist_import_hint">M3U, M3U8 or PLS · Matches songs already in your library. No audio is downloaded.</string>
+    <string name="playlist_import_hint">Matches songs already in your library.</string>
     <string name="playlist_import_reading">Matching songs…</string>
     <string name="playlist_import_summary">%1$d matched · %2$d total</string>
     <string name="playlist_import_name">Playlist name</string>
     <string name="playlist_import_saving">Saving…</string>
     <string name="playlist_import_confirm">Import matched songs</string>
     <string name="playlist_import_empty">This file contains no playlist entries.</string>
-    <string name="playlist_import_failed">Could not read this playlist file.</string>
+    <string name="playlist_import_failed">Could not read the playlist. Choose a valid M3U, M3U8, PLS, XSPF, WPL, ASX, CSV, TXT or ECHO JSON file.</string>
     <string name="playlist_import_no_matches">No songs matched. Scan the music files first, then import again.</string>
     <string name="playlist_import_too_large">Choose a playlist file up to 256 KiB.</string>
     <string name="playlist_import_too_many">A file can contain up to 2,000 entries.</string>

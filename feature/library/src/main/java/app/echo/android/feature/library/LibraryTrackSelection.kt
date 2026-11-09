@@ -67,6 +67,7 @@ internal fun LibraryTrackSelection(
     progress: State<Float>,
     label: String,
     onToggle: () -> Unit,
+    dragModifier: Modifier = Modifier,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val scheme = MaterialTheme.colorScheme
@@ -74,7 +75,8 @@ internal fun LibraryTrackSelection(
         Box(
             Modifier.size(width = 48.dp, height = 52.dp)
                 .semantics { contentDescription = label }
-                .toggleable(selected, enabled = enabled, role = Role.Checkbox, onValueChange = { onToggle() }),
+                .toggleable(selected, enabled = enabled, role = Role.Checkbox, onValueChange = { onToggle() })
+                .then(dragModifier),
             contentAlignment = Alignment.Center,
         ) {
             Canvas(Modifier.size(22.dp)) {

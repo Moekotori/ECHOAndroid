@@ -57,8 +57,8 @@ internal fun EchoLibraryRepository.orderedPlaylistPaging(id: String) =
             }).flow
     }
 
-suspend fun EchoLibraryRepository.preparePlaylistImport(text: String): PlaylistImportPreview = withContext(Dispatchers.IO) {
-    val entries = PlaylistFileCodec.parse(text)
+suspend fun EchoLibraryRepository.preparePlaylistImport(text: String, fileName: String? = null): PlaylistImportPreview = withContext(Dispatchers.IO) {
+    val entries = PlaylistFileCodec.parse(text, fileName)
     require(entries.isNotEmpty()) { "Empty playlist" }
     val matcher = PlaylistImportMatcher(entries)
     var after = ""
@@ -71,6 +71,29 @@ suspend fun EchoLibraryRepository.preparePlaylistImport(text: String): PlaylistI
         yield()
     }
     matcher.preview()
+}
+
+suspend fun EchoLibraryRepository.exportPlaylistFile(
+    id: String, name: String, format: PlaylistExportFormat,
+): String? = withContext(Dispatchers.IO) {
+    val tracks = playlistTracksForPlayback(id, limit = 10_001)
+    require(tracks.size <= 10_000) { "Playlist exceeds 10,000 tracks" }
+    if (format == PlaylistExportFormat.Text || format == PlaylistExportFormat.Csv) {
+        return@withContext exportPlaylistText(tracks.map { it.toEchoTrack() }, format)
+    }
+    if (tracks.isEmpty()) return@withContext null
+    val locations = resolveLibraryFileNames(appContext.contentResolver, tracks.map {
+        M3uMatchRow(it.id, it.title, it.artist, it.relativePath, it.contentUri, it.fileName)
+    }).associate { it.id to (it.fileLocation() ?: it.contentUri) }
+    PlaylistFileCodec.write(name, tracks.map { track ->
+        M3uExportTrack(
+            title = track.title,
+            artist = track.artist,
+            durationMs = track.durationMs,
+            location = if (CueSheetPolicy.isCueTrackId(track.id)) track.contentUri else locations.getValue(track.id),
+            album = track.album,
+        )
+    }, format)
 }
 
 suspend fun EchoLibraryRepository.createImportedPlaylist(name: String, preview: PlaylistImportPreview): EchoPlaylist? {

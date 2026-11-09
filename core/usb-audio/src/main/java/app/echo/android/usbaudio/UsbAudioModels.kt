@@ -27,6 +27,7 @@ data class UsbAudioDescriptorInfo(
     val acInterfaceNumber: Int? = null,
     val clockSourceIds: List<Int> = emptyList(),
     val usbVersion: Int? = null,
+    val busPacketsPerSecond: Int? = null,
 ) {
     val sampleRates: List<Int>
         get() = streamingFormats
@@ -69,6 +70,9 @@ data class UsbAudioStreamingFormat(
     val terminalLink: Int? = null,
     val clockSourceIds: List<Int> = emptyList(),
     val clockSelectorSources: Map<Int, List<Int>> = emptyMap(),
+    val uac1SampleRateControl: Boolean? = null,
+    val clockValiditySources: Set<Int> = emptySet(),
+    val requiresImplicitFeedback: Boolean = false,
 ) {
     val isIsochronousOut: Boolean
         get() = endpointDirection == UsbEndpointDirection.Out &&

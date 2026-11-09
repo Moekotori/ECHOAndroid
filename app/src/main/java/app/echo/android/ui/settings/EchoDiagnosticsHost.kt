@@ -68,7 +68,7 @@ internal fun EchoDiagnosticsHost(
                 onResumeOnReconnect = viewModel::setResumeOnAudioReconnect,
             )
         },
-        usbOutputContent = { onOpenSound ->
+        usbOutputContent = { onOpenSound, onOpenAppVolume ->
             UsbAudioSettingsContent(
                 compactMode = appSettings.compactModeEnabled,
                 status = playbackStatus,
@@ -83,6 +83,7 @@ internal fun EchoDiagnosticsHost(
                 onUsbExclusiveAutoRequestOnStartupChange = viewModel::setUsbExclusiveAutoRequestOnStartup,
                 onTestUsbExclusiveDriver = viewModel::testUsbExclusiveDriver,
                 onOpenSound = onOpenSound,
+                onOpenAppVolume = onOpenAppVolume,
             )
         },
         onSwipeToConnect = onSwipeToConnect,
@@ -104,7 +105,8 @@ internal fun EchoDiagnosticsHost(
         opraState = opraState,
         onEqualizerEnabledChange = viewModel::setEqualizerEnabled,
         onEqualizerPresetSelected = viewModel::setEqualizerPreset,
-        onEqualizerBandGainChange = viewModel::setEqualizerBandGain,
+        onEqualizerBandGainsChange = viewModel::setEqualizerBandGains,
+        onEqualizerBandGainsPreview = viewModel::previewEqualizerBandGains,
         onEqualizerReset = viewModel::resetEqualizer,
         onEqualizerPreampChange = viewModel::setEqualizerPreamp,
         onEqualizerOptionsChange = viewModel::setEqualizerOptions, onEqualizerOptionsPreview = viewModel::previewEqualizerOptions,

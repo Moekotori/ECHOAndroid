@@ -5,9 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.sharp.QueueMusic
-import androidx.compose.material.icons.sharp.Repeat
-import androidx.compose.material.icons.sharp.RepeatOne
-import androidx.compose.material.icons.sharp.Shuffle
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.rememberEchoHapticPerformer
 import androidx.compose.material3.IconButton
@@ -26,7 +23,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoRepeatMode
 
 internal data class ExpressivePlayerActions(
     val playPause: () -> Unit,
@@ -35,8 +31,7 @@ internal data class ExpressivePlayerActions(
     val seek: (Long) -> Unit,
     val queue: () -> Unit,
     val cast: (() -> Unit)?,
-    val shuffle: () -> Unit,
-    val repeat: () -> Unit,
+    val cyclePlaybackMode: () -> Unit,
     val favorite: () -> Unit,
     val lyrics: () -> Unit,
     val openArtist: ((trackId: String, artistName: String) -> Unit)? = null,
@@ -95,15 +90,17 @@ private fun TransportTile(icon: ImageVector, label: String, click: () -> Unit, t
 @Composable
 internal fun ExpressiveUtilities(pixel: Boolean, status: EchoPlaybackStatus, actions: ExpressivePlayerActions) {
     val ink = if (pixel) ExpressivePlayerStyle.PixelInk else ExpressivePlayerStyle.PosterInk
+    val mode = QueuePlaybackMode.from(status.repeatMode, status.shuffleEnabled)
+    val modeIcon = if (pixel) when (mode) {
+        QueuePlaybackMode.Sequential -> mode.icon()
+        QueuePlaybackMode.RepeatAll -> PixelPlayerIcons.Repeat
+        QueuePlaybackMode.RepeatOne -> mode.icon()
+        QueuePlaybackMode.Shuffle -> PixelPlayerIcons.Shuffle
+    } else mode.icon()
     Row(Modifier.fillMaxWidth().height(62.dp), horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically) {
-        UtilityIcon(if (pixel) PixelPlayerIcons.Shuffle else Icons.Sharp.Shuffle, stringResource(R.string.feature_player_shuffle), ink, status.shuffleEnabled, actions.shuffle)
-        UtilityIcon(if (pixel && status.repeatMode != EchoRepeatMode.One) PixelPlayerIcons.Repeat else if (status.repeatMode == EchoRepeatMode.One) Icons.Sharp.RepeatOne else Icons.Sharp.Repeat,
-            stringResource(when (status.repeatMode) {
-                EchoRepeatMode.Off -> R.string.feature_player_repeat_off_254ca2
-                EchoRepeatMode.One -> R.string.feature_player_repeat_one_3df94f
-                EchoRepeatMode.All -> R.string.feature_player_repeat_all_751078
-            }), ink, status.repeatMode != EchoRepeatMode.Off, actions.repeat)
+        UtilityIcon(modeIcon, stringResource(mode.label()), ink, mode != QueuePlaybackMode.Sequential, actions.cyclePlaybackMode,
+            animateMode = true)
         UtilityIcon(if (pixel) PixelPlayerIcons.Queue else Icons.AutoMirrored.Sharp.QueueMusic, stringResource(R.string.feature_player_queue_37fa6a), ink, false, actions.queue)
         UtilityIcon(if (pixel) PixelPlayerIcons.More else PlayerControlIcons.More,
             stringResource(R.string.feature_player_expand_playback_settings_cf64a0), ink, false, actions.more)
@@ -111,11 +108,11 @@ internal fun ExpressiveUtilities(pixel: Boolean, status: EchoPlaybackStatus, act
 }
 
 @Composable
-private fun UtilityIcon(icon: ImageVector, label: String, ink: Color, active: Boolean, onClick: () -> Unit) {
+private fun UtilityIcon(icon: ImageVector, label: String, ink: Color, active: Boolean, onClick: () -> Unit, animateMode: Boolean = false) {
     val haptics = rememberEchoHapticPerformer()
     IconButton({ haptics.tick(); onClick() }, modifier = Modifier.size(48.dp).semantics { selected = active }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            EchoIcon(icon, label, tint = ink, modifier = Modifier.size(30.dp))
+            PlaybackModeIcon(icon, label, ink, Modifier.size(30.dp), animateMode)
             Box(Modifier.size(3.dp).background(if (active) ink else Color.Transparent))
         }
     }

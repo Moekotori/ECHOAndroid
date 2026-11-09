@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -28,6 +29,7 @@ fun UsbAudioSettingsContent(
     onUsbExclusiveAutoRequestOnStartupChange: (Boolean) -> Unit,
     onTestUsbExclusiveDriver: () -> Unit,
     onOpenSound: () -> Unit,
+    onOpenAppVolume: () -> Unit,
 ) {
     CompositionLocalProvider(LocalSettingsCompactMode provides compactMode) {
         MaterialTheme(shapes = SettingsShapes) {
@@ -44,10 +46,24 @@ fun UsbAudioSettingsContent(
                 )
                 UsbOutputModeControl(usbBitPerfectEnabled, onUsbBitPerfectEnabledChange)
             }
-            UsbSettingsSection(stringResource(R.string.usb_param_volume)) {
+            UsbSettingsSection(stringResource(R.string.usb_param_volume), contentSpacing = 8.dp) {
                 val volumeLocked = status.diagnostics.bitPerfectState.locksUsbVolume(usbBitPerfectEnabled)
-                UsbVolumeStatus(options, status.diagnostics, volumeLocked, onOptionsChange)
-                UsbFineVolumeControl(options, volumeLocked, onOptionsChange)
+                if (volumeLocked) {
+                    SettingsInfoRow(
+                        stringResource(R.string.usb_volume_control_on_dac),
+                        stringResource(R.string.volume_bypassed),
+                    )
+                } else {
+                    SettingsActionRow(
+                        title = stringResource(R.string.volume_level),
+                        detail = stringResource(R.string.usb_volume_control_layers),
+                        onClick = onOpenAppVolume,
+                    )
+                    key(options.volumeDeviceKey) {
+                        UsbFineVolumeControl(options, onOptionsChange)
+                    }
+                    UsbVolumeStatus(options, status.diagnostics.usbVolume, output.streaming && !output.failed, onOptionsChange)
+                }
             }
             UsbSettingsSection(title = stringResource(R.string.usb_page_connection_preferences)) {
                 SettingsSwitchRow(

@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import app.echo.android.model.library.LibraryScanOptions
+import app.echo.android.model.library.LibraryFolderScanRules
 import app.echo.android.model.settings.EchoBackgroundStyle
 import app.echo.android.model.settings.EchoLibraryLayout
 import app.echo.android.model.settings.EchoHomeLayout
@@ -252,6 +253,9 @@ class EchoSettingsStore(
 
     val volumeSnapshot: Flow<EchoVolumeSnapshot> = context.echoSettings.data
         .map(EchoVolumePreferences::snapshot).distinctUntilChanged()
+
+    suspend fun readLaunchPerformanceMode(): EchoPerformanceMode =
+        EchoPerformanceMode.fromId(context.echoSettings.data.first()[Keys.PerformanceMode])
 
     val appSettings: Flow<EchoAppSettings> =
         context.echoSettings.data.mapSettingsSnapshot(
@@ -1469,8 +1473,11 @@ class EchoSettingsStore(
         }
     }
 
-    suspend fun libraryScanOptions(): LibraryScanOptions =
-        decodeLibraryScanOptions(context.echoSettings.data.first()[Keys.LibraryScanOptions])
+    val libraryScanOptionsFlow: Flow<LibraryScanOptions> = context.echoSettings.data
+        .map { decodeLibraryScanOptions(it[Keys.LibraryScanOptions]) }
+        .distinctUntilChanged()
+
+    suspend fun libraryScanOptions(): LibraryScanOptions = libraryScanOptionsFlow.first()
 
     suspend fun setLibraryScanOptions(options: LibraryScanOptions) {
         context.echoSettings.edit { it[Keys.LibraryScanOptions] = encodeLibraryScanOptions(options) }
@@ -1499,6 +1506,14 @@ class EchoSettingsStore(
         .map { parseWatchedLibraryTrees(it[Keys.WatchedLibraryTrees]) }
         .distinctUntilChanged()
 
+    val observedLibraryTreeUris: Flow<List<String>> = context.echoSettings.data
+        .map { preferences ->
+            val enabled = preferences[Keys.WatchedFolderRescanEnabled] ?: LibraryFolderWatchPolicy.RescanEnabledByDefault
+            if (enabled) parseWatchedLibraryTrees(preferences[Keys.WatchedLibraryTrees])
+                .filter { it.rules.watch }.map { it.uri }.sorted()
+            else emptyList()
+        }.distinctUntilChanged()
+
     suspend fun removeWatchedLibraryTree(uri: String) {
         context.echoSettings.edit { prefs ->
             val remaining = parseWatchedLibraryTrees(prefs[Keys.WatchedLibraryTrees]).filterNot { it.uri == uri }
@@ -1507,10 +1522,23 @@ class EchoSettingsStore(
         }
     }
 
-    suspend fun rememberWatchedLibraryTree(tree: WatchedLibraryTree) {
+    suspend fun rememberWatchedLibraryTree(uri: String, documentId: String, rules: LibraryFolderScanRules? = null) {
         context.echoSettings.edit { prefs ->
+            val current = parseWatchedLibraryTrees(prefs[Keys.WatchedLibraryTrees])
+            val normalizedId = LibraryFolderWatchPolicy.normalizeDocumentId(documentId)
+            val existing = current.firstOrNull { it.uri == uri || it.documentId == normalizedId }
+            if (existing != null && rules == null) return@edit
+            if (existing == null && current.size >= LibraryFolderWatchPolicy.MaxTrees) {
+                check(rules == null) { "Music folder limit reached" }
+                return@edit
+            }
+            val tree = if (existing == null) {
+                WatchedLibraryTree(uri, normalizedId, rules = rules ?: LibraryFolderScanRules())
+            } else {
+                existing.copy(uri = uri, rules = requireNotNull(rules))
+            }
             prefs[Keys.WatchedLibraryTrees] = formatWatchedLibraryTrees(
-                LibraryFolderWatchPolicy.remember(parseWatchedLibraryTrees(prefs[Keys.WatchedLibraryTrees]), tree),
+                LibraryFolderWatchPolicy.remember(current, tree, keepNested = true),
             )
         }
     }

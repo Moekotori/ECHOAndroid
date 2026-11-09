@@ -18,11 +18,20 @@ class LibraryScanOptionsStorageTest {
 
 
     @Test fun persistedRulesSurviveReloadAndCanBeRemoved() {
-        val original = LibraryScanOptions(60_000, 1_048_576, false, false,
-            setOf("Recordings/Call", "Music/Private"))
+        val original = LibraryScanOptions(
+            minDurationMs = 60_000,
+            minSizeBytes = 1_048_576,
+            excludeNonMusicFolders = false,
+            excludeHiddenFolders = false,
+            excludedRelativePaths = setOf("Recordings/Call", "Music/Private"),
+            blockedExtensions = setOf("mp3", "wav"),
+            excludedNameKeywords = setOf("试听"),
+        )
         val restored = decodeLibraryScanOptions(encodeLibraryScanOptions(original))
         assertEquals(original, restored)
         assertFalse(restored.accepts(120_000, 2_000_000, "Recordings/Call/2026/"))
+        assertFalse(restored.acceptsFileFormat("Song.WAVE", alreadyImported = true))
+        assertFalse(restored.includesFileName("歌曲-试听.flac"))
         val cleared = decodeLibraryScanOptions(encodeLibraryScanOptions(restored.copy(excludedRelativePaths = emptySet())))
         assertTrue(cleared.accepts(120_000, 2_000_000, "Recordings/Call/2026/"))
     }

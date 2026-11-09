@@ -22,7 +22,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import app.echo.android.data.EchoSettingsStore
 import app.echo.android.model.settings.EchoEffectivePerformanceMode
-import app.echo.android.model.settings.EchoPerformanceMode
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
@@ -30,7 +29,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -115,9 +113,9 @@ internal fun SplashScreen.installEchoExitTransition(
         try {
             mode = withContext(Dispatchers.IO) {
                 val context = activity.applicationContext
-                val settings = EchoSettingsStore(context).appSettings.first()
+                val performanceMode = EchoSettingsStore(context).readLaunchPerformanceMode()
                 val powerSave = context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
-                EchoPerformanceMode.fromId(settings.performanceMode).resolve(powerSave)
+                performanceMode.resolve(powerSave)
             }
         } catch (_: java.io.IOException) {
             // Settings are optional for this visual transition; keep lightweight mode.
