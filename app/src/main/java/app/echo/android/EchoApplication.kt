@@ -81,11 +81,14 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
     }
 
     internal val appVolumeController by lazy { createAppVolumeController(this, EchoSettingsStore(this)) }
+    internal val oneDriveLibrary by lazy { app.echo.android.data.OneDriveLibrary(this, BuildConfig.ONEDRIVE_CLIENT_ID) }
     internal val appVolumeKeys by lazy { AppVolumeKeys(this) }
     val diagnosticCapture by lazy { app.echo.android.data.EchoDiagnosticRecorder(this, EchoPlaybackProcessRuntime.scope, BuildConfig.VERSION_NAME) }
 
     override fun onCreate() {
         super.onCreate()
+        app.echo.android.playback.EchoOneDrivePlayback.setStreamResolver { uri -> oneDriveLibrary.resolveStream(uri) }
+        EchoPlaybackProcessRuntime.scope.launch { oneDriveLibrary.load() }
         app.echo.android.podcasts.startPodcastProgressRecorder(EchoPlaybackProcessRuntime.scope, podcasts.store)
         radioSession.start(EchoPlaybackProcessRuntime.scope, EchoPlaybackProcessRuntime.surface)
         configureEchoBridgeNotificationArtwork()

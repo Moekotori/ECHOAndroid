@@ -360,8 +360,9 @@
     <string name="diag_eq_wait_system">%1$s · waiting for playback-pipeline EQ</string>
     <string name="diag_eq_off">Off · %1$d bands</string>
 
-    <string name="settings_usb_bitperfect">USB bit-perfect mode</string>
-    <string name="settings_usb_bitperfect_detail">USB exclusive; bypasses EQ and gain. Volume stays at 100%. Unsupported formats stop playback.</string>
+    <string name="settings_usb_bitperfect">USB bit-perfect preferred</string>
+    <string name="settings_usb_bitperfect_detail">Use bit-perfect for supported tracks. Other playable formats use compatible USB exclusive output.</string>
+    <string name="bitperfect_compatible">Compatible USB exclusive</string>
     <string name="bitperfect_off">Strict mode off</string>
     <string name="bitperfect_waiting">Waiting for strict USB playback</string>
     <string name="bitperfect_direct">Integer direct path active</string>

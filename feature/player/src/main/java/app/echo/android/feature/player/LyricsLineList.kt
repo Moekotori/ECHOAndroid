@@ -24,7 +24,7 @@ import kotlin.math.abs
 @Composable
 internal fun LyricsLineList(
     lyrics: EchoLyrics,
-    onAdjustOffset: (Long) -> Unit,
+    onAdjustOffset: ((Long) -> Unit)?,
     positionMsState: State<Long>,
     onSeek: (Long) -> Unit,
     lyricsFontFamily: FontFamily?,
@@ -152,7 +152,9 @@ internal fun LyricsLineList(
                         pendingFollowIndex = index
                         onSeek(line.startMs)
                     }) else null,
-                    onLongClick = { pendingFollowIndex = null; following = false; calibrationIndex = index },
+                    onLongClick = onAdjustOffset?.let {
+                        { pendingFollowIndex = null; following = false; calibrationIndex = index }
+                    },
                 )
             }
         }
@@ -167,7 +169,7 @@ internal fun LyricsLineList(
             }
             calibrationIndex?.let { index ->
                 TextButton(onClick = {
-                    onAdjustOffset(positionMsState.value - lyrics.lines[index].startMs)
+                    onAdjustOffset?.invoke(positionMsState.value - lyrics.lines[index].startMs)
                     pendingFollowIndex = null; calibrationIndex = null; following = true
                 }) { Text(stringResource(L10nR.string.lyrics_line_starts_now), color = lyricAccent) }
             }

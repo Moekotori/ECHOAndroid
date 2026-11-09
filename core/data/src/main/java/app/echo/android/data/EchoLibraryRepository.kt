@@ -2633,7 +2633,7 @@ class EchoLibraryRepository(
         const val LISTEN_STATS_SEED_LIMIT = 256
         const val RECENT_ALBUM_LIMIT = 12
         const val SEARCH_RESULT_LIMIT_PER_TYPE = 6
-        const val TRACK_QUEUE_LIMIT = 200
+        const val TRACK_QUEUE_LIMIT = 1_000
         const val AGGREGATION_QUEUE_LIMIT = 500
     }
 }

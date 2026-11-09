@@ -48,6 +48,27 @@ class SignalDacAssessmentTest {
         val processing = direct.copy(diagnostics = direct.diagnostics.copy(usbBitPerfectEnabled = false))
         assertEquals(DacAssessment.Processing, assessDac(processing))
         assertFalse(processing.hasVerifiedUsbDirect())
+        val compatible = direct.copy(diagnostics = direct.diagnostics.copy(bitPerfectState = EchoBitPerfectState.Compatible))
+        assertEquals(DacAssessment.Compatible, assessDac(compatible))
+        assertFalse(compatible.hasVerifiedUsbDirect())
+        assertFalse(compatible.diagnostics.usbVolumeLocked)
+        assertTrue(direct.diagnostics.usbVolumeLocked)
+        assertTrue(direct.diagnostics.copy(bitPerfectState = EchoBitPerfectState.Waiting).usbVolumeLocked)
+    }
+
+    @Test
+    fun signalReadoutSeparatesLiveDirectAndCompatibleFromStaleOutput() {
+        val compatible = direct.copy(diagnostics = direct.diagnostics.copy(bitPerfectState = EchoBitPerfectState.Compatible))
+        assertEquals(EchoBitPerfectState.Direct, direct.signalBitPerfectState())
+        assertEquals(EchoBitPerfectState.Compatible, compatible.signalBitPerfectState())
+        for (status in listOf(direct, compatible)) {
+            val paused = status.copy(state = EchoPlaybackState.Paused, isPlaying = false)
+            val disconnected = status.copy(diagnostics = status.diagnostics.copy(usbConnected = false))
+            val disabled = status.copy(diagnostics = status.diagnostics.copy(usbBitPerfectEnabled = false))
+            assertEquals(EchoBitPerfectState.Waiting, paused.signalBitPerfectState())
+            assertEquals(EchoBitPerfectState.Waiting, disconnected.signalBitPerfectState())
+            assertEquals(EchoBitPerfectState.Off, disabled.signalBitPerfectState())
+        }
     }
 
     @Test

@@ -59,7 +59,7 @@ internal fun AfterglowImmersivePage(
     lineSpacing: Float, motionMode: String, showTranslation: Boolean, showRomanization: Boolean,
     wordHighlight: Boolean, estimatedHighlight: Boolean, highlightIntensity: Float,
     visible: Boolean, overlayBlocking: Boolean, onDismiss: () -> Unit, onSettings: () -> Unit,
-    onImport: () -> Unit, onAdjustOffset: (Long) -> Unit, onPlayPause: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit,
+    onImport: (() -> Unit)?, onAdjustOffset: ((Long) -> Unit)?, onPlayPause: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit,
     onSeek: (Long) -> Unit, onQueue: () -> Unit, onCast: (() -> Unit)?, castActive: Boolean,
     modifier: Modifier = Modifier,
     outputDelayMs: Int = 0,
@@ -110,7 +110,9 @@ internal fun AfterglowImmersivePage(
             else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
                     Text(status.track?.let { displayTrack(it.title) }.orEmpty(), color = Color(palette.foreground), style = MaterialTheme.typography.headlineSmall)
-                    if (chrome.visible) TextButton(onClick = onImport) { Text(stringResource(R.string.feature_player_import_lyrics_e7494e)) }
+                    if (chrome.visible && onImport != null) TextButton(onClick = onImport) {
+                        Text(stringResource(R.string.feature_player_import_lyrics_e7494e))
+                    }
                 }
             }
             controls({})

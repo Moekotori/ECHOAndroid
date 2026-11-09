@@ -5,4 +5,6 @@ data class PlaybackQueueContext(
     val entryId: String,
     val nextUp: Boolean = false,
     val source: String? = null,
+    val automaticShuffle: Boolean = false,
+    val shuffleGroup: String? = null,
 )

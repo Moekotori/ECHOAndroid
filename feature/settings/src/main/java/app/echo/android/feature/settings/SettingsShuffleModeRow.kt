@@ -37,6 +37,7 @@ internal fun SettingsShuffleModeRow(options: EchoShuffleOptions, onChange: (Echo
     val value = options.normalized
     val scheme = MaterialTheme.colorScheme
     var detailsExpanded by rememberSaveable { mutableStateOf(false) }
+    var classicExpanded by rememberSaveable { mutableStateOf(value.mode.desktopRecentCount == null) }
     SettingsSectionCard(title = stringResource(R.string.settings_shuffle_mode)) {
         Text(
             stringResource(R.string.settings_shuffle_intro),
@@ -45,29 +46,37 @@ internal fun SettingsShuffleModeRow(options: EchoShuffleOptions, onChange: (Echo
             modifier = Modifier.padding(bottom = 12.dp),
         )
         Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            ShuffleModeChoice(
-                title = stringResource(R.string.settings_shuffle_pseudo),
-                summary = stringResource(R.string.settings_shuffle_pseudo_summary),
-                badge = stringResource(R.string.settings_shuffle_recommended),
-                selected = value.mode == EchoShuffleMode.PseudoRandom,
-                onClick = { onChange(value.copy(mode = EchoShuffleMode.PseudoRandom)) },
+            DesktopShuffleChoices(value, onChange)
+            SettingsDisclosureRow(
+                title = stringResource(R.string.settings_shuffle_classic),
+                detail = stringResource(R.string.settings_shuffle_classic_detail),
+                expanded = classicExpanded,
+                onExpandedChange = { classicExpanded = it },
             )
-            ShuffleModeChoice(
-                title = stringResource(R.string.settings_shuffle_pure),
-                summary = stringResource(R.string.settings_shuffle_pure_summary),
-                badge = stringResource(R.string.settings_shuffle_surprise),
-                selected = value.mode == EchoShuffleMode.PureRandom,
-                onClick = { onChange(value.copy(mode = EchoShuffleMode.PureRandom)) },
-            )
-            ShuffleModeChoice(title = stringResource(R.string.settings_shuffle_albums),
-                summary = stringResource(R.string.settings_shuffle_albums_detail), badge = "",
-                selected = value.mode == EchoShuffleMode.Albums,
-                onClick = { onChange(value.copy(mode = EchoShuffleMode.Albums)) })
+            if (classicExpanded) {
+                ShuffleModeChoice(
+                    title = stringResource(R.string.settings_shuffle_pseudo),
+                    summary = stringResource(R.string.settings_shuffle_pseudo_summary),
+                    badge = "",
+                    selected = value.mode == EchoShuffleMode.PseudoRandom,
+                    onClick = { onChange(value.copy(mode = EchoShuffleMode.PseudoRandom)) },
+                )
+                ShuffleModeChoice(
+                    title = stringResource(R.string.settings_shuffle_pure),
+                    summary = stringResource(R.string.settings_shuffle_pure_summary),
+                    badge = stringResource(R.string.settings_shuffle_surprise),
+                    selected = value.mode == EchoShuffleMode.PureRandom,
+                    onClick = { onChange(value.copy(mode = EchoShuffleMode.PureRandom)) },
+                )
+                ShuffleModeChoice(title = stringResource(R.string.settings_shuffle_albums),
+                    summary = stringResource(R.string.settings_shuffle_albums_detail), badge = "",
+                    selected = value.mode == EchoShuffleMode.Albums,
+                    onClick = { onChange(value.copy(mode = EchoShuffleMode.Albums)) })
+            }
         }
-        ShuffleSequencePreview(value)
+        if (value.mode.desktopRecentCount == null) ShuffleSequencePreview(value)
         HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
         when (value.mode) {
-            EchoShuffleMode.Albums -> Unit
             EchoShuffleMode.PseudoRandom -> SettingsSwitchRow(
                 title = stringResource(R.string.settings_shuffle_spread_artists),
                 detail = stringResource(R.string.settings_shuffle_spread_artists_detail),
@@ -85,6 +94,7 @@ internal fun SettingsShuffleModeRow(options: EchoShuffleOptions, onChange: (Echo
                 selectedValue = value.recentTrackCount.toString(),
                 onOptionSelected = { onChange(value.copy(recentTrackCount = it.toInt())) },
             )
+            else -> Unit
         }
         SettingsDisclosureRow(
             title = stringResource(R.string.settings_shuffle_rules),
@@ -99,6 +109,7 @@ internal fun SettingsShuffleModeRow(options: EchoShuffleOptions, onChange: (Echo
                     EchoShuffleMode.PseudoRandom -> R.string.settings_shuffle_pseudo_detail
                     EchoShuffleMode.PureRandom -> R.string.settings_shuffle_pure_detail
                     EchoShuffleMode.Albums -> R.string.settings_shuffle_albums_detail
+                    else -> R.string.settings_shuffle_desktop_rules
                 }),
             )
             if (value.mode == EchoShuffleMode.PureRandom) SettingsInfoRow(
@@ -116,9 +127,28 @@ internal fun SettingsShuffleModeRow(options: EchoShuffleOptions, onChange: (Echo
         }
         SettingsActionRow(
             title = stringResource(R.string.settings_shuffle_reset),
-            detail = stringResource(R.string.settings_shuffle_reset_detail),
+            detail = stringResource(R.string.settings_shuffle_desktop_reset),
             enabled = value != EchoShuffleOptions(),
             onClick = { onChange(EchoShuffleOptions()) },
+        )
+    }
+}
+
+@Composable
+private fun DesktopShuffleChoices(value: EchoShuffleOptions, onChange: (EchoShuffleOptions) -> Unit) {
+    val modes = listOf(
+        Triple(EchoShuffleMode.QueueRandom, R.string.settings_shuffle_queue_draw, R.string.settings_shuffle_queue_draw_detail),
+        Triple(EchoShuffleMode.AvoidRecent, R.string.settings_shuffle_avoid_25, R.string.settings_shuffle_avoid_25_detail),
+        Triple(EchoShuffleMode.AvoidRecentLong, R.string.settings_shuffle_avoid_100, R.string.settings_shuffle_avoid_100_detail),
+        Triple(EchoShuffleMode.LibraryWide, R.string.settings_shuffle_library_wide, R.string.settings_shuffle_library_wide_detail),
+    )
+    for ((mode, title, detail) in modes) {
+        ShuffleModeChoice(
+            title = stringResource(title),
+            summary = stringResource(detail),
+            badge = if (mode == EchoShuffleMode.AvoidRecent) stringResource(R.string.settings_shuffle_recommended) else "",
+            selected = value.mode == mode,
+            onClick = { onChange(value.copy(mode = mode)) },
         )
     }
 }
@@ -147,7 +177,7 @@ private fun ShuffleModeChoice(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                Text(badge, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                if (badge.isNotEmpty()) Text(badge, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
             }
             Text(summary, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
         }

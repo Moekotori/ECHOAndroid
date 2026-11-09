@@ -680,6 +680,23 @@ internal class LibraryController(
         }
     }
 
+    fun refreshOneDrive(library: app.echo.android.data.OneDriveLibrary, folder: app.echo.android.data.OneDriveFolder) {
+        startRemoteSync(fallbackError = appContext.getString(R.string.remote_sync_onedrive_failed)) {
+            library.sync(folder)
+        }
+    }
+
+    fun refreshMountedSshfs(tree: Uri) {
+        val treeKey = java.util.UUID.nameUUIDFromBytes(tree.toString().toByteArray(Charsets.UTF_8))
+        startRemoteSync(fallbackError = appContext.getString(R.string.remote_sync_sshfs_failed)) {
+            repository.refreshDocumentTreeSnapshot(
+                treeUri = tree,
+                relativePathPrefix = "SSHFS/$treeKey/",
+                options = LibraryScanOptions(0L, 0L, false, true),
+            )
+        }
+    }
+
     fun refreshJellyfin(
         endpoint: JellyfinEndpoint,
         onSucceeded: ((accessToken: String, userId: String) -> Unit)? = null,

@@ -106,7 +106,7 @@ internal fun ScrapbookCoverPage(
                             }
                         }
                     }
-                    if (status.track.supportsMusicFavorite()) Box(
+                    if (status.track.showsMusicFavorite()) Box(
                         Modifier.align(Alignment.TopEnd).offset(20.dp, 18.dp).size(48.dp).sticker(ScrapbookStyle.Mint, -12f)
                             .clickable(
                                 enabled = track != null, role = Role.Button,

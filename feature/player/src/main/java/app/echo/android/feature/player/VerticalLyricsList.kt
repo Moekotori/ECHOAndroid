@@ -29,7 +29,7 @@ internal fun VerticalLyricsList(
     position: State<Long>,
     durationMs: Long,
     onSeek: (Long) -> Unit,
-    onAdjustOffset: (Long) -> Unit,
+    onAdjustOffset: ((Long) -> Unit)?,
     fontFamily: FontFamily?,
     fontScale: Float,
     spacing: Float,
@@ -98,7 +98,9 @@ internal fun VerticalLyricsList(
                     onClick = {
                         if (synced && line.startMs >= 0) { pendingSeek = index; calibration = null; onSeek(line.startMs) }
                     },
-                    onLongClick = if (synced && line.startMs >= 0) ({ following = false; pendingSeek = null; calibration = index }) else null,
+                    onLongClick = if (onAdjustOffset != null && synced && line.startMs >= 0) {
+                        { following = false; pendingSeek = null; calibration = index }
+                    } else null,
                     indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 ) else Modifier), horizontalAlignment = Alignment.CenterHorizontally) {
                     VerticalLyricText(
@@ -127,7 +129,7 @@ internal fun VerticalLyricsList(
                 Text(stringResource(R.string.lyrics_back_to_current), color = color)
             }
             calibration?.let { index -> TextButton(onClick = {
-                onAdjustOffset(position.value - lyrics.lines[index].startMs)
+                onAdjustOffset?.invoke(position.value - lyrics.lines[index].startMs)
                 calibration = null; following = true
             }) { Text(stringResource(R.string.lyrics_line_starts_now), color = color) } }
         }

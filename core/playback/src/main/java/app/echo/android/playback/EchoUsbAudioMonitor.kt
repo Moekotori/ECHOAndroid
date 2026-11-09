@@ -141,6 +141,8 @@ class EchoUsbAudioMonitor(context: Context) {
     @Volatile private var exclusiveEnabled = retainedExclusiveEnabled
     private val _status = MutableStateFlow(EchoUsbAudioStatus(exclusiveEnabled = exclusiveEnabled))
     val status: StateFlow<EchoUsbAudioStatus> = _status.asStateFlow()
+    @Volatile internal var playbackSnapshot = UsbAudioDeviceSnapshot()
+        private set
     private var receiverRegistered = false
     @Volatile private var permissionRequestPendingDeviceName: String? = null
 
@@ -229,12 +231,13 @@ class EchoUsbAudioMonitor(context: Context) {
         }
         scanScope.launch {
             if (generation != scanGeneration.get()) return@launch
-            val scanned = scanMutex.withLock {
+            val (scanned, snapshot) = scanMutex.withLock {
                 if (generation != scanGeneration.get()) return@withLock null
                 runCatching { scan() }.getOrNull()
             } ?: return@launch
             if (generation != scanGeneration.get()) return@launch
             val current = _status.value
+            playbackSnapshot = snapshot
             _status.value = scanned.copy(
                 lastRequestedSampleRateHz = if (clearRequestError) {
                     requestedSampleRateHz
@@ -246,7 +249,7 @@ class EchoUsbAudioMonitor(context: Context) {
         }
     }
 
-    private fun scan(): EchoUsbAudioStatus {
+    private fun scan(): Pair<EchoUsbAudioStatus, UsbAudioDeviceSnapshot> {
         val device = findUsbOutputDevice()
         val usbSnapshot = if (exclusiveEnabled) {
             usbAudioProbe.snapshot(permissionRequestPendingDeviceName)
@@ -288,7 +291,7 @@ class EchoUsbAudioMonitor(context: Context) {
                 supportedSampleRates = usbSnapshot.sampleRates,
                 supportedBitDepths = usbSnapshot.descriptor.streamingFormats.mapNotNull { it.bitResolution }.distinct().sorted(),
                 supportedChannelCounts = usbSnapshot.descriptor.streamingFormats.mapNotNull { it.channelCount }.distinct().sorted(),
-            )
+            ) to usbSnapshot
         }
 
         val mixerBitPerfect = Build.VERSION.SDK_INT >= EchoPlatformCapabilities.UsbSystemMixerBitPerfectSdk
@@ -328,7 +331,7 @@ class EchoUsbAudioMonitor(context: Context) {
             supportedBitDepths = usbSnapshot.descriptor.streamingFormats.mapNotNull { it.bitResolution }.distinct().sorted(),
             supportedChannelCounts = usbSnapshot.descriptor.streamingFormats.mapNotNull { it.channelCount }.distinct().sorted(),
             bitPerfectActive = preferredAttributes?.isBitPerfect() == true,
-        )
+        ) to usbSnapshot
     }
 
     private fun clearPreferredMixerAttributes() {
@@ -535,7 +538,7 @@ fun EchoPlaybackDiagnostics.withUsbAudioStatus(status: EchoUsbAudioStatus): Echo
         usbOutputBitDepth = exclusive?.bitDepth,
         usbBufferCapacityFrames = exclusive?.bufferCapacityFrames,
         usbTransfer = transfer,
-        usbVolume = if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled && exclusiveStreaming)
+        usbVolume = if (strict.state == app.echo.android.model.playback.EchoBitPerfectState.Direct && exclusiveStreaming)
             app.echo.android.model.playback.EchoUsbVolumeDiagnostics(EchoPlaybackProcessRuntime.usbOutputOptions.volumeMode.id, "fixed", false, false, null, false, "strict")
             else exclusive?.volumeEvidence?.invoke() ?: EchoPlaybackProcessRuntime.lastUsbVolumeEvidence,
         usbCompatibilityRules = rules,

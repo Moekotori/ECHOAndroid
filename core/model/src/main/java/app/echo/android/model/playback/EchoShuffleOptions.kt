@@ -1,7 +1,7 @@
 package app.echo.android.model.playback
 
 data class EchoShuffleOptions(
-    val mode: EchoShuffleMode = EchoShuffleMode.PseudoRandom,
+    val mode: EchoShuffleMode = EchoShuffleMode.AvoidRecent,
     val spreadArtists: Boolean = true,
     val recentTrackCount: Int = 5,
     val playNextBehavior: EchoPlayNextBehavior = EchoPlayNextBehavior.Repeat,

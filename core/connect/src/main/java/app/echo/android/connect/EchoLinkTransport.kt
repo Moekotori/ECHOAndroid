@@ -1,6 +1,7 @@
 package app.echo.android.connect
 
 import app.echo.android.model.connect.EchoProtocolVersion
+import app.echo.android.model.connect.EchoLinkPhonePresenceTrack
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteEndpoint
 import app.echo.android.model.connect.EchoRemoteAlbum
@@ -39,6 +40,8 @@ internal data class EchoLinkStatusResponse(
     val deviceName: String?,
     val playback: EchoRemotePlaybackSnapshot?,
     val libraryOnly: Boolean = false,
+    // Null for partial updates such as playback commands or SSE snapshots.
+    val supportsPhonePresence: Boolean? = null,
 )
 
 internal data class EchoLinkTrackPage(
@@ -83,6 +86,9 @@ internal interface EchoLinkTransport {
         throw EchoLinkHttpException("phone_library_unsupported", 404)
     }
     suspend fun unregisterPhoneLibrary(endpoint: EchoRemoteEndpoint, sessionId: String) {}
+    suspend fun updatePhonePresence(endpoint: EchoRemoteEndpoint, track: EchoLinkPhonePresenceTrack?) {
+        throw EchoLinkHttpException("phone_presence_unsupported", 404)
+    }
     suspend fun completePairing(endpoint: EchoRemoteEndpoint): EchoRemoteEndpoint
     suspend fun fetchStatus(endpoint: EchoRemoteEndpoint): EchoLinkStatusResponse
     suspend fun createEventTicket(endpoint: EchoRemoteEndpoint): EchoLinkEventTicket
@@ -134,6 +140,21 @@ internal class OkHttpEchoLinkTransport(
     override suspend fun unregisterPhoneLibrary(endpoint: EchoRemoteEndpoint, sessionId: String) {
         executeJson(Request.Builder().url(endpoint.versionedUrl(1, "phone-library", sessionId))
             .authorized(endpoint).delete().build())
+    }
+
+    private val presenceClient = client.newBuilder()
+        .callTimeout(5, TimeUnit.SECONDS)
+        .followRedirects(false)
+        .retryOnConnectionFailure(false)
+        .build()
+
+    override suspend fun updatePhonePresence(endpoint: EchoRemoteEndpoint, track: EchoLinkPhonePresenceTrack?) {
+        require(endpoint.token.isNotBlank() && !endpoint.libraryOnly && !endpoint.needsV2PairExchange)
+        val metadata = track?.let { JSONObject().put("title", it.title).put("artist", it.artist) }
+        val body = JSONObject().put("track", metadata ?: JSONObject.NULL).toString().toRequestBody(JsonMediaType)
+        val request = Request.Builder().url(endpoint.versionedUrl(2, "phone-presence"))
+            .authorized(endpoint).put(body).build()
+        executeText(request, presenceClient)
     }
 
     // The PC sends idle heartbeats every 15 s. Reuse pools, but allow missed heartbeats.
@@ -302,7 +323,10 @@ internal class OkHttpEchoLinkTransport(
                 return@withContext bridge.device(endpoint)
             throw error
         }
-        return@withContext json.toStatusResponse(endpoint)
+        return@withContext json.toStatusResponse(endpoint).copy(
+            supportsPhonePresence = endpoint.token.isNotBlank() &&
+                json.optJSONObject("capabilities")?.opt("phonePresence") == true,
+        )
     }
 
     override suspend fun sendCommand(
@@ -577,8 +601,11 @@ internal class OkHttpEchoLinkTransport(
         if (body.isBlank()) JSONObject() else JSONObject(body)
     }
 
-    private suspend fun executeText(request: Request): String = suspendCancellableCoroutine { continuation ->
-        val call = client.newCall(request)
+    private suspend fun executeText(
+        request: Request,
+        httpClient: OkHttpClient = client,
+    ): String = suspendCancellableCoroutine { continuation ->
+        val call = httpClient.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -591,6 +618,7 @@ internal class OkHttpEchoLinkTransport(
                         val personal = request.url.encodedPath.endsWith("/personal-state")
                         val limit = when {
                             personal -> app.echo.android.model.connect.EchoPersonalStateLimits.MaxBytes.toLong()
+                            request.url.encodedPath == "/echo-link/v2/phone-presence" -> 1_024L
                             request.url.encodedPath.startsWith("/echo-link/peer/v1/") -> PeerResponseLimitBytes
                             else -> MaxResponseBytes
                         }

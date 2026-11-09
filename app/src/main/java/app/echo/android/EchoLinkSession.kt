@@ -27,6 +27,7 @@ import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
 import app.echo.android.model.playback.PlaybackPositionState
+import app.echo.android.playback.EchoPlaybackProcessRuntime
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -94,6 +95,10 @@ class EchoLinkSession(private val application: Application) {
         }
     }
 
+    fun setPhonePresenceEnabled(enabled: Boolean) {
+        scope.launch { settings.setEchoLinkPhonePresenceEnabled(enabled) }
+    }
+
     fun refreshLocalNetworkAccess() {
         val granted = application.hasEchoLocalNetworkAccess()
         if (localNetworkAccess.value == granted) return
@@ -134,6 +139,13 @@ class EchoLinkSession(private val application: Application) {
     }
 
     init {
+        scope.launch {
+            observeEchoLinkPhonePresence(
+                enabled = settings.appSettings.map { it.echoLinkPhonePresenceEnabled },
+                surface = EchoPlaybackProcessRuntime.surface,
+                client = client,
+            )
+        }
         scope.launch {
             observeEchoPhoneLibraryAutoShare(
                 enabled = settings.appSettings.map { it.echoLinkSharePhoneLibraryEnabled },

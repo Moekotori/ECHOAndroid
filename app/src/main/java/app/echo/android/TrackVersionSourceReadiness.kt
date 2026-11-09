@@ -7,7 +7,11 @@ import app.echo.android.data.WebDavEndpoint
 import app.echo.android.model.library.EchoTrack
 
 /** Readiness means matching registered credentials, not a speculative network probe. */
-internal fun trackVersionSourceReadiness(settings: EchoAppSettings, echoLinkConnected: Boolean): (EchoTrack) -> Boolean {
+internal fun trackVersionSourceReadiness(
+    settings: EchoAppSettings,
+    echoLinkConnected: Boolean,
+    oneDriveSourceId: String? = null,
+): (EchoTrack) -> Boolean {
     val subsonic = subsonicEndpointFrom(settings)?.sourceId
     val jellyfin = settings.jellyfinServerUrl?.takeIf { it.isNotBlank() && !settings.jellyfinAccessToken.isNullOrBlank() }
         ?.let { JellyfinEndpoint(it, settings.jellyfinUsername.orEmpty(), settings.jellyfinPassword.orEmpty()).sourceId }
@@ -21,6 +25,7 @@ internal fun trackVersionSourceReadiness(settings: EchoAppSettings, echoLinkConn
         track.source.id.startsWith("jellyfin:") -> track.source.id == jellyfin
         track.source.id.startsWith("webdav:") -> track.source.id == webdav
         track.source.id.startsWith("smb:") -> track.source.id == smb
+        track.source.id.startsWith("onedrive:") -> track.source.id == oneDriveSourceId
         track.source.id == "echo-link" -> echoLinkConnected
         else -> false
     } }

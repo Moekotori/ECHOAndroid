@@ -200,7 +200,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         readiness = {
             val settings = settingsStore.appSettings.first()
             trackVersionSourceReadiness(settings, (getApplication<Application>() as EchoApplication)
-                .echoLinkSession.client.status.value.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected)
+                .echoLinkSession.client.status.value.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected,
+                oneDriveLibrary.connectedSourceId)
         },
         onFailure = { error ->
             EchoErrorLog.record(EchoErrorSource.Library, "Song version selection failed", throwable = error)
@@ -236,7 +237,12 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         queue: List<EchoTrack>, startIndex: Int,
         intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
         source: String? = queue.firstOrNull()?.album?.takeIf { album -> queue.all { it.album == album } },
-    ) = playbackController.playQueue(preferredPlayback.resolve(queue), shuffleStart(queue, startIndex, intent), intent, source)
+    ) {
+        val resolved = preferredPlayback.resolve(queue)
+        val start = shuffleStart(queue, startIndex, intent)
+        val items = playbackController.prepareQueueItems(resolved, source)
+        playbackController.playQueue(resolved, start, intent, source, items = items)
+    }
     private suspend fun playPreferredAlbumQueue(
         queue: List<EchoTrack>, startIndex: Int,
         intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
@@ -1114,7 +1120,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
                 android.widget.Toast.makeText(context, app.echo.android.feature.library.R.string.playlist_queue_empty,
                     android.widget.Toast.LENGTH_SHORT).show()
             } else {
-                val items = playbackController.preparePlaylistQueue(tracks, displayName)
+                val items = playbackController.prepareQueueItems(tracks, displayName)
                 if (!preferredPlayback.isCurrent(token)) return@append
                 playbackController.enqueuePlaylist(tracks, items) {
                     val resources = context.resources
@@ -1292,17 +1298,17 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         playbackController.skipPrevious()
     }
 
-    fun playQueueItem(index: Int) {
+    fun playQueueItem(entryId: String) {
         preferredPlayback.invalidate()
-        playbackController.playQueueItem(index)
+        playbackController.playQueueItem(entryId)
     }
 
-    fun removeQueueItem(index: Int) {
-        playbackController.removeQueueItem(index)
+    fun removeQueueItem(entryId: String) {
+        playbackController.removeQueueItem(entryId)
     }
 
-    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
-        playbackController.moveQueueItem(fromIndex, toIndex)
+    fun moveQueueItem(fromEntryId: String, toEntryId: String) {
+        playbackController.moveQueueItem(fromEntryId, toEntryId)
     }
 
     fun clearQueue() {
@@ -2347,6 +2353,13 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         libraryController.refreshWebDav(endpoint)
         saveWebDavCredentials(serverUrl, username, password)
     }
+
+    internal val oneDriveLibrary get() = getApplication<EchoApplication>().oneDriveLibrary
+
+    internal fun syncOneDriveLibrary(folder: app.echo.android.data.OneDriveFolder) =
+        libraryController.refreshOneDrive(oneDriveLibrary, folder)
+
+    internal fun syncMountedSshfsLibrary(tree: Uri) = libraryController.refreshMountedSshfs(tree)
 
     fun saveSmbCredentials(
         serverUrl: String,

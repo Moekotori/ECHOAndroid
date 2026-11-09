@@ -49,7 +49,7 @@ internal fun queueSearchTarget(hit: QueueSearchHit, queue: PlaybackQueueState): 
     else hit.index.takeIf { queue.items == hit.snapshot && queue.items.getOrNull(it) == hit.track }
 
 @Composable
-internal fun QueueSearchDialog(queue: PlaybackQueueState, onDismiss: () -> Unit, onPlayItem: (Int) -> Unit) {
+internal fun QueueSearchDialog(queue: PlaybackQueueState, onDismiss: () -> Unit, onPlayItem: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     // The dialog owns text input so the IME does not resize the player window.
     Dialog(onDismissRequest = onDismiss) {
@@ -94,7 +94,7 @@ internal fun QueueSearchDialog(queue: PlaybackQueueState, onDismiss: () -> Unit,
 }
 
 @Composable
-private fun ColumnScope.QueueSearchResults(queue: PlaybackQueueState, query: String, onPlayItem: (Int) -> Unit) {
+private fun ColumnScope.QueueSearchResults(queue: PlaybackQueueState, query: String, onPlayItem: (String) -> Unit) {
     var hits by remember(queue.items, queue.playOrder, query) { mutableStateOf<List<QueueSearchHit>?>(null) }
     val latest by rememberUpdatedState(queue)
     LaunchedEffect(queue.items, queue.playOrder, query) {
@@ -109,7 +109,9 @@ private fun ColumnScope.QueueSearchResults(queue: PlaybackQueueState, query: Str
     LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false)) {
         if (results.isEmpty()) item { Text(stringResource(R.string.queue_search_empty), Modifier.padding(vertical = 16.dp)) }
         items(results, key = { it.entryId ?: "${it.track.id}:${it.index}" }) { hit ->
-            Column(Modifier.fillMaxWidth().clickable { queueSearchTarget(hit, latest)?.let(onPlayItem) }
+            Column(Modifier.fillMaxWidth().clickable {
+                if (queueSearchTarget(hit, latest) != null) hit.entryId?.let(onPlayItem)
+            }
                 .heightIn(min = 64.dp).padding(vertical = 10.dp)) {
                 Text(hit.track.title, style = MaterialTheme.typography.titleSmall)
                 Text(listOfNotNull(hit.track.artist, hit.track.album).joinToString(" · "), style = MaterialTheme.typography.bodySmall)

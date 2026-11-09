@@ -41,10 +41,6 @@ internal fun PcManualEntry(
             }
             EchoExpand(expanded) {
                 Column(Modifier.padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ConnectNote(
-                        connectionError ?: stringResource(L10nR.string.echo_link_direct_address_hint),
-                        error = connectionError != null,
-                    )
                     ConnectInput(
                         label = stringResource(L10nR.string.feature_connect_pc_address_or_pairing_link_a3e680),
                         value = address,
@@ -55,6 +51,10 @@ internal fun PcManualEntry(
                         error = if (address.isNotBlank() && !canConnect) {
                             stringResource(L10nR.string.feature_connect_check_the_pc_address_or_paste_a_complete_0f216a)
                         } else null,
+                    )
+                    ConnectNote(
+                        connectionError ?: stringResource(L10nR.string.echo_link_direct_address_hint),
+                        error = connectionError != null,
                     )
                     Button(onClick = onConnect, enabled = canConnect, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(L10nR.string.feature_connect_connect_pc_724ba0))
@@ -75,7 +75,7 @@ internal fun PcLinkPreferences(
     onLinkedLibraryDefaultChange: (Boolean) -> Unit,
     onForgetRequest: () -> Unit,
 ) {
-    ConnectSection(stringResource(L10nR.string.feature_connect_link_preferences_f81ffb), list = true, flat = true) {
+    ConnectSection(stringResource(L10nR.string.feature_connect_link_preferences_f81ffb)) {
         ConnectPreference(stringResource(L10nR.string.feature_connect_auto_reconnect_5259cc),
             if (hasSaved) stringResource(L10nR.string.feature_connect_try_the_saved_pc_when_opening_connect_38be4d)
             else stringResource(L10nR.string.feature_connect_available_after_your_first_saved_connection_7136ab),

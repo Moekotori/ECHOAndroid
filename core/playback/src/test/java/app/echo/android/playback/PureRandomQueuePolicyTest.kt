@@ -80,4 +80,17 @@ class PureRandomQueuePolicyTest {
         order = policy.order(order, keys.take(3), ids.take(3), 2, emptySet(), false, 5)
         assertEquals(2, order.last()) // A settings change did not restart the round.
     }
+
+    @Test fun restoreKeepsTheSavedDrawAndDoesNotRestartTheRound() {
+        val policy = PureRandomQueuePolicy(firstCandidate)
+        policy.restore(1, listOf("old-track"))
+        policy.preferNext("c")
+        val baseKeys = keys.take(3)
+        val baseIds = ids.take(3)
+        val restored = policy.order(listOf(0, 1, 2), baseKeys, baseIds, 0, emptySet(), false, 5)
+        assertEquals(2, restored[1])
+        val finished = policy.order(restored, baseKeys, baseIds, 2, emptySet(), false, 5)
+        assertEquals(2, finished.last())
+        assertEquals(0, policy.remainingDraws())
+    }
 }

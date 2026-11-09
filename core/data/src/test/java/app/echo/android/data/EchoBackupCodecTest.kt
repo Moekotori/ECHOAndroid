@@ -90,7 +90,7 @@ class EchoBackupCodecTest {
         assertEquals(null, old.shuffleRecentTrackCount)
         assertEquals(app.echo.android.model.playback.EchoShuffleMode.PseudoRandom,
             app.echo.android.model.playback.EchoShuffleMode.fromId("future_mode"))
-        assertEquals(app.echo.android.model.playback.EchoShuffleMode.PseudoRandom, EchoAppSettings().shuffleOptions.mode)
+        assertEquals(app.echo.android.model.playback.EchoShuffleMode.AvoidRecent, EchoAppSettings().shuffleOptions.mode)
     }
 
     @Test fun migrationFieldsAndAdvancedRulesRoundTrip() {

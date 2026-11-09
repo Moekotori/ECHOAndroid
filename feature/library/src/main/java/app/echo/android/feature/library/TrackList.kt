@@ -30,15 +30,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import app.echo.android.design.EchoIcon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RippleConfiguration
+import androidx.compose.material3.RippleDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -182,6 +187,16 @@ internal fun TrackList(
     }
 }
 
+// A pointer resting on a song should not make it look selected.
+private val TrackRowRippleConfiguration = with(RippleDefaults.RippleAlpha) {
+    RippleConfiguration(rippleAlpha = RippleAlpha(
+        pressedAlpha = pressedAlpha,
+        focusedAlpha = focusedAlpha,
+        draggedAlpha = draggedAlpha,
+        hoveredAlpha = 0f,
+    ))
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TrackContextMenu(
@@ -245,14 +260,16 @@ internal fun TrackContextMenu(
                 onToggle = { selection?.toggle(track) },
             )
             Box(Modifier.weight(1f)) {
-                content(Modifier.echoCombinedClickable(
-                    enabled = !selecting || canSelect,
-                    role = if (selecting) Role.Checkbox else null,
-                    onClick = { if (selecting) selection.toggle(track) else onPlay() },
-                    onLongClick = { showActions = true },
-                ).then(if (selecting) Modifier.semantics {
-                    toggleableState = if (selected) ToggleableState.On else ToggleableState.Off
-                } else Modifier))
+                CompositionLocalProvider(LocalRippleConfiguration provides TrackRowRippleConfiguration) {
+                    content(Modifier.echoCombinedClickable(
+                        enabled = !selecting || canSelect,
+                        role = if (selecting) Role.Checkbox else null,
+                        onClick = { if (selecting) selection.toggle(track) else onPlay() },
+                        onLongClick = { showActions = true },
+                    ).then(if (selecting) Modifier.semantics {
+                        toggleableState = if (selected) ToggleableState.On else ToggleableState.Off
+                    } else Modifier))
+                }
             }
             if (!selecting) {
                 if (LocalLibraryPlayNext.current && onPlayNext != null) {

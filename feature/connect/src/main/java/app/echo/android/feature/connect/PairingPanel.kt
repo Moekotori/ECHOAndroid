@@ -1,7 +1,6 @@
 package app.echo.android.feature.connect
 
 import app.echo.android.design.EchoIcon
-import app.echo.android.design.EchoLinkModeSwitch
 
 import app.echo.android.feature.connect.R as L10nR
 
@@ -13,15 +12,17 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FileDownload
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkDiscoveryPolicy
@@ -36,6 +37,7 @@ import app.echo.android.model.connect.EchoSavedPcEndpoint
 internal fun PcLinkPanel(
     librarySyncActions: LibrarySyncActions? = null,
     phoneLibraryShareContent: @Composable () -> Unit = {},
+    phonePresenceContent: @Composable () -> Unit = {},
     remoteState: EchoRemoteConnectionState,
     controlPending: Boolean = false,
     pcTitle: String,
@@ -84,13 +86,13 @@ internal fun PcLinkPanel(
     onOpenListening: (() -> Unit)? = null,
     remoteMode: Boolean = true,
     libraryOnly: Boolean = false,
-    onRemoteModeChange: (Boolean) -> Unit = {},
     onOpenPcLibrary: () -> Unit = {},
     openQueueNonce: Int = 0,
     onQueueRequestHandled: () -> Unit = {},
     openConnectionNonce: Int = 0,
     onConnectionRequestHandled: () -> Unit = {},
     onOpenWifiTransfer: (() -> Unit)? = null,
+    onOpenLinkSongTransfer: (() -> Unit)? = null,
 ) {
     var showLibrarySync by remember { mutableStateOf(false) }
     var legacySync by remember { mutableStateOf(false) }
@@ -105,7 +107,7 @@ internal fun PcLinkPanel(
     val connected = remoteState == EchoRemoteConnectionState.Connected
     val busy = remoteState in listOf(EchoRemoteConnectionState.Pairing, EchoRemoteConnectionState.Connecting, EchoRemoteConnectionState.Reconnecting)
     var address by rememberSaveable(savedPcAddress) { mutableStateOf(savedPcAddress.orEmpty()) }
-    var manual by rememberSaveable { mutableStateOf(true) }
+    var manual by rememberSaveable { mutableStateOf(false) }
     val connectionEntry = remember { BringIntoViewRequester() }
     LaunchedEffect(openConnectionNonce) {
         if (openConnectionNonce > 0 && !connected && !busy) {
@@ -116,6 +118,7 @@ internal fun PcLinkPanel(
         if (openConnectionNonce > 0) onConnectionRequestHandled()
     }
     var confirmForget by rememberSaveable { mutableStateOf(false) }
+    var savedPcToForget by rememberSaveable { mutableStateOf<String?>(null) }
     var musicPicker by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(openQueueNonce) {
         if (openQueueNonce > 0 && connected && remoteMode) {
@@ -161,6 +164,7 @@ internal fun PcLinkPanel(
         EchoManualConnectionInput.resolve(address, savedPcs, currentPc)
     }
     val keyboard = LocalSoftwareKeyboardController.current
+    val focus = LocalFocusManager.current
     val connect = { if (endpoint != null && !busy) { keyboard?.hide(); onConnectPc(endpoint.address, endpoint.token) } }
     val connectDevice: (String, String) -> Unit = { deviceAddress, token ->
         if (!busy) {
@@ -171,7 +175,6 @@ internal fun PcLinkPanel(
         }
     }
     LaunchedEffect(remoteState) {
-        if (remoteState == EchoRemoteConnectionState.Error) manual = true
         if (!connected) musicPicker = null
     }
     if (connected && active && musicPicker != null) {
@@ -191,62 +194,58 @@ internal fun PcLinkPanel(
     val listenTitle = stringResource(L10nR.string.feature_connect_listen_together_title)
     val listenDetail = stringResource(L10nR.string.feature_connect_listen_together_detail)
     val manualError = remoteError?.takeIf { manual && remoteState == EchoRemoteConnectionState.Error }
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        PcLinkHero(
+    val reconnect = !busy && !connected && hasSaved && savedPcs.isEmpty()
+    val actionLabel = when {
+        busy -> stringResource(L10nR.string.feature_connect_cancel_connection_fd085f)
+        connected -> stringResource(L10nR.string.feature_connect_disconnect_pc_fd446c)
+        reconnect -> stringResource(L10nR.string.feature_connect_reconnect_pc_ea8c5f)
+        else -> null
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        PcLinkSummary(
             title = if (connected || hasSaved) pcTitle else stringResource(L10nR.string.remote_connect_title),
             state = remoteState,
             showRequirement = !connected && !busy,
             error = if (manualError == null) remoteError else null,
-        ) {
-            when {
-                busy -> {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                    ConnectNote(stringResource(L10nR.string.feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec))
-                    TextButton(onClick = onDisconnect, modifier = Modifier.align(Alignment.End)) {
-                        Text(stringResource(L10nR.string.feature_connect_cancel_connection_fd085f))
+            action = actionLabel?.let { label ->
+                {
+                    TextButton(onClick = {
+                        if (reconnect) connectDevice(savedPcAddress.orEmpty(), savedPcToken.orEmpty())
+                        else onDisconnect()
+                    }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)) {
+                        Text(label, color = if (connected) MaterialTheme.colorScheme.onSurfaceVariant else LocalContentColor.current)
                     }
                 }
-                connected -> TextButton(onClick = onDisconnect, modifier = Modifier.align(Alignment.End)) {
-                    Text(stringResource(L10nR.string.feature_connect_disconnect_pc_fd446c))
-                }
-                hasSaved && !manual && savedPcs.isEmpty() -> Button(
-                    onClick = { connectDevice(savedPcAddress.orEmpty(), savedPcToken.orEmpty()) },
-                    shape = ConnectControlShape, modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(L10nR.string.feature_connect_reconnect_pc_ea8c5f)) }
-            }
-        }
-        if (!libraryOnly && (connected || hasSaved)) {
-            EchoLinkModeSwitch(remoteMode, onRemoteModeChange, Modifier.padding(horizontal = 4.dp))
-        }
+            },
+        )
         when {
             busy -> if (remoteState == EchoRemoteConnectionState.Reconnecting && remoteMode && currentTrackId != null) {
-                ConnectCard { PlaybackControls(true) }
+                PlaybackControls(true)
             }
             connected -> {
-                if (remoteMode && !libraryOnly) {
-                    ConnectCard { PlaybackControls(false) }
-                } else {
-                    Button(onClick = onOpenPcLibrary, modifier = Modifier.fillMaxWidth(), shape = ConnectControlShape) {
-                        Text(stringResource(if (libraryOnly) L10nR.string.echo_bridge_open_library else L10nR.string.echo_link_open_pc_library))
-                    }
-                }
+                if (remoteMode && !libraryOnly) PlaybackControls(false)
+                val libraryTitle = stringResource(if (libraryOnly) L10nR.string.echo_bridge_open_library else L10nR.string.echo_link_open_pc_library)
+                val libraryDetail = if (libraryOnly) null else stringResource(app.echo.android.design.R.string.echo_link_mode_normal_hint)
                 val syncTitle = stringResource(L10nR.string.sync_title)
                 val handoffTitle = stringResource(L10nR.string.echo_link_handoff_phone)
                 ConnectActionList(buildList {
+                    if (!remoteMode || libraryOnly) {
+                        add(ConnectAction(Icons.Rounded.LibraryMusic, libraryTitle, libraryDetail, primary = true, onClick = onOpenPcLibrary))
+                    }
                     if (!libraryOnly && librarySyncActions != null) {
                         add(ConnectAction(Icons.Rounded.Sync, syncTitle, null) { showLibrarySync = true })
                     }
                     if (!libraryOnly && onOpenListening != null) {
-                        add(ConnectAction(Icons.Rounded.Headphones, listenTitle, listenDetail, onOpenListening))
+                        add(ConnectAction(Icons.Rounded.Headphones, listenTitle, listenDetail, onClick = onOpenListening))
                     }
                     if (remoteMode && !libraryOnly && onHandoffPhoneToPc != null) {
-                        add(ConnectAction(Icons.Rounded.SwapHoriz, handoffTitle, null, onHandoffPhoneToPc))
+                        add(ConnectAction(Icons.Rounded.SwapHoriz, handoffTitle, null, onClick = onHandoffPhoneToPc))
                     }
-                }, flat = true)
+                })
             }
             else -> {
-                if (savedPcs.isNotEmpty() && !manual) {
-                    ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91), list = true, flat = true) {
+                if (savedPcs.isNotEmpty()) {
+                    ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91)) {
                         savedPcs.asReversed().forEachIndexed { index, pc ->
                             if (index > 0) ConnectRowDivider()
                             PcDeviceRow(
@@ -254,12 +253,12 @@ internal fun PcLinkPanel(
                                 address = pc.address,
                                 actionLabel = stringResource(L10nR.string.feature_connect_connect_c7c091),
                                 onConnect = { connectDevice(pc.address, pc.token.orEmpty()) },
-                                onForget = { onForgetSavedPc(pc) },
+                                onForget = { savedPcToForget = pc.id },
                             )
                         }
                     }
                 }
-                ConnectSection(stringResource(L10nR.string.feature_connect_nearby_pcs_b9b12a), list = true, flat = true,
+                ConnectSection(stringResource(L10nR.string.feature_connect_nearby_pcs_b9b12a),
                     action = {
                         IconButton(onClick = onRefreshLanDevices) {
                             EchoIcon(Icons.Rounded.Refresh, stringResource(L10nR.string.feature_connect_refresh_828c69))
@@ -287,7 +286,13 @@ internal fun PcLinkPanel(
                 }
                 PcManualEntry(
                     expanded = manual,
-                    onToggle = { keyboard?.hide(); manual = !manual },
+                    onToggle = {
+                        if (manual) {
+                            focus.clearFocus()
+                            keyboard?.hide()
+                        }
+                        manual = !manual
+                    },
                     address = address,
                     onAddressChange = { address = it },
                     canConnect = endpoint != null,
@@ -299,24 +304,22 @@ internal fun PcLinkPanel(
         }
         val wifiTitle = stringResource(L10nR.string.wifi_transfer_title)
         val wifiDetail = stringResource(L10nR.string.wifi_transfer_entry_detail)
+        val transferTitle = stringResource(L10nR.string.link_transfer_title)
         val otherWays = buildList {
             if (onOpenListening != null && !connected) {
-                add(ConnectAction(Icons.Rounded.Headphones, listenTitle, listenDetail, onOpenListening))
+                add(ConnectAction(Icons.Rounded.Headphones, listenTitle, listenDetail, onClick = onOpenListening))
             }
             // Receiving songs from a computer browser is independent of PC remote control, so it never lives in the PC status header.
             if (onOpenWifiTransfer != null) {
-                add(ConnectAction(Icons.Rounded.FileDownload, wifiTitle, wifiDetail, onOpenWifiTransfer))
+                add(ConnectAction(Icons.Rounded.FileDownload, wifiTitle, wifiDetail, onClick = onOpenWifiTransfer))
+            }
+            if (connected && !libraryOnly && onOpenLinkSongTransfer != null) {
+                add(ConnectAction(Icons.Rounded.Folder, transferTitle, null, onClick = onOpenLinkSongTransfer))
             }
         }
-        if (otherWays.isNotEmpty()) {
-            ConnectSection(stringResource(L10nR.string.connect_other_ways_title), flat = true) {
-                otherWays.forEachIndexed { index, action ->
-                    if (index > 0) ConnectRowDivider()
-                    ConnectActionRow(action.icon, action.title, action.detail, action.onClick)
-                }
-            }
-        }
+        ConnectActionList(otherWays, title = stringResource(L10nR.string.connect_other_ways_title))
         phoneLibraryShareContent()
+        phonePresenceContent()
         PcLinkPreferences(
             hasSaved = hasSaved,
             busy = busy,
@@ -326,11 +329,20 @@ internal fun PcLinkPanel(
             onLinkedLibraryDefaultChange = onLinkedLibraryDefaultChange,
             onForgetRequest = { confirmForget = true },
         )
-        Box(Modifier.padding(horizontal = 4.dp)) { ConnectNote(stringResource(L10nR.string.echo_link_battery_hint)) }
+        ConnectNote(stringResource(L10nR.string.echo_link_battery_hint))
     }
     if (confirmForget) ForgetConnectionDialog(
         stringResource(L10nR.string.feature_connect_forget_saved_pc_80b440),
         onDismiss = { confirmForget = false },
         onConfirm = { confirmForget = false; address = ""; onForgetPc() },
     )
+    savedPcToForget?.let { id ->
+        savedPcs.firstOrNull { it.id == id }?.let { pc ->
+            ForgetConnectionDialog(
+                stringResource(L10nR.string.feature_connect_remove_title_323067, pc.name),
+                onDismiss = { savedPcToForget = null },
+                onConfirm = { savedPcToForget = null; onForgetSavedPc(pc) },
+            )
+        }
+    }
 }

@@ -163,6 +163,7 @@ data class EchoAppSettings(
     val echoLinkAutoReconnectEnabled: Boolean = true,
     val echoLinkPreferLinkedLibrary: Boolean = true,
     val echoLinkSharePhoneLibraryEnabled: Boolean = true,
+    val echoLinkPhonePresenceEnabled: Boolean = false,
     val echoLinkPhoneLibraryPort: Int = app.echo.android.model.connect.EchoLinkSharingPort.DefaultPhone,
     val echoLinkSavedPcs: List<app.echo.android.model.connect.EchoSavedPcEndpoint> = emptyList(),
     val replayGainMode: String = EchoReplayGainMode.Auto.id,
@@ -223,6 +224,7 @@ data class EchoSavedPlaybackSession(
     val playbackSpeed: Float = 1f,
     val playbackPitch: Float = 1f,
     val shuffleOrder: List<Int> = emptyList(),
+    val shuffleResume: app.echo.android.model.playback.PlaybackShuffleResume? = null,
 )
 
 class EchoSettingsStore(
@@ -444,6 +446,7 @@ class EchoSettingsStore(
                 echoLinkAutoReconnectEnabled = preferences[Keys.EchoLinkAutoReconnectEnabled] ?: true,
                 echoLinkPreferLinkedLibrary = preferences[Keys.EchoLinkPreferLinkedLibrary] ?: true,
                 echoLinkSharePhoneLibraryEnabled = preferences[Keys.EchoLinkSharePhoneLibraryEnabled] ?: true,
+                echoLinkPhonePresenceEnabled = preferences[Keys.EchoLinkPhonePresenceEnabled] ?: false,
                 echoLinkPhoneLibraryPort = readEchoPhoneLibraryPort(preferences),
                 echoLinkSavedPcs = echoLinkSavedPcsFromPreferences(
                     raw = preferences[Keys.EchoLinkSavedPcs],
@@ -1456,6 +1459,10 @@ class EchoSettingsStore(
         context.echoSettings.edit { it[Keys.EchoLinkSharePhoneLibraryEnabled] = enabled }
     }
 
+    suspend fun setEchoLinkPhonePresenceEnabled(enabled: Boolean) {
+        context.echoSettings.edit { it[Keys.EchoLinkPhonePresenceEnabled] = enabled }
+    }
+
     suspend fun setLibrarySelectedSource(source: String) {
         context.echoSettings.edit {
             it[Keys.LibrarySelectedSource] = normalizeLibrarySelectedSource(source)
@@ -1562,7 +1569,13 @@ class EchoSettingsStore(
             playbackQueueIdentityLoaded = true
         }
         context.echoPlaybackResumeSettings.edit {
-            it[PlaybackResumeKey] = session.toResumePreferenceValue(queueIdentity)
+            val previous = if (session.shuffleResume == null) it[PlaybackResumeKey]?.let(::parsePlaybackResume) else null
+            val retained = previous?.takeIf { resume ->
+                resume.queueIdentity == queueIdentity && resume.currentIndex == session.currentIndex &&
+                    resume.shuffleEnabled == session.shuffleEnabled
+            }?.shuffleResume
+            it[PlaybackResumeKey] = session.copy(shuffleResume = session.shuffleResume ?: retained)
+                .toResumePreferenceValue(queueIdentity)
         }
     }
 
@@ -2090,6 +2103,7 @@ class EchoSettingsStore(
         val EchoLinkAutoReconnectEnabled = booleanPreferencesKey("echo_link_auto_reconnect_enabled")
         val EchoLinkPreferLinkedLibrary = booleanPreferencesKey("echo_link_prefer_linked_library")
         val EchoLinkSharePhoneLibraryEnabled = booleanPreferencesKey("echo_link_share_phone_library_enabled")
+        val EchoLinkPhonePresenceEnabled = booleanPreferencesKey("echo_link_phone_presence_enabled")
         val LibrarySelectedSource = stringPreferencesKey("library_selected_source")
         val WatchedFolderRescanEnabled = booleanPreferencesKey("watched_folder_rescan_enabled")
         val WatchedLibraryTrees = stringPreferencesKey("watched_library_trees")
@@ -2353,6 +2367,8 @@ internal fun EchoSavedPlaybackSession.toPreferenceValue(): String =
                                 put("queueEntry", context.entryId)
                                 put("nextUp", context.nextUp)
                                 put("queueSource", context.source)
+                                if (context.automaticShuffle) put("automaticShuffle", true)
+                                put("shuffleGroup", context.shuffleGroup)
                             }
                             put("id", track.id)
                             put("uri", track.uri)
@@ -2384,6 +2400,7 @@ internal data class EchoSavedPlaybackResume(
     val repeatMode: EchoRepeatMode,
     val playbackSpeed: Float,
     val playbackPitch: Float,
+    val shuffleResume: app.echo.android.model.playback.PlaybackShuffleResume? = null,
 )
 
 internal fun EchoSavedPlaybackSession.playbackQueueIdentity(): String {
@@ -2391,7 +2408,13 @@ internal fun EchoSavedPlaybackSession.playbackQueueIdentity(): String {
     digest.update(shuffleOrder.joinToString(",").toByteArray(StandardCharsets.UTF_8))
     queue.forEach { track ->
         listOf(
-            track.queueContext?.toString().orEmpty(),
+            track.queueContext?.let { context ->
+                // Old resume records hashed this three-field representation.
+                val base = "PlaybackQueueContext(entryId=${context.entryId}, nextUp=${context.nextUp}, source=${context.source})"
+                if (context.automaticShuffle || context.shuffleGroup != null) {
+                    "$base automaticShuffle=${context.automaticShuffle} shuffleGroup=${context.shuffleGroup}"
+                } else base
+            }.orEmpty(),
             track.id,
             track.uri,
             track.title,
@@ -2427,6 +2450,14 @@ internal fun EchoSavedPlaybackSession.toResumePreferenceValue(queueIdentity: Str
         put("repeatMode", repeatMode.toPreferenceValue())
         put("playbackSpeed", playbackSpeed.toDouble())
         put("playbackPitch", playbackPitch.toDouble())
+        shuffleResume?.let { state ->
+            put("shuffleResume", JSONObject().apply {
+                put("entryId", state.entryId)
+                state.pureRemaining?.let { put("remaining", it) }
+                put("recent", JSONArray(state.recentTrackIds))
+                put("previous", JSONArray(state.previousEntryIds))
+            })
+        }
     }.toString()
 
 internal fun parsePlaybackResume(raw: String): EchoSavedPlaybackResume? =
@@ -2443,8 +2474,20 @@ internal fun parsePlaybackResume(raw: String): EchoSavedPlaybackResume? =
             repeatMode = parseSavedRepeatMode(json.optString("repeatMode")),
             playbackSpeed = json.optDouble("playbackSpeed", 1.0).toFloat().coerceIn(0.5f, 2.0f),
             playbackPitch = json.optDouble("playbackPitch", 1.0).toFloat().coerceIn(0.5f, 2.0f),
+            shuffleResume = json.optJSONObject("shuffleResume")?.let(::parseShuffleResume),
         )
     }.getOrNull()
+
+private fun parseShuffleResume(json: JSONObject): app.echo.android.model.playback.PlaybackShuffleResume? {
+    val entryId = json.optString("entryId").takeIf { it.isNotBlank() } ?: return null
+    fun ids(key: String): List<String> {
+        val array = json.optJSONArray(key) ?: return emptyList()
+        val from = (array.length() - app.echo.android.model.playback.PlaybackShuffleResume.HistoryLimit).coerceAtLeast(0)
+        return (from until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
+    }
+    return app.echo.android.model.playback.PlaybackShuffleResume(entryId,
+        json.optInt("remaining", -1).takeIf { it >= 0 }, ids("recent"), ids("previous"))
+}
 
 internal fun EchoSavedPlaybackSession.withPlaybackResume(
     resume: EchoSavedPlaybackResume?,
@@ -2459,6 +2502,7 @@ internal fun EchoSavedPlaybackSession.withPlaybackResume(
         repeatMode = resume.repeatMode,
         playbackSpeed = resume.playbackSpeed,
         playbackPitch = resume.playbackPitch,
+        shuffleResume = resume.shuffleResume?.takeIf { it.entryId == queue[resume.currentIndex].queueContext?.entryId },
     )
 }
 
@@ -2476,6 +2520,8 @@ internal fun parsePlaybackSession(raw: String): EchoSavedPlaybackSession? =
                         queueContext = item.optString("queueEntry").takeIf { it.isNotBlank() }?.let {
                             app.echo.android.model.playback.PlaybackQueueContext(
                                 it, item.optBoolean("nextUp"), item.optString("queueSource").takeIf { value -> value.isNotBlank() && value != "null" },
+                                automaticShuffle = item.optBoolean("automaticShuffle"),
+                                shuffleGroup = item.optString("shuffleGroup").takeIf { value -> value.isNotBlank() && value != "null" },
                             )
                         },
                         id = id,

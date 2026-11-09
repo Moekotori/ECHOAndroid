@@ -354,8 +354,9 @@
     <string name="diag_eq_wait_system">%1$s · ожидание эквалайзера конвейера воспроизведения</string>
     <string name="diag_eq_off">Выкл. · %1$d полос</string>
 
-    <string name="settings_usb_bitperfect">Режим USB bit-perfect</string>
-    <string name="settings_usb_bitperfect_detail">Эксклюзивный USB; обходит EQ и усиление. Громкость 100%. Неподдерживаемые форматы останавливаются.</string>
+    <string name="settings_usb_bitperfect">Приоритет USB bit-perfect</string>
+    <string name="settings_usb_bitperfect_detail">Поддерживаемые треки воспроизводятся в режиме bit-perfect. Для остальных воспроизводимых форматов используется совместимый эксклюзивный вывод USB.</string>
+    <string name="bitperfect_compatible">Совместимый эксклюзивный вывод USB</string>
     <string name="bitperfect_off">Строгий режим выкл.</string>
     <string name="bitperfect_waiting">Ожидание строгого воспроизведения USB</string>
     <string name="bitperfect_direct">Активен целочисленный прямой путь</string>

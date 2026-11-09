@@ -77,7 +77,7 @@ internal fun LyricsSettingsPanel(
     onlineLyricsEnabled: Boolean,
     onDismiss: () -> Unit,
     onCloseLyrics: () -> Unit,
-    onImportLyrics: () -> Unit,
+    onImportLyrics: (() -> Unit)?,
     onImportLyricsFont: () -> Unit,
     onLyricsFontFamilyChange: (String) -> Unit,
     onLyricsFontScaleChange: (Float) -> Unit,
@@ -247,10 +247,12 @@ internal fun LyricsSettingsPanel(
                                     onLyricsShowTranslationChange, hint = if (!hasTranslation) noContent else null)
                                 LyricsSettingToggle(stringResource(L10nR.string.feature_player_romaji_6ad0ab), showRomanization,
                                     onLyricsShowRomanizationChange, hint = if (!hasRomanization) noContent else null)
-                                LyricsSettingToggle(stringResource(L10nR.string.feature_player_sync_tools_ef1217), showLyricsControlDeck, onShowLyricsControlDeckChange)
-                                LyricsSettingToggle(stringResource(L10nR.string.feature_player_online_lyrics_21c928), onlineLyricsEnabled, onOnlineLyricsEnabledChange)
-                                PlaybackActionRow(Icons.Rounded.UploadFile, stringResource(L10nR.string.feature_player_import_lyrics_e7494e),
-                                    framed = false, compact = true, onClick = { onDismiss(); onImportLyrics() })
+                                if (onImportLyrics != null) {
+                                    LyricsSettingToggle(stringResource(L10nR.string.feature_player_sync_tools_ef1217), showLyricsControlDeck, onShowLyricsControlDeckChange)
+                                    LyricsSettingToggle(stringResource(L10nR.string.feature_player_online_lyrics_21c928), onlineLyricsEnabled, onOnlineLyricsEnabledChange)
+                                    PlaybackActionRow(Icons.Rounded.UploadFile, stringResource(L10nR.string.feature_player_import_lyrics_e7494e),
+                                        framed = false, compact = true, onClick = { onDismiss(); onImportLyrics() })
+                                }
                                 PlaybackActionRow(Icons.Rounded.Album, stringResource(L10nR.string.feature_player_back_to_cover_815543),
                                     framed = false, compact = true, onClick = { onDismiss(); onCloseLyrics() })
                             }

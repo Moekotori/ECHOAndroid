@@ -91,7 +91,7 @@ JSON 支持 ECHO 歌词存储文件、网易云及 LRCLIB 响应、逐行对象�
 
 ### 手机、NAS 和音乐服务器，都有入口
 
-除了本地目录，还可以连接自己的 **Subsonic / Navidrome、WebDAV、SMB、Jellyfin / Emby** 音乐来源。Subsonic / Navidrome 支持服务器歌单编辑和收藏写回。
+除了本地目录，还可以连接自己的 **Subsonic / Navidrome、WebDAV、SMB、Jellyfin / Emby、OneDrive（Beta）和 SSHFS 挂载目录**。Subsonic / Navidrome 支持服务器歌单编辑和收藏写回。OneDrive 登录及 SSHFS 目录授权见[远程曲库来源](./docs/remote-library-sources.md)。
 
 想换一种听法，也可以收听网络电台，或添加公开 RSS 播客，按单集继续收听、加入队列。电台与播客的支持范围见 [使用说明](./docs/radio-podcasts.md)。
 

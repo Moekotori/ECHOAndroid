@@ -1,7 +1,6 @@
 package app.echo.android.feature.home
 
 import android.content.ActivityNotFoundException
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,23 +32,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoExpand
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.EchoInteractionGate
-import app.echo.android.design.rememberEchoContentMotion
 
 private const val LAST_STEP = 3
 
@@ -67,8 +62,6 @@ fun FirstLaunchScreen(
 ) {
     val page = step.coerceIn(0, LAST_STEP)
     val colors = MaterialTheme.colorScheme
-    val motion = rememberEchoContentMotion()
-    val leftToRight = LocalLayoutDirection.current == LayoutDirection.Ltr
     val uriHandler = LocalUriHandler.current
     var linkFailed by remember { mutableStateOf(false) }
     val openLink: (String) -> Unit = { url ->
@@ -92,15 +85,10 @@ fun FirstLaunchScreen(
                     }
                 }
             }
-            // Body can scroll on small screens / large system fonts; actions stay within the safe area.
-            AnimatedContent(
-                targetState = page,
-                modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(),
-                transitionSpec = { motion.tabSwitch(forward = (targetState > initialState) == leftToRight) },
-                label = "onboarding-step",
-            ) { shownPage ->
-                EchoInteractionGate(active = shownPage == page && !saving, modifier = Modifier.fillMaxSize()) {
-                    FirstLaunchStepBody(shownPage, openLink)
+            // Keep one scrollable body mounted and reset its scroll when moving to another step.
+            EchoInteractionGate(active = !saving, modifier = Modifier.weight(1f).fillMaxWidth()) {
+                key(page) {
+                    FirstLaunchStepBody(page, openLink)
                 }
             }
             Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 12.dp),
@@ -139,11 +127,11 @@ fun FirstLaunchScreen(
                         }
                     }
                 }
-                EchoExpand(expanded = page == LAST_STEP, modifier = Modifier.fillMaxWidth()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (page == LAST_STEP) {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = { onFinish(true) },
-                            enabled = page == LAST_STEP && !saving,
+                            enabled = !saving,
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) {
@@ -151,7 +139,7 @@ fun FirstLaunchScreen(
                         }
                         TextButton(
                             onClick = { onFinish(false) },
-                            enabled = page == LAST_STEP && !saving,
+                            enabled = !saving,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(stringResource(R.string.onboarding_accept_explore))

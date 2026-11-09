@@ -3,6 +3,7 @@ package app.echo.android.connect
 import android.content.Context
 import androidx.annotation.StringRes
 import app.echo.android.model.connect.EchoRemoteAlbum
+import app.echo.android.model.connect.EchoLinkPhonePresenceTrack
 import app.echo.android.model.connect.EchoRemoteCommand
 import app.echo.android.model.connect.EchoRemoteConnectionState
 import app.echo.android.model.connect.EchoRemoteEndpoint
@@ -111,6 +112,9 @@ class EchoRemoteClient internal constructor(
     suspend fun unregisterPhoneLibrary(target: EchoRemoteEndpoint, sessionId: String) =
         transport.unregisterPhoneLibrary(target, sessionId)
 
+    suspend fun updatePhonePresence(target: EchoRemoteEndpoint, track: EchoLinkPhonePresenceTrack?) =
+        transport.updatePhonePresence(target, track)
+
     fun refreshQueue() { queueBrowser.startWatching(); queueBrowser.refresh() }
     fun loadMoreQueue() = queueBrowser.loadMore()
     fun loadPreviousQueue() = queueBrowser.loadPrevious()
@@ -127,14 +131,29 @@ class EchoRemoteClient internal constructor(
 
     private var refreshOnForeground = false
     private var foreground = true
-    private var backgroundConnectionRequired = false
+    private var backgroundPhoneLibraryRequired = false
+    private var backgroundPhonePresenceRequired = false
+    private val backgroundConnectionRequired: Boolean
+        get() = backgroundPhoneLibraryRequired || backgroundPhonePresenceRequired
     private var pollFailures = 0
     private var authRejected = false
 
     /** An explicitly enabled phone share owns low-frequency background connection checks. */
     fun setBackgroundConnectionRequired(required: Boolean) {
-        if (backgroundConnectionRequired == required) return
-        backgroundConnectionRequired = required
+        val wasRequired = backgroundConnectionRequired
+        backgroundPhoneLibraryRequired = required
+        updateBackgroundConnection(wasRequired)
+    }
+
+    fun setPhonePresenceBackgroundConnectionRequired(required: Boolean) {
+        val wasRequired = backgroundConnectionRequired
+        backgroundPhonePresenceRequired = required
+        updateBackgroundConnection(wasRequired)
+    }
+
+    private fun updateBackgroundConnection(wasRequired: Boolean) {
+        val required = backgroundConnectionRequired
+        if (wasRequired == required) return
         if (foreground) return
         if (!required) {
             statusPollJob?.cancel()
@@ -322,6 +341,7 @@ class EchoRemoteClient internal constructor(
                 connectionState = EchoRemoteConnectionState.Connecting,
                 endpoint = nextEndpoint,
                 connectionId = generation,
+                supportsPhonePresence = false,
                 error = null,
             )
         }
@@ -1415,6 +1435,8 @@ class EchoRemoteClient internal constructor(
                 playback = playback,
                 controlPending = controls.pending,
                 error = lastCommandError,
+                supportsPhonePresence = !response.libraryOnly && target.token.isNotBlank() &&
+                    (response.supportsPhonePresence ?: current.supportsPhonePresence),
             )
         }
         if (playback.queueIdentityAvailable) {

@@ -10,7 +10,7 @@ internal enum class DacAssessment {
     PlaybackError, NoUsb, Bluetooth, PermissionPending, PermissionRequired,
     ExclusiveDisabled, WaitingPlayback, TransportError, ExclusivePending,
     UnsupportedSource, UnsupportedFormat, ClockUnverified, VolumeChanged,
-    Direct, Processing, BitPerfectPending, DopConfigurationRequired,
+    Direct, Compatible, Processing, BitPerfectPending, DopConfigurationRequired,
 }
 
 internal fun EchoPlaybackStatus.hasLiveUsbOutput(): Boolean =
@@ -21,6 +21,18 @@ internal fun EchoPlaybackStatus.hasLiveUsbOutput(): Boolean =
 internal fun EchoPlaybackStatus.hasVerifiedUsbDirect(): Boolean =
     hasLiveUsbOutput() && diagnostics.usbBitPerfectEnabled &&
         diagnostics.bitPerfectState == EchoBitPerfectState.Direct
+
+/** Positive transport states are only current while the USB stream is live. */
+internal fun EchoPlaybackStatus.signalBitPerfectState(): EchoBitPerfectState {
+    val reported = diagnostics.bitPerfectState
+    val active = reported == EchoBitPerfectState.Direct || reported == EchoBitPerfectState.Compatible
+    return when {
+        !diagnostics.usbBitPerfectEnabled -> EchoBitPerfectState.Off
+        reported == EchoBitPerfectState.Off || reported == EchoBitPerfectState.Waiting || (active && !hasLiveUsbOutput()) ->
+            if (state == EchoPlaybackState.Error) EchoBitPerfectState.PlaybackError else EchoBitPerfectState.Waiting
+        else -> reported
+    }
+}
 
 /** Choose one actionable obstacle; a requested rate or stale direct state is never proof. */
 internal fun assessDac(status: EchoPlaybackStatus): DacAssessment {
@@ -48,6 +60,7 @@ internal fun assessDac(status: EchoPlaybackStatus): DacAssessment {
         !d.usbBitPerfectEnabled -> DacAssessment.Processing
         else -> when (d.bitPerfectState) {
             EchoBitPerfectState.Direct -> DacAssessment.Direct
+            EchoBitPerfectState.Compatible -> DacAssessment.Compatible
             EchoBitPerfectState.PlaybackError -> DacAssessment.PlaybackError
             else -> DacAssessment.BitPerfectPending
         }

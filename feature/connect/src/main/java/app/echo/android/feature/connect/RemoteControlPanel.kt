@@ -49,23 +49,20 @@ internal fun RemoteNowPlaying(
 ) {
     val scheme = MaterialTheme.colorScheme
     val hasTrack = currentTrackId != null || title.isNotBlank()
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val coverSize = if (maxWidth < 340.dp) 96.dp else 120.dp
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                EchoArtworkImage(artworkUrl, null, Modifier.size(coverSize),
-                    shape = RoundedCornerShape(12.dp), sizeClass = EchoArtworkSize.Card)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.feature_connect_playing_on_pc_580a8a),
-                        style = MaterialTheme.typography.labelMedium, color = scheme.primary)
-                    Text(title.ifBlank { stringResource(R.string.feature_connect_no_track_selected_258d56) },
-                        style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
-                        maxLines = 3, overflow = TextOverflow.Ellipsis)
-                    if (artist.isNotBlank() || !hasTrack) {
-                        Text(if (hasTrack) artist else stringResource(R.string.remote_choose_hint),
-                            style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            EchoArtworkImage(artworkUrl, null, Modifier.size(64.dp),
+                shape = ConnectControlShape, sizeClass = EchoArtworkSize.Thumbnail)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(stringResource(R.string.feature_connect_playing_on_pc_580a8a),
+                    style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                Text(title.ifBlank { stringResource(R.string.feature_connect_no_track_selected_258d56) },
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (artist.isNotBlank() || !hasTrack) {
+                    Text(if (hasTrack) artist else stringResource(R.string.remote_choose_hint),
+                        style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

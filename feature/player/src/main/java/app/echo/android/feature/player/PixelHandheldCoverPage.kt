@@ -82,7 +82,7 @@ internal fun PixelHandheldCoverPage(status: EchoPlaybackStatus, position: State<
                         fontSize = 18.sp, lineHeight = 22.sp, maxLines = 1,
                         modifier = Modifier.horizontalScroll(rememberScrollState()))
                 }
-                if (status.track.supportsMusicFavorite()) IconButton(actions.favorite, enabled = track != null, modifier = Modifier.size(48.dp)
+                if (status.track.showsMusicFavorite()) IconButton(actions.favorite, enabled = track != null, modifier = Modifier.size(48.dp)
                     .background(if (isFavorite) ink.copy(alpha = 0.15f) else Color.Transparent, PixelFrameShape)
                     .semantics { selected = isFavorite }) {
                     EchoIcon(PixelPlayerIcons.Star,

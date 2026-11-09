@@ -116,6 +116,10 @@ import app.echo.android.ui.home.EchoHomePage
 import app.echo.android.ui.library.EchoLibraryPage
 import app.echo.android.playback.EchoPlaybackProcessRuntime
 import app.echo.android.ui.playback.EchoNowPlayingHost
+import app.echo.android.ui.playback.rememberEchoLinkPlayerPosition
+import app.echo.android.ui.playback.rememberEchoLinkPlayerLyrics
+import app.echo.android.ui.playback.toPlayerStatus
+import app.echo.android.model.connect.EchoRemotePlaybackOrder
 import app.echo.android.ui.shell.echoPlayerDepth
 import app.echo.android.design.EchoPlayerTransitionRoot
 import app.echo.android.design.EchoExpandedPlayer
@@ -188,6 +192,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     EchoUpdateHost(updater)
     app.echo.android.feature.player.SleepTimerFeedbackHost(EchoPlaybackProcessRuntime.sleepTimerCancellations)
     val context = LocalContext.current
+    val oneDrive = viewModel.oneDriveLibrary
     val remoteWriteFailure by viewModel.remoteLibraryTools.failure.collectAsStateWithLifecycle()
     val remoteWriteFailureMessage = stringResource(app.echo.android.feature.library.R.string.remote_playlist_error)
     LaunchedEffect(remoteWriteFailure) {
@@ -272,6 +277,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         uri?.let { treeUri ->
             persistReadPermission(treeUri, write = true)
             viewModel.refreshLibraryFolder(treeUri, pendingScanOptions)
+        }
+    }
+    val sshfsFolderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            if (persistReadPermission(uri)) viewModel.syncMountedSshfsLibrary(uri)
+            else android.widget.Toast.makeText(context, R.string.sshfs_folder_permission_error, android.widget.Toast.LENGTH_LONG).show()
         }
     }
     val backgroundImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -472,21 +483,48 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val dlnaRenderer by echoLinkSession.dlnaRenderer.collectAsStateWithLifecycle()
     val lanCast by echoLinkSession.castPlayback.collectAsStateWithLifecycle()
     // 投送时播放页和迷你播放器显示远端设备的曲目与播放状态；进度走单独的 flow。
-    val shellPlaybackStatus = remember(playbackStatus, lanCast) {
+    val localShellPlaybackStatus = remember(playbackStatus, lanCast) {
         lanCast?.let { playbackStatus.withLanCast(it, positionMs = 0L) } ?: playbackStatus
     }
-    val shellPositionFlow = if (lanCast != null) echoLinkSession.castPosition else viewModel.playbackPosition
-    fun routedPlayPause() {
+    val pcPlayback = remoteStatus.playback
+    val shellPlaybackStatus = if (remoteMode) {
+        remember(pcPlayback.track, pcPlayback.state, pcPlayback.durationMs, pcPlayback.playbackOrder) {
+            pcPlayback.toPlayerStatus()
+        }
+    } else localShellPlaybackStatus
+    val remoteConnected = remoteStatus.connectionState == EchoRemoteConnectionState.Connected
+    fun sendLinkPlayback(command: EchoRemoteCommand, allowReconnecting: Boolean = false) {
+        val state = remoteClient.status.value.connectionState
+        if (state == EchoRemoteConnectionState.Connected ||
+            (allowReconnecting && state == EchoRemoteConnectionState.Reconnecting)
+        ) remoteClient.send(command)
+    }
+    fun localPlayPause() {
         if (dlnaRenderer != null || echoLinkSession.systemCast.active) echoLinkSession.dlnaPlayPause() else viewModel.playPause()
     }
+    fun routedPlayPause() {
+        if (remoteMode) sendLinkPlayback(EchoRemoteCommand.PlayPause, allowReconnecting = true) else localPlayPause()
+    }
     fun routedSkipNext() {
-        if (dlnaRenderer != null || echoLinkSession.systemCast.active) echoLinkSession.dlnaSkip(1) else viewModel.skipNext()
+        when {
+            remoteMode -> sendLinkPlayback(EchoRemoteCommand.Next)
+            dlnaRenderer != null || echoLinkSession.systemCast.active -> echoLinkSession.dlnaSkip(1)
+            else -> viewModel.skipNext()
+        }
     }
     fun routedSkipPrevious() {
-        if (dlnaRenderer != null || echoLinkSession.systemCast.active) echoLinkSession.dlnaSkip(-1) else viewModel.skipPrevious()
+        when {
+            remoteMode -> sendLinkPlayback(EchoRemoteCommand.Previous)
+            dlnaRenderer != null || echoLinkSession.systemCast.active -> echoLinkSession.dlnaSkip(-1)
+            else -> viewModel.skipPrevious()
+        }
     }
     fun routedSeek(positionMs: Long) {
-        if (dlnaRenderer != null || echoLinkSession.systemCast.active) echoLinkSession.dlnaSeek(positionMs) else viewModel.seekTo(positionMs)
+        when {
+            remoteMode -> sendLinkPlayback(EchoRemoteCommand.SeekTo(positionMs), allowReconnecting = true)
+            dlnaRenderer != null || echoLinkSession.systemCast.active -> echoLinkSession.dlnaSeek(positionMs)
+            else -> viewModel.seekTo(positionMs)
+        }
     }
     LaunchedEffect(remoteStatus.connectionState) {
         if (remoteStatus.connectionState == EchoRemoteConnectionState.Connected) {
@@ -838,15 +876,20 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         expandNowPlaying()
     }
     var queueSheetVisible by rememberSaveable { mutableStateOf(false) }
-    var remotePlayerSheetVisible by rememberSaveable { mutableStateOf(false) }
     var remoteQueueSheetVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(remoteMode) {
-        remotePlayerSheetVisible = false
         remoteQueueSheetVisible = false
         if (remoteMode) {
             nowPlayingExpanded = false
             queueSheetVisible = false
         }
+    }
+    fun openPlayerQueue() {
+        if (remoteMode) remoteQueueSheetVisible = true else queueSheetVisible = true
+    }
+    fun openLocalPlayer() {
+        if (remoteMode) echoLinkPlaybackRouter.selectRemoteMode(false)
+        expandNowPlaying()
     }
     var castSheetVisible by rememberSaveable { mutableStateOf(false) }
     val queueBack = rememberEchoBackProgress(effectivePerformanceMode.isLightweight)
@@ -933,10 +976,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     fun hasLibraryDetail(): Boolean =
         selectedAlbum != null || selectedArtist != null || selectedGenre != null ||
             selectedFolder != null || selectedPlaylist != null
-    LaunchedEffect(effectivePerformanceMode, appVisible, nowPlayingExpanded) {
+    LaunchedEffect(effectivePerformanceMode, appVisible, nowPlayingExpanded, remoteMode) {
         val visibility = when {
             !appVisible -> PlaybackProgressUiVisibility.Background
-            nowPlayingExpanded -> PlaybackProgressUiVisibility.NowPlayingExpanded
+            nowPlayingExpanded && !remoteMode -> PlaybackProgressUiVisibility.NowPlayingExpanded
             else -> PlaybackProgressUiVisibility.MiniPlayer
         }
         viewModel.setPlaybackProgressUiVisibility(visibility)
@@ -1251,7 +1294,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         onDismiss = { queueSheetVisible = false },
     )
     EchoOverlayBackHandler(
-        enabled = nowPlayingExpanded && !queueSheetVisible && !castSheetVisible && !pluginsVisible,
+        enabled = nowPlayingExpanded && !queueSheetVisible && !remoteQueueSheetVisible && !castSheetVisible && !pluginsVisible,
         onProgress = nowPlayingBack::update,
         onCancel = { nowPlayingBack.restore() },
         onDismiss = {
@@ -1266,7 +1309,16 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     ) {
         addMusicVisible = false
     }
-    val shellOverlayOpen = showPermissionOnboarding || searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible || libraryRepairVisible || tagEditorVisible
+    val shellOverlayOpen = showPermissionOnboarding || searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible || libraryRepairVisible || tagEditorVisible
+    val shellPositionFlow = when {
+        remoteMode -> rememberEchoLinkPlayerPosition(
+            remoteStatus,
+            active = appVisible && screenInteractive && (!shellOverlayOpen || nowPlayingExpanded),
+            lightweight = effectivePerformanceMode.isLightweight,
+        )
+        lanCast != null -> echoLinkSession.castPosition
+        else -> viewModel.playbackPosition
+    }
     EchoDesktopShortcuts(
         navigationEnabled = appVisible && !shellOverlayOpen,
         onSelectTab = ::selectDockTab, onSettings = { navigateToPage(EchoPagerPage.Settings) },
@@ -1500,7 +1552,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                         when (destination) {
                             EchoPagerPage.Library -> EchoLibraryPage(
                                 viewModel = viewModel,
-                                onOpenPlayer = { nowPlayingExpanded = true },
+                                onOpenPlayer = ::openLocalPlayer,
                                 bottomInset = bottomDockInset,
                                 pageInteractive = appVisible && !shellOverlayOpen &&
                                     activeDockPage == EchoPagerPage.Library,
@@ -1622,8 +1674,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onOpenListeningStats = { listeningStatsVisible = true },
                                 onOpenPlaybackHistory = { playbackHistoryVisible = true },
                                 onResumePlayback = {
-                                    if (!playbackStatus.isPlaying) routedPlayPause()
-                                    expandNowPlaying()
+                                    if (!playbackStatus.isPlaying) localPlayPause()
+                                    openLocalPlayer()
                                 },
                             )
 
@@ -1877,9 +1929,13 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             val lanRenderers by viewModel.lanRenderers.collectAsStateWithLifecycle()
                             val lanRendererState by viewModel.lanRendererDiscoveryState.collectAsStateWithLifecycle()
                             ConnectScreen(
+                                bottomInset = bottomDockInset,
                                 onOpenWifiTransfer = app.echo.android.ui.connect.rememberWifiTransferAction(viewModel, appSettings.libraryScanOptions, localNetwork),
                                 onOpenLinkSongTransfer = app.echo.android.ui.connect.rememberEchoLinkSongTransferAction(viewModel, remoteClient, appSettings.libraryScanOptions),
                                 phoneLibraryShareStatus = phoneLibraryShareStatus,
+                                phonePresenceEnabled = appSettings.echoLinkPhonePresenceEnabled,
+                                phonePresenceSupported = remoteStatus.supportsPhonePresence,
+                                onPhonePresenceChange = echoLinkSession::setPhonePresenceEnabled,
                                 phoneLibraryPort = appSettings.echoLinkPhoneLibraryPort,
                                 phoneLibraryListeningPort = phoneLibraryListeningPort,
                                 onPhoneLibraryPortChange = echoLinkSession::setPhoneLibraryPort,
@@ -1890,7 +1946,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 networkPermissionContent = { EchoLocalNetworkPermissionNotice(localNetwork) },
                                 remoteMode = remoteMode,
                                 libraryOnly = remoteStatus.endpoint?.libraryOnly == true,
-                                onRemoteModeChange = ::selectEchoLinkMode,
                                 onOpenPcLibrary = ::openPcLibrary,
                                 onOpenFullQueue = { remoteQueueSheetVisible = true },
                                 queueTotalCount = remoteStatus.playback.queue.totalCount,
@@ -1942,6 +1997,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 jellyfinPassword = appSettings.jellyfinPassword,
                                 savedPcs = appSettings.echoLinkSavedPcs,
                                 remoteScanState = remoteScanState,
+                                oneDriveSource = { expanded, onExpand, busy ->
+                                    app.echo.android.ui.connect.EchoOneDriveSourceHost(
+                                        oneDrive, expanded, onExpand, busy, viewModel::syncOneDriveLibrary,
+                                    )
+                                },
+                                onChooseSshfsFolder = { sshfsFolderLauncher.launch(null) },
                                 onConnectPc = ::connectEchoLinkAddress,
                                 onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
                                 onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
@@ -2077,23 +2138,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                             )
                         }
                     } else null,
-                    playerOverride = if (remoteMode) {
-                        {
-                            app.echo.android.feature.connect.EchoLinkRemoteMiniPlayer(
-                                playback = remoteStatus.playback,
-                                connected = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
-                                pcTitle = remoteStatus.endpoint?.name ?: "PC ECHO",
-                                onExpand = { remotePlayerSheetVisible = true },
-                                onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
-                                onNext = { remoteClient.send(EchoRemoteCommand.Next) },
-                                onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
-                                remoteError = remoteStatus.error,
-                                onPlaybackOrderChange = { remoteClient.send(EchoRemoteCommand.SetPlaybackOrder(it)) },
-                                onOpenQueue = { remoteQueueSheetVisible = true },
-                                modifier = Modifier.widthIn(max = app.echo.android.design.LocalEchoContentMaxWidth.current),
-                            )
-                        }
-                    } else null,
+                    playbackControlsEnabled = !remoteMode || remoteConnected,
+                    hasPlayableQueue = remoteMode && pcPlayback.queue.totalCount > 0,
                     animationsVisible = !shellOverlayOpen,
                     showNavigation = !sideNavigation,
                     viewModel = viewModel,
@@ -2111,7 +2157,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     onSelectTab = ::tapNavigationTab,
                     onExpand = { expandNowPlaying() },
                     onOpenLyrics = ::expandNowPlayingLyrics,
-                    onOpenQueue = { queueSheetVisible = true },
+                    onOpenQueue = ::openPlayerQueue,
                     onNext = ::routedSkipNext,
                     onPrevious = ::routedSkipPrevious,
                     onSeek = ::routedSeek,
@@ -2128,6 +2174,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     suppressPlayerArtworkFlight = false
                 },
             ) {
+                val linkLyrics = if (remoteMode) {
+                    rememberEchoLinkPlayerLyrics(remoteClient, remoteStatus, nowPlayingExpanded)
+                } else null
+                val linkOrder = pcPlayback.playbackOrder.takeIf { remoteMode && remoteConnected }
                 EchoNowPlayingHost(
                     viewModel = viewModel,
                     playbackStatus = shellPlaybackStatus,
@@ -2139,13 +2189,47 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     presentationExpanded = nowPlayingExpanded,
                     onDragProgress = { nowPlayingDragProgress = it },
                     onSuppressArtworkFlight = { suppressPlayerArtworkFlight = it },
-                    onOpenQueue = { queueSheetVisible = true },
-                    onCast = ::onNowPlayingCast,
-                    castActive = castSessionActive,
+                    onOpenQueue = ::openPlayerQueue,
+                    onCast = if (remoteMode) null else ::onNowPlayingCast,
+                    castActive = !remoteMode && castSessionActive,
                     onPlayPause = ::routedPlayPause,
                     onNext = ::routedSkipNext,
                     onPrevious = ::routedSkipPrevious,
                     onSeek = ::routedSeek,
+                    linkLyrics = linkLyrics,
+                    playbackNotice = if (remoteMode) {
+                        app.echo.android.feature.connect.echoLinkPlayerNotice(remoteStatus)
+                    } else null,
+                    linkControls = if (remoteMode) {
+                        {
+                            app.echo.android.feature.connect.EchoLinkPlayerControls(
+                                status = remoteStatus,
+                                onStop = { sendLinkPlayback(EchoRemoteCommand.Stop, allowReconnecting = true) },
+                                onVolume = { sendLinkPlayback(EchoRemoteCommand.SetVolume(it), allowReconnecting = true) },
+                                onPlaybackOrderChange = { sendLinkPlayback(EchoRemoteCommand.SetPlaybackOrder(it)) },
+                                onOpenLibrary = {
+                                    nowPlayingExpanded = false
+                                    openPcLibrary()
+                                },
+                            )
+                        }
+                    } else null,
+                    onLinkToggleShuffle = linkOrder?.let { order ->
+                        {
+                            val next = if (order == EchoRemotePlaybackOrder.Shuffle) {
+                                EchoRemotePlaybackOrder.Sequential
+                            } else EchoRemotePlaybackOrder.Shuffle
+                            sendLinkPlayback(EchoRemoteCommand.SetPlaybackOrder(next))
+                        }
+                    },
+                    onLinkToggleRepeat = linkOrder?.let { order ->
+                        {
+                            val next = if (order == EchoRemotePlaybackOrder.RepeatOne) {
+                                EchoRemotePlaybackOrder.Sequential
+                            } else EchoRemotePlaybackOrder.RepeatOne
+                            sendLinkPlayback(EchoRemoteCommand.SetPlaybackOrder(next))
+                        }
+                    },
                     onImportLyrics = {
                         lyricsImportTrackId = playbackStatus.track?.id
                         lyricsImportLauncher.launch(LyricsDocumentMimeTypes)
@@ -2190,32 +2274,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                         selectedArtist = artist
                         selectDockTab(EchoTab.Library)
                     },
-                )
-            }
-            if (remotePlayerSheetVisible) {
-                app.echo.android.feature.connect.EchoLinkRemotePlayerSheet(
-                    playback = remoteStatus.playback,
-                    connected = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
-                    recovering = remoteStatus.connectionState == EchoRemoteConnectionState.Reconnecting,
-                    pending = remoteStatus.controlPending,
-                    remoteError = remoteStatus.error,
-                    active = appVisible && screenInteractive,
-                    onPlayPause = { remoteClient.send(EchoRemoteCommand.PlayPause) },
-                    onPrevious = { remoteClient.send(EchoRemoteCommand.Previous) },
-                    onNext = { remoteClient.send(EchoRemoteCommand.Next) },
-                    onStop = { remoteClient.send(EchoRemoteCommand.Stop) },
-                    onSeek = { remoteClient.send(EchoRemoteCommand.SeekTo(it)) },
-                    onVolume = { remoteClient.send(EchoRemoteCommand.SetVolume(it)) },
-                    onOpenLibrary = {
-                        remotePlayerSheetVisible = false
-                        openPcLibrary()
-                    },
-                    onOpenQueue = {
-                        remotePlayerSheetVisible = false
-                        remoteQueueSheetVisible = true
-                    },
-                    onDismiss = { remotePlayerSheetVisible = false },
-                    onPlaybackOrderChange = { remoteClient.send(EchoRemoteCommand.SetPlaybackOrder(it)) },
                 )
             }
             if (remoteQueueSheetVisible) {

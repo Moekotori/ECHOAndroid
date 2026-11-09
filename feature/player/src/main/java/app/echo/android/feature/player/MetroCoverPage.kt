@@ -102,7 +102,7 @@ internal fun MetroCoverPage(
                     status.repeatMode != EchoRepeatMode.Off, actions.repeat,
                 )
                 MetroUtilityButton(PlayerControlIcons.Queue, stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
-                if (status.track.supportsMusicFavorite()) MetroUtilityButton(
+                if (status.track.showsMusicFavorite()) MetroUtilityButton(
                     if (isFavorite) Icons.Sharp.Favorite else Icons.Sharp.FavoriteBorder,
                     stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                     isFavorite, actions.favorite,

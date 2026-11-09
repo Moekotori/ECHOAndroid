@@ -1,10 +1,8 @@
 package app.echo.android.feature.connect
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.*
@@ -15,61 +13,31 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
 import app.echo.android.design.echoClickable
 
-internal val ConnectCardShape = RoundedCornerShape(20.dp)
-internal val ListCardPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
-
-@Composable
-internal fun ConnectCard(
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
-    spacing: Dp = 12.dp,
-    highlighted: Boolean = false,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = ConnectCardShape,
-        color = if (highlighted) scheme.primaryContainer.copy(alpha = 0.32f) else scheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.45f)),
-    ) {
-        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(spacing), content = content)
-    }
-}
-
-/** Titled group of content. [list] cards hold divider-separated rows instead of free-form content. */
+/** A heading followed by either divider-separated rows or free-form content. */
 @Composable
 internal fun ConnectSection(
     title: String,
     subtitle: String? = null,
     action: (@Composable () -> Unit)? = null,
-    list: Boolean = false,
-    flat: Boolean = false,
-    /** With [flat]: no hairlines either, just titled content sitting on the page. */
     plain: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (flat && !plain) 0.dp else 8.dp)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 32.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f).padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium,
-                    color = if (flat) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (!subtitle.isNullOrBlank()) ConnectNote(subtitle)
             }
             action?.invoke()
         }
-        when {
-            flat && plain -> Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
-            flat -> ConnectFlatGroup(content)
-            list -> ConnectCard(contentPadding = ListCardPadding, spacing = 0.dp, content = content)
-            else -> ConnectCard(content = content)
-        }
+        if (plain) Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+        else ConnectFlatGroup(content)
     }
 }
 
@@ -78,7 +46,7 @@ internal fun ConnectSection(
 internal fun ConnectFlatGroup(content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth()) {
         ConnectRowDivider()
-        Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), content = content)
+        Column(Modifier.fillMaxWidth(), content = content)
         ConnectRowDivider()
     }
 }
@@ -88,19 +56,10 @@ internal fun ConnectRowDivider() {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }
 
-@Composable
-internal fun ConnectIconTile(icon: ImageVector, size: Dp = 44.dp) {
-    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
-        Box(Modifier.size(size), contentAlignment = Alignment.Center) {
-            EchoIcon(icon, null, Modifier.size(size * 0.5f))
-        }
-    }
-}
-
 internal enum class ConnectTone { Neutral, Positive, Warning, Error }
 
 @Composable
-internal fun ConnectStatusChip(text: String, tone: ConnectTone, progress: Boolean = false) {
+internal fun ConnectStatus(text: String, tone: ConnectTone, progress: Boolean = false) {
     val scheme = MaterialTheme.colorScheme
     val dot: Color = when (tone) {
         ConnectTone.Positive -> scheme.primary
@@ -108,44 +67,54 @@ internal fun ConnectStatusChip(text: String, tone: ConnectTone, progress: Boolea
         ConnectTone.Error -> scheme.error
         ConnectTone.Neutral -> scheme.outline
     }
-    Surface(shape = CircleShape, color = dot.copy(alpha = 0.14f)) {
-        Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.size(10.dp), contentAlignment = Alignment.Center) {
             if (progress) CircularProgressIndicator(Modifier.size(10.dp), color = dot, strokeWidth = 1.5.dp)
-            else Box(Modifier.size(7.dp).background(dot, CircleShape))
-            Text(text, style = MaterialTheme.typography.labelMedium,
-                color = if (tone == ConnectTone.Error) scheme.error else scheme.onSurface,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            else Box(Modifier.size(6.dp).background(dot, CircleShape))
         }
+        Text(text, style = MaterialTheme.typography.labelMedium,
+            color = if (tone == ConnectTone.Error) scheme.error else scheme.onSurfaceVariant)
     }
 }
 
 /** Tappable list entry: leading icon, title, optional detail and a chevron. */
 @Composable
-internal fun ConnectActionRow(icon: ImageVector, title: String, detail: String?, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).echoClickable(role = Role.Button, onClick = onClick).padding(vertical = 10.dp),
+internal fun ConnectActionRow(action: ConnectAction) {
+    val scheme = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth().heightIn(min = if (action.primary) 60.dp else 48.dp)
+        .echoClickable(role = Role.Button, onClick = action.onClick).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ConnectIconTile(icon, size = 40.dp)
+        EchoIcon(action.icon, null, Modifier.size(22.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (!detail.isNullOrBlank()) ConnectNote(detail)
+            Text(
+                action.title,
+                style = if (action.primary) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
+                color = if (action.primary) scheme.primary else scheme.onSurface,
+            )
+            if (!action.detail.isNullOrBlank()) ConnectNote(action.detail)
         }
         EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            tint = scheme.onSurfaceVariant)
     }
 }
 
-internal class ConnectAction(val icon: ImageVector, val title: String, val detail: String?, val onClick: () -> Unit)
+internal class ConnectAction(
+    val icon: ImageVector,
+    val title: String,
+    val detail: String?,
+    val primary: Boolean = false,
+    val onClick: () -> Unit,
+)
 
 @Composable
-internal fun ConnectActionList(actions: List<ConnectAction>, flat: Boolean = false) {
+internal fun ConnectActionList(actions: List<ConnectAction>, title: String? = null) {
     if (actions.isEmpty()) return
     val rows: @Composable ColumnScope.() -> Unit = {
         actions.forEachIndexed { index, action ->
             if (index > 0) ConnectRowDivider()
-            ConnectActionRow(action.icon, action.title, action.detail, action.onClick)
+            ConnectActionRow(action)
         }
     }
-    if (flat) ConnectFlatGroup(rows)
-    else ConnectCard(contentPadding = ListCardPadding, spacing = 0.dp, content = rows)
+    if (title == null) ConnectFlatGroup(rows)
+    else ConnectSection(title, content = rows)
 }

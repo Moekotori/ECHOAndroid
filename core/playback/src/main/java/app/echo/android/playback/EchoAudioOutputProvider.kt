@@ -3,6 +3,7 @@ package app.echo.android.playback
 import android.content.Context
 import android.media.AudioFormat
 import androidx.media3.common.C
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.AudioOutput
 import androidx.media3.exoplayer.audio.AudioOutputProvider
@@ -11,6 +12,7 @@ import androidx.media3.exoplayer.audio.AudioTrackAudioOutputProvider
 import androidx.media3.exoplayer.audio.ForwardingAudioOutputProvider
 import app.echo.android.model.error.EchoErrorLog
 import app.echo.android.model.error.EchoErrorSource
+import app.echo.android.model.playback.EchoBitPerfectState
 import app.echo.android.usbaudio.UsbAudioProbe
 import app.echo.android.usbaudio.UsbExclusiveOutputState
 import app.echo.android.usbaudio.UsbExclusivePcmOutput
@@ -28,6 +30,10 @@ internal class EchoAudioOutputProvider(
     private val usbOutput = UsbExclusivePcmOutput(context)
 
     override fun getFormatSupport(formatConfig: AudioOutputProvider.FormatConfig): AudioOutputProvider.FormatSupport {
+        // USB exclusive accepts PCM. Do not let an encoded passthrough capability skip decoding.
+        if (EchoPlaybackProcessRuntime.usbExclusiveEnabled && formatConfig.format.sampleMimeType != MimeTypes.AUDIO_RAW) {
+            return AudioOutputProvider.FormatSupport.UNSUPPORTED
+        }
         if (exclusiveConfigOrNull(formatConfig) != null) {
             return AudioOutputProvider.FormatSupport.Builder()
                 .setFormatSupportLevel(FORMAT_SUPPORTED_DIRECTLY)
@@ -40,12 +46,18 @@ internal class EchoAudioOutputProvider(
         formatConfig: AudioOutputProvider.FormatConfig,
     ): AudioOutputProvider.OutputConfig {
         exclusiveConfigOrNull(formatConfig)?.let { return it.outputConfig }
+        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+            throw AudioOutputProvider.ConfigurationException("Compatible USB requires an authorized DAC and mono or stereo PCM")
+        }
         return super.getOutputConfig(formatConfig)
     }
 
     override fun getAudioOutput(outputConfig: AudioOutputProvider.OutputConfig): AudioOutput {
         if (EchoPlaybackProcessRuntime.usbExclusiveEnabled) {
             exclusiveOutputOrNull(outputConfig)?.let { return it }
+        }
+        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+            throw AudioOutputProvider.InitializationException(IllegalStateException("Compatible USB output unavailable"))
         }
         EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(null)
         val output = super.getAudioOutput(outputConfig)
@@ -56,6 +68,8 @@ internal class EchoAudioOutputProvider(
         formatConfig: AudioOutputProvider.FormatConfig,
     ): ExclusivePlan? {
         if (!EchoPlaybackProcessRuntime.usbExclusiveEnabled) return null
+        // FLAC can advertise its PCM bit depth before decoding. Only raw PCM can go to USB.
+        if (formatConfig.format.sampleMimeType != MimeTypes.AUDIO_RAW) return null
         val snapshot = probe.snapshot()
         if (!snapshot.connected || !snapshot.permissionGranted) return null
         val sampleRate = formatConfig.format.sampleRate.takeIf { it > 0 } ?: return null
@@ -108,6 +122,12 @@ internal class EchoAudioOutputProvider(
             keepAliveOnPause = options.keepAliveOnPause)
         if (!session.openResult.isReady) {
             recordUsbOpenFailure(session.openResult.state, session.openResult.message)
+            if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+                session.close()
+                throw AudioOutputProvider.InitializationException(IllegalStateException(
+                    session.openResult.message ?: "Compatible USB output unavailable",
+                ))
+            }
             val snapshot = probe.snapshot()
             if (
                 EchoUsbExclusiveApplyPolicy.shouldFallBackToMixer(
@@ -119,6 +139,9 @@ internal class EchoAudioOutputProvider(
                 session.close()
                 return null
             }
+        }
+        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+            EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot(EchoBitPerfectState.Compatible)
         }
         return EchoUsbExclusiveAudioOutput(
             session = session,

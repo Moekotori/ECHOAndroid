@@ -88,7 +88,7 @@ internal fun FullCoverCoverPage(
                         maxLines = 1, overflow = TextOverflow.Ellipsis, style = shadow,
                     )
                 }
-                if (status.track.supportsMusicFavorite()) PlayerControlButton(
+                if (status.track.showsMusicFavorite()) PlayerControlButton(
                     if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                     stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                     onClick = { if (track != null) actions.favorite() },

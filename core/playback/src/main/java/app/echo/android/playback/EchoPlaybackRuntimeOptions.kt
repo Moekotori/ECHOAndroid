@@ -61,6 +61,13 @@ fun interface EchoPlaybackStreamResolver {
 
 @UnstableApi
 object EchoPlaybackProcessRuntime {
+    @Volatile private var shuffleResume: app.echo.android.model.playback.PlaybackShuffleResume? = null
+
+    internal fun publishShuffleResume(state: app.echo.android.model.playback.PlaybackShuffleResume?) { shuffleResume = state }
+
+    fun shuffleResumeFor(entryId: String?): app.echo.android.model.playback.PlaybackShuffleResume? =
+        shuffleResume?.takeIf { it.entryId == entryId }
+
     private val _automaticResumeEpoch = MutableStateFlow(0L)
     internal val automaticResumeEpoch = _automaticResumeEpoch.asStateFlow()
     internal fun invalidateAutomaticResume() { _automaticResumeEpoch.update { it + 1 } }
@@ -135,6 +142,8 @@ object EchoPlaybackProcessRuntime {
     internal var bitPerfectStatus: EchoBitPerfectSnapshot
         get() = _bitPerfectStates.value
         set(value) { _bitPerfectStates.value = value }
+
+    val usbVolumeLocked: Boolean get() = bitPerfectStatus.state.locksUsbVolume(usbBitPerfectEnabled)
 
     fun setUsbBitPerfectEnabled(enabled: Boolean) = setUsbOutputMode(usbExclusiveEnabled, enabled)
 

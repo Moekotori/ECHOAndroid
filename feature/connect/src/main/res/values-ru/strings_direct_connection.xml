@@ -3,4 +3,7 @@
     <string name="echo_link_direct_address_hint">Введите IP-адрес или домен ПК и при необходимости добавьте :порт. Также можно вставить полный HTTP(S)-адрес или ссылку сопряжения. Прямое подключение по локальной сети зависит от настроек ПК. Для первого подключения через frp/Tailscale требуется сопряжение.</string>
     <string name="echo_link_pairing_entry">Подключение по IP, домену или ссылке</string>
     <string name="echo_link_steam_edition_requirement">Требуется ECHO Pro</string>
+    <string name="echo_link_steam_purchase_message">Чтобы открыть музыкальную библиотеку ПК через Echo Link, купите дополнение ECHO Pro для ECHO в Steam.</string>
+    <string name="echo_link_steam_purchase_action">Посмотреть ECHO Pro в Steam</string>
+    <string name="echo_link_steam_store_error">Не удалось открыть магазин Steam.</string>
 </resources>

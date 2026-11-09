@@ -123,7 +123,7 @@ internal fun ClassicCoverPage(
                                 }
                             }
                         }
-                        if (status.track.supportsMusicFavorite()) PlayerControlButton(
+                        if (status.track.showsMusicFavorite()) PlayerControlButton(
                             if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                             stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                             touchSize = 48.dp, iconSize = 24.dp,

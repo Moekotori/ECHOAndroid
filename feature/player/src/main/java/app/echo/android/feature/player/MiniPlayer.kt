@@ -88,6 +88,7 @@ fun MiniPlayer(
     dockExpansion: State<Float>? = null,
     onSeek: ((Long) -> Unit)? = null,
     onOpenLyrics: (() -> Unit)? = null,
+    playPauseEnabled: Boolean = status.state != EchoPlaybackState.Idle || status.track != null,
 ) {
     val scope = rememberCoroutineScope()
     val haptics = rememberEchoHapticPerformer()
@@ -261,7 +262,7 @@ fun MiniPlayer(
                     .clip(RoundedCornerShape(12.dp))
                     .miniPlayerPress(
                         motionEnabled = motionEnabled,
-                        enabled = status.state != EchoPlaybackState.Idle || status.track != null,
+                        enabled = playPauseEnabled,
                         onClick = {
                             haptics.confirm()
                             onPlayPause()

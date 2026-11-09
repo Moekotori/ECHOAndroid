@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_onedrive_description">瀏覽 OneDrive 中的音樂資料夾</string>
+    <string name="connect_onedrive_unavailable">此版本尚未設定 OneDrive 登入。</string>
+    <string name="connect_onedrive_failed">OneDrive 操作失敗，請重試或重新登入。</string>
+    <string name="connect_onedrive_parent">上一層資料夾</string>
+    <string name="connect_onedrive_previous_page">上一頁</string>
+    <string name="connect_onedrive_next_page">下一頁</string>
+    <string name="connect_onedrive_sync_folder">同步此資料夾</string>
+    <string name="connect_onedrive_browse">選擇音樂資料夾</string>
+    <string name="connect_onedrive_sign_in_again">重新登入</string>
+    <string name="connect_onedrive_sign_in">使用 Microsoft 帳戶登入</string>
+    <string name="connect_sshfs_description">從 SSHFS 掛載目錄匯入音樂</string>
+    <string name="connect_sshfs_mount_hint">請先用能在 Android 系統檔案選擇器中提供目錄的工具掛載 SSHFS。</string>
+    <string name="connect_sshfs_choose_folder">選擇掛載目錄</string>
+</resources>

@@ -16,10 +16,13 @@ import app.echo.android.model.settings.EchoPlayerPageStyle
 import kotlin.math.PI
 import kotlin.math.sin
 
+private val playerPageStyleOrder = listOf(EchoPlayerPageStyle.FullCover) +
+    EchoPlayerPageStyle.entries.filterNot { it == EchoPlayerPageStyle.FullCover }
+
 /** Static miniatures. They draw once per size and never read live state. */
 @Composable
 internal fun playerPageStyleOptions(): List<SettingsOption> =
-    EchoPlayerPageStyle.entries.map { style ->
+    playerPageStyleOrder.map { style ->
         SettingsOption(style.id, stringResource(playerPageStyleLabel(style)), pageStyleThumbnail(style))
     }
 

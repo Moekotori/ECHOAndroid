@@ -3,4 +3,7 @@
     <string name="echo_link_direct_address_hint">Saisissez l’adresse IP ou le domaine du PC et ajoutez :port si nécessaire. Vous pouvez aussi coller une adresse HTTP(S) complète ou un lien de jumelage. La connexion directe sur le réseau local dépend des réglages du PC. La première connexion via frp/Tailscale nécessite un jumelage.</string>
     <string name="echo_link_pairing_entry">Connexion par IP, domaine ou lien de jumelage</string>
     <string name="echo_link_steam_edition_requirement">Nécessite ECHO Pro</string>
+    <string name="echo_link_steam_purchase_message">Pour accéder à la bibliothèque musicale de votre PC avec Echo Link, achetez le DLC ECHO Pro pour ECHO sur Steam.</string>
+    <string name="echo_link_steam_purchase_action">Voir ECHO Pro sur Steam</string>
+    <string name="echo_link_steam_store_error">Impossible d’ouvrir la boutique Steam.</string>
 </resources>

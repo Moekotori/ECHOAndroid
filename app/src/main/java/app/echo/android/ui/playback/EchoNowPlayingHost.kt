@@ -12,6 +12,7 @@ import app.echo.android.EchoAndroidViewModel
 import app.echo.android.data.EchoAppSettings
 import app.echo.android.feature.player.NowPlayingScreen
 import app.echo.android.model.library.ArtistSummary
+import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
 import app.echo.android.model.radio.EchoRadioStation
@@ -44,11 +45,19 @@ internal fun EchoNowPlayingHost(
     onOpenAlbum: (app.echo.android.model.library.AlbumSummary) -> Unit,
     onOpenFolder: (app.echo.android.model.library.FolderSummary) -> Unit,
     onOpenArtist: (ArtistSummary) -> Unit = {},
+    linkLyrics: EchoLyricsLoadState? = null,
+    linkControls: (@Composable () -> Unit)? = null,
+    onLinkToggleShuffle: (() -> Unit)? = null,
+    onLinkToggleRepeat: (() -> Unit)? = null,
+    playbackNotice: String? = null,
 ) {
     // 传 State 引用而非值:进度 tick 不在宿主层触发重组,由页内叶子订阅
     EchoPlayerOrientationEffect(appSettings.playerOrientationLocked, presentationExpanded)
     val playbackPosition = positionFlow.collectAsStateWithLifecycle()
-    val smartTransition = app.echo.android.playback.EchoPlaybackProcessRuntime.smartTransitionVisual.collectAsStateWithLifecycle()
+    val localPlayback = linkControls == null
+    val smartTransition = if (localPlayback) {
+        app.echo.android.playback.EchoPlaybackProcessRuntime.smartTransitionVisual.collectAsStateWithLifecycle()
+    } else null
     var artistPickerTrack by remember { mutableStateOf<app.echo.android.model.playback.EchoTrackRef?>(null) }
     artistPickerTrack?.let { track ->
         app.echo.android.feature.player.ContributingArtistsSheet(
@@ -62,9 +71,9 @@ internal fun EchoNowPlayingHost(
     if (showEqualizer && presentationExpanded) {
         EchoEqualizerSheetHost(viewModel, appSettings, playbackStatus, onDismiss = { showEqualizer = false })
     }
-    val lyricsState by viewModel.lyricsState.collectAsStateWithLifecycle()
-    val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsStateWithLifecycle()
-    val isCurrentTrackFavorite = playbackStatus.track?.id?.let { it in favoriteTrackIds } == true
+    val lyricsState = linkLyrics ?: viewModel.lyricsState.collectAsStateWithLifecycle().value
+    val isCurrentTrackFavorite = localPlayback &&
+        viewModel.favoriteTrackIds.collectAsStateWithLifecycle().value.contains(playbackStatus.track?.id)
     var showLyricsManager by rememberSaveable(playbackStatus.track?.id) { mutableStateOf(false) }
     var lyricsSearchRequested by rememberSaveable(playbackStatus.track?.id) { mutableStateOf(false) }
     var showLyricsEditor by remember(playbackStatus.track?.id) { mutableStateOf(false) }
@@ -123,8 +132,8 @@ internal fun EchoNowPlayingHost(
             onEdit = { showLyricsManager = false; showLyricsEditor = true },
         )
     }
-    val songRemoval = rememberPlayerSongRemoval(viewModel)
-    val songActions = if (presentationExpanded) key(playbackStatus.track?.id) {
+    val songRemoval = if (localPlayback) rememberPlayerSongRemoval(viewModel) else null
+    val songActions = if (songRemoval != null && presentationExpanded) key(playbackStatus.track?.id) {
         rememberNowPlayingSongActions(
             viewModel, playbackStatus.track, onOpenAlbum, onOpenFolder, onOpenEqualizer = { showEqualizer = true },
             onSearchLyrics = { lyricsSearchRequested = true; showLyricsManager = true; viewModel.searchLyrics() },
@@ -148,14 +157,14 @@ internal fun EchoNowPlayingHost(
         positionState = playbackPosition,
         smartTransitionState = smartTransition,
         lyricsState = lyricsState,
-        bluetoothLyricsDelayMs = if (castActive) 0 else appSettings.lyricsOptions.bluetoothDelayMs,
+        bluetoothLyricsDelayMs = if (castActive || !localPlayback) 0 else appSettings.lyricsOptions.bluetoothDelayMs,
         translationCurrentOnly = appSettings.lyricsOptions.translationCurrentOnly,
         onTranslationCurrentOnlyChange = { viewModel.setLyricsOptions(appSettings.lyricsOptions.copy(translationCurrentOnly = it)) },
         lyricsTranslationScale = appSettings.lyricsOptions.translationScale,
         lyricsRomanizationScale = appSettings.lyricsOptions.romanizationScale,
         onLyricsTranslationScaleChange = { viewModel.setLyricsOptions(appSettings.lyricsOptions.copy(translationScale = it)) },
         onLyricsRomanizationScaleChange = { viewModel.setLyricsOptions(appSettings.lyricsOptions.copy(romanizationScale = it)) },
-        showLyricsControlDeck = appSettings.showLyricsControlDeck,
+        showLyricsControlDeck = localPlayback && appSettings.showLyricsControlDeck,
         playerPageStyle = appSettings.playerPageStyle,
         playerTextScale = appSettings.playerTextScale,
         playerArtworkScale = appSettings.playerArtworkScale,
@@ -190,8 +199,8 @@ internal fun EchoNowPlayingHost(
         onCast = onCast,
         castActive = castActive,
         onSetRepeatMode = viewModel::setRepeatMode,
-        onCycleRepeatMode = viewModel::cycleRepeatMode,
-        onToggleShuffle = viewModel::toggleShuffle,
+        onCycleRepeatMode = if (localPlayback) viewModel::cycleRepeatMode else onLinkToggleRepeat,
+        onToggleShuffle = if (localPlayback) viewModel::toggleShuffle else onLinkToggleShuffle,
         onSetPlaybackSpeed = viewModel::setPlaybackSpeed,
         onSetSleepTimer = viewModel::setSleepTimer,
         onSetSleepTimerEndOfTrack = viewModel::setSleepTimerEndOfTrack,
@@ -201,8 +210,8 @@ internal fun EchoNowPlayingHost(
         onAdjustReplayGainPreamp = viewModel::adjustReplayGainPreamp,
         replayGainScanState = viewModel.replayGainScanState.collectAsStateWithLifecycle().value,
         onScanReplayGain = viewModel::scanReplayGainForCurrentTrack,
-        onImportLyrics = { lyricsSearchRequested = false; showLyricsManager = true },
-        onAdjustLyricsOffset = viewModel::adjustLyricsOffset,
+        onImportLyrics = if (localPlayback) ({ lyricsSearchRequested = false; showLyricsManager = true }) else null,
+        onAdjustLyricsOffset = if (localPlayback) viewModel::adjustLyricsOffset else null,
         onResetLyricsOffset = viewModel::resetLyricsOffset,
         onImportLyricsFont = onImportLyricsFont,
         onLyricsPageStyleChange = viewModel::setLyricsPageStyle,
@@ -225,11 +234,13 @@ internal fun EchoNowPlayingHost(
         onOnlineLyricsEnabledChange = viewModel::setOnlineLyricsEnabled,
         isCurrentTrackFavorite = isCurrentTrackFavorite,
         onToggleFavorite = { viewModel.toggleFavorite() },
-        onOpenArtist = { trackId, artistName ->
+        onOpenArtist = if (localPlayback) ({ trackId, artistName ->
             if (!EchoRadioStation.isRadio(trackId)) {
                 artistPickerTrack = playbackStatus.track?.takeIf { it.id == trackId }?.copy(artist = artistName)
             }
-        },
+        }) else null,
+        externalPlaybackControls = linkControls,
+        playbackNotice = playbackNotice,
         openLyricsRequestId = openLyricsRequestId,
         predictiveBackProgress = predictiveBackProgress,
         presentationExpanded = presentationExpanded,

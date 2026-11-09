@@ -8,6 +8,28 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EchoUsbPendingPcmTest {
+    @Test fun packetTailCanJoinTheNextPcmBlockWithoutDroppingSamples() {
+        val pending = EchoUsbPendingPcm(UsbPcmSourceEncoding.Pcm16, 1, 2, 16)
+        val output = ByteArray(16)
+        fun block(vararg samples: Int): ByteBuffer = ByteBuffer.allocate(samples.size * 2)
+            .order(ByteOrder.LITTLE_ENDIAN).apply {
+                samples.forEach { putShort(it.toShort()) }
+                flip()
+            }
+
+        pending.stash(block(1, 2, 3, 4, 5, 6))
+        assertEquals(12, pending.pack(output, 1f, null))
+        pending.consume(10) // A five-frame packet was accepted. One frame remains.
+        assertEquals(2, pending.pack(output, 1f, null))
+
+        val next = block(7, 8, 9, 10, 11, 12)
+        pending.stash(next)
+        assertFalse(next.hasRemaining())
+        assertEquals(14, pending.pack(output, 1f, null))
+        val samples = ByteBuffer.wrap(output).order(ByteOrder.LITTLE_ENDIAN)
+        assertEquals((6..12).toList(), List(7) { samples.short.toInt() })
+    }
+
     @Test fun shortWritesAdvanceTheGainOnlyForFramesAcceptedByUsb() {
         val pending = EchoUsbPendingPcm(UsbPcmSourceEncoding.Pcm16, 1, 2, 8)
         val input = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN)

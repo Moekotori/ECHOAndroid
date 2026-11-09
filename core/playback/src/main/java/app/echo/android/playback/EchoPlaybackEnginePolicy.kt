@@ -282,11 +282,12 @@ class EchoPlaybackEnginePolicy(
             player.pause()
             if (EchoPlaybackProcessRuntime.bitPerfectStatus.state in listOf(
                 app.echo.android.model.playback.EchoBitPerfectState.Direct,
-                app.echo.android.model.playback.EchoBitPerfectState.Waiting)) {
+                app.echo.android.model.playback.EchoBitPerfectState.Waiting,
+                app.echo.android.model.playback.EchoBitPerfectState.Compatible)) {
                 EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot(
                     app.echo.android.model.playback.EchoBitPerfectState.PlaybackError)
             }
-            return // Strict mode must not auto-transcode, skip the track, or switch output paths.
+            return // Stop on a playback failure while bit-perfect is preferred.
         }
         if (tryEchoLinkStreamRefresh(player)) {
             return

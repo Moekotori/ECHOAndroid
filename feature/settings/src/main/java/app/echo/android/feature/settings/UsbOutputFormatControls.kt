@@ -56,9 +56,10 @@ internal fun UsbOutputFormatControls(options: EchoUsbOutputOptions, d: EchoPlayb
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     UsbSettingsSection(stringResource(R.string.usb_param_volume)) {
-        UsbVolumeStatus(options, d, strict, onChange)
+        val volumeLocked = d.bitPerfectState.locksUsbVolume(strict)
+        UsbVolumeStatus(options, d, volumeLocked, onChange)
 
-        UsbFineVolumeControl(options, strict, onChange)
+        UsbFineVolumeControl(options, volumeLocked, onChange)
 
     }
 }

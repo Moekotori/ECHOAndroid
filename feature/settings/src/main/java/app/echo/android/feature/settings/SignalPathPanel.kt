@@ -1,10 +1,9 @@
 package app.echo.android.feature.settings
 
-import app.echo.android.design.EchoIcon
-
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -15,9 +14,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoIcon
 import app.echo.android.model.playback.*
 
 @Composable
@@ -29,59 +29,44 @@ internal fun SignalPathPanel(
     volume: EchoVolumeSettings = EchoVolumeSettings(),
     onDiagnostics: () -> Unit,
 ) {
-    val d = status.diagnostics
     val scheme = MaterialTheme.colorScheme
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val live = status.isPlaying && status.state != EchoPlaybackState.Error
-    // A route or a setting alone cannot verify bit-perfect transport.
-    val verified = status.hasVerifiedUsbDirect()
-    val label = when {
-        !live -> playbackStateLabel(status.state)
-        verified -> stringResource(R.string.path_verified)
-        else -> stringResource(R.string.path_unverified)
-    }
-    val accent = when {
-        status.state == EchoPlaybackState.Error -> scheme.error
-        verified -> scheme.primary
-        else -> scheme.onSurfaceVariant
-    }
-    val explanation = when {
-        status.state == EchoPlaybackState.Error -> stringResource(R.string.path_error_detail)
-        !live -> stringResource(R.string.path_pending_detail)
-        d.usbBitPerfectEnabled -> d.bitPerfectReadout(equalizer)
-        else -> stringResource(R.string.path_unverified_detail)
-    }
     val stages = signalPathStages(status, equalizer, balance, dsp, volume)
-    SignalSection(
-        title = stringResource(R.string.feature_settings_signal_path_2fed34),
-        subtitle = stringResource(R.string.path_journey),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = scheme.surfaceContainerLow,
+        contentColor = scheme.onSurface,
+        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.6f)),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.size(6.dp).background(accent, CircleShape))
-            Text(label, color = accent, style = MaterialTheme.typography.labelMedium)
-        }
-        SignalNote(explanation)
-        val detailState = stringResource(if (expanded) R.string.path_hide_details else R.string.path_show_details)
-        TextButton(
-            onClick = { expanded = !expanded },
-            modifier = Modifier.semantics { stateDescription = detailState },
-            contentPadding = PaddingValues(horizontal = 0.dp),
-        ) {
-            EchoIcon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(detailState)
-        }
         Column {
-            stages.forEachIndexed { index, stage ->
-                SignalPathStep(stage, index, last = index == stages.lastIndex, expanded = expanded)
+            Row(
+                Modifier.fillMaxWidth().clickable(role = Role.Button) { expanded = !expanded }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.feature_settings_signal_path_2fed34),
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    SignalNote(stringResource(if (expanded) R.string.path_hide_details else R.string.path_show_details))
+                }
+                EchoIcon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = null, modifier = Modifier.size(20.dp))
             }
-        }
-        TextButton(onClick = onDiagnostics, contentPadding = PaddingValues(horizontal = 0.dp)) {
-            Text(stringResource(R.string.feature_settings_diagnostics_b6e487))
-            Spacer(Modifier.width(6.dp))
-            EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null,
-                modifier = Modifier.size(18.dp), tint = scheme.onSurfaceVariant)
+            HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.6f))
+            Column(Modifier.padding(start = 14.dp, top = 12.dp, end = 14.dp, bottom = 8.dp)) {
+                stages.forEachIndexed { index, stage ->
+                    SignalPathStep(stage, index, last = index == stages.lastIndex, expanded = expanded)
+                }
+            }
+            HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.6f))
+            TextButton(onClick = onDiagnostics, modifier = Modifier.padding(horizontal = 6.dp)) {
+                Text(stringResource(R.string.feature_settings_diagnostics_b6e487))
+                Spacer(Modifier.width(6.dp))
+                EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null,
+                    modifier = Modifier.size(18.dp))
+            }
         }
     }
 }

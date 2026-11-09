@@ -6,6 +6,7 @@ import app.echo.android.feature.connect.R as L10nR
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -18,14 +19,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.rememberEchoHapticPerformer
 
 internal val ConnectControlShape = RoundedCornerShape(12.dp)
 
@@ -73,18 +74,28 @@ internal fun ConnectInput(
 
 @Composable
 internal fun ConnectPreference(title: String, detail: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    val haptics = rememberEchoHapticPerformer()
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch) {
+                haptics.tick()
+                onChange(it)
+            }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             ConnectNote(detail)
         }
-        EchoSwitch(checked, onCheckedChange = onChange, enabled = enabled, modifier = Modifier.semantics { contentDescription = title })
+        EchoSwitch(checked, onCheckedChange = null, enabled = enabled)
     }
 }
 
 @Composable
 internal fun ForgetConnectionDialog(title: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, shape = ConnectCardShape,
+    AlertDialog(onDismissRequest = onDismiss, shape = RoundedCornerShape(20.dp),
         title = { Text(title) },
         text = { Text(stringResource(L10nR.string.feature_connect_saved_connection_details_will_be_removed_you_can_dc4b49)) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(L10nR.string.feature_connect_remove_acf88e)) } },

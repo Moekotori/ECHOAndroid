@@ -354,8 +354,9 @@
     <string name="diag_eq_wait_system">%1$s · 파이프라인 EQ 대기 중</string>
     <string name="diag_eq_off">꺼짐 · %1$d밴드</string>
 
-    <string name="settings_usb_bitperfect">USB bit-perfect 모드</string>
-    <string name="settings_usb_bitperfect_detail">USB 전용. EQ와 게인을 우회. 볼륨은 100%. 미지원 형식은 정지.</string>
+    <string name="settings_usb_bitperfect">USB bit-perfect 우선</string>
+    <string name="settings_usb_bitperfect_detail">지원되는 곡은 bit-perfect로 재생하고, 그 외 재생 가능한 형식은 호환 USB 전용 출력을 사용합니다.</string>
+    <string name="bitperfect_compatible">호환 USB 전용 출력</string>
     <string name="bitperfect_off">엄격 모드 꺼짐</string>
     <string name="bitperfect_waiting">엄격한 USB 재생을 기다리는 중</string>
     <string name="bitperfect_direct">정수 직접 출력이 활성입니다</string>

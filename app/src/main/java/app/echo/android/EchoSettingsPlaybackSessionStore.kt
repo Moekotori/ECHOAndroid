@@ -43,6 +43,7 @@ private fun EchoSavedPlaybackSession.toSnapshot(): EchoPlaybackSessionSnapshot =
         playbackSpeed = playbackSpeed,
         playbackPitch = playbackPitch,
         shuffleOrder = shuffleOrder,
+        shuffleResume = shuffleResume,
     )
 
 private fun EchoPlaybackSessionSnapshot.toSavedSession(): EchoSavedPlaybackSession =
@@ -56,4 +57,5 @@ private fun EchoPlaybackSessionSnapshot.toSavedSession(): EchoSavedPlaybackSessi
         playbackSpeed = playbackSpeed,
         playbackPitch = playbackPitch,
         shuffleOrder = shuffleOrder,
+        shuffleResume = shuffleResume,
     )

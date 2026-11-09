@@ -130,7 +130,7 @@ internal fun RecordSleeveCoverPage(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        if (status.track.supportsMusicFavorite()) RecordSleeveIconButton(
+                        if (status.track.showsMusicFavorite()) RecordSleeveIconButton(
                             if (isCurrentTrackFavorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
                             stringResource(if (isCurrentTrackFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                             onClick = onToggleFavorite,

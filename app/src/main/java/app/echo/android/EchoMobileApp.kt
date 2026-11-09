@@ -6,8 +6,8 @@ import androidx.media3.common.util.UnstableApi
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-fun EchoMobileApp() {
-    EchoOnboardingHost { openAddMusic ->
+internal fun EchoMobileApp(startupDarkTheme: Boolean, onFirstScreenComposed: () -> Unit) {
+    EchoOnboardingHost(darkTheme = startupDarkTheme, onFirstScreenComposed = onFirstScreenComposed) { openAddMusic ->
         EchoAppRoot(viewModel = viewModel(), openAddMusicInitially = openAddMusic)
     }
 }

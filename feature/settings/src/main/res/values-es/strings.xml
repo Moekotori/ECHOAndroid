@@ -354,8 +354,9 @@
     <string name="diag_eq_wait_system">%1$s · esperando EQ de la cadena de reproducción</string>
     <string name="diag_eq_off">Desactivado · %1$d bandas</string>
 
-    <string name="settings_usb_bitperfect">Modo bit-perfect USB</string>
-    <string name="settings_usb_bitperfect_detail">USB exclusivo; omite EQ y ganancia. Volumen al 100%. Los formatos no compatibles se detienen.</string>
+    <string name="settings_usb_bitperfect">Priorizar USB bit-perfect</string>
+    <string name="settings_usb_bitperfect_detail">Las pistas compatibles se reproducen en modo bit-perfect. Los demás formatos reproducibles usan la salida USB exclusiva compatible.</string>
+    <string name="bitperfect_compatible">Salida USB exclusiva compatible</string>
     <string name="bitperfect_off">Modo estricto desactivado</string>
     <string name="bitperfect_waiting">Esperando reproducción USB estricta</string>
     <string name="bitperfect_direct">Ruta directa de enteros activa</string>

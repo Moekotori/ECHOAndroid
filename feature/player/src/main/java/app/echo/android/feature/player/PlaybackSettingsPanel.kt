@@ -173,6 +173,7 @@ internal fun PlaybackSettingsDrawer(
     onOpenQueue: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    externalControls: (@Composable () -> Unit)? = null,
 ) {
     var pendingAction by remember(status.track?.id, actionsEnabled) { mutableStateOf<(() -> Unit)?>(null) }
     val currentTrackId = androidx.compose.runtime.rememberUpdatedState(status.track?.id)
@@ -217,6 +218,7 @@ internal fun PlaybackSettingsDrawer(
                 onOpenQueue()
             },
             onDismiss = onDismiss,
+            externalControls = externalControls,
         )
     }
 }
@@ -245,6 +247,7 @@ private fun PlaybackSettingsSheet(
     onResetLyricsOffset: () -> Unit,
     onOpenQueue: () -> Unit,
     onDismiss: () -> Unit,
+    externalControls: (@Composable () -> Unit)?,
 ) {
     val dark = LocalEchoDarkTheme.current
     var moreExpanded by remember { mutableStateOf(false) }
@@ -285,7 +288,7 @@ private fun PlaybackSettingsSheet(
                     onClose = onDismiss,
                     compact = true,
                     actions = {
-                        if (!moreExpanded) GlyphButton(
+                        if (!moreExpanded && externalControls == null) GlyphButton(
                             icon = Icons.Rounded.Edit,
                             description = stringResource(L10nR.string.player_menu_edit),
                             touchSize = 48.dp, iconSize = 18.dp,
@@ -309,7 +312,14 @@ private fun PlaybackSettingsSheet(
             ) {
                 SettingsPageSwitcher(state = moreExpanded, isDeeper = { it }) { more ->
                     Column {
-                        if (more) {
+                        if (externalControls != null) {
+                            externalControls()
+                            val appearance = EchoPlayerMenuAction.Appearance
+                            PlaybackActionRow(
+                                appearance.icon(), stringResource(appearance.labelRes()), onOpenAppearance,
+                                framed = false, compact = true,
+                            )
+                        } else if (more) {
                             PlaybackAdvancedSettings(
                                 status = status,
                                 onSetPlaybackSpeed = onSetPlaybackSpeed,

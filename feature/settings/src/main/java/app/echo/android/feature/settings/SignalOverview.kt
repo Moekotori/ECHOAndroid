@@ -23,7 +23,7 @@ internal fun SignalOverview(
     volume: EchoVolumeSettings = EchoVolumeSettings(),
 ) {
     val d = status.diagnostics
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         SignalDeviceCard(status)
         SignalPathPanel(status, equalizer, channelBalance, dspSettings, volume, onDiagnostics)
         SignalDacPanel(status, onDiagnostics)
@@ -38,7 +38,6 @@ internal fun SignalOverview(
                 },
             )
             SignalReadout(stringResource(L10nR.string.diag_bitrate), d.bitrate?.let(::formatBitrate) ?: stringResource(L10nR.string.diag_unreported))
-            SignalReadout("Bit-perfect", d.bitPerfectReadout(equalizer))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(onClick = onAdjust) { Text(stringResource(L10nR.string.feature_settings_adjust_sound_f8940e)) }
                 TextButton(onClick = onDiagnostics) { Text(stringResource(L10nR.string.feature_settings_view_diagnostics_31fcec)) }

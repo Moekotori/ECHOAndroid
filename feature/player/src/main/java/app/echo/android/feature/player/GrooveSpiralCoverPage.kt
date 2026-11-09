@@ -128,7 +128,7 @@ internal fun GrooveSpiralCoverPage(
                         status.repeatMode != EchoRepeatMode.Off, actions.repeat,
                     )
                     GrooveToggle(stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
-                    if (status.track.supportsMusicFavorite()) GrooveToggle(
+                    if (status.track.showsMusicFavorite()) GrooveToggle(
                         stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                         isFavorite, actions.favorite,
                     )

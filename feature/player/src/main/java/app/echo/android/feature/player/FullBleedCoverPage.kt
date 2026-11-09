@@ -139,7 +139,7 @@ internal fun FullBleedCoverPage(
                     status.repeatMode != EchoRepeatMode.Off, actions.repeat,
                 )
                 Toggle(stringResource(R.string.feature_player_queue_37fa6a), false, actions.queue)
-                if (status.track.supportsMusicFavorite()) Toggle(
+                if (status.track.showsMusicFavorite()) Toggle(
                     stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                     isFavorite, actions.favorite,
                 )

@@ -211,8 +211,8 @@ fun NowPlayingScreen(
     onCast: (() -> Unit)? = null,
     castActive: Boolean = false,
     onSetRepeatMode: (app.echo.android.model.playback.EchoRepeatMode) -> Unit,
-    onCycleRepeatMode: () -> Unit,
-    onToggleShuffle: () -> Unit,
+    onCycleRepeatMode: (() -> Unit)?,
+    onToggleShuffle: (() -> Unit)?,
     onSetPlaybackSpeed: (Float, Boolean) -> Unit,
     onSetSleepTimer: (Int) -> Unit,
     onSetSleepTimerEndOfTrack: () -> Unit = {},
@@ -223,8 +223,8 @@ fun NowPlayingScreen(
     replayGainScanState: app.echo.android.model.playback.EchoReplayGainScanState =
         app.echo.android.model.playback.EchoReplayGainScanState.Idle,
     onScanReplayGain: () -> Unit = {},
-    onImportLyrics: () -> Unit,
-    onAdjustLyricsOffset: (Long) -> Unit,
+    onImportLyrics: (() -> Unit)?,
+    onAdjustLyricsOffset: ((Long) -> Unit)?,
     onResetLyricsOffset: () -> Unit,
     modifier: Modifier = Modifier,
     positionState: State<PlaybackPositionState>? = null,
@@ -287,6 +287,8 @@ fun NowPlayingScreen(
     playerArtworkScale: Float = 1f,
     onPlayerAppearanceChange: (String, Float, Float) -> Unit = { _, _, _ -> },
     appearancePacks: @Composable (SnackbarHostState) -> Unit = {},
+    externalPlaybackControls: (@Composable () -> Unit)? = null,
+    playbackNotice: String? = null,
 ) {
     val lyricsMotionMode = DefaultLyricsMotionMode
     val persistedAppearance = remember(playerPageStyle, playerTextScale, playerArtworkScale) {
@@ -516,6 +518,7 @@ fun NowPlayingScreen(
         LocalLyricsSecondaryText provides LyricsSecondaryText(secondaryLyricScale(lyricsTranslationScale), secondaryLyricScale(lyricsRomanizationScale)),
         LocalPlayerPageStyle provides sharedStyle,
         LocalLyricsWordHighlightStyle provides EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle),
+        LocalMusicFavoritesAvailable provides (externalPlaybackControls == null),
     ) {
     LyricsPageTheme(lyricStyle, enabled = !isRadio) {
         Box(
@@ -637,7 +640,7 @@ fun NowPlayingScreen(
                     appearance = appearance,
                     radioColors = radioColors,
                     isFavorite = isCurrentTrackFavorite,
-                    favoriteAvailable = track.supportsMusicFavorite(),
+                    favoriteAvailable = track.showsMusicFavorite(),
                     onToggleFavorite = { if (track != null) onToggleFavorite() },
                     lyricsPage = lyricsSurfaceVisible && !splitNowPlaying,
                     lyricsReveal = lyricsReveal,
@@ -651,6 +654,16 @@ fun NowPlayingScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 10.dp, bottom = 4.dp),
+                    )
+                }
+                playbackNotice?.let {
+                    Text(
+                        text = it,
+                        color = appearance.headerInk,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     )
                 }
 
@@ -722,8 +735,8 @@ fun NowPlayingScreen(
                             onOpenQueue = onOpenQueue,
                             onCast = onCast,
                             onMore = openPlaybackSettings,
-                            onToggleShuffle = onToggleShuffle,
-                            onCycleRepeatMode = onCycleRepeatMode,
+                            onToggleShuffle = onToggleShuffle ?: openPlaybackSettings,
+                            onCycleRepeatMode = onCycleRepeatMode ?: openPlaybackSettings,
                             isCurrentTrackFavorite = isCurrentTrackFavorite,
                             onToggleFavorite = onToggleFavorite,
                             onOpenLyrics = {
@@ -899,7 +912,7 @@ fun NowPlayingScreen(
                         visible = playbackSettingsVisible,
                         status = status,
                         onSetRepeatMode = onSetRepeatMode,
-                        onToggleShuffle = onToggleShuffle,
+                        onToggleShuffle = onToggleShuffle ?: {},
                         onSetPlaybackSpeed = onSetPlaybackSpeed,
                         onSetSleepTimer = onSetSleepTimer,
                         onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
@@ -910,11 +923,12 @@ fun NowPlayingScreen(
                         replayGainScanState = replayGainScanState,
                         onScanReplayGain = onScanReplayGain,
                         lyricsOffsetMs = readyLyrics?.metadata?.get("user_offset_ms")?.toLongOrNull() ?: 0L,
-                        onAdjustLyricsOffset = onAdjustLyricsOffset,
+                        onAdjustLyricsOffset = onAdjustLyricsOffset ?: {},
                         onResetLyricsOffset = onResetLyricsOffset,
                         onOpenQueue = onOpenQueue,
                         onDismiss = { playbackSettingsVisible = false },
                         modifier = Modifier.fillMaxSize(),
+                        externalControls = externalPlaybackControls,
                     )
                     EchoPageOverlay(visible = menuEditorVisible, modifier = Modifier.fillMaxSize()) {
                         PlayerMenuEditorScreen(
@@ -1109,7 +1123,7 @@ private fun LyricsSettingsDrawer(
     onlineLyricsEnabled: Boolean,
     onDismiss: () -> Unit,
     onCloseLyrics: () -> Unit,
-    onImportLyrics: () -> Unit,
+    onImportLyrics: (() -> Unit)?,
     onImportLyricsFont: () -> Unit,
     onLyricsFontFamilyChange: (String) -> Unit,
     onLyricsFontScaleChange: (Float) -> Unit,

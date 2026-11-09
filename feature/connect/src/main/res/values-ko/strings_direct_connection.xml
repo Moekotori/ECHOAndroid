@@ -3,4 +3,7 @@
     <string name="echo_link_direct_address_hint">PC의 IP 주소 또는 도메인을 입력하고, 필요하면 뒤에 :포트 번호를 붙이세요. 전체 HTTP(S) 주소나 페어링 링크를 붙여 넣을 수도 있습니다. LAN 직접 연결은 PC 설정에 따릅니다. frp/Tailscale로 처음 연결할 때는 페어링이 필요합니다.</string>
     <string name="echo_link_pairing_entry">IP, 도메인 또는 페어링 링크로 연결</string>
     <string name="echo_link_steam_edition_requirement">ECHO Pro가 필요합니다</string>
+    <string name="echo_link_steam_purchase_message">Echo Link로 PC 음악 라이브러리에 액세스하려면 Steam에서 ECHO Pro DLC를 구매하세요.</string>
+    <string name="echo_link_steam_purchase_action">Steam에서 ECHO Pro 보기</string>
+    <string name="echo_link_steam_store_error">Steam 상점을 열 수 없습니다.</string>
 </resources>

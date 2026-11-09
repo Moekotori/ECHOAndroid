@@ -37,6 +37,7 @@ import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoChromeColors
 import app.echo.android.feature.player.MiniPlayer
+import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
 import kotlinx.coroutines.flow.StateFlow
@@ -70,10 +71,11 @@ internal fun EchoBottomDockHost(
     /** 投送到 DLNA / Chromecast 时换成远端进度。 */
     positionFlow: StateFlow<PlaybackPositionState> = viewModel.playbackPosition,
     abovePlayer: (@Composable () -> Unit)? = null,
-    playerOverride: (@Composable () -> Unit)? = null,
+    playbackControlsEnabled: Boolean = true,
+    hasPlayableQueue: Boolean = false,
 ) {
     // 传 State 引用而非值:进度 tick 不重组整个底栏,由 MiniPlayer 进度条绘制期读取
-    val playbackPosition = if (playerOverride == null) positionFlow.collectAsStateWithLifecycle() else null
+    val playbackPosition = positionFlow.collectAsStateWithLifecycle()
     // 以 lambda 延迟读取 pager 偏移,滑动时只更新指示条自身,不重组整个底栏
     val dockTabProgress = remember(pagerState) {
         {
@@ -125,20 +127,22 @@ internal fun EchoBottomDockHost(
     ) {
         // Keep the player mounted: expanding navigation must not restart artwork or gestures.
         abovePlayer?.invoke()
-        if (playerOverride != null) playerOverride() else MiniPlayer(
+        MiniPlayer(
             animationsVisible = motionEnabled,
             dockExpansion = dockExpansion,
             status = playbackStatus,
-            positionState = requireNotNull(playbackPosition),
+            positionState = playbackPosition,
+            playPauseEnabled = playbackControlsEnabled &&
+                (playbackStatus.state != EchoPlaybackState.Idle || playbackStatus.track != null || hasPlayableQueue),
             onPlayPause = onPlayPause,
             onHideDock = if (showNavigation && bottomDockExpanded) onHideDock else null,
             onShowDock = if (showNavigation && !bottomDockExpanded) onShowDock else null,
             onOpenQueue = onOpenQueue,
             onExpand = onExpand,
             onOpenLyrics = onOpenLyrics,
-            onNext = onNext,
-            onPrevious = onPrevious,
-            onSeek = onSeek,
+            onNext = onNext.takeIf { playbackControlsEnabled },
+            onPrevious = onPrevious.takeIf { playbackControlsEnabled },
+            onSeek = onSeek.takeIf { playbackControlsEnabled },
             modifier = Modifier
                 .widthIn(max = LocalEchoContentMaxWidth.current)
                 .fillMaxWidth(),

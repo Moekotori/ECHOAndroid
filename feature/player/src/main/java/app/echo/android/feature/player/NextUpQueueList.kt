@@ -33,7 +33,7 @@ internal fun queueSections(queue: PlaybackQueueState): QueueSections {
     val nextUp = queue.nextUpIndices
     val continuation = queue.continuationIndices
     val upcoming = continuation.toHashSet()
-    val previous = queue.playOrder.filter {
+    val previous = (queue.previousIndices ?: queue.playOrder).filter {
         it != queue.currentIndex && it !in upcoming && queue.items[it].queueContext?.nextUp != true
     }
     return QueueSections(nextUp, continuation, previous)
@@ -43,9 +43,9 @@ internal fun queueSections(queue: PlaybackQueueState): QueueSections {
 internal fun NextUpQueueList(
     queue: PlaybackQueueState,
     playing: Boolean,
-    onPlay: (Int) -> Unit,
-    onRemove: (Int) -> Unit,
-    onMove: (Int, Int) -> Unit,
+    onPlay: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    onMove: (String, String) -> Unit,
     sections: QueueSections,
     state: androidx.compose.foundation.lazy.LazyListState,
     showPrevious: Boolean,
@@ -77,6 +77,12 @@ internal fun NextUpQueueList(
     var rowHeight by remember { mutableIntStateOf(0) }
     val animateItems = !lightweight && dragSource == null
     val move by rememberUpdatedState(onMove)
+    fun entryAt(index: Int): String? = queue.items.getOrNull(index)?.queueContext?.entryId
+    fun moveEntries(from: Int, to: Int) {
+        val source = entryAt(from) ?: return
+        val target = entryAt(to) ?: return
+        move(source, target)
+    }
     val menuWidth = with(androidx.compose.ui.platform.LocalDensity.current) { 48.dp.toPx() }
 
     fun finishDrag(commit: Boolean) {
@@ -169,7 +175,7 @@ internal fun NextUpQueueList(
                     modifier = queueItemMotion(animateItems))
             }
             item(key = "now") {
-                QueueTrackRow(track, 0, 0, true, { onPlay(queue.currentIndex) }, {}, {}, {}, playing = playing,
+                QueueTrackRow(track, 0, 0, true, { track.queueContext?.entryId?.let(onPlay) }, {}, {}, {}, playing = playing,
                     modifier = queueItemMotion(animateItems))
             }
         }
@@ -180,9 +186,9 @@ internal fun NextUpQueueList(
             }
             itemsIndexed(nextUp, key = { _, index -> queue.items[index].queueContext?.entryId ?: "queue-$index" }) { row, index ->
                 QueueTrackRow(queue.items[index], row, nextUp.lastIndex, false,
-                    { onPlay(index) }, { onRemove(index) },
-                    { nextUp.getOrNull(row - 1)?.let { onMove(index, it) } },
-                    { nextUp.getOrNull(row + 1)?.let { onMove(index, it) } },
+                    { entryAt(index)?.let(onPlay) }, { entryAt(index)?.let(onRemove) },
+                    { nextUp.getOrNull(row - 1)?.let { moveEntries(index, it) } },
+                    { nextUp.getOrNull(row + 1)?.let { moveEntries(index, it) } },
                     modifier = queueItemMotion(animateItems).queueDragPreview(
                         row, 0, index, dragSource, dropTarget, rowHeight, lightweight),
                     interactive = dragSource == null)
@@ -196,9 +202,9 @@ internal fun NextUpQueueList(
             }
             itemsIndexed(continuation, key = { _, index -> queue.items[index].queueContext?.entryId ?: "queue-$index" }) { row, index ->
                 QueueTrackRow(queue.items[index], row, continuation.lastIndex, false,
-                    { onPlay(index) }, { onRemove(index) },
-                    { continuation.getOrNull(row - 1)?.let { onMove(index, it) } },
-                    { continuation.getOrNull(row + 1)?.let { onMove(index, it) } },
+                    { entryAt(index)?.let(onPlay) }, { entryAt(index)?.let(onRemove) },
+                    { continuation.getOrNull(row - 1)?.let { moveEntries(index, it) } },
+                    { continuation.getOrNull(row + 1)?.let { moveEntries(index, it) } },
                     modifier = queueItemMotion(animateItems).queueDragPreview(
                         row, 1, index, dragSource, dropTarget, rowHeight, lightweight),
                     interactive = dragSource == null)
@@ -223,7 +229,7 @@ internal fun NextUpQueueList(
             }
             if (showPrevious) {
                 itemsIndexed(previous, key = { _, index -> queue.items[index].queueContext?.entryId ?: "queue-$index" }) { _, index ->
-                    QueueTrackRow(queue.items[index], 0, 0, false, { onPlay(index) }, { onRemove(index) }, {}, {},
+                    QueueTrackRow(queue.items[index], 0, 0, false, { entryAt(index)?.let(onPlay) }, { entryAt(index)?.let(onRemove) }, {}, {},
                         reorderable = false, modifier = queueItemMotion(animateItems))
                 }
             }
@@ -245,7 +251,7 @@ internal fun NextUpQueueList(
                     val target = dropTarget
                     if (commitDrop && target != null) {
                         awaitingQueue = true
-                        move(source.queueIndex, target.queueIndex)
+                        moveEntries(source.queueIndex, target.queueIndex)
                     } else {
                         dragSource = null
                         dropTarget = null

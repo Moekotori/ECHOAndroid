@@ -59,7 +59,7 @@ internal fun AudioPipelineReadouts(status: EchoPlaybackStatus) {
 internal fun UsbConversionReadout(d: EchoPlaybackDiagnostics) {
     val conversion = d.usbConversion
     SignalSection(stringResource(R.string.conversion_title)) {
-        if (d.usbBitPerfectEnabled) {
+        if (d.usbVolumeLocked) {
             SignalNote(stringResource(R.string.conversion_strict))
         } else if (conversion == null || !d.usbExclusiveStreaming) {
             SignalNote(stringResource(R.string.conversion_waiting))

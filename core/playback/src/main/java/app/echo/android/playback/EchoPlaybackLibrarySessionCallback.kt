@@ -45,9 +45,11 @@ internal class EchoPlaybackLibrarySessionCallback(
         echoPlaybackCommandButtons(
             context = context,
             favorite = currentFavorite,
-            repeatMode = player?.repeatMode ?: Player.REPEAT_MODE_OFF,
+            repeatMode = nextUpQueue()?.requestedRepeatMode ?: player?.repeatMode ?: Player.REPEAT_MODE_OFF,
             favoriteAvailable = player?.currentMediaItem?.mediaId?.startsWith("file:") != true,
         )
+
+    fun refreshRepeatButton() = applyButtons(player())
 
     fun onPlayerSurfaceChanged(player: Player) {
         val mediaId = player.currentMediaItem?.mediaId
@@ -349,7 +351,9 @@ internal class EchoPlaybackLibrarySessionCallback(
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 if (args.getString("action") == "play") onUserCommand(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
-                if (args.getString("action") == "restore_order") queue?.restoreOrder(args.getIntArray("order")?.toList().orEmpty())
+                if (args.getString("action") == "restore_order") queue?.restoreOrder(
+                    args.getIntArray("order")?.toList().orEmpty(), args.getBundle("shuffleResume")?.readShuffleResume(),
+                )
                 else queue?.edit(args.getString("action").orEmpty(), args.getString("entry").orEmpty(), args.getString("target"))
                 Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }

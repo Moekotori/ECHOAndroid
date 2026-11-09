@@ -18,6 +18,8 @@ internal class EchoPlaybackSessionRestorer(
     private val store: () -> EchoPlaybackSessionStore,
     private val player: () -> Player?,
     private val enginePolicy: () -> EchoPlaybackEnginePolicy?,
+    private val restoreSession: (EchoPlaybackSessionSnapshot, Boolean, Boolean) -> Unit,
+    private val readRepeatMode: () -> Int,
 ) {
     private val mutex = Mutex()
     @Volatile private var stopping = false
@@ -60,7 +62,9 @@ internal class EchoPlaybackSessionRestorer(
                     }
                     heldSavedPlayWhenReady = null
                 }
-                return@withLock withContext(Dispatchers.Main.immediate) { current.toPlaybackSessionSnapshot() }
+                return@withLock withContext(Dispatchers.Main.immediate) {
+                    current.toPlaybackSessionSnapshot()?.copy(repeatMode = readRepeatMode().toEchoRepeatMode())
+                }
             }
             val snapshot = try {
                 withContext(Dispatchers.IO) { store().load() }
@@ -136,11 +140,7 @@ internal class EchoPlaybackSessionRestorer(
                 if (!shouldRestoreIntoEmptyPlayer(live.mediaItemCount)) return@withContext
                 enginePolicy()?.mergeSampleRates(resolved.queue.associate { it.id to it.sampleRateHz })
                 enginePolicy()?.mergeReplayGainUris(resolved.queue.associate { it.id to it.uri })
-                live.applyPlaybackSessionSnapshot(
-                    resolved,
-                    play = play,
-                    preparePlayer = shouldPrepareRestoredQueue(unresolvedEchoLink),
-                )
+                restoreSession(resolved, play, shouldPrepareRestoredQueue(unresolvedEchoLink))
             }
             restoreCompleted = shouldMarkSavedSessionRestoreComplete(sessionLoadFailed = false)
             resolved
@@ -191,7 +191,7 @@ internal class EchoPlaybackSessionRestorer(
             }
             return
         }
-        val snapshot = live.toPlaybackSessionSnapshot() ?: return
+        val snapshot = live.toPlaybackSessionSnapshot()?.copy(repeatMode = readRepeatMode().toEchoRepeatMode()) ?: return
         val (playWhenReady, nextHeld) = persistSnapshotPlayWhenReady(
             playerPlayWhenReady = snapshot.playWhenReady,
             heldSavedPlayWhenReady = heldSavedPlayWhenReady,

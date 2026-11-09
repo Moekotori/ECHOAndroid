@@ -354,8 +354,9 @@
     <string name="diag_eq_wait_system">%1$s · 等待管線 EQ</string>
     <string name="diag_eq_off">關閉 · %1$d bands</string>
 
-    <string name="settings_usb_bitperfect">USB bit-perfect 模式</string>
-    <string name="settings_usb_bitperfect_detail">USB 獨佔，旁路 EQ 與增益。數位音量鎖定 100%。不支援的格式會停播。</string>
+    <string name="settings_usb_bitperfect">優先 USB bit-perfect</string>
+    <string name="settings_usb_bitperfect_detail">支援直通的曲目使用 bit-perfect，其餘可解碼格式使用相容 USB 獨佔。</string>
+    <string name="bitperfect_compatible">相容 USB 獨佔</string>
     <string name="bitperfect_off">未開啟嚴格直通</string>
     <string name="bitperfect_waiting">等待嚴格 USB 播放</string>
     <string name="bitperfect_direct">整數直通已生效</string>

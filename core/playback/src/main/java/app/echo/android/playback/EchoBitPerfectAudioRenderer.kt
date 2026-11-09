@@ -19,15 +19,20 @@ import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DecoderAudioRenderer
 import app.echo.android.model.playback.EchoBitPerfectState
+import app.echo.android.usbaudio.UsbAudioDeviceSnapshot
+import app.echo.android.usbaudio.UsbDopPolicy
+import app.echo.android.usbaudio.UsbPcmFormatSelector
+import app.echo.android.usbaudio.UsbPcmFormatSpec
 
 @UnstableApi
 internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRendererEventListener,
-    private val sink: EchoBitPerfectAudioSink, outputSink: AudioSink = sink) :
+    private val sink: EchoBitPerfectAudioSink, outputSink: AudioSink,
+    private val selectStrict: (Format) -> Boolean) :
     DecoderAudioRenderer<Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>>(handler, listener, outputSink) {
     private var input = Format.Builder().build()
     override fun getName() = "EchoBitPerfectAudioRenderer"
     override fun supportsFormatInternal(format: Format): Int =
-        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled && MimeTypes.isAudio(format.sampleMimeType))
+        if (selectStrict(format))
             C.FORMAT_HANDLED else C.FORMAT_UNSUPPORTED_TYPE
 
     override fun createDecoder(sourceFormat: Format, cryptoConfig: CryptoConfig?): Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException> {
@@ -81,6 +86,43 @@ internal class EchoBitPerfectAudioRenderer(handler: Handler, listener: AudioRend
 }
 
 @UnstableApi
+internal fun Format.canUseStrictUsb(
+    device: UsbAudioDeviceSnapshot = UsbAudioDeviceSnapshot(),
+    dopLimits: Map<String, Int> = emptyMap(),
+): Boolean {
+    val source = (customData as? EchoCueFormat)?.source ?: this
+    if (source.cryptoType != C.CRYPTO_TYPE_NONE || encoderDelay != 0 || encoderPadding != 0) return false
+    if (source.channelCount != Format.NO_VALUE && source.channelCount !in 1..2) return false
+    val rate: Int
+    val bits: Int
+    if (EchoDsdMime.isDecoderMime(source.sampleMimeType)) {
+        rate = EchoDsdDop.sampleRateHz(source.sampleRate) ?: return false
+        val vendor = device.vendorId ?: return false
+        val product = device.productId ?: return false
+        if (!UsbDopPolicy.permits(dopLimits, vendor, product, rate)) return false
+        bits = EchoDsdDop.SourceBits
+    } else {
+        rate = source.sampleRate
+        val precision = when (source.sampleMimeType) {
+            MimeTypes.AUDIO_RAW, MimeTypes.AUDIO_FLAC -> pcmBits(source.pcmEncoding)
+            // Media3 exposes the 24-byte ALAC cookie with source precision at byte 5.
+            MimeTypes.AUDIO_ALAC -> source.initializationData.firstOrNull()?.takeIf { it.size == 24 }
+                ?.let { it[5].toInt() and 0xff } ?: pcmBits(source.pcmEncoding)
+            else -> return false
+        }
+        if (precision == null && (source.sampleMimeType == MimeTypes.AUDIO_RAW || source.pcmEncoding != Format.NO_VALUE)) return false
+        if (precision != null && precision != 16 && precision != 24) return false
+        // An unknown lossless source may still be eligible. The strict decoder verifies its precision.
+        bits = precision ?: 16
+    }
+    if (!device.permissionGranted || device.descriptor.streamingFormats.isEmpty() ||
+        rate <= 0 || source.channelCount == Format.NO_VALUE) return true
+    return UsbPcmFormatSelector.chooseBitPerfectFormat(
+        device.descriptor, UsbPcmFormatSpec(rate, source.channelCount, bits),
+    ) != null
+}
+
+@UnstableApi
 @Suppress("UNCHECKED_CAST")
 internal class RawPcmDecoder(private val format: Format) : SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>(
     arrayOfNulls<DecoderInputBuffer>(4) as Array<DecoderInputBuffer>,
@@ -113,12 +155,12 @@ internal class RawPcmDecoder(private val format: Format) : SimpleDecoder<Decoder
     }
 }
 
-/** Keep normal renderers available for mode changes, but never let strict playback fall back. */
+/** Keep normal decoding available for sources outside the current DAC's strict path. */
 @UnstableApi
-internal class EchoNormalAudioRenderer(private val renderer: Renderer) : Renderer by renderer {
+internal class EchoNormalAudioRenderer(private val renderer: Renderer, selectStrict: (Format) -> Boolean) : Renderer by renderer {
     private val gatedCapabilities = object : RendererCapabilities by renderer.capabilities {
         override fun supportsFormat(format: Format): Int =
-            if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled || EchoCueAudioRenderer.handlesCue(format)) C.FORMAT_UNSUPPORTED_TYPE
+            if (selectStrict(format) || EchoCueAudioRenderer.handlesCue(format)) C.FORMAT_UNSUPPORTED_TYPE
             else renderer.capabilities.supportsFormat(format)
     }
     override fun getCapabilities(): RendererCapabilities = gatedCapabilities

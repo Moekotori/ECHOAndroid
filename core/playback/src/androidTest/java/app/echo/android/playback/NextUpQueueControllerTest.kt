@@ -8,6 +8,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ShuffleOrder
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import app.echo.android.model.playback.EchoShuffleMode
+import app.echo.android.model.playback.EchoShuffleOptions
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +30,7 @@ class NextUpQueueControllerTest {
             player.volume = 0f
             try {
                 val queue = NextUpQueueController(player)
+                queue.setShuffleOptions(EchoShuffleOptions(mode = EchoShuffleMode.PseudoRandom))
                 player.setMediaItems(listOf(item("A1"), item("A2"), item("A3")))
                 block(player, queue)
             } finally { player.release() }
@@ -48,17 +51,51 @@ class NextUpQueueControllerTest {
     }
 
     @Test fun shuffleToggleAndRestorationKeepRequestsAheadOfOriginalSuccessor() = withPlayer { player, queue ->
-        player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(intArrayOf(0, 2, 1), 0L)
+        player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(intArrayOf(2, 0, 1), 0L)
         player.shuffleModeEnabled = true
+        assertEquals(0, player.queueShuffleOrder().first())
         queue.add(item("B"), false); queue.add(item("C"), false)
-        player.shuffleModeEnabled = false; player.shuffleModeEnabled = true
+        player.shuffleModeEnabled = false
+        val oldOrder = player.queueShuffleOrder().let { it.drop(1) + it.first() }
+        player.setQueueShuffleOrder(oldOrder)
+        player.shuffleModeEnabled = true
+        val shuffled = player.queueShuffleOrder().map { player.getMediaItemAt(it).mediaId }
+        assertEquals(listOf("A1", "B", "C"), shuffled.take(3))
+        assertEquals(setOf("A2", "A3"), shuffled.drop(3).toSet())
         player.seekToNextMediaItem(); assertEquals("B", player.currentMediaItem?.mediaId)
         val snapshot = requireNotNull(player.toPlaybackSessionSnapshot())
         player.clearMediaItems()
-        player.applyPlaybackSessionSnapshot(snapshot, play = false, preparePlayer = false)
+        queue.restoreSession(snapshot, play = false, preparePlayer = false)
+        assertEquals(snapshot.shuffleOrder, player.queueShuffleOrder())
         assertEquals("B", player.currentMediaItem?.mediaId)
         player.seekToNextMediaItem(); assertEquals("C", player.currentMediaItem?.mediaId)
-        player.seekToNextMediaItem(); assertEquals("A3", player.currentMediaItem?.mediaId)
+        player.seekToNextMediaItem(); assertEquals(shuffled[3], player.currentMediaItem?.mediaId)
+    }
+
+    @Test fun newShuffledQueueStartsAtSelectedItemAndIncludesEveryTrack() = withPlayer { player, queue ->
+        player.shuffleModeEnabled = true
+        val items = List(250) { item("track-$it") }
+        queue.replaceQueue(items, startIndex = 204, startPositionMs = 0L)
+        val order = player.queueShuffleOrder()
+        assertEquals("track-204", player.currentMediaItem?.mediaId)
+        assertEquals(204, order.first())
+        assertEquals(items.indices.toSet(), order.toSet())
+        assertEquals(items.size, order.size)
+    }
+
+    @Test fun libraryShuffleRepeatDoesNotWrapOrSeekIntoUnplayedTracks() = withPlayer { player, queue ->
+        queue.setShuffleOptions(EchoShuffleOptions(mode = EchoShuffleMode.LibraryWide))
+        player.shuffleModeEnabled = true
+        val sessionPlayer = EchoQueueSessionPlayer(player, queue) {}
+        sessionPlayer.repeatMode = Player.REPEAT_MODE_ALL
+        assertEquals(Player.REPEAT_MODE_ALL, sessionPlayer.repeatMode)
+        assertEquals(Player.REPEAT_MODE_OFF, player.repeatMode)
+        assertFalse(player.hasNextMediaItem())
+        assertTrue(player.hasPreviousMediaItem())
+        sessionPlayer.seekToPreviousMediaItem()
+        assertEquals("A1", player.currentMediaItem?.mediaId)
+        sessionPlayer.shuffleModeEnabled = false
+        assertEquals(Player.REPEAT_MODE_ALL, player.repeatMode)
     }
 
     @Test fun sameSongOccurrencesCanBeMovedRemovedAndClearedIndependently() = withPlayer { player, queue ->
@@ -86,8 +123,8 @@ class NextUpQueueControllerTest {
     }
 
     @Test fun reorderingOriginalQueueInShuffleChangesActualNextTrack() = withPlayer { player, queue ->
-        player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(intArrayOf(0, 2, 1), 0L)
         player.shuffleModeEnabled = true
+        queue.restoreOrder(listOf(0, 2, 1))
         val second = requireNotNull(player.getMediaItemAt(1).queueContext()).entryId
         val third = requireNotNull(player.getMediaItemAt(2).queueContext()).entryId
         queue.edit("move", second, third)

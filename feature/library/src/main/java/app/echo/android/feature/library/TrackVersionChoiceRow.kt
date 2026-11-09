@@ -64,6 +64,7 @@ internal fun TrackVersionChoiceRow(track: EchoTrack, quality: EchoTrackAudioQual
             "jellyfin" -> "Jellyfin / Emby"
             "webdav" -> "WebDAV"
             "smb" -> "SMB"
+            "onedrive" -> "OneDrive"
             "echo-link" -> "Echo Link"
             else -> stringResource(R.string.feature_library_unknown_source_d8c291)
         }

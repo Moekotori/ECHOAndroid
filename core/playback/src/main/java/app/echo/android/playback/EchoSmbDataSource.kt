@@ -90,15 +90,25 @@ internal class EchoSmbAwareDataSourceFactory(
 
     private class SmbAwareDataSource(private val fallback: DataSource) : DataSource {
         private val smb = EchoSmbDataSource()
+        private val transferListeners = mutableListOf<TransferListener>()
+        private val oneDrive = lazy { EchoOneDriveDataSource().also { source ->
+            transferListeners.forEach(source::addTransferListener)
+        } }
         private var active: DataSource? = null
 
         override fun addTransferListener(transferListener: TransferListener) {
             fallback.addTransferListener(transferListener)
             smb.addTransferListener(transferListener)
+            transferListeners += transferListener
+            if (oneDrive.isInitialized()) oneDrive.value.addTransferListener(transferListener)
         }
 
         override fun open(dataSpec: DataSpec): Long {
-            val target = if (EchoSmbPaths.isSmbUri(dataSpec.uri.toString())) smb else fallback
+            val target = when {
+                dataSpec.uri.scheme == "echo-onedrive" -> oneDrive.value
+                EchoSmbPaths.isSmbUri(dataSpec.uri.toString()) -> smb
+                else -> fallback
+            }
             active = target
             return target.open(dataSpec)
         }

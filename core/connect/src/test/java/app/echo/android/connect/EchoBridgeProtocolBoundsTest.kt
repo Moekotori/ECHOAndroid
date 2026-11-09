@@ -21,6 +21,33 @@ class EchoBridgeProtocolBoundsTest {
         assertEquals(415,error.statusCode)
     }
 
+    @Test fun resolvesOriginalDsdFromOlderBridges() = runBlocking {
+        val dsf = JSONObject("""{"id":"dsf","title":"DSF","codec":"dsf","canPlay":true}""")
+        val dff = JSONObject("""{"id":"dff","title":"DFF","codec":"DSD64","canPlay":true,"canPlayOnPhone":false}""")
+        val unavailable = JSONObject("""{"id":"missing","title":"Missing","codec":"dsf","canPlay":false,"canPlayOnPhone":true}""")
+        val tracks = listOf(dsf, dff, unavailable)
+        val catalog = JSONObject().put("entries", JSONArray(tracks)).put("total", tracks.size)
+            .put("page", 1).put("pageSize", 50)
+        val transport = EchoBridgeTransport { request ->
+            val id = request.url.queryParameter("id")
+            if (id == null) {
+                JSONObject().put("catalog", catalog)
+            } else {
+                val track = JSONObject(tracks.single { it.getString("id") == id }.toString())
+                track.put("audio", JSONObject().put("mimeType", if (id == "dff") "audio/x-dff" else "audio/x-dsf"))
+                track.put("streamUrl", "http://127.0.0.1:49234/echo-link/media/$id")
+                JSONObject().put("track", track)
+            }
+        }
+
+        assertEquals(listOf(true, true, false), transport.tracks(endpoint, "", 1).tracks.map { it.canPlayOnPhone })
+        for (id in listOf("dsf", "dff")) {
+            assertEquals("http://127.0.0.1:49234/echo-link/media/$id", transport.stream(endpoint, id).streamUrl)
+        }
+        val error = runCatching { transport.stream(endpoint, "missing") }.exceptionOrNull() as EchoLinkHttpException
+        assertEquals(415, error.statusCode)
+    }
+
     @Test fun acceptsTheShared4000LineLimitAndRejectsOverflow() = runBlocking {
         val lines=JSONArray(); repeat(4000) { lines.put(JSONObject().put("timeMs",it).put("text","Line")) }
         val source=JSONObject().put("kind","synced").put("offsetMs",-120).put("lines",lines)

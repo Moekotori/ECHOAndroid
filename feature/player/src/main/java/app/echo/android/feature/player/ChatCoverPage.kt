@@ -79,7 +79,7 @@ internal fun ChatCoverPage(
         modifier = modifier,
         artwork = {
             ChatHeader(track, formats) {
-                if (status.track.supportsMusicFavorite()) ChatIconButton(
+                if (status.track.showsMusicFavorite()) ChatIconButton(
                     if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     stringResource(if (isFavorite) R.string.feature_player_unfavorite_3a27e4 else R.string.feature_player_favorite_b5d1f5),
                     isFavorite, actions.favorite, size = 40.dp,

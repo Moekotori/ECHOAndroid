@@ -17,5 +17,6 @@ internal fun DacAssessment.guidanceResource(): Int = when (this) {
     DacAssessment.VolumeChanged -> R.string.dac_help_volume_changed
     DacAssessment.Direct -> R.string.dac_help_direct
     DacAssessment.Processing -> R.string.dac_help_processing
+    DacAssessment.Compatible -> R.string.dac_help_compatible
     DacAssessment.BitPerfectPending -> R.string.dac_help_bitperfect_pending
 }

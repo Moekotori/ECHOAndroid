@@ -9,4 +9,5 @@ data class EchoRemoteStatus(
     val controlPending: Boolean = false,
     /** Distinguishes reconnects to the same PC so file-transfer sessions cannot outlive a connection. */
     val connectionId: Long = 0L,
+    val supportsPhonePresence: Boolean = false,
 )

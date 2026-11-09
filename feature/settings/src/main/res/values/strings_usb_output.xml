@@ -15,7 +15,6 @@
     <string name="usb_page_step_pending">Pending</string>
     <string name="usb_page_output_mode">Output mode</string>
     <string name="usb_page_exclusive_note">Send audio directly to the DAC.</string>
-    <string name="usb_page_bitperfect_note">Preserve integer samples and bypass EQ and gain. Unsupported formats stop playback.</string>
     <string name="usb_page_volume_note">Bit-perfect fixes digital volume at 100%. Lower DAC volume first.</string>
     <string name="usb_page_connection_preferences">Connection</string>
     <string name="usb_page_checks">Checks and diagnostics</string>

@@ -18,6 +18,7 @@ internal class EchoManualFadePlayer(private val raw: Player, private val scope: 
     enabledFlow: Flow<Boolean> = combine(EchoPlaybackRuntimeOptionsStore.options, EchoPlaybackProcessRuntime.bitPerfectStates) { config, _ ->
         config.trackTransitions.playPauseFadeEnabled && !EchoPlaybackProcessRuntime.usbBitPerfectEnabled },
     private val onGain: (Float) -> Unit = EchoPlaybackProcessRuntime::setManualFadeGain,
+    private val replaceQueue: (List<MediaItem>, Int, Long) -> Unit = raw::setMediaItems,
 ) : ForwardingPlayer(raw), AutoCloseable {
     private var fade: Job? = null
     private var playFadePending = false
@@ -63,6 +64,8 @@ internal class EchoManualFadePlayer(private val raw: Player, private val scope: 
     override fun play() = setPlayWhenReady(true)
     override fun pause() = setPlayWhenReady(false)
     override fun stop() { cancelFade(); raw.stop() }
+    override fun setMediaItems(mediaItems: List<MediaItem>, startIndex: Int, startPositionMs: Long) =
+        replaceQueue(mediaItems, startIndex, startPositionMs)
     override fun setPlayWhenReady(ready: Boolean) {
         if (closed) return
         if (!allowed() || raw.mediaItemCount == 0) { cancelFade(); raw.playWhenReady = ready; return }

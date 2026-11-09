@@ -16,6 +16,24 @@ internal data class SignalPathStage(
     val facts: List<Pair<String, String>> = emptyList(),
 )
 
+internal fun EchoPlaybackDiagnostics.signalOutputKind(): EchoOutputDeviceKind =
+    if (usbExclusiveStreaming) EchoOutputDeviceKind.Usb else EchoOutputDeviceKind.fromId(outputDeviceKind)
+
+internal fun EchoPlaybackDiagnostics.signalOutputName(): String? =
+    if (usbExclusiveStreaming) {
+        usbDeviceName?.takeIf { it.isNotBlank() }
+    } else {
+        routedDeviceNames.takeIf { outputRouteVerified && it.isNotEmpty() }?.joinToString(" · ")
+            ?: outputDeviceName?.takeIf { it.isNotBlank() }
+    }
+
+internal fun EchoOutputDeviceKind.signalOutputIcon(): ImageVector = when (this) {
+    EchoOutputDeviceKind.Usb -> Icons.Rounded.Usb
+    EchoOutputDeviceKind.Bluetooth -> Icons.Rounded.Bluetooth
+    EchoOutputDeviceKind.Wired -> Icons.Rounded.Headphones
+    else -> Icons.Rounded.Speaker
+}
+
 /** Present the existing diagnostics contract; do not infer a DAC format from track metadata. */
 @Composable
 internal fun signalPathStages(
@@ -38,8 +56,8 @@ internal fun signalPathStages(
     val pcLibrary = EchoLinkPlaybackUri.isPcLibrarySource(
         sourceId = status.track?.sourceId, mediaId = status.track?.id, uri = status.track?.uri.orEmpty(),
     )
-    val outputKind = if (d.usbExclusiveStreaming) EchoOutputDeviceKind.Usb else EchoOutputDeviceKind.fromId(d.outputDeviceKind)
-    val outputName = (if (d.usbExclusiveStreaming) d.usbDeviceName else d.outputDeviceName)?.takeIf { it.isNotBlank() }
+    val outputKind = d.signalOutputKind()
+    val outputName = d.signalOutputName()
     return buildList {
         add(SignalPathStage(
             label = stringResource(R.string.diag_source_file),
@@ -96,7 +114,7 @@ internal fun signalPathStages(
             icon = if (d.usbExclusiveStreaming) Icons.Rounded.Usb else Icons.Rounded.Route,
             highlighted = live && (d.usbExclusiveStreaming || d.offloadActive),
             facts = buildList {
-                add("Bit-perfect" to d.bitPerfectReadout(equalizer))
+                add(BIT_PERFECT_LABEL to status.signalBitPerfectState().readout())
                 if (outputKind == EchoOutputDeviceKind.Bluetooth) add(stringResource(R.string.diag_bluetooth_codec) to
                     (d.bluetoothCodec?.takeIf { it.isNotBlank() } ?: unknown))
                 if (d.usbExclusiveEnabled || d.usbConnected) {
@@ -107,15 +125,9 @@ internal fun signalPathStages(
         ))
         add(SignalPathStage(
             label = stringResource(R.string.diag_output_end),
-            value = if (d.outputRouteVerified && d.routedDeviceNames.isNotEmpty()) d.routedDeviceNames.joinToString(" · ")
-                else outputName ?: outputDeviceKindLabel(outputKind.id),
+            value = outputName ?: outputDeviceKindLabel(outputKind.id),
             detail = stringResource(if (d.outputRouteVerified) R.string.path_route_verified else R.string.path_route_pending),
-            icon = when (outputKind) {
-                EchoOutputDeviceKind.Usb -> Icons.Rounded.Usb
-                EchoOutputDeviceKind.Bluetooth -> Icons.Rounded.Bluetooth
-                EchoOutputDeviceKind.Wired -> Icons.Rounded.Headphones
-                else -> Icons.Rounded.Speaker
-            },
+            icon = outputKind.signalOutputIcon(),
             highlighted = live && d.outputRouteVerified,
             facts = listOf(
                 stringResource(R.string.path_output_clock) to

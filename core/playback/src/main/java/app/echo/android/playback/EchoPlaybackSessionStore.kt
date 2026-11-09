@@ -7,6 +7,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.model.playback.EchoRepeatMode
 import app.echo.android.model.playback.EchoTrackRef
+import app.echo.android.model.playback.PlaybackShuffleResume
 
 data class EchoPlaybackSessionSnapshot(
     val queue: List<EchoTrackRef>,
@@ -18,6 +19,7 @@ data class EchoPlaybackSessionSnapshot(
     val playbackSpeed: Float = 1f,
     val playbackPitch: Float = 1f,
     val shuffleOrder: List<Int> = emptyList(),
+    val shuffleResume: PlaybackShuffleResume? = null,
 )
 
 interface EchoPlaybackSessionStore {
@@ -54,6 +56,7 @@ fun Player.toPlaybackSessionSnapshot(): EchoPlaybackSessionSnapshot? {
         playbackSpeed = playbackParameters.speed,
         playbackPitch = playbackParameters.pitch,
         shuffleOrder = queueShuffleOrder(),
+        shuffleResume = EchoPlaybackProcessRuntime.shuffleResumeFor(currentMediaItem?.queueContext()?.entryId),
     )
 }
 
@@ -62,6 +65,7 @@ fun Player.applyPlaybackSessionSnapshot(
     snapshot: EchoPlaybackSessionSnapshot,
     play: Boolean,
     preparePlayer: Boolean = true,
+    applyRepeatMode: Boolean = true,
 ) {
     setMediaItems(
         snapshot.queue.map { track -> track.toMediaItem().let { if (it.queueContext() == null) it.asQueueEntry() else it } },
@@ -69,10 +73,10 @@ fun Player.applyPlaybackSessionSnapshot(
         if (EchoRadioStation.isRadio(snapshot.queue[snapshot.currentIndex].id)) C.TIME_UNSET else snapshot.positionMs.coerceAtLeast(0L),
     )
     if (this is androidx.media3.exoplayer.ExoPlayer && NextUpQueuePolicy.validOrder(snapshot.shuffleOrder, mediaItemCount)) {
-        shuffleOrder = androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(snapshot.shuffleOrder.toIntArray(), 0L)
+        setQueueShuffleOrder(snapshot.shuffleOrder)
     }
     shuffleModeEnabled = snapshot.shuffleEnabled
-    repeatMode = snapshot.repeatMode.toPlayerRepeatMode()
+    if (applyRepeatMode) repeatMode = snapshot.repeatMode.toPlayerRepeatMode()
     playbackParameters = PlaybackParameters(snapshot.playbackSpeed, snapshot.playbackPitch)
     if (preparePlayer) {
         prepare()

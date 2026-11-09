@@ -354,8 +354,9 @@
     <string name="diag_eq_wait_system">%1$s · en attente de l\'égaliseur du pipeline de lecture</string>
     <string name="diag_eq_off">Désactivé · %1$d bandes</string>
 
-    <string name="settings_usb_bitperfect">Mode USB bit-perfect</string>
-    <string name="settings_usb_bitperfect_detail">USB exclusif ; contourne EQ et gain. Volume à 100 %. Les formats non pris en charge s\'arrêtent.</string>
+    <string name="settings_usb_bitperfect">Privilégier le bit-perfect USB</string>
+    <string name="settings_usb_bitperfect_detail">Les pistes prises en charge utilisent le mode bit-perfect. Les autres formats lisibles utilisent la sortie USB exclusive compatible.</string>
+    <string name="bitperfect_compatible">Sortie USB exclusive compatible</string>
     <string name="bitperfect_off">Mode strict désactivé</string>
     <string name="bitperfect_waiting">En attente de lecture USB stricte</string>
     <string name="bitperfect_direct">Chemin entier direct actif</string>

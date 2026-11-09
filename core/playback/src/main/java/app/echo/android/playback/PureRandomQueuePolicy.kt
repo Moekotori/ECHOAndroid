@@ -12,6 +12,19 @@ internal class PureRandomQueuePolicy(private val random: Random = Random.Default
     private var looping = false
     private var currentMediaId: String? = null
     private val recent = ArrayDeque<String>()
+    private var restoring = false
+    private var restoredRemaining: Int? = null
+
+    fun remainingDraws(): Int = remaining
+
+    fun recentIds(): List<String> = recent.toList()
+
+    fun restore(remaining: Int?, recentIds: List<String>) {
+        reset()
+        restoring = true
+        restoredRemaining = remaining
+        recent.addAll(recentIds.takeLast(EchoShuffleOptions.MaxRecentTracks))
+    }
 
     fun reset() {
         baseKeys = emptySet()
@@ -20,6 +33,8 @@ internal class PureRandomQueuePolicy(private val random: Random = Random.Default
         remaining = 0
         currentMediaId = null
         recent.clear()
+        restoring = false
+        restoredRemaining = null
     }
 
     fun preferNext(key: String?) {
@@ -41,15 +56,16 @@ internal class PureRandomQueuePolicy(private val random: Random = Random.Default
         val key = keys[current]
         val pending = manual.sorted().filter { it != current }
         val newQueue = membership != baseKeys
-        if (newQueue) recent.clear()
+        if (newQueue && !restoring) recent.clear()
         if (!newQueue && currentKey != key) {
             currentMediaId?.let(recent::addLast)
             while (recent.size > EchoShuffleOptions.MaxRecentTracks) recent.removeFirst()
         }
-        if (newQueue || looping != repeatAll) {
+        if (newQueue || looping != repeatAll || restoring) {
             baseKeys = membership
-            remaining = (base.size - if (current in manual) 0 else 1).coerceAtLeast(0)
-            nextKey = null
+            remaining = restoredRemaining?.coerceIn(0, base.size)
+                ?: (base.size - if (current in manual) 0 else 1).coerceAtLeast(0)
+            if (!restoring) nextKey = null
         } else if (currentKey != key && current !in manual) {
             if (key == nextKey) remaining = (remaining - 1).coerceAtLeast(0)
             else remaining = (base.size - 1).coerceAtLeast(0) // Explicit seek starts a new round.
@@ -58,6 +74,8 @@ internal class PureRandomQueuePolicy(private val random: Random = Random.Default
         currentKey = key
         currentMediaId = mediaIds[current]
         looping = repeatAll
+        restoring = false
+        restoredRemaining = null
 
         // Repeat OFF still ends after one playlist-sized round, even if draws revisit songs.
         if (!repeatAll && remaining == 0) {

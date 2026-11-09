@@ -158,6 +158,7 @@ fun DiagnosticsScreen(
             isActive = isActive,
             onBack = { soundPanel = -1 },
             scrollingTool = 1,
+            compactTool = UsbOutputPanel,
             onNavigateUp = if (soundPanel == 1 && opraState.selectedBrandId != null) {
                 { onOpraBrandSelected(null) }
             } else null,

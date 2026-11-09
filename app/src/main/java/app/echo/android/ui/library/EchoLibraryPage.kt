@@ -90,6 +90,7 @@ internal fun EchoLibraryPage(
         remoteClient.changeFolderSort(libraryFolderSortMode)
     }
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
+    val oneDriveFolder by viewModel.oneDriveLibrary.folder.collectAsStateWithLifecycle()
     val localPlaylists by viewModel.localPlaylists.collectAsStateWithLifecycle()
     var playlistCoverTarget by rememberSaveable { mutableStateOf<String?>(null) }
     val playlistCoverPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -420,7 +421,7 @@ internal fun EchoLibraryPage(
             onLinkedLibraryPageOpenChanged = onLinkedLibraryPageOpenChanged,
             linkedDetailBackEnabled = linkedDetailBackEnabled,
             onOpenConnect = onOpenConnect,
-            cloudLibraryConfigured = !appSettings.webDavServerUrl.isNullOrBlank() ||
+            cloudLibraryConfigured = oneDriveFolder != null || !appSettings.webDavServerUrl.isNullOrBlank() ||
                 !appSettings.smbServerUrl.isNullOrBlank() ||
                 !appSettings.subsonicServerUrl.isNullOrBlank() ||
                 !appSettings.jellyfinServerUrl.isNullOrBlank(),

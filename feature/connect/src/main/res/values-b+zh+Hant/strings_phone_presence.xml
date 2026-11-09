@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_phone_presence_title">Steam 正在播放</string>
+    <string name="echo_link_phone_presence_summary">透過已配對的電腦將手機正在播放的曲名和演出者顯示在 Steam，並標註 ECHO Link。</string>
+    <string name="echo_link_phone_presence_disconnected">連線至已配對的 ECHOSteam 電腦後，即可分享手機正在播放的歌曲。</string>
+    <string name="echo_link_phone_presence_unsupported">請更新 ECHOSteam，並掃描電腦上的 QR 碼配對。</string>
+</resources>

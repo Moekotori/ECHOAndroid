@@ -5,7 +5,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.model.library.CueSheetPolicy
+import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoLinkPlaybackUri
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 enum class EchoPlaybackBrowseKind {
     Root,
@@ -51,6 +54,10 @@ interface EchoPlaybackCatalog {
     suspend fun search(query: String, page: Int, pageSize: Int): List<EchoPlaybackBrowseItem>
 
     suspend fun playableQueue(mediaId: String): List<EchoPlaybackBrowseItem>
+
+    suspend fun shuffleLocalTrack(currentId: String, recentIds: List<String>): EchoTrack? = null
+
+    fun localShuffleCatalogChanges(): Flow<Unit> = flowOf(Unit)
 
     suspend fun voiceQueue(request: app.echo.android.model.playback.EchoMediaSearchRequest): EchoPlaybackSearchResult {
         if (request.term.isBlank()) return EchoPlaybackSearchResult(playableQueue(EchoPlaybackLibraryIds.TRACKS))

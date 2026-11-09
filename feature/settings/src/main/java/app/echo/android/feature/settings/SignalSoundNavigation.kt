@@ -28,6 +28,7 @@ internal fun SignalSoundNavigation(
     onBack: () -> Unit,
     tool: @Composable (Int) -> Unit,
     scrollingTool: Int? = null,
+    compactTool: Int? = null,
     onNavigateUp: (() -> Unit)? = null,
     home: @Composable () -> Unit,
 ) {
@@ -75,12 +76,16 @@ internal fun SignalSoundNavigation(
                             Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 24.dp)) {
                                 tool(panel)
                             }
-                        } else Column(
-                            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
-                                .padding(horizontal = 24.dp).padding(top = 12.dp, bottom = 188.dp),
-                            verticalArrangement = Arrangement.spacedBy(20.dp),
-                        ) {
-                            tool(panel)
+                        } else {
+                            val compact = panel == compactTool
+                            Column(
+                                Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
+                                    .padding(horizontal = if (compact) SettingsContentInset else 24.dp)
+                                    .padding(top = if (compact) 4.dp else 12.dp, bottom = 188.dp),
+                                verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 20.dp),
+                            ) {
+                                tool(panel)
+                            }
                         }
                     }
                 }

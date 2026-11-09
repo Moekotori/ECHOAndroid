@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -64,13 +63,11 @@ private val IdleScaleX = floatArrayOf(1f, 0.995f, 0.99f, 1.004f, 1f)
 private val IdleScaleY = floatArrayOf(1f, 1.012f, 1.02f, 0.996f, 1f)
 
 /**
- * In-app launch splash drawn over the app while the system splash hands off. It is a plain
- * background until [EchoLaunchSplashState.started]; lightweight mode skips it entirely.
+ * In-app launch splash drawn during the system handoff. Prepare its graphics only if it runs.
  */
 @Composable
 internal fun EchoLaunchSplash(state: EchoLaunchSplashState, dark: Boolean) {
-    if (state.finished) return
-    val running = state.started && state.lightweight == false
+    if (state.finished || !state.started || state.lightweight != false) return
     val background = state.background
     val palette = remember(dark, background != null) { launchSplashPalette(dark, overImage = background != null) }
     val backgroundImage = remember(background) { background?.asImageBitmap() }
@@ -80,22 +77,15 @@ internal fun EchoLaunchSplash(state: EchoLaunchSplashState, dark: Boolean) {
     }
     fx.density = LocalDensity.current.density
 
-    LaunchedEffect(state.started, state.lightweight) {
-        if (state.started && state.lightweight == true) state.finish()
-    }
-    LaunchedEffect(running) {
-        if (!running) return@LaunchedEffect
-        var last = withFrameNanos { it }
+    LaunchedEffect(state) {
+        val start = withFrameNanos { it }
         while (true) {
-            val now = withFrameNanos { it }
-            fx.advance(((now - last) / 1_000_000_000f).coerceAtMost(0.05f))
-            last = now
-            val time = fx.time.floatValue
-            if (fx.exitAt.floatValue < 0f && time >= LaunchSplashTiming.HoldSeconds) fx.exitAt.floatValue = time
-            if (fx.exitAt.floatValue >= 0f && time - fx.exitAt.floatValue >= LaunchSplashTiming.ExitSeconds) {
+            val elapsedMillis = (withFrameNanos { it } - start) / 1_000_000f
+            if (elapsedMillis >= LaunchSplashTiming.DurationMillis) {
                 state.finish()
                 return@LaunchedEffect
             }
+            fx.advanceTo(elapsedMillis / LaunchSplashTiming.DurationMillis * LaunchSplashTiming.TimelineSeconds)
         }
     }
 

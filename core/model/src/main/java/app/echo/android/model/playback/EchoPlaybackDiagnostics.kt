@@ -56,4 +56,6 @@ data class EchoPlaybackDiagnostics(
     val decoder: EchoDecoderDiagnostics = EchoDecoderDiagnostics(),
     val usbConversion: EchoUsbConversionDiagnostics? = null,
     val soundEffect: EchoSoundEffectRuntimeStatus = EchoSoundEffectRuntimeStatus(),
-)
+) {
+    val usbVolumeLocked: Boolean get() = bitPerfectState.locksUsbVolume(usbBitPerfectEnabled)
+}

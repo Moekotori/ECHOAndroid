@@ -28,9 +28,6 @@ import kotlin.random.Random
 internal class EchoLaunchSplashFx {
     val time = mutableFloatStateOf(0f)
 
-    /** Splash time at which the hand-off started, or -1 while still holding. */
-    val exitAt = mutableFloatStateOf(-1f)
-
     var density = 1f
     var originX = 0f
     var originY = 0f
@@ -63,8 +60,8 @@ internal class EchoLaunchSplashFx {
 
     private val rayPath = Path()
 
-    fun advance(dt: Float) {
-        val t = time.floatValue + dt
+    fun advanceTo(t: Float) {
+        val dt = t - time.floatValue
         time.floatValue = t
         for (i in 0 until DotCount) {
             dotY[i] -= dotSpeed[i] * dt
@@ -86,11 +83,8 @@ internal class EchoLaunchSplashFx {
     }
 
     /** 0..1 progress of the hand-off, shifted by [delay] seconds. */
-    fun exitProgress(delay: Float, duration: Float): Float {
-        val start = exitAt.floatValue
-        if (start < 0f) return 0f
-        return launchSplashProgress(time.floatValue - start, delay, duration)
-    }
+    fun exitProgress(delay: Float, duration: Float): Float =
+        launchSplashProgress(time.floatValue - LaunchSplashTiming.HoldSeconds, delay, duration)
 
     private fun spawnNote(slot: Int) {
         val side = if (random.nextBoolean()) -1f else 1f

@@ -34,5 +34,6 @@
     <string name="dac_help_volume_changed">數位音量改變了音訊樣本。請查看診斷中的音量提示，裝置支援時使用 DAC 的音量控制；調整增益前先確認聆聽音量安全。</string>
     <string name="dac_help_direct">實際 USB 輸出與嚴格解碼器已回報直通鏈路，此模式會旁路 ECHO 的聲音處理；裝置支援時可使用 DAC 的音量控制。</string>
     <string name="dac_help_processing">獨佔鏈路正在輸出，Bit-perfect 未開啟，可使用聲音處理。需要保留原始樣本時，可在「設定 → USB 獨佔」開啟 USB Bit-perfect，它會旁路 ECHO 的聲音處理。</string>
+    <string name="dac_help_compatible">目前曲目使用相容 USB 獨佔輸出，可使用聲音處理。</string>
     <string name="dac_help_bitperfect_pending">已開啟 Bit-perfect，但嚴格鏈路尚未回報直通。請等待播放穩定，若持續如此可開啟詳細診斷檢查。</string>
 </resources>

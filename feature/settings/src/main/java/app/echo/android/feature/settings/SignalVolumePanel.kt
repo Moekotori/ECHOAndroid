@@ -38,8 +38,9 @@ internal fun SignalVolumePanel(
     onScan: () -> Unit,
     deviceLabel: String? = null,
 ) {
-    val enabled = !status.diagnostics.usbBitPerfectEnabled
-    val replayGain = if (status.replayGainEnabled)
+    val enabled = !status.diagnostics.usbVolumeLocked
+    val canApplyReplayGain = !status.diagnostics.usbBitPerfectEnabled
+    val replayGain = if (canApplyReplayGain && status.replayGainEnabled)
         status.replayGainPreampDb + (status.replayGainTrackGainDb ?: 0f) else 0f
     var expanded by rememberSaveable { mutableStateOf("") }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
@@ -106,11 +107,11 @@ internal fun SignalVolumePanel(
                     SignalDspSection(
                         title = stringResource(R.string.dsp_loudness), detail = stringResource(R.string.dsp_loudness_detail),
                         summary = stringResource(R.string.volume_replaygain_summary), checked = status.replayGainEnabled,
-                        enabled = enabled, expanded = expanded == "loudness",
+                        enabled = canApplyReplayGain, expanded = expanded == "loudness",
                         onExpand = { expanded = if (expanded == "loudness") "" else "loudness" },
                         onChecked = { onReplayGain(it, status.replayGainPreampDb) },
                         onReset = { onReplayGain(false, 0f); onMode(EchoReplayGainMode.Auto) },
-                    ) { SignalReplayGainControls(status, scan, enabled, onReplayGain, onMode, onScan) }
+                    ) { SignalReplayGainControls(status, scan, canApplyReplayGain, onReplayGain, onMode, onScan) }
                     SignalDspSection(
                         title = stringResource(R.string.dsp_limiter), detail = stringResource(R.string.dsp_limiter_detail),
                         summary = "${signalNumber(dsp.limiterCeilingDb)} dBFS", checked = dsp.limiterEnabled,

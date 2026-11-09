@@ -3,4 +3,7 @@
     <string name="echo_link_direct_address_hint">输入电脑 IP 或域名，需要指定端口时在后面加 :端口。也可粘贴完整的 HTTP(S) 地址或配对链接。局域网直连需电脑允许，首次通过 frp/Tailscale 连接需配对。</string>
     <string name="echo_link_pairing_entry">通过 IP、域名或配对链接连接</string>
     <string name="echo_link_steam_edition_requirement">需要 ECHO Pro</string>
+    <string name="echo_link_steam_purchase_message">要通过 Echo Link 访问电脑曲库，请在 Steam 上为 ECHO 购买 ECHO Pro DLC。</string>
+    <string name="echo_link_steam_purchase_action">前往 Steam 查看 ECHO Pro</string>
+    <string name="echo_link_steam_store_error">无法打开 Steam 商店。</string>
 </resources>

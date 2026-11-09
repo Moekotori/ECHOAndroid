@@ -39,6 +39,8 @@ internal fun RemoteSourcesPanel(
     onClearSmb: () -> Unit,
     jellyfinServerUrl: String?, jellyfinUsername: String?, jellyfinPassword: String?,
     scanState: LibraryScanProgress,
+    oneDriveSource: (@Composable (expanded: Boolean, onExpand: () -> Unit, busy: Boolean) -> Unit)?,
+    onChooseSshfsFolder: (() -> Unit)?,
     onSyncSubsonic: (String, String, String) -> Unit,
     onSaveSubsonic: (String, String, String) -> Unit,
     onClearSubsonic: () -> Unit,
@@ -52,14 +54,14 @@ internal fun RemoteSourcesPanel(
 ) {
     var expandedSource by rememberSaveable { mutableStateOf<String?>(null) }
     // The backend exposes one shared scan state. Show it once, never attribute it to both providers.
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(L10nR.string.feature_connect_your_music_wherever_it_lives_e9713c),
                 style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             ConnectNote(stringResource(L10nR.string.feature_connect_add_a_music_server_or_a_nas_folder_7b39d3))
         }
         if (scanState.phase != LibraryScanPhase.Idle) {
-            ConnectCard(highlighted = scanState.isScanning, spacing = 8.dp) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(remoteScanPhaseLabel(scanState.phase), style = MaterialTheme.typography.titleSmall)
                 if (scanState.isScanning) LinearProgressIndicator(Modifier.fillMaxWidth())
                 ConnectNote(remoteLibraryDetail(scanState, ready = true), error = scanState.phase == LibraryScanPhase.Error)
@@ -69,6 +71,14 @@ internal fun RemoteSourcesPanel(
             }
         }
         ConnectFlatGroup {
+            EchoLinkLibrarySource()
+            ConnectRowDivider()
+            if (oneDriveSource != null) {
+                oneDriveSource(expandedSource == "onedrive", {
+                    expandedSource = if (expandedSource == "onedrive") null else "onedrive"
+                }, scanState.isScanning)
+                ConnectRowDivider()
+            }
             SourceEditor(
                 title = "Subsonic / Navidrome", icon = Icons.Rounded.Dns,
                 description = stringResource(L10nR.string.feature_connect_your_music_server_dd7eb8),
@@ -109,8 +119,17 @@ internal fun RemoteSourcesPanel(
                 expanded = expandedSource == "jellyfin", onExpand = { expandedSource = if (expandedSource == "jellyfin") null else "jellyfin" },
                 busy = scanState.isScanning, onSave = onSaveJellyfin, onSync = onSyncJellyfin, onClear = onClearJellyfin,
             )
+            if (onChooseSshfsFolder != null) {
+                ConnectRowDivider()
+                MountedSshfsSource(
+                    expanded = expandedSource == "sshfs",
+                    onExpand = { expandedSource = if (expandedSource == "sshfs") null else "sshfs" },
+                    onChooseFolder = onChooseSshfsFolder,
+                    busy = scanState.isScanning,
+                )
+            }
         }
-        ConnectSection(stringResource(L10nR.string.feature_connect_music_on_this_phone_8611a5), flat = true, plain = true) {
+        ConnectSection(stringResource(L10nR.string.feature_connect_music_on_this_phone_8611a5), plain = true) {
             ConnectNote(stringResource(L10nR.string.feature_connect_local_files_are_managed_in_library_no_server_c5274c))
         }
     }
@@ -152,15 +171,15 @@ private fun SourceEditor(
     )
     val submit = { if (ready && !busy) { keyboard?.hide(); onSync(url.trim(), effectiveUsername, effectivePassword) } }
     Column(modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).echoClickable(role = Role.Button) { focus.clearFocus(); keyboard?.hide(); onExpand() }.padding(vertical = 14.dp),
+        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).echoClickable(role = Role.Button) { focus.clearFocus(); keyboard?.hide(); onExpand() }.padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ConnectIconTile(icon)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            EchoIcon(icon, null, Modifier.size(22.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall)
                 ConnectNote(description)
-                if (dirty) ConnectStatusChip(stringResource(L10nR.string.feature_connect_unsaved_changes_1ab4c9), ConnectTone.Warning)
-                else if (saved) ConnectStatusChip(stringResource(L10nR.string.feature_connect_configuration_saved_a7628f), ConnectTone.Positive)
-                else ConnectStatusChip(stringResource(L10nR.string.feature_connect_not_configured_29b98a), ConnectTone.Neutral)
+                if (dirty) ConnectStatus(stringResource(L10nR.string.feature_connect_unsaved_changes_1ab4c9), ConnectTone.Warning)
+                else if (saved) ConnectStatus(stringResource(L10nR.string.feature_connect_configuration_saved_a7628f), ConnectTone.Positive)
+                else ConnectStatus(stringResource(L10nR.string.feature_connect_not_configured_29b98a), ConnectTone.Neutral)
             }
             EchoIcon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, Modifier.size(24.dp).echoExpandIndicator(expanded))
         }

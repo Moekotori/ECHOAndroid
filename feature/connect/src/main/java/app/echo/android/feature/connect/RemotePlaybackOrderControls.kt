@@ -3,11 +3,6 @@ package app.echo.android.feature.connect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.TrendingFlat
-import androidx.compose.material.icons.rounded.RepeatOne
-import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -17,26 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import app.echo.android.design.EchoIcon
 import app.echo.android.model.connect.EchoRemotePlaybackOrder
-
-@Composable
-internal fun RemotePlaybackOrderButton(
-    order: EchoRemotePlaybackOrder,
-    enabled: Boolean,
-    onChange: (EchoRemotePlaybackOrder) -> Unit,
-) {
-    IconButton(
-        onClick = { onChange(EchoRemotePlaybackOrder.entries[(order.ordinal + 1) % EchoRemotePlaybackOrder.entries.size]) },
-        enabled = enabled,
-    ) {
-        EchoIcon(when (order) {
-            EchoRemotePlaybackOrder.Sequential -> Icons.AutoMirrored.Rounded.TrendingFlat
-            EchoRemotePlaybackOrder.Shuffle -> Icons.Rounded.Shuffle
-            EchoRemotePlaybackOrder.RepeatOne -> Icons.Rounded.RepeatOne
-        }, stringResource(order.labelResource()))
-    }
-}
 
 @Composable
 internal fun RemotePlaybackOrderControls(

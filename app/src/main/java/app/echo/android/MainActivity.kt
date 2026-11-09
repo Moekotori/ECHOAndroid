@@ -43,8 +43,8 @@ class MainActivity : ComponentActivity() {
     @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         val startupThemeSnapshot = applicationContext.readEchoStartupThemeSnapshot()
-        var startupReady = applicationContext.hasEchoStartupThemeSnapshot()
-        if (startupReady) applicationContext.initializeEchoAppLocale(startupThemeSnapshot.appLanguage)
+        val hasStartupThemeSnapshot = applicationContext.hasEchoStartupThemeSnapshot()
+        if (hasStartupThemeSnapshot) applicationContext.initializeEchoAppLocale(startupThemeSnapshot.appLanguage)
         val startupDarkTheme = resolveEchoDarkTheme(
             systemDarkTheme = applicationContext.isEchoSystemDarkTheme(),
             themeMode = startupThemeSnapshot.themeMode,
@@ -57,7 +57,8 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         volumeControlStream = AudioManager.STREAM_MUSIC
-        splashScreen.setKeepOnScreenCondition { !startupReady }
+        var firstScreenComposed = false
+        splashScreen.setKeepOnScreenCondition { !firstScreenComposed }
         window.decorView.setBackgroundColor(
             echoStartupWindowColor(
                 EchoColorTheme.fromId(startupThemeSnapshot.colorTheme),
@@ -66,15 +67,16 @@ class MainActivity : ComponentActivity() {
             ),
         )
         applyEdgeToEdge(startupDarkTheme)
-        // Restored or animator-less starts skip the in-app launch splash.
-        val launchSplash = if (savedInstanceState == null && ValueAnimator.areAnimatorsEnabled()) {
-            EchoLaunchSplashState()
-        } else {
-            null
-        }
+        val animateSplash = savedInstanceState == null && ValueAnimator.areAnimatorsEnabled()
         fun showContent(snapshot: EchoStartupThemeSnapshot) {
+            // Let a fresh installation draw the introduction without a competing splash animation.
+            val launchSplash = if (animateSplash && (hasStartupThemeSnapshot || snapshot.startupBackgroundUri != null)) {
+                EchoLaunchSplashState()
+            } else {
+                null
+            }
             var launchDark = startupDarkTheme
-            if (!startupReady) {
+            if (!hasStartupThemeSnapshot) {
                 applicationContext.initializeEchoAppLocale(snapshot.appLanguage)
                 val dark = resolveEchoDarkTheme(
                     systemDarkTheme = applicationContext.isEchoSystemDarkTheme(),
@@ -93,13 +95,12 @@ class MainActivity : ComponentActivity() {
             splashScreen.installEchoExitTransition(this, launchSplash, snapshot.startupBackgroundUri)
             setContent {
                 Box(Modifier.fillMaxSize()) {
-                    EchoMobileApp()
+                    EchoMobileApp(startupDarkTheme = launchDark, onFirstScreenComposed = { firstScreenComposed = true })
                     if (launchSplash != null) EchoLaunchSplash(launchSplash, launchDark)
                 }
             }
-            startupReady = true
         }
-        if (startupReady) {
+        if (hasStartupThemeSnapshot) {
             showContent(startupThemeSnapshot)
         } else {
             // Keep the existing splash while migrating; no main-thread wait or intermediate theme frame.

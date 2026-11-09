@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_sync_onedrive_failed">OneDrive sync failed</string>
+    <string name="remote_sync_sshfs_failed">SSHFS sync failed</string>
+    <string name="sshfs_folder_permission_error">Unable to keep read access to this folder. Choose it again.</string>
+</resources>

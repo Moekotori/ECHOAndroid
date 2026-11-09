@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoShortLandscape
@@ -75,6 +76,8 @@ fun ConnectScreen(
     jellyfinPassword: String?,
     savedPcs: List<app.echo.android.model.connect.EchoSavedPcEndpoint> = emptyList(),
     remoteScanState: LibraryScanProgress,
+    oneDriveSource: (@Composable (expanded: Boolean, onExpand: () -> Unit, busy: Boolean) -> Unit)? = null,
+    onChooseSshfsFolder: (() -> Unit)? = null,
     onConnectPc: (String, String) -> Unit,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
@@ -134,7 +137,6 @@ fun ConnectScreen(
     remoteControlsActive: Boolean = true,
     remoteMode: Boolean = true,
     libraryOnly: Boolean = false,
-    onRemoteModeChange: (Boolean) -> Unit = {},
     onOpenPcLibrary: () -> Unit = {},
     openPcTabNonce: Int = 0,
     openPcQueueNonce: Int = 0,
@@ -149,6 +151,10 @@ fun ConnectScreen(
     phoneLibraryListeningPort: Int? = null,
     onPhoneLibraryPortChange: suspend (Int) -> Unit = {},
     onPhoneLibraryShareChange: (Boolean) -> Unit = {},
+    bottomInset: Dp = 0.dp,
+    phonePresenceEnabled: Boolean = false,
+    phonePresenceSupported: Boolean = false,
+    onPhonePresenceChange: (Boolean) -> Unit = {},
 ) {
     val pagerState = rememberPagerState { 3 }
     val scrollStates = listOf(rememberScrollState(), rememberScrollState(), rememberScrollState())
@@ -194,7 +200,7 @@ fun ConnectScreen(
         Column(Modifier.statusBarsPadding().imePadding(), horizontalAlignment = Alignment.CenterHorizontally) {
             val heading: @Composable () -> Unit = {
                 Text(stringResource(L10nR.string.feature_connect_connect_c7c091),
-                    Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
             }
@@ -205,12 +211,12 @@ fun ConnectScreen(
                 Row(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.widthIn(max = 160.dp)) { heading() }
-                    Box(Modifier.weight(1f).padding(end = 24.dp)) { tabBar() }
+                    Box(Modifier.weight(1f).padding(end = 20.dp)) { tabBar() }
                 }
             } else {
                 Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxWidth()) {
                     heading()
-                    Box(Modifier.padding(horizontal = 24.dp, vertical = 4.dp)) { tabBar() }
+                    Box(Modifier.padding(horizontal = 20.dp)) { tabBar() }
                 }
             }
             networkPermissionContent()
@@ -228,9 +234,9 @@ fun ConnectScreen(
                 savedTabs.SaveableStateProvider(tab) {
                     Column(
                         Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()
-                            .verticalScroll(scrollStates[tab]).padding(horizontal = 24.dp)
-                            .padding(top = 12.dp, bottom = if (shortLandscape) 100.dp else 188.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                            .windowInsetsPadding(WindowInsets(bottom = bottomInset))
+                            .verticalScroll(scrollStates[tab])
+                            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
                     ) {
                         when (tab) {
                             1 -> RemoteSourcesPanel(
@@ -241,6 +247,8 @@ fun ConnectScreen(
                                 webDavUsername = webDavUsername,
                                 webDavPassword = webDavPassword,
                                 smbServerUrl = smbServerUrl,
+                                oneDriveSource = oneDriveSource,
+                                onChooseSshfsFolder = onChooseSshfsFolder,
                                 smbUsername = smbUsername,
                                 smbPassword = smbPassword,
                                 onSyncSmb = onSyncSmbLibrary,
@@ -265,23 +273,30 @@ fun ConnectScreen(
                                 PcLinkPanel(
                                     librarySyncActions = librarySyncActions,
                                     phoneLibraryShareContent = {
-                                        if (!libraryOnly && remoteState == EchoRemoteConnectionState.Connected) {
-                                            TextButton(onClick = onOpenLinkSongTransfer) { Text(stringResource(L10nR.string.link_transfer_title)) }
-                                        }
                                         if (!libraryOnly) ConnectFlatGroup {
-                                            Box(Modifier.padding(vertical = 14.dp)) {
-                                            PhoneLibraryShareControl(
-                                                status = phoneLibraryShareStatus,
-                                                configuredPort = phoneLibraryPort,
-                                                listeningPort = phoneLibraryListeningPort,
-                                                onPortChange = onPhoneLibraryPortChange,
-                                                pcAddress = connectedLanAddress,
-                                                connectionState = remoteState,
-                                                active = remoteControlsActive && pagerState.settledPage == 0,
-                                                onConnectRequested = { openShareConnectionNonce++ },
-                                                onChange = onPhoneLibraryShareChange,
-                                            )
+                                            Box(Modifier.padding(vertical = 8.dp)) {
+                                                PhoneLibraryShareControl(
+                                                    status = phoneLibraryShareStatus,
+                                                    configuredPort = phoneLibraryPort,
+                                                    listeningPort = phoneLibraryListeningPort,
+                                                    onPortChange = onPhoneLibraryPortChange,
+                                                    pcAddress = connectedLanAddress,
+                                                    connectionState = remoteState,
+                                                    active = remoteControlsActive && pagerState.settledPage == 0,
+                                                    onConnectRequested = { openShareConnectionNonce++ },
+                                                    onChange = onPhoneLibraryShareChange,
+                                                )
                                             }
+                                        }
+                                    },
+                                    phonePresenceContent = {
+                                        if (!libraryOnly || phonePresenceEnabled) {
+                                            PhonePresenceControl(
+                                                checked = phonePresenceEnabled,
+                                                connected = remoteState == EchoRemoteConnectionState.Connected,
+                                                supported = phonePresenceSupported,
+                                                onChange = onPhonePresenceChange,
+                                            )
                                         }
                                     },
                                     remoteState = remoteState,
@@ -332,13 +347,13 @@ fun ConnectScreen(
                                     onOpenListening = onOpenListening,
                                     remoteMode = remoteMode,
                                     libraryOnly = libraryOnly,
-                                    onRemoteModeChange = onRemoteModeChange,
                                     onOpenPcLibrary = onOpenPcLibrary,
                                     openQueueNonce = openPcQueueNonce,
                                     onQueueRequestHandled = onPcQueueOpened,
                                     openConnectionNonce = openShareConnectionNonce,
                                     onConnectionRequestHandled = { openShareConnectionNonce = 0 },
                                     onOpenWifiTransfer = onOpenWifiTransfer,
+                                    onOpenLinkSongTransfer = onOpenLinkSongTransfer,
                                 )
                             }
                             else -> CastDevicesPanel(

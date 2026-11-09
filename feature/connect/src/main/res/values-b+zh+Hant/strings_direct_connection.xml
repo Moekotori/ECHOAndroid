@@ -3,4 +3,7 @@
     <string name="echo_link_direct_address_hint">輸入電腦 IP 或網域，需要指定連接埠時在後面加 :連接埠。也可貼上完整的 HTTP(S) 位址或配對連結。區域網路直連需電腦允許，首次透過 frp/Tailscale 連線需配對。</string>
     <string name="echo_link_pairing_entry">透過 IP、網域或配對連結連線</string>
     <string name="echo_link_steam_edition_requirement">需要 ECHO Pro</string>
+    <string name="echo_link_steam_purchase_message">若要透過 Echo Link 存取電腦曲庫，請在 Steam 上為 ECHO 購買 ECHO Pro DLC。</string>
+    <string name="echo_link_steam_purchase_action">前往 Steam 查看 ECHO Pro</string>
+    <string name="echo_link_steam_store_error">無法開啟 Steam 商店。</string>
 </resources>

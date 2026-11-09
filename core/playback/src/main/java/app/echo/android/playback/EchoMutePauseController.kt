@@ -79,7 +79,7 @@ internal class EchoMutePauseController(context: Context, private val player: Pla
         if (changing) return
         val runtime = EchoPlaybackProcessRuntime
         val usb = runtime.usbExclusiveSinkActive.value
-        val muted = mutePauseIsMuted(runtime.volumeSettings.muted, runtime.usbBitPerfectEnabled, usb,
+        val muted = mutePauseIsMuted(runtime.volumeSettings.muted, runtime.usbVolumeLocked, usb,
             player.isDeviceMuted, player.deviceVolume, player.deviceInfo.maxVolume)
         val item = player.currentMediaItem
         val key = item?.let { "${it.mediaId}\u0000${it.queueContext()?.entryId}\u0000${route.value.kind}\u0000${route.value.address}\u0000${route.value.deviceName}\u0000${route.value.deviceNames}\u0000$usb" }

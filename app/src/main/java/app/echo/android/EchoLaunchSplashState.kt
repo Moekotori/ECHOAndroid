@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 
 /**
  * Hand-off between the system splash (owned by [installEchoExitTransition]) and the in-app
- * launch splash. The overlay stays a plain background until [started] and [lightweight] are known.
+ * launch splash. The overlay is composed only once [started] and [lightweight] are known.
  */
 internal class EchoLaunchSplashState {
     /** The system splash has begun fading out; the timeline may run. */

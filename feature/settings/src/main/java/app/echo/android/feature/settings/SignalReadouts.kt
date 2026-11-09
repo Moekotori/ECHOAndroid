@@ -93,7 +93,7 @@ internal fun EchoPlaybackDiagnostics.signalIntegrityLabel(
     channelBalance: EchoChannelBalanceState = EchoChannelBalanceState(),
 ): String =
     when {
-        usbBitPerfectEnabled -> bitPerfectReadout(equalizerState)
+        usbBitPerfectEnabled -> bitPerfectState.readout()
         equalizerState.mseb.active -> stringResource(R.string.mseb_integrity)
         equalizerState.active && channelBalance.active -> stringResource(R.string.diag_integrity_eq_balance)
         equalizerState.active -> stringResource(R.string.diag_integrity_eq)
@@ -105,11 +105,12 @@ internal fun EchoPlaybackDiagnostics.signalIntegrityLabel(
     }
 
 @Composable
-internal fun EchoPlaybackDiagnostics.bitPerfectReadout(equalizerState: EchoEqualizerState): String =
-    stringResource(when (bitPerfectState) {
+internal fun EchoBitPerfectState.readout(): String =
+    stringResource(when (this) {
         EchoBitPerfectState.Off -> R.string.bitperfect_off
         EchoBitPerfectState.Waiting -> R.string.bitperfect_waiting
-        EchoBitPerfectState.Direct -> R.string.bitperfect_direct
+        EchoBitPerfectState.Direct -> R.string.dac_status_direct_short
+        EchoBitPerfectState.Compatible -> R.string.bitperfect_compatible
         EchoBitPerfectState.UnsupportedSource -> R.string.bitperfect_source
         EchoBitPerfectState.UsbUnavailable -> R.string.bitperfect_usb
         EchoBitPerfectState.UnsupportedFormat -> R.string.bitperfect_format

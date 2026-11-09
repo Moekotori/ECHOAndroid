@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Refresh
@@ -69,10 +68,10 @@ internal fun CastDevicesPanel(
 ) {
     val connected = connectedAddress?.trim()?.takeIf { it.isNotEmpty() }
     val canCast = blockedReason == null && !phoneTrackTitle.isNullOrBlank()
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Column(Modifier.padding(horizontal = 4.dp)) { ConnectNote(stringResource(L10nR.string.echo_link_cast_subtitle)) }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ConnectNote(stringResource(L10nR.string.echo_link_cast_subtitle))
         remoteError?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
-        ConnectSection(stringResource(L10nR.string.echo_link_cast_now_playing), flat = true, plain = true) {
+        ConnectSection(stringResource(L10nR.string.echo_link_cast_now_playing), plain = true) {
             val title = phoneTrackTitle?.trim().orEmpty()
             if (title.isEmpty() || blockedReason == EchoLinkCastBlockReason.EmptyQueue) {
                 ConnectNote(stringResource(L10nR.string.echo_link_cast_play_first))
@@ -101,9 +100,9 @@ internal fun CastDevicesPanel(
                 val format = phoneTrackFormat?.takeIf { it.isNotBlank() }
                 if (format != null || phoneTrackLossless || castQueueCount > 1) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        format?.let { ConnectStatusChip(it, ConnectTone.Neutral) }
-                        if (phoneTrackLossless) ConnectStatusChip(stringResource(L10nR.string.echo_link_cast_original), ConnectTone.Positive)
-                        if (castQueueCount > 1) ConnectStatusChip(stringResource(L10nR.string.echo_link_cast_queue_count, castQueueCount), ConnectTone.Neutral)
+                        format?.let { ConnectStatus(it, ConnectTone.Neutral) }
+                        if (phoneTrackLossless) ConnectStatus(stringResource(L10nR.string.echo_link_cast_original), ConnectTone.Positive)
+                        if (castQueueCount > 1) ConnectStatus(stringResource(L10nR.string.echo_link_cast_queue_count, castQueueCount), ConnectTone.Neutral)
                     }
                 }
                 if (blockedReason == EchoLinkCastBlockReason.UnsupportedSource) {
@@ -155,8 +154,6 @@ internal fun CastDevicesPanel(
         }
         ConnectSection(
             stringResource(L10nR.string.echo_link_cast_devices),
-            list = true,
-            flat = true,
             action = {
                 IconButton(onClick = onRefreshLanDevices, enabled = !casting) {
                     EchoIcon(Icons.Rounded.Refresh, stringResource(L10nR.string.feature_connect_refresh_828c69))
@@ -191,8 +188,6 @@ internal fun CastDevicesPanel(
         ConnectSection(
             stringResource(L10nR.string.echo_link_cast_tvs),
             subtitle = stringResource(L10nR.string.echo_link_cast_tvs_note),
-            list = true,
-            flat = true,
         ) {
             if (lanRenderers.isEmpty()) {
                 PcDiscoveryEmptyState(
@@ -230,7 +225,7 @@ internal fun CastDevicesPanel(
             }
         }
         if (extraSaved.isNotEmpty()) {
-            ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91), list = true, flat = true) {
+            ConnectSection(stringResource(L10nR.string.feature_connect_saved_pcs_4d2e91)) {
                 extraSaved.asReversed().forEachIndexed { index, pc ->
                     if (index > 0) ConnectRowDivider()
                     CastDeviceRow(
@@ -245,7 +240,7 @@ internal fun CastDevicesPanel(
                 }
             }
         }
-        Column(Modifier.padding(horizontal = 4.dp)) { ConnectNote(stringResource(L10nR.string.echo_link_battery_hint)) }
+        ConnectNote(stringResource(L10nR.string.echo_link_battery_hint))
     }
 }
 

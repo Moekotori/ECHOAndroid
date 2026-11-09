@@ -1,7 +1,6 @@
 package app.echo.android.feature.connect
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -16,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkDiscoveryState
@@ -33,39 +31,34 @@ internal fun connectionTone(state: EchoRemoteConnectionState): ConnectTone = whe
     EchoRemoteConnectionState.Disconnected -> ConnectTone.Neutral
 }
 
-/**
- * Connection summary: who we are linked to, in what state, and the one action that matters now.
- * It only becomes a card once connected, so the idle page stays calm.
- */
 @Composable
-internal fun PcLinkHero(
+internal fun PcLinkSummary(
     title: String,
     state: EchoRemoteConnectionState,
     showRequirement: Boolean,
     error: String? = null,
-    content: @Composable ColumnScope.() -> Unit = {},
+    action: (@Composable () -> Unit)? = null,
 ) {
     val busy = state == EchoRemoteConnectionState.Pairing ||
         state == EchoRemoteConnectionState.Connecting || state == EchoRemoteConnectionState.Reconnecting
-    val body: @Composable ColumnScope.() -> Unit = {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            ConnectIconTile(Icons.Rounded.Computer, size = 52.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            EchoIcon(Icons.Rounded.Computer, null, Modifier.size(24.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                ConnectStatusChip(remoteConnectionLabel(state), connectionTone(state), progress = busy)
+                ConnectStatus(remoteConnectionLabel(state), connectionTone(state), progress = busy)
             }
+            if (action != null) Box(Modifier.widthIn(max = 144.dp)) { action() }
         }
+        if (busy) ConnectNote(stringResource(R.string.feature_connect_keep_pc_echo_running_and_both_devices_on_7986ec))
         if (showRequirement) EchoSteamNotice()
         error?.takeIf { it.isNotBlank() }?.let { ConnectNote(it, error = true) }
-        content()
     }
-    if (state == EchoRemoteConnectionState.Connected) ConnectCard(highlighted = true, content = body)
-    else Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = body)
 }
 
-/** Device text yields space to actions even on narrow screens. */
+/** The connection action covers the device row, with a separate forget target. */
 @Composable
 internal fun PcDeviceRow(
     name: String,
@@ -77,24 +70,32 @@ internal fun PcDeviceRow(
     active: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().heightIn(min = 68.dp), verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box {
-            ConnectIconTile(Icons.Rounded.Computer, size = 40.dp)
-            if (active) Box(Modifier.align(Alignment.BottomEnd).offset(2.dp, 2.dp).size(12.dp)
-                .background(scheme.surfaceContainerLow, CircleShape).padding(2.dp)
-                .background(scheme.primary, CircleShape))
-        }
-        Column(Modifier.weight(1f).echoClickable(enabled = enabled, role = Role.Button, onClick = onConnect)
-            .padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(name, style = MaterialTheme.typography.titleSmall,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(address, style = MaterialTheme.typography.bodySmall,
-                color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        FilledTonalButton(onClick = onConnect, enabled = enabled, shape = ConnectControlShape,
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
-            Text(actionLabel, maxLines = 1)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.weight(1f).heightIn(min = 56.dp)
+                .echoClickable(enabled = enabled, role = Role.Button, onClick = onConnect)
+                .padding(vertical = 8.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box {
+                EchoIcon(Icons.Rounded.Computer, null, Modifier.size(22.dp))
+                if (active) Box(Modifier.align(Alignment.BottomEnd).offset(2.dp, 2.dp).size(12.dp)
+                    .background(scheme.surface, CircleShape).padding(2.dp)
+                    .background(scheme.primary, CircleShape))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(name, style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(address, style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(
+                actionLabel,
+                modifier = Modifier.widthIn(max = 104.dp),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (enabled) scheme.primary else scheme.onSurfaceVariant,
+            )
         }
         if (onForget != null) {
             IconButton(onClick = onForget) {
@@ -113,24 +114,19 @@ internal fun PcDiscoveryEmptyState(
 ) {
     val scheme = MaterialTheme.colorScheme
     val failed = state == EchoLinkDiscoveryState.Failed
-    Column(Modifier.fillMaxWidth().padding(vertical = 20.dp, horizontal = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Box(Modifier.size(88.dp).border(1.dp, scheme.outlineVariant.copy(alpha = 0.6f), CircleShape),
-            contentAlignment = Alignment.Center) {
-            Box(Modifier.size(56.dp).border(1.dp, scheme.outlineVariant, CircleShape), contentAlignment = Alignment.Center) {
-                when {
-                    state == EchoLinkDiscoveryState.Searching ->
-                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                    failed -> EchoIcon(Icons.Rounded.ErrorOutline, null, Modifier.size(22.dp), tint = scheme.error)
-                    else -> EchoIcon(Icons.Rounded.Wifi, null, Modifier.size(22.dp), tint = scheme.onSurfaceVariant)
-                }
-            }
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        when {
+            state == EchoLinkDiscoveryState.Searching ->
+                CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+            failed -> EchoIcon(Icons.Rounded.ErrorOutline, null, Modifier.size(22.dp), tint = scheme.error)
+            else -> EchoIcon(Icons.Rounded.Wifi, null, Modifier.size(22.dp), tint = scheme.onSurfaceVariant)
         }
         Text(stringResource(when (state) {
             EchoLinkDiscoveryState.Searching -> searching
             EchoLinkDiscoveryState.Failed -> R.string.echo_link_lan_failed
             else -> empty
-        }), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
+        }), style = MaterialTheme.typography.bodySmall,
             color = if (failed) scheme.error else scheme.onSurfaceVariant)
     }
 }

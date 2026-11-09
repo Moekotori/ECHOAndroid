@@ -18,6 +18,7 @@ import app.echo.android.model.playback.withSoundEffectRuntime
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.EchoRepeatMode
+import app.echo.android.model.playback.EchoShuffleMode
 import app.echo.android.model.playback.EchoLinkPlaybackUri
 import app.echo.android.model.playback.EchoTrackRef
 import app.echo.android.model.playback.PlaybackControlsState
@@ -237,26 +238,48 @@ fun Player.toPlaybackQueueState(): PlaybackQueueState {
             durationMs = if (index == currentIndex) currentDurationMs else 0L,
         )
     }
+    val mode = activeDesktopShuffleMode()
+    val previous = if (mode == EchoShuffleMode.LibraryWide) {
+        val entry = items.getOrNull(currentIndex)?.queueContext?.entryId
+        val indices = items.mapIndexedNotNull { index, track -> track.queueContext?.entryId?.let { it to index } }.toMap()
+        EchoPlaybackProcessRuntime.shuffleResumeFor(entry)?.previousEntryIds.orEmpty()
+            .asReversed().distinct().asReversed().mapNotNull(indices::get)
+    } else null
     return PlaybackQueueState(
         items = items,
         currentIndex = currentIndex,
         playOrder = if (shuffleModeEnabled) queueShuffleOrder() else items.indices.toList(),
-        repeatAll = repeatMode == Player.REPEAT_MODE_ALL,
+        repeatAll = repeatMode == Player.REPEAT_MODE_ALL && mode == null,
+        previousIndices = previous,
     )
 }
 
-fun Player.toPlaybackControlsState(): PlaybackControlsState =
-    PlaybackControlsState(
+private fun Player.activeDesktopShuffleMode(): EchoShuffleMode? = EchoPlaybackRuntimeOptionsStore.options.value.shuffleOptions.mode
+    .takeIf { shuffleModeEnabled && it.desktopRecentCount != null }
+
+fun Player.toPlaybackControlsState(): PlaybackControlsState {
+    val mode = activeDesktopShuffleMode()
+    val index = currentMediaItemIndex
+    val canSkipNext = if (mode == null) hasNextMediaItem() else
+        index in 0 until currentTimeline.windowCount &&
+            currentTimeline.getNextWindowIndex(index, Player.REPEAT_MODE_OFF, true) != C.INDEX_UNSET
+    val canSkipPrevious = if (mode == EchoShuffleMode.LibraryWide) {
+        val entry = currentMediaItem?.queueContext()?.entryId
+        val previous = EchoPlaybackProcessRuntime.shuffleResumeFor(entry)?.previousEntryIds.orEmpty().toHashSet()
+        previous.isNotEmpty() && (0 until mediaItemCount).any { it != index && getMediaItemAt(it).queueContext()?.entryId in previous }
+    } else hasPreviousMediaItem()
+    return PlaybackControlsState(
         state = toEchoPlaybackState(),
         isPlaying = isPlaying,
         repeatMode = repeatMode.toEchoRepeatMode(),
         shuffleEnabled = shuffleModeEnabled,
         playbackSpeed = playbackParameters.speed,
         playbackPitch = playbackParameters.pitch,
-        canSkipNext = hasNextMediaItem(),
-        canSkipPrevious = hasPreviousMediaItem(),
+        canSkipNext = canSkipNext,
+        canSkipPrevious = canSkipPrevious,
         canSeek = !EchoRadioStation.isRadio(currentMediaItem?.mediaId) && isCurrentMediaItemSeekable,
     )
+}
 
 fun Player.toPlaybackDiagnosticsState(
     usbAudioStatus: EchoUsbAudioStatus = EchoUsbAudioStatus(),

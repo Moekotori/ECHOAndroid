@@ -1,0 +1,14 @@
+<resources>
+    <string name="settings_shuffle_queue_draw">一般隨機</string>
+    <string name="settings_shuffle_queue_draw_detail">從目前佇列逐首抽取，避免連續播放同一首歌。</string>
+    <string name="settings_shuffle_avoid_25">避開最近 25 首</string>
+    <string name="settings_shuffle_avoid_25_detail">優先抽取最近沒聽過的歌曲，盡量錯開同一歌手或專輯。</string>
+    <string name="settings_shuffle_avoid_100">避開最近 100 首</string>
+    <string name="settings_shuffle_avoid_100_detail">從目前佇列抽取時，參考更長的播放紀錄。</string>
+    <string name="settings_shuffle_library_wide">本機全曲庫隨機</string>
+    <string name="settings_shuffle_library_wide_detail">從手機索引的本機曲庫抽取，包括目前佇列以外的歌曲，並盡量避開最近 25 首。</string>
+    <string name="settings_shuffle_classic">更多 Android 策略</string>
+    <string name="settings_shuffle_classic_detail">每輪聽完、純隨機和按專輯隨機。</string>
+    <string name="settings_shuffle_desktop_rules">選出下一首後保持穩定，換歌後再抽取。曲目較少時，優先放寬最早聽過的歌曲。</string>
+    <string name="settings_shuffle_desktop_reset">恢復避開最近 25 首的策略。</string>
+</resources>

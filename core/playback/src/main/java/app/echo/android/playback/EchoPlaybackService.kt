@@ -179,7 +179,6 @@ class EchoPlaybackService : MediaLibraryService() {
         audioFocus = EchoAudioFocusController(this, exoPlayer, serviceScope,
             EchoPlaybackProcessRuntime::canContinueAudioInteraction)
         podcastProgress = EchoPodcastProgressBinding(exoPlayer, serviceScope).also(exoPlayer::addListener)
-        abLoop = EchoAbLoopController(exoPlayer, serviceScope)
         audioRoutePlayback = EchoAudioRoutePlaybackController(this, exoPlayer, serviceScope,
             canInteractWithAudio = EchoPlaybackProcessRuntime::canContinueAudioInteraction,
         ).also { it.start() }
@@ -193,15 +192,24 @@ class EchoPlaybackService : MediaLibraryService() {
             decoder = decoder,
             onAutomaticAdvance = { from, to -> nextUpQueue?.prepareAutomaticAdvance(from, to) },
         )
+        val queue = checkNotNull(nextUpQueue)
         val restorer = EchoPlaybackSessionRestorer(
             scope = serviceScope,
             store = EchoPlaybackProcessRuntime::sessionStore,
             player = { player },
             enginePolicy = { EchoPlaybackProcessRuntime.enginePolicyOrNull() },
+            restoreSession = queue::restoreSession,
+            readRepeatMode = { queue.requestedRepeatMode },
         )
         sessionRestorer = restorer
         EchoPlaybackProcessRuntime.setRemoteAuthReadyListener(restorer::playIfRemoteAuthReady)
-        val manualPlayer = EchoManualFadePlayer(exoPlayer, serviceScope).also { manualFade = it }
+        val manualPlayer = EchoManualFadePlayer(exoPlayer, serviceScope, replaceQueue = queue::replaceQueue)
+            .also { manualFade = it }
+        val sessionPlayer = EchoQueueSessionPlayer(manualPlayer, queue) {
+            restorer.persistFromPlayer()
+            sessionCallback?.refreshRepeatButton()
+        }
+        abLoop = EchoAbLoopController(sessionPlayer, serviceScope)
         mutePause = EchoMutePauseController(this, exoPlayer, serviceScope)
         val callback = EchoPlaybackLibrarySessionCallback(
             context = this,
@@ -217,7 +225,7 @@ class EchoPlaybackService : MediaLibraryService() {
         )
         sessionCallback = callback
         val buttons = callback.currentButtons(exoPlayer)
-        mediaSession = MediaLibrarySession.Builder(this, manualPlayer, callback)
+        mediaSession = MediaLibrarySession.Builder(this, sessionPlayer, callback)
             .setId("echo-mobile-main-session")
             .setSessionExtras(echoSystemMediaSessionExtras())
             .setBitmapLoader(
@@ -354,7 +362,12 @@ class EchoPlaybackService : MediaLibraryService() {
         sessionRestorer = null
         player = null
         nextUpQueue = null
+        EchoPlaybackProcessRuntime.publishShuffleResume(null)
         serviceScope.cancel()
+        val lastSurface = EchoPlaybackProcessRuntime.surface.value
+        if (lastSurface.isPlaying) {
+            EchoPlaybackProcessRuntime.publishSurface(lastSurface.copy(isPlaying = false))
+        }
         super.onDestroy()
     }
 }

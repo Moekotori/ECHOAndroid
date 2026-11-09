@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_onedrive_description">Browse your OneDrive music folders</string>
+    <string name="connect_onedrive_unavailable">OneDrive sign-in is unavailable in this build.</string>
+    <string name="connect_onedrive_failed">Unable to complete the OneDrive operation. Try again or sign in again.</string>
+    <string name="connect_onedrive_parent">Parent folder</string>
+    <string name="connect_onedrive_previous_page">Previous page</string>
+    <string name="connect_onedrive_next_page">Next page</string>
+    <string name="connect_onedrive_sync_folder">Sync this folder</string>
+    <string name="connect_onedrive_browse">Choose music folder</string>
+    <string name="connect_onedrive_sign_in_again">Sign in again</string>
+    <string name="connect_onedrive_sign_in">Sign in with Microsoft</string>
+    <string name="connect_sshfs_description">Music in a mounted SSHFS folder</string>
+    <string name="connect_sshfs_mount_hint">First mount the folder with a tool that exposes it in Android’s system file picker.</string>
+    <string name="connect_sshfs_choose_folder">Choose mounted folder</string>
+</resources>

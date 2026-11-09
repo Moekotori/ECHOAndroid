@@ -4,11 +4,12 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.ui.graphics.Color
 
-/** Seconds on the splash clock; every element is a pure function of this one timeline. */
+/** Play the authored splash timeline within a short, fixed wall-clock budget. */
 internal object LaunchSplashTiming {
-    /** Time the splash stays before handing off to the app. */
+    const val DurationMillis = 600L
     const val HoldSeconds = 2.2f
     const val ExitSeconds = 0.75f
+    const val TimelineSeconds = HoldSeconds + ExitSeconds
 
     const val LandStart = 0.12f
     const val LandDuration = 1.15f

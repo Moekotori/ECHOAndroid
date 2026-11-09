@@ -90,6 +90,11 @@ android {
             "SETLISTFM_API_KEY",
             "\"${lastFmBuildValue("SETLISTFM_API_KEY")}\"",
         )
+        val oneDriveClientId = providers.gradleProperty("ECHO_ONEDRIVE_CLIENT_ID").orNull
+            ?: providers.environmentVariable("ECHO_ONEDRIVE_CLIENT_ID").orNull
+            ?: localProperties.getProperty("ECHO_ONEDRIVE_CLIENT_ID", "")
+        require(oneDriveClientId.isEmpty() || oneDriveClientId.matches(Regex("[0-9a-fA-F-]{36}")))
+        buildConfigField("String", "ONEDRIVE_CLIENT_ID", "\"$oneDriveClientId\"")
     }
 
     buildFeatures {

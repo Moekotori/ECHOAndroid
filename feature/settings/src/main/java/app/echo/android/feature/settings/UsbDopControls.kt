@@ -16,7 +16,7 @@ internal fun UsbDopControls(options: EchoUsbOutputOptions, diagnostics: EchoPlay
     val key = if (diagnostics.usbConnected && vendor != null && product != null)
         EchoUsbOutputOptions.dopDeviceKey(vendor, product) else null
     val limit = key?.let { options.dopDeviceLimits[it] }
-    UsbSettingsSection(stringResource(R.string.usb_dop_title), secondary = true) {
+    UsbSettingsSection(stringResource(R.string.usb_dop_title)) {
         SettingsSwitchRow(stringResource(R.string.usb_dop_enable),
             stringResource(if (key == null) R.string.usb_dop_connect else R.string.usb_dop_note),
             limit != null, enabled = key != null,

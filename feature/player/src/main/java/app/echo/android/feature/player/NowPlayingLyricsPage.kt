@@ -53,8 +53,8 @@ internal fun NowPlayingLyricsPage(
     onOpenQueue: () -> Unit,
     positionMsState: State<Long>,
     durationMsState: State<Long>,
-    onImportLyrics: () -> Unit,
-    onAdjustLyricsOffset: (Long) -> Unit,
+    onImportLyrics: (() -> Unit)?,
+    onAdjustLyricsOffset: ((Long) -> Unit)?,
     onResetLyricsOffset: () -> Unit,
     onOpenLyricsSettings: () -> Unit,
     onOpenArtist: ((trackId: String, artistName: String) -> Unit)? = null,
@@ -233,7 +233,7 @@ internal fun NowPlayingLyricsPage(
                         ) + fadeOut(tween(durationMillis = 160, easing = LyricsSettingsMotionEasing)) +
                             slideOutVertically(EchoMotion.silkOffset(240)) { -it / 5 },
                     ) {
-                        readyLyrics?.let { lyrics ->
+                        if (onImportLyrics != null && onAdjustLyricsOffset != null) readyLyrics?.let { lyrics ->
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth().padding(top = if (landscape) 12.dp else 0.dp),

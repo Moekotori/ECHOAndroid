@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="echo_link_phone_presence_title">Steam Now Playing</string>
+    <string name="echo_link_phone_presence_summary">Share the title and artist playing on your phone with Steam through your paired PC. Steam displays ECHO Link.</string>
+    <string name="echo_link_phone_presence_disconnected">Connect to a paired ECHOSteam PC to share what is playing on your phone.</string>
+    <string name="echo_link_phone_presence_unsupported">Update ECHOSteam and pair using the QR code on your PC.</string>
+</resources>

@@ -56,7 +56,7 @@ internal fun LyricsLineItem(
     stationNumber: Int = 1,
     railTravel: MetroRailTravel? = null,
     onClick: (() -> Unit)?,
-    onLongClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
     translationVisible: Boolean = true,
 ) {
     val contextMotion = if (animateFocus) spring<Float>(dampingRatio = 1f,

@@ -15,7 +15,6 @@
     <string name="usb_page_step_pending">待就緒</string>
     <string name="usb_page_output_mode">輸出模式</string>
     <string name="usb_page_exclusive_note">略過系統混音，直接輸出至 DAC。</string>
-    <string name="usb_page_bitperfect_note">保留整數樣本，旁路等化器與增益；不支援的格式會停止播放。</string>
     <string name="usb_page_volume_note">直通時數位音量固定 100%，請先調低 DAC 音量。</string>
     <string name="usb_page_connection_preferences">連接偏好</string>
     <string name="usb_page_checks">檢查與診斷</string>

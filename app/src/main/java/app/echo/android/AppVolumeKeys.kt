@@ -23,7 +23,7 @@ internal class AppVolumeKeys(private val application: EchoApplication) {
         if (remote.castActive.value || remote.playbackRouter.remoteMode.value) return false
         val usb = EchoPlaybackProcessRuntime.usbAudioMonitor(application).status.value
         if (!usb.connected || !usb.exclusiveEnabled) return false
-        if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {
+        if (EchoPlaybackProcessRuntime.usbVolumeLocked) {
             if (repeat == 0) notice(application.getString(R.string.usb_key_volume_locked))
         } else {
             if (!application.appVolumeController.adjust(direction)) return false

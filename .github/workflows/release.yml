@@ -57,6 +57,8 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_prepare_android_release.py'
           python3 scripts/prepare-android-release.py
       - name: Verify and build signed APK
+        env:
+          ECHO_ONEDRIVE_CLIENT_ID: ${{ vars.ECHO_ONEDRIVE_CLIENT_ID }}
         run: |
           chmod +x gradlew
           ./gradlew checkModules checkLocalization :core:data:testDebugUnitTest --tests '*GithubUpdateTest' :app:assembleRelease -PechoVersionName="$RELEASE_VERSION" -PechoVersionCode="$RELEASE_CODE" --no-configuration-cache --no-parallel

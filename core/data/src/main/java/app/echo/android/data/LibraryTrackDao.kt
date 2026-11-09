@@ -232,6 +232,12 @@ interface LibraryTrackDao {
     @RawQuery
     suspend fun queryTracks(query: SupportSQLiteQuery): List<LibraryTrackEntity>
 
+    @Query("SELECT MIN(rowid) FROM library_tracks")
+    suspend fun firstShuffleRowId(): Long?
+
+    @Query("SELECT MAX(rowid) FROM library_tracks")
+    suspend fun lastShuffleRowId(): Long?
+
     @RawQuery
     suspend fun queryTrackIds(query: SupportSQLiteQuery): List<String>
 

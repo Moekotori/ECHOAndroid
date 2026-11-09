@@ -7,6 +7,7 @@ import app.echo.android.data.LibraryFavoritePolicy
 import app.echo.android.data.LibraryFavoriteSnapshot
 import app.echo.android.data.LibrarySmartPlaylistPolicy
 import app.echo.android.data.toEchoTrack
+import app.echo.android.data.sampleLocalShuffleTrack
 import app.echo.android.data.LibraryTrackEntity
 import app.echo.android.feature.library.R as LibraryR
 import app.echo.android.R as AppR
@@ -28,6 +29,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class EchoLibraryPlaybackCatalog(
@@ -35,6 +37,12 @@ class EchoLibraryPlaybackCatalog(
     private val context: Context,
     private val loadRadioStations: suspend () -> List<EchoRadioStation> = { emptyList() },
 ) : EchoPlaybackCatalog {
+    override suspend fun shuffleLocalTrack(currentId: String, recentIds: List<String>) =
+        database.trackDao().sampleLocalShuffleTrack(currentId, recentIds)
+
+    override fun localShuffleCatalogChanges() = database.invalidationTracker
+        .createFlow("library_tracks", "library_hidden_tracks").map { Unit }
+
     private val remoteWriteback by lazy { app.echo.android.data.RemoteLibraryWriteback(database, context.applicationContext) }
     private val remoteFavoriteMutation = Mutex()
     private val versions by lazy { app.echo.android.data.TrackVersionsRepository(database, context.applicationContext) }
@@ -256,10 +264,11 @@ class EchoLibraryPlaybackCatalog(
             val tracks = ids.chunked(400).flatMap { database.trackDao().getTracksByIds(it) }.associateBy { it.id }
             val indexed = queue.mapIndexedNotNull { index, item -> tracks[item.mediaId]?.toEchoTrack()?.let { index to it } }
             val settings = app.echo.android.data.EchoSettingsStore(context.applicationContext).appSettings.first()
-            val linked = (context.applicationContext as? app.echo.android.EchoApplication)?.echoLinkSession
+            val echoApp = context.applicationContext as? app.echo.android.EchoApplication
+            val linked = echoApp?.echoLinkSession
                 ?.client?.status?.value?.connectionState == app.echo.android.model.connect.EchoRemoteConnectionState.Connected
             val resolved = versions.resolvePreferredTrackVersions(indexed.map { it.second },
-                app.echo.android.trackVersionSourceReadiness(settings, linked))
+                app.echo.android.trackVersionSourceReadiness(settings, linked, echoApp?.oneDriveLibrary?.connectedSourceId))
             val result = queue.toMutableList()
             indexed.forEachIndexed { position, (queueIndex, _) ->
                 val track = resolved[position]

@@ -8,6 +8,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.analytics.PlayerId
 import androidx.media3.exoplayer.audio.AudioOutput
 import androidx.media3.exoplayer.audio.AudioOutputProvider
+import app.echo.android.model.playback.EchoBitPerfectState
 import app.echo.android.usbaudio.UsbExclusiveOutputState
 import app.echo.android.usbaudio.UsbExclusivePcmSession
 import app.echo.android.usbaudio.UsbPcmPacker
@@ -30,6 +31,7 @@ internal class EchoUsbExclusiveAudioOutput(
     private val destFrameBytes = (destBytesPerSample * channelCount).coerceAtLeast(1)
     private val pending = EchoUsbPendingPcm(sourceEncoding, channelCount, destBytesPerSample, PACKED_BUFFER_BYTES)
     private var playing = false
+    private var drainingEndOfStream = false
     @Volatile private var released = false
     private var reportedPositionAdvancing = false
     private var playbackParameters = PlaybackParameters.DEFAULT
@@ -58,15 +60,20 @@ internal class EchoUsbExclusiveAudioOutput(
 
     override fun play() {
         playing = true
+        drainingEndOfStream = false
         session.setPlaybackActive(true)
         if (!session.openResult.isReady) return
         session.setKeepAlive(false)
+        publishOutputStatus(streaming = reportedPositionAdvancing)
         // Propagate per the AudioOutput contract: a failed drain must surface now instead
         // of corrupting position state until the next write.
         drainPending()
+    }
+
+    private fun publishOutputStatus(streaming: Boolean) {
         EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(
             EchoUsbExclusiveSinkStatus(
-                streaming = true,
+                streaming = streaming,
                 transferEvidence = session::transportEvidence,
                 volumeEvidence = session::volumeEvidence,
                 compatibilityRules = session.compatibilityEvidence(),
@@ -85,6 +92,7 @@ internal class EchoUsbExclusiveAudioOutput(
         playing = false
         session.setPlaybackActive(false)
         session.setKeepAlive(true)
+        if (reportedPositionAdvancing) publishOutputStatus(streaming = false)
     }
 
     override fun write(buffer: ByteBuffer, encodedAccessUnitCount: Int, presentationTimeUs: Long): Boolean {
@@ -100,15 +108,15 @@ internal class EchoUsbExclusiveAudioOutput(
         val frames = (buffer.remaining() / frameBytes).coerceAtMost(packed.size / destFrameBytes)
         if (frames <= 0) return false
         val originalOrder = buffer.order()
-        if (isBigEndian(outputConfig.encoding)) {
-            buffer.order(ByteOrder.BIG_ENDIAN)
-        }
-        if (!playing) {
+        val sourceOrder = if (isBigEndian(outputConfig.encoding)) ByteOrder.BIG_ENDIAN else originalOrder
+        buffer.order(sourceOrder)
+        if (!playing || !pending.empty) {
+            // An incomplete USB packet needs samples from the next PCM block.
             pending.stash(buffer)
             buffer.order(originalOrder)
+            if (playing) drainPending()
             return !buffer.hasRemaining()
         }
-        if (!drainPending()) { buffer.order(originalOrder); return false }
         val ramp = session.volumeRamp
         val packedBytes = UsbPcmPacker.pack(
             source = buffer,
@@ -128,16 +136,20 @@ internal class EchoUsbExclusiveAudioOutput(
         }
         if (framesWritten < frames) {
             buffer.position(buffer.position() - (frames - framesWritten) * frameBytes)
-            return false
+            buffer.order(sourceOrder)
+            pending.stash(buffer)
+            buffer.order(originalOrder)
         }
         return !buffer.hasRemaining()
     }
 
     override fun flush() {
         reportedPositionAdvancing = false
+        drainingEndOfStream = false
         pending.clear()
         session.flush()
         if (playing) {
+            if (session.openResult.isReady) publishOutputStatus(streaming = false)
             session.setPlaybackActive(true)
             session.prime()
         } else {
@@ -147,6 +159,7 @@ internal class EchoUsbExclusiveAudioOutput(
 
     override fun stop() {
         playing = false
+        drainingEndOfStream = !pending.empty
         session.setPlaybackActive(false)
         session.setKeepAlive(false)
     }
@@ -155,9 +168,16 @@ internal class EchoUsbExclusiveAudioOutput(
         if (released) return
         released = true
         playing = false
-        if (EchoPlaybackProcessRuntime.usbVolumeUpdater === updateVolume) EchoPlaybackProcessRuntime.usbVolumeUpdater = null
+        drainingEndOfStream = false
+        pending.clear()
         session.close()
-        EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(null)
+        if (EchoPlaybackProcessRuntime.usbVolumeUpdater === updateVolume) {
+            EchoPlaybackProcessRuntime.usbVolumeUpdater = null
+            EchoPlaybackProcessRuntime.setUsbExclusiveSinkStatus(null)
+            if (EchoPlaybackProcessRuntime.bitPerfectStatus.state == EchoBitPerfectState.Compatible) {
+                EchoPlaybackProcessRuntime.bitPerfectStatus = EchoBitPerfectSnapshot()
+            }
+        }
         listeners.forEach { it.onReleased() }
     }
 
@@ -175,6 +195,14 @@ internal class EchoUsbExclusiveAudioOutput(
 
     override fun getPositionUs(): Long {
         if (sampleRateHz <= 0) return 0L
+        // Media3 polls this while waiting for the stopped output to finish its queued audio.
+        if (drainingEndOfStream) {
+            try {
+                drainingEndOfStream = !drainPending(endOfStream = true)
+            } catch (error: AudioOutput.WriteException) {
+                throw IllegalStateException("USB PCM drain failed", error)
+            }
+        }
         return session.completedFrames() * 1_000_000L / sampleRateHz
     }
 
@@ -201,11 +229,11 @@ internal class EchoUsbExclusiveAudioOutput(
     private fun mixedVolume(): Float =
         volume * EchoPlaybackProcessRuntime.exclusiveMakeupGain
 
-    private fun drainPending(): Boolean {
+    private fun drainPending(endOfStream: Boolean = false): Boolean {
         if (pending.empty) return true
         val ramp = session.volumeRamp
         val packedBytes = pending.pack(packed, mixedVolume(), ramp)
-        val written = writePacked(packedBytes)
+        val written = writePacked(packedBytes, endOfStream)
         ramp?.commitWrittenFrames(written / destFrameBytes)
         if (written > 0) {
             pending.consume(written)
@@ -214,8 +242,9 @@ internal class EchoUsbExclusiveAudioOutput(
         return pending.empty
     }
 
-    private fun writePacked(packedBytes: Int): Int {
-        val result = session.writePcm(packed, 0, packedBytes)
+    private fun writePacked(packedBytes: Int, endOfStream: Boolean = false): Int {
+        if (session.volumeFailed) throw AudioOutput.WriteException(-1, false)
+        val result = session.writePcm(packed, 0, packedBytes, endOfStream)
         if (result.state == UsbExclusiveOutputState.OpenFailed || result.state == UsbExclusiveOutputState.Closed ||
             result.state == UsbExclusiveOutputState.UnsupportedTransport ||
             result.bytesWritten !in 0..packedBytes || result.bytesWritten % destFrameBytes != 0) {
@@ -227,6 +256,7 @@ internal class EchoUsbExclusiveAudioOutput(
     private fun maybeReportPositionAdvancing() {
         if (reportedPositionAdvancing) return
         reportedPositionAdvancing = true
+        if (playing) publishOutputStatus(streaming = true)
         val nowMs = SystemClock.elapsedRealtime()
         listeners.forEach { listener -> listener.onPositionAdvancing(nowMs) }
     }

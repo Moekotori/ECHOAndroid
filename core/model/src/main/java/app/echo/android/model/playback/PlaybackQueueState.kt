@@ -5,6 +5,7 @@ data class PlaybackQueueState(
     val currentIndex: Int = -1,
     val playOrder: List<Int> = items.indices.toList(),
     val repeatAll: Boolean = false,
+    val previousIndices: List<Int>? = null,
 ) {
     val nextUpIndices: List<Int>
         get() = items.indices.filter { it != currentIndex && items[it].queueContext?.nextUp == true }

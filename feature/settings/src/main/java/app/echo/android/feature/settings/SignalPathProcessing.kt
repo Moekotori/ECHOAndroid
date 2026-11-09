@@ -14,7 +14,8 @@ internal fun signalProcessingStage(
     dsp: EchoDspSettings,
     volume: EchoVolumeSettings = EchoVolumeSettings(),
 ): SignalPathStage {
-    val bypassed = status.diagnostics.usbBitPerfectEnabled
+    val bypassed = status.diagnostics.usbVolumeLocked
+    val replayGainApplied = status.replayGainEnabled && !status.diagnostics.usbBitPerfectEnabled
     val unknown = stringResource(R.string.diag_unreported)
     val off = stringResource(R.string.path_disabled)
     val enabled = stringResource(R.string.path_enabled)
@@ -23,7 +24,7 @@ internal fun signalProcessingStage(
         if (equalizer.active) add(stringResource(R.string.feature_settings_equalizer_7ccb03))
         if (equalizer.mseb.active) add(stringResource(R.string.mseb_title))
         if (balance.active) add(stringResource(R.string.channel_balance))
-        if (status.replayGainEnabled) add(stringResource(R.string.dsp_loudness))
+        if (replayGainApplied) add(stringResource(R.string.dsp_loudness))
         if (dsp.compressor != EchoCompressorMode.Off) add(stringResource(R.string.compressor_title))
         if (dsp.limiterEnabled) add(stringResource(R.string.dsp_limiter))
         if (dsp.crossfeedEnabled) add(stringResource(R.string.dsp_crossfeed))

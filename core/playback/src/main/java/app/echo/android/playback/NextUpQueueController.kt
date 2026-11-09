@@ -1,14 +1,17 @@
 package app.echo.android.playback
 
 import androidx.media3.common.MediaItem
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.ShuffleOrder
 import app.echo.android.model.playback.EchoShuffleMode
 import app.echo.android.model.playback.EchoShuffleOptions
 import app.echo.android.model.playback.EchoPlayNextBehavior
+import app.echo.android.model.playback.PlaybackShuffleResume
+import app.echo.android.model.radio.EchoRadioStation
+import java.util.UUID
 import kotlinx.coroutines.*
 
 /** Service-owned scheduling; Media3 still owns playback and gapless transitions. */
@@ -20,10 +23,48 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
     private var shuffleOptions = EchoPlaybackRuntimeOptionsStore.options.value.shuffleOptions
     private val shuffleMode get() = shuffleOptions.mode
     private val pureRandom = PureRandomQueuePolicy()
+    private val desktopShuffle = DesktopShufflePolicy()
+    private val libraryShuffle = LibraryShufflePlanner(scope, EchoPlaybackProcessRuntime::catalog)
+    private val history = ShufflePlaybackHistory()
+    var requestedRepeatMode = player.repeatMode
+        private set
     private var reshuffle = false
     private var spreadUpcoming = false
 
     init { player.addListener(this) }
+
+    fun setRepeatMode(mode: Int) = change { requestedRepeatMode = mode }
+
+    private fun effectiveRepeatMode(): Int =
+        if (player.shuffleModeEnabled && shuffleMode.desktopRecentCount != null && requestedRepeatMode == Player.REPEAT_MODE_ALL)
+            Player.REPEAT_MODE_OFF else requestedRepeatMode
+
+    fun beforeManualNext() {
+        val next = player.nextMediaItemIndex
+        if (next != C.INDEX_UNSET) prepareAutomaticAdvance(player.currentMediaItemIndex, next)
+        else if (player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.LibraryWide) {
+            libraryShuffle.cancel()
+            reconcile()
+        }
+    }
+
+    fun seekToHistoryPrevious(restartCurrent: Boolean): Boolean {
+        if (!player.shuffleModeEnabled || shuffleMode != EchoShuffleMode.LibraryWide) return false
+        if (restartCurrent && player.currentPosition > player.maxSeekToPreviousPosition && player.isCurrentMediaItemSeekable) {
+            player.seekTo(0L)
+            return true
+        }
+        val current = player.currentMediaItem?.queueContext()?.entryId
+        val indices = (0 until player.mediaItemCount).mapNotNull { index ->
+            player.getMediaItemAt(index).queueContext()?.entryId?.let { it to index }
+        }.toMap()
+        val previous = history.entries().lastOrNull { it != current && it in indices }
+        if (previous != null) {
+            history.rewindTo(previous, manual = false)
+            player.seekToDefaultPosition(indices.getValue(previous))
+        } else if (restartCurrent && player.isCurrentMediaItemSeekable) player.seekTo(0L)
+        return true
+    }
 
     fun setShuffleOptions(options: EchoShuffleOptions) {
         val next = options.normalized
@@ -32,15 +73,38 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
             shuffleOptions = next
             return
         }
-        if (next.mode != shuffleMode) pureRandom.reset()
+        val previousMode = shuffleMode
+        if (next.mode != previousMode) {
+            pureRandom.reset()
+            desktopShuffle.preferNext(null)
+        }
         reshuffle = reshuffle || next.mode != shuffleMode ||
             next.mode == EchoShuffleMode.PseudoRandom && next.spreadArtists != shuffleOptions.spreadArtists
         shuffleOptions = next
-        reconcile()
+        if (previousMode == EchoShuffleMode.LibraryWide && next.mode != previousMode) change { clearLibraryShuffle() }
+        else reconcile()
+    }
+
+    fun replaceQueue(items: List<MediaItem>, startIndex: Int, startPositionMs: Long) = change {
+        libraryShuffle.cancel()
+        desktopShuffle.preferNext(null)
+        history.restore(null, false, emptyList())
+        player.setMediaItems(items, startIndex, startPositionMs)
+        reshuffle = player.shuffleModeEnabled && items.isNotEmpty()
+        spreadUpcoming = false
+    }
+
+    fun restoreSession(snapshot: EchoPlaybackSessionSnapshot, play: Boolean, preparePlayer: Boolean) = change {
+        keepRestoredOrder()
+        requestedRepeatMode = snapshot.repeatMode.toPlayerRepeatMode()
+        player.applyPlaybackSessionSnapshot(snapshot, play, preparePlayer, applyRepeatMode = false)
+        restoreShuffleState(snapshot.shuffleOrder, snapshot.shuffleResume)
     }
 
     fun playAlbum(items: List<MediaItem>, startIndex: Int, shuffle: Boolean) = change {
         if (items.isEmpty()) return@change
+        clearLibraryShuffle()
+        desktopShuffle.preferNext(null)
         val retained = AlbumQueuePolicy.retainedIndices(
             existingIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId },
             nextUpIndices = manualIndices().toSet(),
@@ -49,8 +113,14 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
         ).map(player::getMediaItemAt)
         val start = startIndex.coerceIn(items.indices)
         player.shuffleModeEnabled = shuffle
+        requestedRepeatMode = Player.REPEAT_MODE_OFF
         player.repeatMode = Player.REPEAT_MODE_OFF
-        player.setMediaItems(retained + items, retained.size + start, 0L)
+        val group = UUID.randomUUID().toString()
+        val scopedItems = items.map { item ->
+            val entry = if (item.queueContext() == null) item.asQueueEntry() else item
+            entry.withQueueContext(requireNotNull(entry.queueContext()).copy(shuffleGroup = group))
+        }
+        player.setMediaItems(retained + scopedItems, retained.size + start, 0L)
         // Keep older albums in the previous section even when the new album is shuffled.
         val albumOrder = if (shuffle && shuffleMode != EchoShuffleMode.Albums) PseudoRandomQueuePolicy.order(
             items.indices.toList(), start, items.map { it.mediaMetadata.artist?.toString() },
@@ -58,7 +128,7 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
         )
             else items.indices.toList()
         val order = retained.indices.toList() + albumOrder.map { retained.size + it }
-        player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L)
+        player.setQueueShuffleOrder(order)
         reshuffle = false
         spreadUpcoming = false
         if (shuffle && shuffleMode == EchoShuffleMode.Albums) spreadUpcoming = true
@@ -78,7 +148,8 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
             if (found != null) {
                 val original = player.getMediaItemAt(found)
                 val context = original.queueContext()
-                val moved = if (context != null) original.withQueueContext(context.copy(nextUp = true)) else original.asQueueEntry(nextUp = true, source = source)
+                val moved = if (context != null) original.withQueueContext(context.copy(nextUp = true, automaticShuffle = false))
+                    else original.asQueueEntry(nextUp = true, source = source)
                 player.replaceMediaItem(found, moved)
                 val destination = at - if (found < at) 1 else 0
                 if (found != destination) player.moveMediaItem(found, destination)
@@ -98,6 +169,7 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
     }
 
     fun removeHiddenTracks(ids: Set<String>) = change {
+        libraryShuffle.cancel()
         if (player.currentMediaItem?.mediaId in ids) EchoPlaybackProcessRuntime.onSleepTimerUserCommand(
             app.echo.android.model.playback.EchoSleepTimerCancellationReason.QueueChanged)
         applyDeletedQueueRanges(player, HiddenQueuePolicy.ranges(player.mediaItemCount,
@@ -105,6 +177,7 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
     }
 
     fun removeDeletedFiles(uris: Set<String>) = change {
+        libraryShuffle.cancel()
         val ranges = DeletedQueueFilesPolicy.removalRanges(
             player.mediaItemCount,
             { player.getMediaItemAt(it).localConfiguration?.uri?.toString() },
@@ -117,7 +190,10 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
     fun edit(action: String, entry: String, target: String?) = change {
         val from = indexOf(entry) ?: return@change
         when (action) {
-            "remove" -> if (from != player.currentMediaItemIndex) player.removeMediaItem(from)
+            "remove" -> if (from != player.currentMediaItemIndex) {
+                if (player.getMediaItemAt(from).queueContext()?.automaticShuffle == true) libraryShuffle.cancel()
+                player.removeMediaItem(from)
+            }
             "play" -> {
                 // Consume the old manual occurrence after seeking (nested callbacks are guarded).
                 val old = player.currentMediaItem?.queueContext()?.takeIf { it.nextUp }
@@ -137,28 +213,52 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
                     order.remove(from)
                     order.add(at, from)
                     rememberNext(order)
-                    player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L)
+                    player.setQueueShuffleOrder(order)
                 } else player.moveMediaItem(from, to)
             }
         }
     }
 
-    fun restoreOrder(order: List<Int>) = change {
+    fun restoreOrder(order: List<Int>, resume: PlaybackShuffleResume? = null) = change {
         if (NextUpQueuePolicy.validOrder(order, player.mediaItemCount)) {
-            rememberNext(order)
-            player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L)
+            keepRestoredOrder()
+            restoreShuffleState(order, resume)
+            player.setQueueShuffleOrder(order)
         }
     }
 
+    private fun restoreShuffleState(order: List<Int>, resume: PlaybackShuffleResume?) {
+        val context = player.currentMediaItem?.queueContext()
+        val saved = resume?.takeIf { it.entryId == context?.entryId }
+        history.restore(context?.entryId, context?.nextUp == true, saved?.previousEntryIds.orEmpty(),
+            played = player.isPlaying || player.currentPosition > 0L)
+        if (!NextUpQueuePolicy.validOrder(order, player.mediaItemCount)) return
+        if (shuffleMode == EchoShuffleMode.PureRandom) {
+            val hasSavedNext = order.drop(order.indexOf(player.currentMediaItemIndex) + 1).any {
+                player.getMediaItemAt(it).queueContext()?.nextUp != true
+            }
+            val remaining = saved?.pureRemaining ?: 0.takeIf { !hasSavedNext && requestedRepeatMode != Player.REPEAT_MODE_ALL }
+            pureRandom.restore(remaining, saved?.recentTrackIds.orEmpty())
+        }
+        rememberNext(order)
+    }
+
+    private fun keepRestoredOrder() {
+        albumPlan?.cancel()
+        albumPlan = null
+        reshuffle = false
+        spreadUpcoming = false
+    }
+
     private fun rememberNext(order: List<Int>) {
-        if (shuffleMode != EchoShuffleMode.PureRandom) return
+        if (shuffleMode != EchoShuffleMode.PureRandom && shuffleMode.desktopRecentCount == null) return
+        player.currentMediaItem?.let { observeShuffleTrack(it, player.currentMediaItemIndex) }
         val next = order.drop(order.indexOf(player.currentMediaItemIndex) + 1).firstOrNull {
             player.getMediaItemAt(it).queueContext()?.nextUp != true
         }
-        pureRandom.preferNext(next?.let {
-            val item = player.getMediaItemAt(it)
-            item.queueContext()?.entryId ?: "${item.mediaId}:$it"
-        })
+        val key = next?.let { shuffleKey(player.getMediaItemAt(it), it) }
+        if (shuffleMode == EchoShuffleMode.PureRandom) pureRandom.preferNext(key)
+        else desktopShuffle.preferNext(key)
     }
 
     private fun indexOf(entry: String): Int? = (0 until player.mediaItemCount).firstOrNull {
@@ -184,6 +284,7 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
     }
 
     override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+        if (reason != Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED && shuffleMode.desktopRecentCount != null) return
         if (!changing && reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) spreadUpcoming = true
         reconcile()
     }
@@ -191,16 +292,31 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
     /** Called before AutoMix's seek so the normal transition reconciliation starts the next round. */
     fun prepareAutomaticAdvance(from: Int, to: Int) {
         if (player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_ALL &&
-            shuffleMode != EchoShuffleMode.PureRandom &&
+            shuffleMode != EchoShuffleMode.PureRandom && shuffleMode.desktopRecentCount == null &&
             NextUpQueuePolicy.startsShuffleRound(player.queueShuffleOrder(), from, to)) reshuffle = true
     }
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
         pureRandom.reset()
-        if (shuffleModeEnabled && shuffleMode == EchoShuffleMode.Albums) reshuffle = true
-        if (shuffleModeEnabled && !changing) spreadUpcoming = true
+        if (!changing) desktopShuffle.preferNext(null)
+        if (!shuffleModeEnabled && !changing && shuffleMode == EchoShuffleMode.LibraryWide) {
+            change { clearLibraryShuffle() }
+            return
+        }
+        if (shuffleModeEnabled && !changing) reshuffle = true
         reconcile()
     }
-    override fun onRepeatModeChanged(repeatMode: Int) = reconcile()
+    override fun onRepeatModeChanged(repeatMode: Int) {
+        if (!changing && repeatMode != effectiveRepeatMode()) requestedRepeatMode = repeatMode
+        reconcile()
+    }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        if (!changing && isPlaying) {
+            val context = player.currentMediaItem?.queueContext()
+            history.observe(context?.entryId, context?.nextUp == true, playing = true)
+            publishShuffleResume()
+        }
+    }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT && player.repeatMode == Player.REPEAT_MODE_ALL &&
@@ -223,6 +339,16 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
 
     private fun reconcile() {
         if (changing) return
+        changing = true
+        try { reconcileQueue() } finally {
+            changing = false
+            publishShuffleResume()
+        }
+    }
+
+    private fun reconcileQueue() {
+        val repeat = effectiveRepeatMode()
+        if (player.repeatMode != repeat) player.repeatMode = repeat
         val planningAlbums = albumPlan?.isActive == true
         albumRevision++
         albumPlan?.cancel()
@@ -230,10 +356,11 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
         if (planningAlbums && player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.Albums) spreadUpcoming = true
         if (player.mediaItemCount == 0) {
             pureRandom.reset()
+            libraryShuffle.cancel()
+            history.restore(null, false, emptyList())
             return
         }
-        changing = true
-        try {
+        run {
             // A seek into the base queue carries pending requests along without restarting audio.
             val pending = manualIndices().filter { it != player.currentMediaItemIndex }
             if (pending.withIndex().any { (offset, index) -> index != player.currentMediaItemIndex + 1 + offset }) {
@@ -246,10 +373,15 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
                 }
             }
             val manual = manualIndices()
-            if (manual.isEmpty() && (!player.shuffleModeEnabled ||
-                    shuffleMode != EchoShuffleMode.PureRandom && !reshuffle && !spreadUpcoming)) return
-            // The base item before the manual block is the resume anchor, also while B/C plays.
             val current = player.currentMediaItemIndex
+            val active = player.currentMediaItem ?: return
+            val context = active.queueContext()
+            history.observe(context?.entryId, context?.nextUp == true, player.isPlaying)
+            observeShuffleTrack(active, current)
+            val desktopCount = shuffleMode.desktopRecentCount
+            if (manual.isEmpty() && (!player.shuffleModeEnabled ||
+                    desktopCount == null && shuffleMode != EchoShuffleMode.PureRandom && !reshuffle && !spreadUpcoming)) return
+            // The base item before the manual block is the resume anchor, also while B/C plays.
             val anchor = manual.firstOrNull()?.minus(1) ?: current
             val existing = player.queueShuffleOrder()
             var desired = NextUpQueuePolicy.shuffledOrder(existing, manual, anchor)
@@ -261,23 +393,44 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
                 }
                 val revision = albumRevision
                 val manualSet = manual.toHashSet()
-                val base = desired.filter { it !in manualSet }
+                val base = desired.filter { it !in manualSet }.let { order ->
+                    if (reshuffle && anchor in order) listOf(anchor) + order.filterNot { it == anchor } else order
+                }
                 val current = player.currentMediaItemIndex
-                reshuffle = false; spreadUpcoming = false
+                spreadUpcoming = false
                 albumPlan = scope.launch {
                     val order = withContext(Dispatchers.Default) {
                         NextUpQueuePolicy.shuffledOrder(AlbumShuffleQueuePolicy.order(base, anchor, entries) + manual, manual, anchor)
                     }
                     if (revision == albumRevision && player.currentMediaItemIndex == current &&
                         player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.Albums && player.queueShuffleOrder() == existing) {
+                        reshuffle = false
                         changing = true
-                        try { player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), 0L) }
+                        try { player.setQueueShuffleOrder(order) }
                         finally { changing = false }
                     }
                 }
                 return
             }
-            if (player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.PureRandom) {
+            if (player.shuffleModeEnabled && desktopCount != null) {
+                val manualSet = manual.toSet()
+                val libraryWide = shuffleMode == EchoShuffleMode.LibraryWide
+                val next = if (libraryWide) {
+                    planLibraryShuffle(active, current, existing, desktopCount)
+                } else {
+                    val items = (0 until player.mediaItemCount).map(player::getMediaItemAt)
+                    val group = items.getOrNull(anchor)?.queueContext()?.shuffleGroup
+                    val candidates = existing.filter { it !in manualSet &&
+                        (group == null || items[it].queueContext()?.shuffleGroup == group) }
+                    desktopShuffle.next(candidates, items.mapIndexed { index, item -> shuffleKey(item, index) },
+                        items.map { it.mediaId }, current, desktopCount) { index ->
+                        val tags = items[index].mediaMetadata
+                        ShuffleTrackTags(tags.artist?.toString(), tags.albumTitle?.toString(), tags.albumArtist?.toString())
+                    }
+                }
+                val order = if (reshuffle && !libraryWide) listOf(current) + existing.filterNot { it == current } else existing
+                desired = DesktopShufflePolicy.order(order, current, manualSet, next, keepUpcoming = !libraryWide)
+            } else if (player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.PureRandom) {
                 val items = (0 until player.mediaItemCount).map(player::getMediaItemAt)
                 desired = pureRandom.order(
                     desired,
@@ -306,8 +459,68 @@ internal class NextUpQueueController(private val player: ExoPlayer, private val 
             reshuffle = false
             spreadUpcoming = false
             if (desired != existing) {
-                player.shuffleOrder = ShuffleOrder.DefaultShuffleOrder(desired.toIntArray(), 0L)
+                player.setQueueShuffleOrder(desired)
             }
-        } finally { changing = false }
+        }
+    }
+
+    private fun publishShuffleResume() {
+        val entry = player.currentMediaItem?.queueContext()?.entryId
+        val pure = player.shuffleModeEnabled && shuffleMode == EchoShuffleMode.PureRandom
+        EchoPlaybackProcessRuntime.publishShuffleResume(entry?.let {
+            PlaybackShuffleResume(it, pureRandom.remainingDraws().takeIf { pure },
+                if (pure) pureRandom.recentIds() else emptyList(), history.entries())
+        })
+    }
+
+    private fun observeShuffleTrack(item: MediaItem, index: Int) =
+        desktopShuffle.observe(shuffleKey(item, index), item.mediaId, item.queueContext()?.nextUp == true)
+
+    private fun shuffleKey(item: MediaItem, index: Int): String = item.queueContext()?.entryId ?: "${item.mediaId}:$index"
+
+    private fun planLibraryShuffle(active: MediaItem, current: Int, existing: List<Int>, count: Int): Int? {
+        val next = existing.drop(existing.indexOf(current) + 1).firstOrNull { index ->
+            val item = player.getMediaItemAt(index)
+            item.queueContext()?.automaticShuffle == true && item.mediaId != active.mediaId
+        }
+        if (next != null) return next
+        if (EchoRadioStation.isRadio(active.mediaId) || active.mediaMetadata.extras?.getString(EchoPlaybackSourceExtra) == "podcast") {
+            libraryShuffle.cancel()
+            return null
+        }
+        val key = shuffleKey(active, current)
+        libraryShuffle.request(key, active.mediaId, desktopShuffle.recent(count)) { track ->
+            var resumeAfterEnd = false
+            change {
+                val now = player.currentMediaItem ?: return@change
+                if (shuffleMode != EchoShuffleMode.LibraryWide || !player.shuffleModeEnabled ||
+                    shuffleKey(now, player.currentMediaItemIndex) != key) return@change
+                trimLibraryShuffle()
+                val activeIndex = player.currentMediaItemIndex
+                val nextIndex = NextUpQueuePolicy.insertionIndex(activeIndex, player.mediaItemCount,
+                    manualIndices().filter { it != activeIndex }, first = false)
+                player.addMediaItem(nextIndex, track.toMediaItem().asQueueEntry(automaticShuffle = true))
+                player.setQueueShuffleOrder(DesktopShufflePolicy.order(player.queueShuffleOrder(), player.currentMediaItemIndex,
+                    manualIndices().toSet(), nextIndex))
+                resumeAfterEnd = player.playWhenReady && player.playbackState == Player.STATE_ENDED &&
+                    player.repeatMode != Player.REPEAT_MODE_ONE
+            }
+            if (resumeAfterEnd) player.seekToNextMediaItem()
+        }
+        return null
+    }
+
+    private fun automaticIndices(): List<Int> = (0 until player.mediaItemCount).filter {
+        it != player.currentMediaItemIndex && player.getMediaItemAt(it).queueContext()?.automaticShuffle == true
+    }
+
+    private fun trimLibraryShuffle() {
+        val old = automaticIndices()
+        old.take((old.size - 30).coerceAtLeast(0)).asReversed().forEach(player::removeMediaItem)
+    }
+
+    private fun clearLibraryShuffle() {
+        libraryShuffle.cancel()
+        automaticIndices().asReversed().forEach(player::removeMediaItem)
     }
 }

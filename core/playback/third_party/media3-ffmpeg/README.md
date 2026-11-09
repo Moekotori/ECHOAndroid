@@ -52,6 +52,9 @@ constants. These changes must be carried forward when refreshing upstream code.
 For normal playback, `EchoRenderersFactory` enables extensions in ON mode: the platform renderer is
 preferred and FFmpeg is selected when the platform renderer cannot support the
 format. Both use ECHO's existing AudioSink, EQ and system/USB output provider.
+When the FFmpeg ALAC decoder is available, ECHO excludes `c2.qti.alac.sw.decoder`
+from non-secure, non-tunneled ALAC queries because it can fail during decoding
+after reporting support.
 `setEnableDecoderFallback(true)` permits alternative MediaCodec decoders on
 initialization failure; it does **not** implement a retry through FFmpeg after a
 platform decoder fails mid-track.

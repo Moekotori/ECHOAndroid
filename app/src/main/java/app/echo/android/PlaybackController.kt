@@ -56,6 +56,7 @@ import app.echo.android.playback.nextPlayerRepeatMode
 import app.echo.android.playback.asQueueEntry
 import app.echo.android.playback.queueContext
 import app.echo.android.playback.queueShuffleOrder
+import app.echo.android.playback.toShuffleResumeBundle
 import app.echo.android.playback.EchoPlaybackSessionCommands
 import app.echo.android.playback.PlaybackQueueInsertPolicy
 import app.echo.android.playback.PlaybackQueueReplaceIntent
@@ -364,7 +365,7 @@ internal class PlaybackController(
         insertTrack(track, queueIds.size)
     }
 
-    suspend fun preparePlaylistQueue(queue: List<EchoTrack>, source: String): List<MediaItem> =
+    suspend fun prepareQueueItems(queue: List<EchoTrack>, source: String?): List<MediaItem> =
         withContext(Dispatchers.Default) { queue.map { it.toMediaItem().asQueueEntry(source = source) } }
 
     fun enqueuePlaylist(queue: List<EchoTrack>, items: List<MediaItem>, onApplied: () -> Unit) {
@@ -433,17 +434,14 @@ internal class PlaybackController(
         intent: PlaybackQueueReplaceIntent = PlaybackQueueReplaceIntent.PlayAll,
         source: String? = queue.firstOrNull()?.album?.takeIf { album -> queue.all { it.album == album } },
         startPositionMs: Long = 0L,
+        items: List<MediaItem> = queue.map { it.toMediaItem().asQueueEntry(source = source) },
     ) {
         if (queue.isEmpty()) return
         val safeStartIndex = startIndex.coerceIn(0, queue.lastIndex)
         resetStickyPlaybackError()
-        val mediaItems = ArrayList<MediaItem>(queue.size)
-        queue.forEach { track ->
-            mediaItems += track.toMediaItem().asQueueEntry(source = source)
-        }
         usbAudioMonitor.prepareForTrack(queue[safeStartIndex].sampleRateHz)
         withController(replacesQueue = true) {
-            startQueue(queue, mediaItems, safeStartIndex, startPositionMs, intent)
+            startQueue(queue, items, safeStartIndex, startPositionMs, intent)
         }
     }
 
@@ -584,9 +582,9 @@ internal class PlaybackController(
         }
     }
 
-    fun playQueueItem(index: Int) = editQueue("play", index)
+    fun playQueueItem(entryId: String) = editQueue("play", entryId)
 
-    fun removeQueueItem(index: Int) = editQueue("remove", index)
+    fun removeQueueItem(entryId: String) = editQueue("remove", entryId)
 
     fun removeHiddenTracks(ids: Set<String>) {
         ids.chunked(64).forEach { batch -> withController(changesPlaybackIntent = true) {
@@ -597,11 +595,9 @@ internal class PlaybackController(
         } }
     }
 
-    fun moveQueueItem(fromIndex: Int, toIndex: Int) = editQueue("move", fromIndex, toIndex)
+    fun moveQueueItem(fromEntryId: String, toEntryId: String) = editQueue("move", fromEntryId, toEntryId)
 
-    private fun editQueue(action: String, index: Int, targetIndex: Int? = null) {
-        val entry = _playbackQueue.value.items.getOrNull(index)?.queueContext?.entryId ?: return
-        val target = targetIndex?.let { _playbackQueue.value.items.getOrNull(it)?.queueContext?.entryId }
+    private fun editQueue(action: String, entry: String, target: String? = null) {
         resetStickyPlaybackError()
         withController(changesPlaybackIntent = true) {
             sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
@@ -1287,12 +1283,13 @@ internal class PlaybackController(
                 session.currentIndex,
                 if (EchoRadioStation.isRadio(restoredQueue[session.currentIndex].id)) androidx.media3.common.C.TIME_UNSET else session.positionMs,
             )
+            mediaController.shuffleModeEnabled = session.shuffleEnabled
+            mediaController.repeatMode = session.repeatMode.toPlayerRepeatMode()
             mediaController.sendCustomCommand(EchoPlaybackSessionCommands.editQueue, android.os.Bundle().apply {
                 putString("action", "restore_order")
                 putIntArray("order", session.shuffleOrder.toIntArray())
+                session.shuffleResume?.let { putBundle("shuffleResume", it.toShuffleResumeBundle()) }
             })
-            mediaController.shuffleModeEnabled = session.shuffleEnabled
-            mediaController.repeatMode = session.repeatMode.toPlayerRepeatMode()
             mediaController.setPlaybackParameters(
                 PlaybackParameters(session.playbackSpeed, session.playbackPitch),
             )
@@ -1406,6 +1403,7 @@ internal class PlaybackController(
                 playbackSpeed = mediaController.playbackParameters.speed,
                 playbackPitch = mediaController.playbackParameters.pitch,
                 shuffleOrder = queueSnapshot.shuffleOrder,
+                shuffleResume = EchoPlaybackProcessRuntime.shuffleResumeFor(currentTrack.queueContext?.entryId),
             )
         }
         if (
@@ -1646,5 +1644,6 @@ private fun Player.toSavedPlaybackSession(queue: PlaybackQueueState, shuffleOrde
         playbackSpeed = playbackParameters.speed,
         playbackPitch = playbackParameters.pitch,
         shuffleOrder = shuffleOrder,
+        shuffleResume = EchoPlaybackProcessRuntime.shuffleResumeFor(queue.currentItem?.queueContext?.entryId),
     )
 }

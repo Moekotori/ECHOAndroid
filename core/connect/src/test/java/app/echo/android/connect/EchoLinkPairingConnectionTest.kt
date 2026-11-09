@@ -1,5 +1,6 @@
 package app.echo.android.connect
 
+import app.echo.android.model.connect.EchoLinkPhonePresenceTrack
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.net.URLEncoder
@@ -15,6 +16,54 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 class EchoLinkPairingConnectionTest {
+    @Test
+    fun pairedPhonePresenceUsesOnlyDisplayMetadataAndCanClearIt() = runBlocking {
+        val requests = LinkedBlockingQueue<JSONObject>()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/echo-link/v1/status") { exchange ->
+            val body = """{"playback":{"state":"paused"},"capabilities":{"phonePresence":true}}""".toByteArray()
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        server.createContext("/echo-link/v2/phone-presence") { exchange ->
+            if (exchange.requestMethod == "PUT" &&
+                exchange.requestHeaders.getFirst("Authorization") == "Bearer test-paired-access-token"
+            ) {
+                requests.add(exchange.requestBody.bufferedReader().use { JSONObject(it.readText()) })
+                exchange.sendResponseHeaders(204, -1)
+            } else {
+                exchange.sendResponseHeaders(401, -1)
+            }
+            exchange.close()
+        }
+        server.start()
+        try {
+            val transport = OkHttpEchoLinkTransport()
+            val address = "127.0.0.1:${server.address.port}"
+            val direct = EchoPairingParser.parseManual(address)!!
+            assertEquals(false, transport.fetchStatus(direct).supportsPhonePresence)
+            val paired = direct.copy(token = "test-paired-access-token")
+            assertEquals(true, transport.fetchStatus(paired).supportsPhonePresence)
+
+            val boundedTitle = "音".repeat(255)
+            val track = EchoLinkPhonePresenceTrack.fromMetadata("${boundedTitle}🎵", " Artist ")
+            transport.updatePhonePresence(paired, requireNotNull(track))
+            val play = requests.remove()
+            assertEquals(1, play.length())
+            assertEquals(2, play.getJSONObject("track").length())
+            assertEquals(boundedTitle, play.getJSONObject("track").getString("title"))
+            assertEquals("Artist", play.getJSONObject("track").getString("artist"))
+
+            transport.updatePhonePresence(paired, null)
+            val clear = requests.remove()
+            assertEquals(1, clear.length())
+            assertTrue(clear.has("track"))
+            assertTrue(clear.isNull("track"))
+        } finally {
+            server.stop(0)
+        }
+    }
+
     @Test
     fun pairingLinkConnectsAndReconnectsToPcThatRejectsDirectAccess() = runBlocking {
         val requests = LinkedBlockingQueue<Pair<String, String>>()

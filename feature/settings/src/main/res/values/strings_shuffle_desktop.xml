@@ -1,0 +1,14 @@
+<resources>
+    <string name="settings_shuffle_queue_draw">Queue shuffle</string>
+    <string name="settings_shuffle_queue_draw_detail">Draw from the current queue and avoid playing the same song twice in a row.</string>
+    <string name="settings_shuffle_avoid_25">Avoid the last 25 songs</string>
+    <string name="settings_shuffle_avoid_25_detail">Prefer songs you have not played recently and separate songs by the same artist or from the same album.</string>
+    <string name="settings_shuffle_avoid_100">Avoid the last 100 songs</string>
+    <string name="settings_shuffle_avoid_100_detail">Use a longer listening history when drawing from the current queue.</string>
+    <string name="settings_shuffle_library_wide">Full local library shuffle</string>
+    <string name="settings_shuffle_library_wide_detail">Draw from all songs indexed on this phone, including songs outside the current queue. Avoid the last 25 songs when possible.</string>
+    <string name="settings_shuffle_classic">More Android modes</string>
+    <string name="settings_shuffle_classic_detail">One pass per queue, pure random, and album shuffle.</string>
+    <string name="settings_shuffle_desktop_rules">The next song stays selected until playback advances. When the source is small, songs played least recently become eligible again.</string>
+    <string name="settings_shuffle_desktop_reset">Restore the 25-song avoidance strategy.</string>
+</resources>

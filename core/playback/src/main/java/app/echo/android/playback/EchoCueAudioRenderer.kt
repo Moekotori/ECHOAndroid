@@ -18,12 +18,13 @@ import androidx.media3.exoplayer.audio.DecoderAudioRenderer
 
 /** CUEs require decoded PCM, including the valid suffix of a block containing the start point. */
 @UnstableApi
-internal class EchoCueAudioRenderer(handler: Handler, listener: AudioRendererEventListener, sink: AudioSink) :
+internal class EchoCueAudioRenderer(handler: Handler, listener: AudioRendererEventListener, sink: AudioSink,
+    private val selectStrict: (Format) -> Boolean) :
     DecoderAudioRenderer<Decoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>>(handler, listener, sink) {
     private var input = Format.Builder().build()
     override fun getName() = "EchoCueAudioRenderer"
     override fun supportsFormatInternal(format: Format): Int =
-        if (!EchoPlaybackProcessRuntime.usbBitPerfectEnabled && handlesCue(format))
+        if (!selectStrict(format) && handlesCue(format))
             C.FORMAT_HANDLED else C.FORMAT_UNSUPPORTED_TYPE
 
     companion object {

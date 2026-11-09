@@ -3,4 +3,7 @@
     <string name="echo_link_direct_address_hint">Gib die IP-Adresse oder Domain des PCs ein und hänge bei Bedarf :Port an. Du kannst auch eine vollständige HTTP(S)-Adresse oder einen Kopplungslink einfügen. LAN-Direktzugriff hängt von den PC-Einstellungen ab. Die erste Verbindung über frp/Tailscale erfordert eine Kopplung.</string>
     <string name="echo_link_pairing_entry">Per IP, Domain oder Kopplungslink verbinden</string>
     <string name="echo_link_steam_edition_requirement">ECHO Pro erforderlich</string>
+    <string name="echo_link_steam_purchase_message">Kaufe den DLC ECHO Pro für ECHO auf Steam, um mit Echo Link auf deine PC-Musikbibliothek zuzugreifen.</string>
+    <string name="echo_link_steam_purchase_action">ECHO Pro auf Steam ansehen</string>
+    <string name="echo_link_steam_store_error">Der Steam-Shop konnte nicht geöffnet werden.</string>
 </resources>

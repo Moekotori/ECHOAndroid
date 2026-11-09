@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_sync_onedrive_failed">OneDrive 同步失败</string>
+    <string name="remote_sync_sshfs_failed">SSHFS 同步失败</string>
+    <string name="sshfs_folder_permission_error">无法保留此文件夹的读取权限，请重新选择。</string>
+</resources>
