@@ -13,8 +13,8 @@ import androidx.compose.ui.unit.dp
 import app.echo.android.model.connect.EchoSongTransferState
 
 @Composable
-fun EchoLinkSongTransferDialog(state: EchoSongTransferState, connected: Boolean, scanning: Boolean,
-    onSend: () -> Unit, onChoose: () -> Unit, onStart: () -> Unit, onStop: () -> Unit,
+fun EchoLinkSongTransferDialog(state: EchoSongTransferState, scanning: Boolean,
+    onSend: () -> Unit, onChoose: () -> Unit,
     onScan: () -> Unit, onClose: () -> Unit) {
     AlertDialog(onDismissRequest = onClose, title = { Text(stringResource(R.string.link_transfer_title)) },
         text = { Column(Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -59,7 +59,5 @@ fun EchoLinkSongTransferDialog(state: EchoSongTransferState, connected: Boolean,
                 else -> R.string.link_transfer_error
             }), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         } },
-        confirmButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.link_transfer_close)) } },
-        dismissButton = { TextButton(onClick = if (state.active || state.starting) onStop else onStart,
-            enabled = connected || state.active || state.starting) { Text(stringResource(if (state.active || state.starting) R.string.link_transfer_stop else R.string.link_transfer_start)) } })
+        confirmButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.link_transfer_close)) } })
 }

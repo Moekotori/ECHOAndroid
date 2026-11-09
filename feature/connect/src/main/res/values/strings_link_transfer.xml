@@ -1,6 +1,6 @@
 <resources>
     <string name="link_transfer_title">Transfer songs</string>
-    <string name="link_transfer_detail">Only available during this Echo Link connection. Choose files here to send to the computer, or in the computer’s transfer panel to send to this phone. Up to 32 audio files, 1 GB each.</string>
+    <string name="link_transfer_detail">Choose a receive folder once. While Echo Link is connected, this phone can receive songs from the computer’s Transfer audio menu.</string>
     <string name="link_transfer_send">Send phone songs</string>
     <string name="link_transfer_receive">Receive on this phone</string>
     <string name="link_transfer_no_directory">Choose a folder before receiving songs. Existing files are kept.</string>
@@ -19,6 +19,4 @@
     <string name="link_transfer_files_error">Choose up to 32 supported audio files, each no larger than 1 GB, with a known file size.</string>
     <string name="link_transfer_error">Transfer failed. Check the connection, file access and free space, then retry.</string>
     <string name="link_transfer_close">Close</string>
-    <string name="link_transfer_stop">Stop transfers</string>
-    <string name="link_transfer_start">Restart transfers</string>
 </resources>

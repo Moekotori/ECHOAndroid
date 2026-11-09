@@ -56,6 +56,7 @@ class EchoLinkSession(private val application: Application) {
     val client = EchoRemoteClient(scope, application).apply { setForeground(false) }
     private val settings = EchoSettingsStore(application)
     val phoneLibrary = EchoPhoneLibrarySession(application, client, scope) { settings.appSettings.first().echoLinkPhoneLibraryPort }
+    internal val songTransfer = EchoLinkSongTransferSession(application, client, scope)
     val playbackRouter = EchoLinkPlaybackRouter(client)
     internal val phoneCastTransfer = EchoPhoneCastTransfer(EchoPhoneCastSession(this), scope)
     internal val systemCast by lazy { EchoSystemCastTransfer(application, this).also { externalCast = it } }
@@ -75,6 +76,7 @@ class EchoLinkSession(private val application: Application) {
     fun setUiVisible(visible: Boolean) {
         client.setForeground(visible)
         uiVisible.value = visible
+        if (visible) songTransfer.resumeConnection()
     }
 
     suspend fun setPhoneLibraryPort(port: Int) {

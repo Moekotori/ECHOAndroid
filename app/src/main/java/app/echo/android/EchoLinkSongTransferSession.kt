@@ -13,16 +13,29 @@ import app.echo.android.model.connect.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-/** The transfer panel owns all work; a reconnect always requires a new server lease. */
-internal class EchoLinkSongTransferSession(context: Context, private val client: EchoRemoteClient) : AutoCloseable {
+/** The Link connection owns the receive lease, independently of the transfer panel. */
+internal class EchoLinkSongTransferSession(
+    context: Context,
+    private val client: EchoRemoteClient,
+    private val scope: CoroutineScope,
+) {
     private val application = context.applicationContext
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val directories = WifiTransferDirectoryStore(application)
     private val files = EchoLinkSongFiles(application)
     private val mutable = MutableStateFlow(EchoSongTransferState())
     val state = mutable.asStateFlow()
-    var directoryUri: Uri? = null
-        private set
+    private val directory = MutableStateFlow<Uri?>(null)
+    private val directoryLoaded = MutableStateFlow(false)
+    val directoryUri: Uri? get() = directory.value
+    private val connections = client.status.map { status ->
+        status.connectionId.takeIf {
+            status.connectionState == EchoRemoteConnectionState.Connected && status.endpoint?.libraryOnly == false
+        }
+    }.distinctUntilChanged()
+    val directorySetupConnection = combine(connections, directoryLoaded, directory) { connection, loaded, folder ->
+        connection.takeIf { loaded && folder == null }
+    }.distinctUntilChanged()
+    private var guidedConnection: Long? = null
     private var transport: EchoLinkSongTransferTransport? = null
     private var sessionId: String? = null
     private var connectionId = 0L
@@ -37,17 +50,31 @@ internal class EchoLinkSongTransferSession(context: Context, private val client:
                 val saved = directories.load() ?: return@launch
                 val uri = Uri.parse(saved)
                 val name = withContext(Dispatchers.IO) { EchoLinkSongReceiver(application, uri).directoryName() }
-                if (directoryUri == null) { directoryUri = uri; mutable.update { it.copy(directory = name) } }
+                if (directoryUri == null) { directory.value = uri; mutable.update { it.copy(directory = name) } }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { mutable.update { it.copy(error = "directory") } }
+            finally { directoryLoaded.value = true }
         }
         scope.launch {
-            client.status.map { Triple(it.connectionId, it.connectionState, it.endpoint?.libraryOnly == true) }
-                .distinctUntilChanged().collect { (id, status, libraryOnly) ->
-                    if ((mutable.value.active || mutable.value.starting) &&
-                        (id != connectionId || status != EchoRemoteConnectionState.Connected || libraryOnly)) stop("connection")
+            combine(connections, directoryLoaded) { connection, loaded -> connection.takeIf { loaded } }
+                .distinctUntilChanged().collect { id ->
+                    if (id == null) {
+                        if (transport != null) stop("connection")
+                    } else if (transport == null || id != connectionId) {
+                        start()
+                    }
                 }
         }
+    }
+
+    fun claimDirectoryGuide(connection: Long): Boolean {
+        if (guidedConnection == connection || directoryUri != null) return false
+        guidedConnection = connection
+        return true
+    }
+
+    fun resumeConnection() {
+        if (directoryLoaded.value && transport == null && mutable.value.error != "unsupported") start()
     }
 
     fun chooseDirectory(uri: Uri) {
@@ -59,18 +86,18 @@ internal class EchoLinkSongTransferSession(context: Context, private val client:
                         Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     EchoLinkSongReceiver(application, uri).directoryName()
                 }
-                directories.save(uri.toString()); directoryUri = uri
+                directories.save(uri.toString()); directory.value = uri
                 mutable.update { it.copy(directory = name, error = null) }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { mutable.update { it.copy(error = "directory") } }
         }
     }
 
-    fun start() {
+    private fun start(renewExpiredLease: Boolean = true) {
         val status = client.status.value
         val endpoint = status.endpoint
         if (status.connectionState != EchoRemoteConnectionState.Connected || endpoint == null || endpoint.libraryOnly) {
-            mutable.update { it.copy(error = "connection") }; return
+            return
         }
         stop()
         connectionId = status.connectionId
@@ -79,6 +106,7 @@ internal class EchoLinkSongTransferSession(context: Context, private val client:
         transport = network
         mutable.update { it.copy(starting = true, error = null) }
         sessionJob = scope.launch {
+            var canRenew = renewExpiredLease
             try {
                 val id = network.start(Build.MODEL.ifBlank { "ECHO Android" }, directoryUri != null)
                 ensureCurrent(version)
@@ -88,6 +116,7 @@ internal class EchoLinkSongTransferSession(context: Context, private val client:
                     ensureCurrent(version)
                     val items = network.poll(id, directoryUri != null)
                     ensureCurrent(version)
+                    canRenew = true
                     mutable.update { it.copy(items = items) }
                     val destination = directoryUri
                     if (destination != null && uploadJob?.isActive != true && downloadJob?.isActive != true) {
@@ -98,7 +127,12 @@ internal class EchoLinkSongTransferSession(context: Context, private val client:
                     delay(2000)
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
-            catch (error: Exception) { if (generation == version) stop(errorCode(error)) }
+            catch (error: Exception) {
+                if (generation == version) {
+                    if (canRenew && error is EchoSongTransferException && error.status == 410) start(renewExpiredLease = false)
+                    else stop(errorCode(error))
+                }
+            }
         }
     }
 
@@ -166,7 +200,7 @@ internal class EchoLinkSongTransferSession(context: Context, private val client:
         error.message == "connection" -> "connection"
         else -> "transfer"
     }
-    fun stop(error: String? = null) {
+    private fun stop(error: String? = null) {
         generation++
         sessionJob?.cancel(); uploadJob?.cancel(); downloadJob?.cancel()
         sessionJob = null; uploadJob = null; downloadJob = null
@@ -185,5 +219,4 @@ internal class EchoLinkSongTransferSession(context: Context, private val client:
             }
         }
     }
-    override fun close() { stop(); scope.cancel() }
 }
