@@ -134,6 +134,8 @@ import app.echo.android.ui.shell.outerPagerUserScrollEnabled
 import app.echo.android.ui.shell.rememberHomeSafePagerNestedScroll
 import app.echo.android.ui.shell.recoverStrandedPager
 import app.echo.android.ui.shell.dockNavigationMotionSpec
+import app.echo.android.ui.shell.snappedDockPage
+import app.echo.android.ui.shell.trackDockPagerTouch
 import app.echo.android.model.settings.EchoBackgroundMode
 import app.echo.android.model.settings.EchoFontFamilyMode
 import app.echo.android.data.toEchoTrack
@@ -1001,6 +1003,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         initialPage = EchoPagerPage.Now.ordinal,
         pageCount = { EchoPagerPage.entries.size },
     )
+    val tabPagerTouchInProgress = remember(tabPagerState) { mutableStateOf(false) }
+    val snappedDockPage by remember(tabPagerState) { derivedStateOf { tabPagerState.snappedDockPage() } }
+    var lastSnappedDockPage by remember(tabPagerState) {
+        mutableStateOf(EchoPagerPage.entries[tabPagerState.settledPage])
+    }
+    val activeDockPage = snappedDockPage ?: lastSnappedDockPage
     var dockPageAlpha by remember { mutableFloatStateOf(1f) }
     val appScope = rememberCoroutineScope()
     val routeNavigationJob = remember { arrayOfNulls<Job>(1) }
@@ -1157,10 +1165,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         }
     }
     LaunchedEffect(tabPagerState) {
-        snapshotFlow {
-            if (tabPagerState.isScrollInProgress) null else tabPagerState.settledPage
-        }.collect { page ->
-            val settledTab = page?.let { EchoPagerPage.entries[it].dockTab } ?: return@collect
+        snapshotFlow { snappedDockPage }.collect { page ->
+            if (page == null) return@collect
+            lastSnappedDockPage = page
+            val settledTab = page.dockTab ?: return@collect
             if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
         }
     }
@@ -1168,7 +1176,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     // page; the recovery's own scrolling state must not cancel its animation.
     LaunchedEffect(tabPagerState) {
         fun isStranded(): Boolean =
-            !tabPagerState.isScrollInProgress && tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
+            !tabPagerTouchInProgress.value && !tabPagerState.isScrollInProgress &&
+                tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
         snapshotFlow {
             isStranded()
         }.recoverStrandedPager(isStillStranded = ::isStranded) {
@@ -1267,7 +1276,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         onSearch = { searchVisible = true },
     )
     val connectPageSettled = appVisible && screenInteractive && !shellOverlayOpen &&
-        tabPagerState.settledPage == EchoPagerPage.Connect.ordinal
+        activeDockPage == EchoPagerPage.Connect
     // One owner for discovery: closing either surface must not stop the other.
     val discoverCastDevices = appVisible && screenInteractive && (connectPageSettled || castSheetVisible) && localNetwork.granted
     DisposableEffect(viewModel, discoverCastDevices) {
@@ -1455,8 +1464,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     (selectedTab == EchoTab.Connect.ordinal || selectedTab == EchoTab.Diagnostics.ordinal) &&
                         tabPagerState.targetPage == EchoTab.entries[selectedTab].pagerPage.ordinal
                 val innerTabPageSettled = enteringInnerTabPage ||
-                    tabPagerState.settledPage == EchoPagerPage.Connect.ordinal ||
-                    tabPagerState.settledPage == EchoPagerPage.Diagnostics.ordinal
+                    activeDockPage == EchoPagerPage.Connect ||
+                    activeDockPage == EchoPagerPage.Diagnostics
                 val detailOwnsGesture = (libraryDetailOpen || linkedLibraryPageOpen) &&
                     tabPagerState.settledPage == EchoPagerPage.Library.ordinal &&
                     (linkedLibraryPageOpen || !app.echo.android.design.LocalEchoLayout.current.supportsTwoPanes())
@@ -1477,7 +1486,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     beyondViewportPageCount = if (effectivePerformanceMode.isLightweight) 0 else 1,
                     flingBehavior = tabPagerFling,
                     pageNestedScrollConnection = tabPagerNestedScroll,
-                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = dockPageAlpha },
+                    modifier = Modifier.fillMaxSize()
+                        .trackDockPagerTouch(tabPagerTouchInProgress)
+                        .graphicsLayer { alpha = dockPageAlpha },
                 ) { page ->
                     val destination = EchoPagerPage.entries[page]
                     Box(modifier = Modifier.fillMaxSize()) pageContent@{
@@ -1490,9 +1501,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                                 onOpenPlayer = { nowPlayingExpanded = true },
                                 bottomInset = bottomDockInset,
                                 pageInteractive = appVisible && !shellOverlayOpen &&
-                                    tabPagerState.settledPage == EchoPagerPage.Library.ordinal &&
-                                    tabPagerState.targetPage == EchoPagerPage.Library.ordinal &&
-                                    !tabPagerState.isScrollInProgress,
+                                    activeDockPage == EchoPagerPage.Library,
                                 remoteClient = remoteClient,
                                 playbackRouter = echoLinkPlaybackRouter,
                                 remoteStatus = remoteStatus,

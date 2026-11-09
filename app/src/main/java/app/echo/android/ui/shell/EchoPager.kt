@@ -6,18 +6,24 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Velocity
 import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
@@ -50,6 +56,30 @@ internal val EchoPagerPage.dockTab: EchoTab?
         EchoPagerPage.Connect -> EchoTab.Connect
         EchoPagerPage.Diagnostics -> EchoTab.Diagnostics
         EchoPagerPage.Settings -> null
+    }
+
+/** Nested raw deltas can change settledPage without starting a PagerState scroll. */
+internal fun PagerState.snappedDockPage(): EchoPagerPage? =
+    if (!isScrollInProgress && currentPageOffsetFraction.absoluteValue <= 0.001f) {
+        EchoPagerPage.entries[settledPage]
+    } else {
+        null
+    }
+
+/** Observe the gesture without competing with the pager or its nested scrollables. */
+internal fun Modifier.trackDockPagerTouch(touchInProgress: MutableState<Boolean>): Modifier =
+    pointerInput(touchInProgress) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            touchInProgress.value = true
+            try {
+                do {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                } while (event.changes.any { it.pressed })
+            } finally {
+                touchInProgress.value = false
+            }
+        }
     }
 
 private const val ROUTE_MOTION_BASE_DURATION_MS = 420
@@ -191,6 +221,9 @@ internal fun rememberHomeSafePagerNestedScroll(
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 if (innerTabPageOwnsGesture) return Velocity.Zero
+                // A child dragged the outer pager through nested scroll. Let the pager's
+                // scrollable snap from that position with the remaining finger velocity.
+                if (state.currentPageOffsetFraction.absoluteValue > 0.001f) return Velocity.Zero
                 if (!echoPagerOwnsFling(consumed, available, state.currentPageOffsetFraction)) return Velocity.Zero
                 return default.onPostFling(consumed, available)
             }
