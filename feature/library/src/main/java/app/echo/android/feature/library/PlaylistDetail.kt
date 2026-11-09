@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarDuration
@@ -154,12 +156,13 @@ internal fun PlaylistDetailPage(
     }
 
     Box(modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier.fillMaxSize().background(colors.surface)
-            .detailBackSwipe(onBack).statusBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(Modifier.widthIn(max = EchoContentMaxWidth).fillMaxWidth()) {
+    PlaylistDetailLayout(
+        onBack = onBack,
+        listState = listState,
+        listModifier = Modifier.playlistDragReorder(drag, reorder, loadedIds) { from, to ->
+            perform { check(checkNotNull(management?.moveTo).invoke(playlist.id, from, to)) }
+        },
+        topBar = {
             PlaylistDetailTopBar(
                 onWriteNfc = onWriteNfc,
                 title = stringResource(L10nR.string.feature_library_playlists_56bf76),
@@ -175,15 +178,8 @@ internal fun PlaylistDetailPage(
                 onArtwork = management?.takeIf { playlist.canEdit }?.let { { it.pickArtwork(playlist.id) } },
                 onEditRules = experienceActions?.takeIf { playlist.isCustomSmartPlaylist }?.let { { editingRules = true } },
             )
-        }
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f).widthIn(max = EchoContentMaxWidth).fillMaxWidth()
-                .playlistDragReorder(drag, reorder, loadedIds) { from, to ->
-                    perform { check(checkNotNull(management?.moveTo).invoke(playlist.id, from, to)) }
-                },
-            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = PlaylistDetailBottomPadding),
-        ) {
+        },
+    ) {
             item(key = "playlist-hero", contentType = "header") {
                 PlaylistHero(
                     playlist = playlist.copy(trackCount = stats.trackCount),
@@ -280,7 +276,6 @@ internal fun PlaylistDetailPage(
             if (tracks.itemCount > 0 && tracks.loadState.refresh is LoadState.Error) item("playlist-refresh-error") {
                 TextButton(onClick = tracks::retry) { Text(stringResource(L10nR.string.playlist_retry)) }
             }
-        }
     }
     SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = LibraryBottomControlsPadding))
     }
@@ -322,7 +317,31 @@ internal fun PlaylistDetailPage(
 
 
 @Composable
-private fun PlaylistDetailNotice(message: String) {
+internal fun PlaylistDetailLayout(
+    onBack: () -> Unit,
+    listState: LazyListState,
+    modifier: Modifier = Modifier,
+    listModifier: Modifier = Modifier,
+    topBar: @Composable () -> Unit,
+    content: LazyListScope.() -> Unit,
+) {
+    Column(
+        modifier.fillMaxSize().background(rememberPlaylistDetailColors().surface)
+            .detailBackSwipe(onBack).statusBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.widthIn(max = EchoContentMaxWidth).fillMaxWidth()) { topBar() }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(1f).widthIn(max = EchoContentMaxWidth).fillMaxWidth().then(listModifier),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = PlaylistDetailBottomPadding),
+            content = content,
+        )
+    }
+}
+
+@Composable
+internal fun PlaylistDetailNotice(message: String) {
     val colors = rememberPlaylistDetailColors()
     Box(
         modifier = Modifier

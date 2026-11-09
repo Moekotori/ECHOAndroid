@@ -162,6 +162,7 @@ internal fun PlaylistHero(
     durationMs: Long,
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
+    canPlay: Boolean = playlist.trackCount > 0,
 ) {
     val fontScale = LocalDensity.current.fontScale
     val compact = app.echo.android.design.LocalEchoLayout.current.compactHeader &&
@@ -188,10 +189,10 @@ internal fun PlaylistHero(
             verticalAlignment = Alignment.CenterVertically) {
             PlaylistActionButton(Icons.Rounded.PlayArrow,
                 stringResource(L10nR.string.feature_library_play_all_55c80e),
-                onPlayAll, enabled = playlist.trackCount > 0)
+                onPlayAll, enabled = canPlay)
             PlaylistActionButton(Icons.Rounded.Shuffle,
                 stringResource(L10nR.string.feature_library_shuffle_34e7ce),
-                onShuffle, enabled = playlist.trackCount > 0)
+                onShuffle, enabled = canPlay)
         }
         Spacer(Modifier.height(22.dp))
     }

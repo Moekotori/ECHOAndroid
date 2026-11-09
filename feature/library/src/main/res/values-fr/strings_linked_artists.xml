@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="linked_artists_partial">Titres chargés : %1$d / %2$d. Les informations des artistes sont incomplètes.</string>
+    <string name="linked_artists_partial">La liste des artistes est établie à partir de %1$d titres sur %2$d.</string>
+    <string name="linked_artists_load_more_songs">Charger plus de titres</string>
     <string name="linked_artists_load_more">Charger plus</string>
 </resources>

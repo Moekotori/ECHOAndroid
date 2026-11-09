@@ -36,6 +36,29 @@ class EchoBridgeFolderPaginationTest {
         assertEquals("node:opaque", requests.last().url.queryParameter("parentId"))
     }
 
+    @Test fun pairedPcUsesItsCredentialForFoldersAndLikedSongs() = runBlocking {
+        val paired = endpoint.copy(token = "test-access-token", libraryOnly = false)
+        val requests = mutableListOf<Request>()
+        val transport = EchoBridgeTransport { request ->
+            requests += request
+            assertEquals("Bearer test-access-token", request.header("Authorization"))
+            assertEquals("1", request.header("X-ECHO-Link-Version"))
+            assertNull(request.header("X-ECHO-Link-Direct"))
+            val kind = request.url.queryParameter("kind")
+            val row = JSONObject().put("id", if (kind == "folders") "root:music" else "song-1")
+                .put("title", "Music").put("coverId", "cover-1").put("canPlay", true)
+            JSONObject().put("catalog", JSONObject().put("page", 1).put("pageSize", 50)
+                .put("total", 1).put("entries", JSONArray().put(row)))
+        }
+
+        assertEquals("root:music", transport.folders(paired, "").folders.single().path)
+        val track = transport.likedTracks(paired, 1).tracks.single()
+        assertEquals("song-1", track.id)
+        assertTrue(track.canPlayOnPhone)
+        assertNull(track.artworkUrl)
+        assertEquals(listOf("folders", "liked"), requests.map { it.url.queryParameter("kind") })
+    }
+
     @Test fun pageReplacementAndOpaqueParentNavigationRestoreTheParentPage() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val state = MutableStateFlow(EchoRemoteLibraryState())

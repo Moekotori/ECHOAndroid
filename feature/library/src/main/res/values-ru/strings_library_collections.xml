@@ -11,4 +11,5 @@
     <string name="smart_hide_builtin_message">Скрыть «%1$s» из медиатеки? Его можно восстановить через меню «+».</string>
     <string name="smart_hide_confirm">Скрыть</string>
     <string name="smart_restore_builtin">Восстановить встроенные плейлисты</string>
+    <string name="linked_folders_unavailable">Эта версия PC ECHO не открывает доступ к папкам.</string>
 </resources>

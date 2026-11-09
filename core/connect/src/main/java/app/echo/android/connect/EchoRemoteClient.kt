@@ -254,7 +254,6 @@ class EchoRemoteClient internal constructor(
     private var nextTrackPage = 0
     private var nextAlbumPage = 0
     private var nextPlaylistPage = 0
-    private var folderRefreshJob: Job? = null
     private var phonePlaybackJob: Job? = null
     private var playOnPhoneGeneration = 0L
     private var connectGeneration = 0L
@@ -273,7 +272,6 @@ class EchoRemoteClient internal constructor(
     private var libraryRefreshGeneration = 0L
     private var playlistRefreshGeneration = 0L
     private var albumRefreshGeneration = 0L
-    private var folderRefreshGeneration = 0L
 
     fun connectManual(
         address: String,
@@ -339,9 +337,6 @@ class EchoRemoteClient internal constructor(
         albumRefreshGeneration += 1
         albumRefreshJob?.cancel()
         albumRefreshJob = null
-        folderRefreshGeneration += 1
-        folderRefreshJob?.cancel()
-        folderRefreshJob = null
         playOnPhoneGeneration += 1
         phonePlaybackJob?.cancel()
         phonePlaybackJob = null
@@ -445,9 +440,6 @@ class EchoRemoteClient internal constructor(
         albumRefreshGeneration += 1
         albumRefreshJob?.cancel()
         albumRefreshJob = null
-        folderRefreshGeneration += 1
-        folderRefreshJob?.cancel()
-        folderRefreshJob = null
         playOnPhoneGeneration += 1
         phonePlaybackJob?.cancel()
         phonePlaybackJob = null
@@ -568,7 +560,7 @@ class EchoRemoteClient internal constructor(
         }
         libraryRefreshJob?.cancel()
         // 只发布第一页。后面的页等列表滚到末尾再取，避免整库进内存。
-        if (target.libraryOnly) bridgeFolders.search(query)
+        if (category == EchoLibraryCategory.Folders) bridgeFolders.search(query)
         val priority = MutableStateFlow<EchoLibraryCategory?>(libraryPriority(category))
         libraryRefreshPriority = priority
         libraryRefreshJob = scope.launch {
@@ -861,7 +853,11 @@ class EchoRemoteClient internal constructor(
         }
         _library.update { it.copy(loadingPlaylistId = playlist.id, error = null) }
         playlistRefreshJob = scope.launch {
-            runSuspendCatching { fetchAllPlaylistTracks(target, playlist.id) }
+            runSuspendCatching {
+                fetchAllPlaylistTracks { page ->
+                    transport.fetchPlaylistTracks(target, playlist.id, page, PcPlaylistTrackPageSize)
+                }
+            }
                 .onSuccess { page ->
                     if (
                         endpoint?.id == target.id &&
@@ -952,68 +948,20 @@ class EchoRemoteClient internal constructor(
         }
     }
 
-    fun refreshFolders(path: String = _library.value.folderPath) {
-        if (endpoint?.libraryOnly == true) { bridgeFolders.refresh(path); return }
-        val target = endpoint ?: run {
-            _library.update {
-                it.copy(
-                    error = text(R.string.connect_not_connected),
-                )
-            }
-            return
-        }
-        if (_library.value.foldersUnavailable) return
-        val generation = ++folderRefreshGeneration
-        folderRefreshJob?.cancel()
-        val normalizedPath = path.trim().trim('/')
-        _library.update {
-            it.copy(
-                folderPath = normalizedPath,
-                loadingFolderPath = normalizedPath,
-                error = null,
-            )
-        }
-        folderRefreshJob = scope.launch {
-            runSuspendCatching { transport.fetchFolders(target, normalizedPath) }
-                .onSuccess { page ->
-                    if (endpoint?.id == target.id && generation == folderRefreshGeneration) {
-                        _library.update { current ->
-                            current.copy(
-                                folders = page.folders,
-                                folderPath = page.path.ifBlank { normalizedPath },
-                                folderTracks = page.tracks,
-                                foldersUnavailable = false,
-                                loadingFolderPath = null,
-                                error = null,
-                            )
-                        }
-                    }
-                }
-                .onFailure { error ->
-                    if (endpoint?.id == target.id && generation == folderRefreshGeneration) {
-                        val missing = error.isEchoLinkNotFound()
-                        val collectionMissing = EchoLinkRequestPolicy.shouldMarkFoldersUnavailable(
-                            path = normalizedPath,
-                            notFound = missing,
-                        )
-                        _library.update { current ->
-                            current.copy(
-                                folders = if (collectionMissing) emptyList() else current.folders,
-                                folderTracks = if (collectionMissing) emptyList() else current.folderTracks,
-                                foldersUnavailable = current.foldersUnavailable || collectionMissing,
-                                loadingFolderPath = null,
-                                error = if (collectionMissing) current.error else error.userMessage(),
-                            )
-                        }
-                    }
-                }
-        }
-    }
+    fun refreshFolders(path: String = _library.value.folderPath) = bridgeFolders.refresh(path)
 
     fun changeFolderPage(page: Int) = bridgeFolders.changePage(page)
 
-    fun changeFolderSort(sort: app.echo.android.model.library.FolderSortMode) {
-        if (endpoint?.libraryOnly == true) bridgeFolders.changeSort(sort)
+    fun changeFolderSort(sort: app.echo.android.model.library.FolderSortMode) = bridgeFolders.changeSort(sort)
+
+    suspend fun linkedLikedTracks(): List<EchoRemoteTrack> {
+        val target = endpoint ?: throw EchoLinkHttpException(text(R.string.connect_not_connected))
+        val connection = connectGeneration
+        return fetchAllPlaylistTracks { page ->
+            val result = transport.fetchLikedTracks(target, page)
+            check(connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target))
+            result
+        }.tracks
     }
 
     fun playQueueOnPc(tracks: List<EchoRemoteTrack>, startIndex: Int = 0) {
@@ -1260,18 +1208,20 @@ class EchoRemoteClient internal constructor(
         }
     }
 
-    private suspend fun fetchAllPlaylistTracks(target: EchoRemoteEndpoint, id: String): EchoLinkTrackPage {
+    private suspend fun fetchAllPlaylistTracks(fetchPage: suspend (Int) -> EchoLinkTrackPage): EchoLinkTrackPage {
         val items = mutableListOf<EchoRemoteTrack>()
         var page = 1
         while (true) {
-            val batch = transport.fetchPlaylistTracks(target, id, page, PcPlaylistTrackPageSize)
+            val batch = fetchPage(page)
             items += batch.tracks
             if (items.size >= batch.totalCount) {
                 return EchoLinkTrackPage(items, batch.totalCount.coerceAtLeast(items.size))
             }
             if (batch.tracks.isEmpty()) throw EchoLinkHttpException(
                 text(R.string.connect_library_partial, items.size, batch.totalCount))
-            check(page++ < EchoLinkMaxLibraryPages) { "PC playlist exceeds the supported page limit" }
+            if (page++ >= EchoLinkMaxLibraryPages) throw EchoLinkHttpException(
+                text(R.string.connect_library_partial, items.size, batch.totalCount),
+            )
         }
     }
 

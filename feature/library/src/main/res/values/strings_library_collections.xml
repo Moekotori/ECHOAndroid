@@ -11,4 +11,5 @@
     <string name="smart_hide_builtin_message">Remove “%1$s” from the library? You can bring it back from the + menu.</string>
     <string name="smart_hide_confirm">Remove</string>
     <string name="smart_restore_builtin">Restore built-in playlists</string>
+    <string name="linked_folders_unavailable">This version of PC ECHO does not share folders.</string>
 </resources>

@@ -11,4 +11,5 @@
     <string name="smart_hide_builtin_message">要從曲庫移除「%1$s」嗎？可以在「+」選單中還原。</string>
     <string name="smart_hide_confirm">移除</string>
     <string name="smart_restore_builtin">還原預設智慧歌單</string>
+    <string name="linked_folders_unavailable">目前版本的 PC ECHO 未開放資料夾瀏覽。</string>
 </resources>

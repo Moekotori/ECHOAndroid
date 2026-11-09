@@ -104,6 +104,8 @@ internal interface EchoLinkTransport {
     suspend fun fetchTracks(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkTrackPage
     suspend fun fetchPlaylists(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkPlaylistPage
     suspend fun fetchPlaylistTracks(endpoint: EchoRemoteEndpoint, playlistId: String, page: Int, pageSize: Int): EchoLinkTrackPage
+    suspend fun fetchLikedTracks(endpoint: EchoRemoteEndpoint, page: Int): EchoLinkTrackPage =
+        throw EchoLinkHttpException("peer_catalog_requires_update", 404)
     suspend fun fetchAlbums(endpoint: EchoRemoteEndpoint, query: String, page: Int, pageSize: Int): EchoLinkAlbumPage
     suspend fun fetchAlbumTracks(endpoint: EchoRemoteEndpoint, albumId: String, page: Int, pageSize: Int): EchoLinkTrackPage
     suspend fun fetchFolders(endpoint: EchoRemoteEndpoint, path: String): EchoLinkFolderPage
@@ -482,6 +484,9 @@ internal class OkHttpEchoLinkTransport(
         return@withContext json.toTrackPage(endpoint)
     }
 
+    override suspend fun fetchLikedTracks(endpoint: EchoRemoteEndpoint, page: Int): EchoLinkTrackPage =
+        withContext(responseDispatcher) { bridge.likedTracks(endpoint, page) }
+
     override suspend fun fetchAlbums(
         endpoint: EchoRemoteEndpoint,
         query: String,
@@ -543,7 +548,13 @@ internal class OkHttpEchoLinkTransport(
     override suspend fun fetchFolderPage(endpoint: EchoRemoteEndpoint, path: String, page: Int, query: String,
         sort: app.echo.android.model.library.FolderSortMode): EchoLinkFolderPage =
         withContext(responseDispatcher) {
-            if (endpoint.libraryOnly) bridge.folders(endpoint, path, page, query, sort) else fetchFolders(endpoint, path)
+            try {
+                bridge.folders(endpoint, path, page, query, sort)
+            } catch (failure: EchoLinkHttpException) {
+                if (endpoint.libraryOnly || failure.statusCode != 404 || page != 1 ||
+                    path.startsWith("root:") || path.startsWith("node:")) throw failure
+                fetchFolders(endpoint, path.trim().trim('/'))
+            }
         }
 
     override suspend fun resolveStream(

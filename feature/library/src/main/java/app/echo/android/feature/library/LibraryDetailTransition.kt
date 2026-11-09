@@ -64,7 +64,7 @@ internal sealed interface LibraryDetailTransitionTarget {
     data class PlaylistDetail(val playlist: EchoPlaylist, val tracks: LazyPagingItems<EchoTrack>) : LibraryDetailTransitionTarget
     data class LinkedAlbum(val album: AlbumSummary) : LibraryDetailTransitionTarget
     data class LinkedArtist(val artist: ArtistSummary) : LibraryDetailTransitionTarget
-    data class LinkedPlaylist(val playlist: EchoRemotePlaylist) : LibraryDetailTransitionTarget
+    data class LinkedPlaylist(val playlist: EchoRemotePlaylist, val likedSongs: Boolean = false) : LibraryDetailTransitionTarget
 }
 
 private val LibraryDetailTransitionTarget.pageKey: String
@@ -77,7 +77,7 @@ private val LibraryDetailTransitionTarget.pageKey: String
         is LibraryDetailTransitionTarget.PlaylistDetail -> "playlist:${playlist.id}"
         is LibraryDetailTransitionTarget.LinkedAlbum -> "linked-album:${album.albumKey}"
         is LibraryDetailTransitionTarget.LinkedArtist -> "linked-artist:${artist.artistKey}"
-        is LibraryDetailTransitionTarget.LinkedPlaylist -> "linked-playlist:${playlist.id}"
+        is LibraryDetailTransitionTarget.LinkedPlaylist -> if (likedSongs) "linked-liked-songs" else "linked-playlist:${playlist.id}"
     }
 
 private fun isLibraryDetailBackward(

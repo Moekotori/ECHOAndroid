@@ -276,6 +276,7 @@ internal fun EchoLibraryPage(
             linkedLibraryAvailable = remoteStatus.connectionState == EchoRemoteConnectionState.Connected,
             linkedLibraryState = remoteClient.library,
             linkedLibraryOnly = remoteStatus.endpoint?.libraryOnly == true,
+            linkedEndpointId = remoteStatus.endpoint?.id,
             selectedLibrarySourceId = appSettings.librarySelectedSource,
             artists = viewModel.artists,
             genres = viewModel.genres,
@@ -325,6 +326,7 @@ internal fun EchoLibraryPage(
             onLoadMoreLinkedAlbums = remoteClient::loadMoreAlbums,
             onLoadMoreLinkedPlaylists = remoteClient::loadMorePlaylists,
             onOpenLinkedPlaylist = { playlist -> remoteClient.refreshPlaylistTracks(playlist) },
+            onLoadLinkedLikedTracks = remoteClient::linkedLikedTracks,
             onLoadLinkedPlaylistArtwork = remoteClient::loadPlaylistArtwork,
             onOpenLinkedAlbum = { album -> remoteClient.refreshAlbumTracks(album) },
             onRefreshLinkedFolders = { path -> remoteClient.refreshFolders(path) },
@@ -336,6 +338,10 @@ internal fun EchoLibraryPage(
                     viewModel = viewModel,
                     playbackRouter = playbackRouter,
                 )
+            },
+            onPlayLinkedPlaylist = { tracks, startIndex ->
+                playbackRouter.selectRemoteMode(false)
+                playLinkedEchoTracks(tracks, startIndex, viewModel, playbackRouter)
             },
             onPlayLinkedQueueOnPc = if (remoteStatus.endpoint?.libraryOnly == true) null else { tracks, startIndex ->
                 playbackRouter.selectRemoteMode(true)

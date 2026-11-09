@@ -3,6 +3,7 @@ package app.echo.android.feature.library
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -54,15 +55,19 @@ internal fun LinkedFolderBrowser(
                     trackCount = folder.trackCount, sourceLabel = if (libraryOnly) "ECHO Bridge" else folder.path),
                     onOpen = { onOpenFolder(folder.path) })
             }
-            items(tracks, key = { "track:${it.id ?: "${it.title}-${it.artist}"}" }) { track ->
+            itemsIndexed(tracks, key = { index, track -> "track:$index:${track.id.orEmpty()}" }) { index, track ->
                 TrackRow(track = track.toEchoTrack(), onClick = {
-                    onPlayLinkedQueue(tracks, tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0))
+                    onPlayLinkedQueue(tracks, index)
                 }, onPlayOnPc = onPlayLinkedQueueOnPc?.let { playOnPc -> {
-                    playOnPc(tracks, tracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0))
+                    playOnPc(tracks, index)
                 } }, showAudioInfoTags = false)
             }
             if (folders.isEmpty() && tracks.isEmpty() && state.loadingFolderPath == null) item("empty") {
-                Text(stringResource(R.string.feature_library_pc_echo_has_no_folders_to_show_9e12b8))
+                if (state.error.isNullOrBlank()) {
+                    Text(stringResource(R.string.feature_library_pc_echo_has_no_folders_to_show_9e12b8))
+                } else {
+                    TextButton(onClick = { onOpenFolder(state.folderPath) }) { Text(stringResource(R.string.library_retry)) }
+                }
             }
         }
         if (paged) Row(Modifier.fillMaxWidth().padding(bottom = LibraryBottomControlsPadding),

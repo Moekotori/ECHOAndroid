@@ -11,4 +11,5 @@
     <string name="smart_hide_builtin_message">„%1$s“ in der Mediathek ausblenden? Über das Plus-Menü kannst du die Playlist wiederherstellen.</string>
     <string name="smart_hide_confirm">Ausblenden</string>
     <string name="smart_restore_builtin">Vorgegebene Playlists wiederherstellen</string>
+    <string name="linked_folders_unavailable">Diese Version von PC ECHO gibt keine Ordner frei.</string>
 </resources>

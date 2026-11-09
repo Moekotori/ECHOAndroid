@@ -22,11 +22,20 @@ internal class EchoBridgeTransport(private val execute: suspend (Request) -> JSO
     }
 
     suspend fun tracks(endpoint: EchoRemoteEndpoint, query: String, page: Int,
-        parentKind: String? = null, parentId: String? = null): EchoLinkTrackPage {
-        val catalog = catalog(endpoint, "songs", query, page, parentKind, parentId)
-        val rows = entries(catalog).mapNotNull { it.toRemoteTrack(endpoint)?.copy(
-            canPlayOnPhone = it.bridgeCanPlayOnPhone(), sourceLabel = "ECHO Bridge",
-            artworkUrl = EchoBridgeArtwork.url(endpoint, it.optText("coverId"))) }
+        parentKind: String? = null, parentId: String? = null): EchoLinkTrackPage =
+        trackPage(endpoint, catalog(endpoint, "songs", query, page, parentKind, parentId))
+
+    suspend fun likedTracks(endpoint: EchoRemoteEndpoint, page: Int): EchoLinkTrackPage =
+        trackPage(endpoint, catalog(endpoint, "liked", "", page))
+
+    private fun trackPage(endpoint: EchoRemoteEndpoint, catalog: JSONObject): EchoLinkTrackPage {
+        val rows = entries(catalog).mapNotNull { row ->
+            row.toRemoteTrack(endpoint)?.copy(
+                canPlayOnPhone = row.bridgeCanPlayOnPhone(),
+                sourceLabel = if (endpoint.libraryOnly) "ECHO Bridge" else "PC ECHO",
+                artworkUrl = peerArtwork(endpoint, row),
+            )
+        }
         return EchoLinkTrackPage(rows, catalog.optInt("total", rows.size))
     }
 
@@ -63,7 +72,7 @@ internal class EchoBridgeTransport(private val execute: suspend (Request) -> JSO
             })
         val rows = entries(catalog).map { EchoRemoteFolder(path = it.getString("id"),
             name = it.optText("title").orEmpty(), trackCount = it.optInt("count").coerceAtLeast(0),
-            artworkUrl = EchoBridgeArtwork.url(endpoint, it.optText("coverId"))) }
+            artworkUrl = peerArtwork(endpoint, it)) }
         val songs = if (path.isBlank()) EchoLinkTrackPage(emptyList(), 0)
             else tracks(endpoint, query, page, "folder", path)
         return EchoLinkFolderPage(path, rows, songs.tracks, page = page, pageSize = 50,
@@ -109,14 +118,20 @@ internal class EchoBridgeTransport(private val execute: suspend (Request) -> JSO
         return List(rows.length()) { rows.getJSONObject(it) }
     }
 
+    // The image loader can read direct peer artwork without holding a pairing credential.
+    private fun peerArtwork(endpoint: EchoRemoteEndpoint, row: JSONObject): String? =
+        if (endpoint.token.isBlank()) EchoBridgeArtwork.url(endpoint, row.optText("coverId")) else null
+
     private suspend fun get(endpoint: EchoRemoteEndpoint, route: String,
         query: HttpUrl.Builder.() -> Unit = {}): JSONObject {
-        check(endpoint.token.isBlank() && !endpoint.needsV2PairExchange)
+        check(!endpoint.needsV2PairExchange)
         val url = HttpUrl.Builder().scheme(endpoint.scheme).host(endpoint.host).port(endpoint.port)
             .addPathSegments("echo-link/peer/v1").addPathSegment(route).apply(query).build()
         return ReadSlots.withPermit {
-            execute(Request.Builder().url(url).header("X-ECHO-Link-Direct", "1")
-                .header("X-ECHO-Link-Version", "1").get().build())
+            val request = Request.Builder().url(url).header("X-ECHO-Link-Version", "1")
+            if (endpoint.token.isBlank()) request.header("X-ECHO-Link-Direct", "1")
+            else request.header("Authorization", "Bearer ${endpoint.token}")
+            execute(request.get().build())
         }
     }
 

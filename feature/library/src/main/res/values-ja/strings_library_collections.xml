@@ -11,4 +11,5 @@
     <string name="smart_hide_builtin_message">「%1$s」をライブラリから非表示にしますか？「+」メニューから復元できます。</string>
     <string name="smart_hide_confirm">非表示</string>
     <string name="smart_restore_builtin">標準プレイリストを復元</string>
+    <string name="linked_folders_unavailable">このバージョンの PC ECHO ではフォルダーを参照できません。</string>
 </resources>

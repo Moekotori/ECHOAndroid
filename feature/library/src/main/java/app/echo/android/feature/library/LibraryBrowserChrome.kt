@@ -68,8 +68,10 @@ internal fun LibraryBrowserFrame(
                 keyboard?.hide()
                 searchExpanded = false
             }
-        } else if (searchExpanded) {
-            searchFocus.requestFocus()
+        } else if (searchExpanded && searchFocus.requestFocus()) {
+            // Let the focused field start its input session before asking Android to show the IME.
+            withFrameNanos { }
+            if (searchExpanded) keyboard?.show()
         }
     }
 

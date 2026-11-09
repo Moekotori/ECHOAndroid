@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="linked_artists_partial">已載入歌曲：%1$d / %2$d，歌手資訊尚未完整</string>
+    <string name="linked_artists_partial">藝人列表根據已讀取的 %1$d 首歌曲整理（共 %2$d 首）。</string>
+    <string name="linked_artists_load_more_songs">讀取更多歌曲</string>
     <string name="linked_artists_load_more">載入更多</string>
 </resources>

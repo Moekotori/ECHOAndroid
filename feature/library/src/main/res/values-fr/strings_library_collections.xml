@@ -11,4 +11,5 @@
     <string name="smart_hide_builtin_message">Masquer « %1$s » dans la bibliothèque ? Vous pouvez la rétablir depuis le menu +.</string>
     <string name="smart_hide_confirm">Masquer</string>
     <string name="smart_restore_builtin">Rétablir les playlists intégrées</string>
+    <string name="linked_folders_unavailable">Cette version de PC ECHO ne partage pas les dossiers.</string>
 </resources>

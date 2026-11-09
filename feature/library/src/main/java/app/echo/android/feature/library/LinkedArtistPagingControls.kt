@@ -31,7 +31,7 @@ internal fun LinkedArtistPagingControls(
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         TextButton(onClick = onLoadMore, enabled = !loading) {
-            Text(stringResource(if (error.isNullOrBlank()) R.string.linked_artists_load_more else R.string.library_retry))
+            Text(stringResource(if (error.isNullOrBlank()) R.string.linked_artists_load_more_songs else R.string.library_retry))
         }
     }
 }
