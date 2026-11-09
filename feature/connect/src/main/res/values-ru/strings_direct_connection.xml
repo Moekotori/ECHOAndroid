@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">Введите IP или домен ПК и необязательный порт либо вставьте полный HTTP(S)-адрес или ссылку сопряжения. Прямой доступ по LAN зависит от настроек ПК; первое удалённое подключение через frp/Tailscale требует сопряжения.</string>
+    <string name="echo_link_direct_address_hint">Введите IP-адрес или домен ПК и при необходимости добавьте :порт. Также можно вставить полный HTTP(S)-адрес или ссылку сопряжения. Прямое подключение по локальной сети зависит от настроек ПК. Для первого подключения через frp/Tailscale требуется сопряжение.</string>
     <string name="echo_link_pairing_entry">Подключение по IP, домену или ссылке</string>
     <string name="echo_link_steam_edition_requirement">Требуется ECHO Pro</string>
-    <string name="echo_link_pc_port">Порт (необязательно)</string>
-    <string name="echo_link_pc_port_invalid">Введите целое число от 1 до 65535.</string>
 </resources>

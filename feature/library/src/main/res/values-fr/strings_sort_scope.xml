@@ -2,4 +2,18 @@
 <resources>
     <string name="library_sort_title">Trier</string>
     <string name="library_sort_loaded_items">Trier les éléments chargés</string>
+    <string name="album_sort_heading">Trier les albums</string>
+    <string name="album_sort_field">Trier par</string>
+    <string name="album_sort_direction">Ordre</string>
+    <string name="album_sort_track_count">Nombre de pistes</string>
+    <string name="album_sort_date_added">Date d’ajout</string>
+    <string name="album_sort_a_to_z">A–Z</string>
+    <string name="album_sort_z_to_a">Z–A</string>
+    <string name="album_sort_oldest_first">Plus anciens en premier</string>
+    <string name="album_sort_newest_first">Plus récents en premier</string>
+    <string name="album_sort_fewest_first">Du moins au plus</string>
+    <string name="album_sort_most_first">Du plus au moins</string>
+    <string name="album_sort_shortest_first">Plus courts en premier</string>
+    <string name="album_sort_longest_first">Plus longs en premier</string>
+    <string name="album_sort_album_title">Titre de l’album</string>
 </resources>

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="library_browse_options_title">曲一覧のオプション</string>
+    <string name="library_display_settings">表示設定</string>
     <string name="library_add_music">音楽を追加</string>
     <string name="library_access_title">あなたの音楽をここから</string>
     <string name="library_access_detail">音声へのアクセスを許可すると、スマホ内の音楽を閲覧できます。</string>

@@ -18,7 +18,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.ui.draw.alpha
 import androidx.paging.LoadState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -81,6 +80,8 @@ internal fun PlaylistDetailPage(
     experienceActions: LibraryExperienceActions? = null,
     onCopyCreated: (EchoPlaylist) -> Unit = {},
     onExport: ((String) -> Unit)? = null,
+    onEnqueuePlaylist: ((String) -> Unit)? = null,
+    onSharePlaylist: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val rangeSource = rememberLibraryRangeSource(tracks)
@@ -167,9 +168,12 @@ internal fun PlaylistDetailPage(
                 canEdit = playlist.canEdit,
                 onBack = onBack,
                 onRename = { renaming = true },
-                onDelete = { deleting = true },
+                onDelete = if (playlist.canRemoveFromCatalog) ({ deleting = true }) else null,
+                removalLabel = playlist.removalLabel,
                 onCopy = management?.let { { copying = true } },
                 onExport = onExport?.let { export -> { export(displayName) } },
+                onEnqueue = onEnqueuePlaylist?.takeIf { stats.trackCount > 0 }?.let { enqueue -> { enqueue(displayName) } },
+                onShare = onSharePlaylist?.takeIf { stats.trackCount > 0 }?.let { share -> { share(displayName) } },
                 onArtwork = management?.takeIf { playlist.canEdit }?.let { { it.pickArtwork(playlist.id) } },
                 onEditRules = experienceActions?.takeIf { playlist.isCustomSmartPlaylist }?.let { { editingRules = true } },
             )
@@ -313,30 +317,10 @@ internal fun PlaylistDetailPage(
         )
     }
     if (deleting) {
-        AlertDialog(
-            onDismissRequest = { deleting = false },
-            title = { Text(stringResource(L10nR.string.feature_library_delete_playlist_4d9753)) },
-            text = {
-                Text(
-                    stringResource(L10nR.string.feature_library_delete_playlist_name_songs_in_the_library_will_3541db, (playlist.name).toString()),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeletePlaylist()
-                        deleting = false
-                    },
-                ) {
-                    Text(stringResource(L10nR.string.feature_library_delete_138ccf))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleting = false }) {
-                    Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
-                }
-            },
-        )
+        PlaylistRemovalDialog(playlist, onDismiss = { deleting = false }, onConfirm = {
+            deleting = false
+            onDeletePlaylist()
+        })
     }
 }
 

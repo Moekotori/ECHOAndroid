@@ -2,4 +2,18 @@
 <resources>
     <string name="library_sort_title">排序</string>
     <string name="library_sort_loaded_items">僅排序已載入內容</string>
+    <string name="album_sort_heading">專輯排序</string>
+    <string name="album_sort_field">排序依據</string>
+    <string name="album_sort_direction">順序</string>
+    <string name="album_sort_track_count">曲目數</string>
+    <string name="album_sort_date_added">加入時間</string>
+    <string name="album_sort_a_to_z">A–Z</string>
+    <string name="album_sort_z_to_a">Z–A</string>
+    <string name="album_sort_oldest_first">由舊到新</string>
+    <string name="album_sort_newest_first">由新到舊</string>
+    <string name="album_sort_fewest_first">由少到多</string>
+    <string name="album_sort_most_first">由多到少</string>
+    <string name="album_sort_shortest_first">由短到長</string>
+    <string name="album_sort_longest_first">由長到短</string>
+    <string name="album_sort_album_title">專輯名稱</string>
 </resources>

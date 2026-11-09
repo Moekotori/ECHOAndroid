@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MyLocation
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,12 +51,14 @@ internal fun QueueSheetHeader(
     onDismiss: () -> Unit,
     onClearQueue: () -> Unit,
     onClearNextUp: () -> Unit,
+    onOpenSearch: () -> Unit,
     onLocateCurrent: () -> Unit,
     onTogglePrevious: () -> Unit,
     onSetSleepTimerEndOfTrack: (() -> Unit)?,
     onCancelSleepTimer: (() -> Unit)?,
     onSetRepeatMode: (EchoRepeatMode) -> Unit,
     onToggleShuffle: () -> Unit,
+    transitionAction: @Composable () -> Unit,
 ) {
     val ink = echoIconColor()
     var expanded by remember { mutableStateOf(false) }
@@ -90,6 +93,10 @@ internal fun QueueSheetHeader(
                 onToggleShuffle = onToggleShuffle,
                 modifier = Modifier.weight(1f),
             )
+            transitionAction()
+            if (!queueState.isEmpty) IconButton(onClick = onOpenSearch) {
+                EchoIcon(Icons.Rounded.Search, stringResource(R.string.queue_search), Modifier.size(22.dp), tint = ink)
+            }
             if (!queueState.isEmpty) Box {
                 IconButton(onClick = { expanded = true }) {
                     EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.queue_actions), Modifier.size(22.dp), tint = ink)

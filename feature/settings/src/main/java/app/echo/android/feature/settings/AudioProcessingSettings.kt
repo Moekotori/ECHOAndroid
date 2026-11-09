@@ -67,40 +67,51 @@ internal fun AudioTransitionSettings(
     SettingsSectionCard(title = stringResource(R.string.settings_section_transition)) {
         SettingsInfoRow(title = stringResource(R.string.settings_gapless),
             detail = stringResource(R.string.settings_gapless_detail))
-        SettingsSwitchRow(
-            title = stringResource(R.string.manual_fade_title),
-            detail = stringResource(if (bitPerfect) R.string.settings_track_fade_bypass else R.string.manual_fade_detail),
-            checked = options.playPauseFadeEnabled,
-            onCheckedChange = { onChange(options.copy(playPauseFadeEnabled = it)) },
-            enabled = !bitPerfect,
-        )
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_track_fade),
-            detail = stringResource(if (bitPerfect) R.string.settings_track_fade_bypass else R.string.settings_track_fade_detail),
-            checked = options.fadeEnabled,
-            onCheckedChange = { onChange(options.copy(fadeEnabled = it)) },
-            enabled = !bitPerfect,
-        )
-        if (options.fadeEnabled) SettingsSliderRow(
-            title = stringResource(R.string.settings_track_fade_duration),
-            valueLabel = { stringResource(R.string.settings_track_fade_seconds, it) },
-            value = options.fadeDurationMs / 1000f,
-            valueRange = 0.5f..5f,
-            steps = 8,
-            onValueChange = { onChange(options.copy(fadeDurationMs = (it * 1000f).roundToInt())) },
-            enabled = !bitPerfect,
-        )
-        val bypassed = usbExclusive || bitPerfect || performanceMode == EchoEffectivePerformanceMode.Lightweight.id
-        SettingsSwitchRow(
-            title = stringResource(R.string.settings_smart_transition),
-            detail = stringResource(when {
-                usbExclusive || bitPerfect -> R.string.audio_mix_usb_blocked
-                bypassed -> R.string.audio_mix_lightweight_blocked
-                else -> R.string.automix_description
-            }),
-            checked = options.smartEnabled,
-            onCheckedChange = { onChange(options.copy(smartEnabled = it)) },
-            enabled = !bypassed,
-        )
+        AudioTransitionControls(options, usbExclusive, bitPerfect, performanceMode, onChange)
     }
+}
+
+@Composable
+internal fun AudioTransitionControls(
+    options: EchoTrackTransitionOptions,
+    usbExclusive: Boolean,
+    bitPerfect: Boolean,
+    performanceMode: String,
+    onChange: (EchoTrackTransitionOptions) -> Unit,
+) {
+    SettingsSwitchRow(
+        title = stringResource(R.string.manual_fade_title),
+        detail = stringResource(if (bitPerfect) R.string.settings_track_fade_bypass else R.string.manual_fade_detail),
+        checked = options.playPauseFadeEnabled,
+        onCheckedChange = { onChange(options.copy(playPauseFadeEnabled = it)) },
+        enabled = !bitPerfect,
+    )
+    SettingsSwitchRow(
+        title = stringResource(R.string.settings_track_fade),
+        detail = stringResource(if (bitPerfect) R.string.settings_track_fade_bypass else R.string.settings_track_fade_detail),
+        checked = options.fadeEnabled,
+        onCheckedChange = { onChange(options.copy(fadeEnabled = it)) },
+        enabled = !bitPerfect,
+    )
+    if (options.fadeEnabled) SettingsSliderRow(
+        title = stringResource(R.string.settings_track_fade_duration),
+        valueLabel = { stringResource(R.string.settings_track_fade_seconds, it) },
+        value = options.fadeDurationMs / 1000f,
+        valueRange = 0.5f..5f,
+        steps = 8,
+        onValueChange = { onChange(options.copy(fadeDurationMs = (it * 1000f).roundToInt())) },
+        enabled = !bitPerfect,
+    )
+    val bypassed = usbExclusive || bitPerfect || performanceMode == EchoEffectivePerformanceMode.Lightweight.id
+    SettingsSwitchRow(
+        title = stringResource(R.string.settings_smart_transition),
+        detail = stringResource(when {
+            usbExclusive || bitPerfect -> R.string.audio_mix_usb_blocked
+            bypassed -> R.string.audio_mix_lightweight_blocked
+            else -> R.string.automix_description
+        }),
+        checked = options.smartEnabled,
+        onCheckedChange = { onChange(options.copy(smartEnabled = it)) },
+        enabled = !bypassed,
+    )
 }

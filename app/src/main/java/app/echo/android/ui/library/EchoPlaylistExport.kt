@@ -27,9 +27,13 @@ internal fun rememberPlaylistExport(viewModel: EchoAndroidViewModel): (EchoPlayl
     }
     if (chosenId != null) PlaylistExportDialog(chosenName, onChoose = { format ->
         pendingId = chosenId; pendingFormat = format.name; chosenId = null
-        val name = chosenName.trim().ifBlank { "playlist" }.replace(Regex("[\\\\/:*?\"<>|]"), "-").take(120)
         launcher.launch(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
-            .setType(format.mimeType).putExtra(Intent.EXTRA_TITLE, "$name.${format.extension}"))
+            .setType(format.mimeType).putExtra(Intent.EXTRA_TITLE, playlistDocumentName(chosenName, format)))
     }, onDismiss = { chosenId = null })
     return { playlist -> chosenId = playlist.id; chosenName = playlist.name }
+}
+
+internal fun playlistDocumentName(name: String, format: PlaylistExportFormat): String {
+    val stem = name.trim().ifBlank { "playlist" }.replace(Regex("[\\\\/:*?\"<>|]"), "-").take(120)
+    return "$stem.${format.extension}"
 }

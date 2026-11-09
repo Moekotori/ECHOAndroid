@@ -2,4 +2,18 @@
 <resources>
     <string name="library_sort_title">並べ替え</string>
     <string name="library_sort_loaded_items">読み込み済みの項目を並べ替え</string>
+    <string name="album_sort_heading">アルバムの並べ替え</string>
+    <string name="album_sort_field">並べ替え項目</string>
+    <string name="album_sort_direction">順序</string>
+    <string name="album_sort_track_count">曲数</string>
+    <string name="album_sort_date_added">追加日</string>
+    <string name="album_sort_a_to_z">A–Z</string>
+    <string name="album_sort_z_to_a">Z–A</string>
+    <string name="album_sort_oldest_first">古い順</string>
+    <string name="album_sort_newest_first">新しい順</string>
+    <string name="album_sort_fewest_first">少ない順</string>
+    <string name="album_sort_most_first">多い順</string>
+    <string name="album_sort_shortest_first">短い順</string>
+    <string name="album_sort_longest_first">長い順</string>
+    <string name="album_sort_album_title">アルバム名</string>
 </resources>

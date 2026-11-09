@@ -2,4 +2,18 @@
 <resources>
     <string name="library_sort_title">정렬</string>
     <string name="library_sort_loaded_items">불러온 항목 정렬</string>
+    <string name="album_sort_heading">앨범 정렬</string>
+    <string name="album_sort_field">정렬 기준</string>
+    <string name="album_sort_direction">순서</string>
+    <string name="album_sort_track_count">곡 수</string>
+    <string name="album_sort_date_added">추가 날짜</string>
+    <string name="album_sort_a_to_z">A–Z</string>
+    <string name="album_sort_z_to_a">Z–A</string>
+    <string name="album_sort_oldest_first">오래된 순</string>
+    <string name="album_sort_newest_first">최신 순</string>
+    <string name="album_sort_fewest_first">적은 순</string>
+    <string name="album_sort_most_first">많은 순</string>
+    <string name="album_sort_shortest_first">짧은 순</string>
+    <string name="album_sort_longest_first">긴 순</string>
+    <string name="album_sort_album_title">앨범 제목</string>
 </resources>

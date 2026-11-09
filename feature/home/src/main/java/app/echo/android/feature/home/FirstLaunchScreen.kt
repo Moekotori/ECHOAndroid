@@ -1,6 +1,7 @@
 package app.echo.android.feature.home
 
 import android.content.ActivityNotFoundException
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,12 +38,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoExpand
 import app.echo.android.design.EchoIcon
+import app.echo.android.design.EchoInteractionGate
+import app.echo.android.design.rememberEchoContentMotion
 
 private const val LAST_STEP = 3
 
@@ -60,6 +67,8 @@ fun FirstLaunchScreen(
 ) {
     val page = step.coerceIn(0, LAST_STEP)
     val colors = MaterialTheme.colorScheme
+    val motion = rememberEchoContentMotion()
+    val leftToRight = LocalLayoutDirection.current == LayoutDirection.Ltr
     val uriHandler = LocalUriHandler.current
     var linkFailed by remember { mutableStateOf(false) }
     val openLink: (String) -> Unit = { url ->
@@ -84,40 +93,14 @@ fun FirstLaunchScreen(
                 }
             }
             // Body can scroll on small screens / large system fonts; actions stay within the safe area.
-            Column(
-                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(22.dp),
-            ) {
-                Text(stringResource(R.string.onboarding_step, page + 1, LAST_STEP + 1),
-                    style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
-                if (page < LAST_STEP) FirstLaunchIllustration(page)
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(when (page) {
-                        0 -> R.string.onboarding_music_title
-                        1 -> R.string.onboarding_player_title
-                        2 -> R.string.onboarding_pc_title
-                        else -> R.string.onboarding_manners_title
-                    }), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
-                    when (page) {
-                        0 -> FirstLaunchLead(R.string.onboarding_music_body)
-                        1 -> FirstLaunchLead(R.string.onboarding_player_body)
-                        2 -> FirstLaunchLead(R.string.onboarding_pc_body)
-                    }
-                }
-                when (page) {
-                    0 -> {
-                        HorizontalDivider(color = colors.outlineVariant)
-                        FirstLaunchTip(Icons.Rounded.FolderOpen, R.string.onboarding_import_title, R.string.onboarding_import_body)
-                        FirstLaunchTip(Icons.Rounded.Storage, R.string.onboarding_sources_title, R.string.onboarding_sources_body)
-                    }
-                    1 -> {
-                        HorizontalDivider(color = colors.outlineVariant)
-                        FirstLaunchTip(Icons.Rounded.TouchApp, R.string.onboarding_open_player_title, R.string.onboarding_open_player_body)
-                        FirstLaunchTip(Icons.Rounded.Lyrics, R.string.onboarding_lyrics_title, R.string.onboarding_lyrics_body)
-                        FirstLaunchTip(Icons.Rounded.Tune, R.string.onboarding_sound_title, R.string.onboarding_sound_body)
-                    }
-                    2 -> FirstLaunchSteamContent(onOpenLink = openLink)
-                    else -> FirstLaunchMannersContent(onOpenLink = openLink)
+            AnimatedContent(
+                targetState = page,
+                modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(),
+                transitionSpec = { motion.tabSwitch(forward = (targetState > initialState) == leftToRight) },
+                label = "onboarding-step",
+            ) { shownPage ->
+                EchoInteractionGate(active = shownPage == page && !saving, modifier = Modifier.fillMaxSize()) {
+                    FirstLaunchStepBody(shownPage, openLink)
                 }
             }
             Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 12.dp),
@@ -132,9 +115,11 @@ fun FirstLaunchScreen(
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (page > 0) {
-                        IconButton(onClick = { onStepChange(page - 1) }, enabled = !saving) {
-                            EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.onboarding_back))
+                    Box(Modifier.size(48.dp)) {
+                        if (page > 0) {
+                            IconButton(onClick = { onStepChange(page - 1) }, enabled = !saving) {
+                                EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.onboarding_back))
+                            }
                         }
                     }
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -154,20 +139,67 @@ fun FirstLaunchScreen(
                         }
                     }
                 }
-                if (page == LAST_STEP) {
-                    Button(
-                        onClick = { onFinish(true) },
-                        enabled = !saving,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    ) {
-                        Text(stringResource(if (saving) R.string.onboarding_saving else R.string.onboarding_accept_add))
-                    }
-                    TextButton(onClick = { onFinish(false) }, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.onboarding_accept_explore))
+                EchoExpand(expanded = page == LAST_STEP, modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { onFinish(true) },
+                            enabled = page == LAST_STEP && !saving,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Text(stringResource(if (saving) R.string.onboarding_saving else R.string.onboarding_accept_add))
+                        }
+                        TextButton(
+                            onClick = { onFinish(false) },
+                            enabled = page == LAST_STEP && !saving,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.onboarding_accept_explore))
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun FirstLaunchStepBody(page: Int, onOpenLink: (String) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
+    ) {
+        Text(stringResource(R.string.onboarding_step, page + 1, LAST_STEP + 1),
+            style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
+        if (page < LAST_STEP) FirstLaunchIllustration(page)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(when (page) {
+                0 -> R.string.onboarding_music_title
+                1 -> R.string.onboarding_player_title
+                2 -> R.string.onboarding_pc_title
+                else -> R.string.onboarding_manners_title
+            }), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
+            when (page) {
+                0 -> FirstLaunchLead(R.string.onboarding_music_body)
+                1 -> FirstLaunchLead(R.string.onboarding_player_body)
+                2 -> FirstLaunchLead(R.string.onboarding_pc_body)
+            }
+        }
+        when (page) {
+            0 -> {
+                HorizontalDivider(color = colors.outlineVariant)
+                FirstLaunchTip(Icons.Rounded.FolderOpen, R.string.onboarding_import_title, R.string.onboarding_import_body)
+                FirstLaunchTip(Icons.Rounded.Storage, R.string.onboarding_sources_title, R.string.onboarding_sources_body)
+            }
+            1 -> {
+                HorizontalDivider(color = colors.outlineVariant)
+                FirstLaunchTip(Icons.Rounded.TouchApp, R.string.onboarding_open_player_title, R.string.onboarding_open_player_body)
+                FirstLaunchTip(Icons.Rounded.Lyrics, R.string.onboarding_lyrics_title, R.string.onboarding_lyrics_body)
+                FirstLaunchTip(Icons.Rounded.Tune, R.string.onboarding_sound_title, R.string.onboarding_sound_body)
+            }
+            2 -> FirstLaunchSteamContent(onOpenLink)
+            else -> FirstLaunchMannersContent(onOpenLink)
         }
     }
 }

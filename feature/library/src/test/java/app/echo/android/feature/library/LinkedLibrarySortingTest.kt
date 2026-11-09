@@ -22,6 +22,10 @@ class LinkedLibrarySortingTest {
         assertEquals(LibraryTrackSortMode.Random, linkedTrackSort(LibraryTrackSortMode.Random))
         assertEquals(AlbumSortMode.Title, linkedAlbumSort(AlbumSortMode.RecentlyAdded))
         assertFalse(AlbumSortMode.Year in LinkedAlbumSortOptions)
+        assertEquals(AlbumSortMode.Title, linkedAlbumSort(AlbumSortMode.YearAscending))
+        assertEquals(AlbumSortMode.Title, linkedAlbumSort(AlbumSortMode.OldestAdded))
+        assertEquals(AlbumSortMode.TitleDescending, linkedAlbumSort(AlbumSortMode.TitleDescending))
+        assertEquals(AlbumSortMode.DurationAscending, linkedAlbumSort(AlbumSortMode.DurationAscending))
     }
 
     @Test fun supersededSearchStopsBeforeWalkingTheWholeLibrary() = runBlocking {

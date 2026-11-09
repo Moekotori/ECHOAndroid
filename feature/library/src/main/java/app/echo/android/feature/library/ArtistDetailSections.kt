@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import app.echo.android.design.EchoContentMaxWidth
 import androidx.compose.ui.res.stringResource
@@ -38,30 +37,15 @@ import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.model.library.AlbumSummary
 import app.echo.android.model.library.ArtistSummary
 
-/**
- * Compact profile row: a small round avatar beside the name and totals, over a soft glow that fades in from the
- * top edge. The avatar is often just an album cover, so it stays small instead of dominating the screen.
- */
 @Composable
-internal fun ArtistHero(artist: ArtistSummary, accent: Color) {
-    Box(Modifier.fillMaxWidth()) {
-        app.echo.android.design.artistArtwork(artist.name, artist.artworkUri)?.takeIf { it.isNotBlank() }?.let { uri ->
-            AlbumHeroAtmosphere(uri, accent, Modifier.matchParentSize(), fadeInFraction = 0.25f)
-        }
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .wrapContentWidth(Alignment.CenterHorizontally)
-                .widthIn(max = EchoContentMaxWidth)
-                .padding(horizontal = 24.dp),
-        ) {
-            ArtistProfileHeader(artist)
-        }
+internal fun ArtistHero(artist: ArtistSummary) {
+    ArtistSectionItem {
+        ArtistProfileHeader(artist)
     }
 }
 
 @Composable
-internal fun ArtistProfileHeader(artist: ArtistSummary) {
+private fun ArtistProfileHeader(artist: ArtistSummary) {
     val colors = MaterialTheme.colorScheme
     Row(
         Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 10.dp),

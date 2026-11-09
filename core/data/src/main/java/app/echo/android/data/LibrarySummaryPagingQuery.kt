@@ -1,6 +1,7 @@
 package app.echo.android.data
 
 import androidx.sqlite.db.SimpleSQLiteQuery
+import app.echo.android.model.library.AlbumSortMode
 
 /** Fixed ORDER BY clauses let SQLite use ordering indexes instead of sorting CASE expressions. */
 internal object LibrarySummaryPagingQuery {
@@ -10,15 +11,26 @@ internal object LibrarySummaryPagingQuery {
         filter = "isRemote = ${if (remote) 1 else 0}",
         search = listOf("title", "albumArtist", "artist", "pinyinTitle", "pinyinArtist"),
         query = query,
-        order = when (sort) {
-            "Artist" -> "albumArtist COLLATE NOCASE ASC, "
-            "Year" -> "year DESC, "
-            "TrackCount" -> "trackCount DESC, "
-            "Duration" -> "durationMs DESC, "
-            "RecentlyAdded" -> "addedAtSeconds DESC, "
-            else -> ""
-        } + "title COLLATE NOCASE ASC, albumKey ASC",
+        order = albumOrder(sort),
     )
+
+    private fun albumOrder(sort: String): String {
+        val titleAscending = "title COLLATE NOCASE ASC, albumKey ASC"
+        return when (sort) {
+            AlbumSortMode.TitleDescending.name -> "title COLLATE NOCASE DESC, albumKey ASC"
+            AlbumSortMode.Artist.name -> "albumArtist COLLATE NOCASE ASC, $titleAscending"
+            AlbumSortMode.ArtistDescending.name -> "albumArtist COLLATE NOCASE DESC, $titleAscending"
+            AlbumSortMode.Year.name -> "year DESC, $titleAscending"
+            AlbumSortMode.YearAscending.name -> "year IS NULL, year ASC, $titleAscending"
+            AlbumSortMode.TrackCount.name -> "trackCount DESC, $titleAscending"
+            AlbumSortMode.TrackCountAscending.name -> "trackCount ASC, $titleAscending"
+            AlbumSortMode.Duration.name -> "durationMs DESC, $titleAscending"
+            AlbumSortMode.DurationAscending.name -> "durationMs ASC, $titleAscending"
+            AlbumSortMode.RecentlyAdded.name -> "addedAtSeconds DESC, $titleAscending"
+            AlbumSortMode.OldestAdded.name -> "addedAtSeconds ASC, $titleAscending"
+            else -> titleAscending
+        }
+    }
 
     fun artists(query: String?, sort: String): SimpleSQLiteQuery = build(
         "library_artist_summaries", "artistKey, name, artworkUri, albumCount, trackCount, durationMs",

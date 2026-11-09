@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_liked_title">Álbumes que te gustan</string>
+    <string name="album_like">Marcar álbum con Me gusta</string>
+    <string name="album_unlike">Quitar Me gusta del álbum</string>
+    <string name="album_liked_empty">Todavía no hay álbumes que te gusten</string>
+    <string name="album_liked_hint">Toca el corazón en los detalles del álbum para guardarlo aquí.</string>
+    <string name="album_liked_search">Buscar álbumes que te gustan</string>
+    <string name="album_liked_no_results">No se encontraron álbumes que coincidan</string>
+    <string name="smart_hide_builtin">Ocultar lista predeterminada</string>
+    <string name="smart_hide_builtin_message">¿Quieres ocultar «%1$s» de la biblioteca? Puedes restaurarla desde el menú +.</string>
+    <string name="smart_hide_confirm">Ocultar</string>
+    <string name="smart_restore_builtin">Restaurar listas predeterminadas</string>
+</resources>

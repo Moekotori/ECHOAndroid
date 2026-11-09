@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_liked_title">Любимые альбомы</string>
+    <string name="album_like">Добавить альбом в избранное</string>
+    <string name="album_unlike">Убрать альбом из избранного</string>
+    <string name="album_liked_empty">Пока нет любимых альбомов</string>
+    <string name="album_liked_hint">Нажмите на сердечко на странице альбома, чтобы добавить его сюда.</string>
+    <string name="album_liked_search">Поиск любимых альбомов</string>
+    <string name="album_liked_no_results">Подходящих альбомов не найдено</string>
+    <string name="smart_hide_builtin">Скрыть встроенный плейлист</string>
+    <string name="smart_hide_builtin_message">Скрыть «%1$s» из медиатеки? Его можно восстановить через меню «+».</string>
+    <string name="smart_hide_confirm">Скрыть</string>
+    <string name="smart_restore_builtin">Восстановить встроенные плейлисты</string>
+</resources>

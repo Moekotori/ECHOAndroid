@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_enqueue">Ajouter à la file de lecture</string>
+    <string name="playlist_share">Partager la playlist</string>
+    <string name="playlist_share_failed">Impossible de partager la playlist.</string>
+    <string name="playlist_queue_empty">Aucun titre à ajouter à la file.</string>
+    <string name="playlist_queue_truncated">Les %1$d premiers titres ont été ajoutés à la file.</string>
+    <plurals name="playlist_queue_added">
+        <item quantity="one">%1$d titre ajouté à la file.</item>
+        <item quantity="other">%1$d titres ajoutés à la file.</item>
+    </plurals>
+</resources>

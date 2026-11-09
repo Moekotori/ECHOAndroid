@@ -2,13 +2,20 @@ package app.echo.android.ui.shell
 
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -49,6 +56,63 @@ internal val EchoPagerPage.dockTab: EchoTab?
 private const val ROUTE_MOTION_BASE_DURATION_MS = 420
 private const val ROUTE_MOTION_DISTANCE_DURATION_MS = 48
 private const val ROUTE_MOTION_MAX_DURATION_MS = 560
+
+@Composable
+internal fun rememberDockPagerFlingBehavior(
+    state: PagerState,
+    effectivePerformanceMode: EchoEffectivePerformanceMode,
+): TargetedFlingBehavior {
+    val lightweight = effectivePerformanceMode.isLightweight
+    val snap = remember(lightweight) {
+        spring<Float>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = EchoMotion.silkStiffness(if (lightweight) 100 else 200),
+            visibilityThreshold = 0.5f,
+        )
+    }
+    return PagerDefaults.flingBehavior(
+        state = state,
+        snapAnimationSpec = snap,
+        snapPositionalThreshold = 0.2f,
+    )
+}
+
+/** Prewarm Home and Library without mounting a new offscreen destination during their swipe. */
+@Composable
+internal fun rememberDockPageContentReady(state: PagerState, page: EchoPagerPage): Boolean {
+    if (page == EchoPagerPage.Now || page == EchoPagerPage.Library) return true
+
+    var entered by remember(state, page) { mutableStateOf(false) }
+    if (entered) return true
+
+    val entering by remember(state, page) {
+        derivedStateOf {
+            state.targetPage == page.ordinal ||
+                (state.currentPage + state.currentPageOffsetFraction - page.ordinal).absoluteValue < 1f
+        }
+    }
+    // Keep the page mounted for as long as the pager retains its slot.
+    if (entering) SideEffect { entered = true }
+    return entering
+}
+
+internal suspend fun PagerState.fadeToDockPage(page: Int, onAlphaChanged: (Float) -> Unit) {
+    scroll {
+        updateTargetPage(page)
+        try {
+            animate(1f, 0f, animationSpec = tween(85, easing = EchoMotion.SilkExit)) { alpha, _ ->
+                onAlphaChanged(alpha)
+            }
+            // Swap while hidden so distant destinations never show the pages in between.
+            updateCurrentPage(page)
+            animate(0f, 1f, animationSpec = tween(150, easing = EchoMotion.Silk)) { alpha, _ ->
+                onAlphaChanged(alpha)
+            }
+        } finally {
+            onAlphaChanged(1f)
+        }
+    }
+}
 
 // Point navigation has a bounded finish; keep the spring below for touch flings.
 internal fun dockNavigationMotionSpec(

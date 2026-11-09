@@ -96,25 +96,13 @@ internal fun LibraryLayoutEditor(
                 }
             }, state = listState, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 item(key = "duplicate-versions") { LibraryDuplicatesSettingsEntry() }
-                item(key = "file-names") {
-                    Row(Modifier.fillMaxWidth().toggleable(value = draft.showFileNames, role = Role.Switch,
-                        onValueChange = { draft = draft.copy(showFileNames = it) }).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.library_file_names))
-                            Text(stringResource(R.string.library_file_names_note), style = MaterialTheme.typography.bodySmall)
-                        }
-                        app.echo.android.design.EchoSwitch(draft.showFileNames, onCheckedChange = null)
-                    }
-                }
-                item(key = "play-next") {
-                    Row(Modifier.fillMaxWidth().toggleable(value = draft.showPlayNext, role = Role.Switch,
-                        onValueChange = { draft = draft.copy(showPlayNext = it) }).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.library_inline_play_next))
-                            Text(stringResource(R.string.library_inline_play_next_note), style = MaterialTheme.typography.bodySmall)
-                        }
-                        app.echo.android.design.EchoSwitch(draft.showPlayNext, onCheckedChange = null)
-                    }
+                item(key = "song-display") {
+                    LibrarySongDisplayOptions(
+                        showFileNames = draft.showFileNames,
+                        showPlayNext = draft.showPlayNext,
+                        onShowFileNamesChange = { draft = draft.copy(showFileNames = it) },
+                        onShowPlayNextChange = { draft = draft.copy(showPlayNext = it) },
+                    )
                 }
                 trackMenuEditorRows(draft, menuDrag) { draft = it }
                 item(key = "album-artists") {

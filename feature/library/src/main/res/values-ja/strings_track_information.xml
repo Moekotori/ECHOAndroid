@@ -3,4 +3,8 @@
     <string name="track_info_file_name">ファイル名</string>
     <string name="track_info_copy">すべての情報をコピー</string>
     <string name="track_info_copied">曲の情報をコピーしました</string>
+    <string name="track_info_section_tags">曲のタグ</string>
+    <string name="track_info_section_audio">音声情報</string>
+    <string name="track_info_section_file">ファイル情報</string>
+    <string name="track_info_missing_fields">未入力の項目（%1$d 件）</string>
 </resources>

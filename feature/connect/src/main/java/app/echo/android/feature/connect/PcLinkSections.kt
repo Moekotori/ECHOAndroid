@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
 import app.echo.android.design.EchoIcon
@@ -26,12 +25,6 @@ internal fun PcManualEntry(
     onToggle: () -> Unit,
     address: String,
     onAddressChange: (String) -> Unit,
-    port: String,
-    onPortChange: (String) -> Unit,
-    portPlaceholder: String,
-    pairingLink: Boolean,
-    validPort: Boolean,
-    validAddress: Boolean,
     canConnect: Boolean,
     onConnect: () -> Unit,
     modifier: Modifier = Modifier,
@@ -48,26 +41,17 @@ internal fun PcManualEntry(
             EchoExpand(expanded) {
                 Column(Modifier.padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     ConnectNote(stringResource(L10nR.string.echo_link_direct_address_hint))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
-                        Box(Modifier.weight(1f)) {
-                            ConnectInput(stringResource(L10nR.string.feature_connect_pc_address_or_pairing_link_a3e680), address, onAddressChange,
-                                "192.168.1.20 / pc.tailnet.ts.net", url = true, onDone = onConnect,
-                                error = if (address.isNotBlank() && !validAddress) stringResource(L10nR.string.feature_connect_check_the_pc_address_or_paste_a_complete_0f216a) else null)
-                        }
-                        if (!pairingLink) {
-                            Box(Modifier.width(112.dp)) {
-                                ConnectInput(
-                                    label = stringResource(L10nR.string.echo_link_pc_port),
-                                    value = port,
-                                    onValueChange = onPortChange,
-                                    placeholder = portPlaceholder,
-                                    keyboardType = KeyboardType.Number,
-                                    error = if (!validPort) stringResource(L10nR.string.echo_link_pc_port_invalid) else null,
-                                    onDone = onConnect,
-                                )
-                            }
-                        }
-                    }
+                    ConnectInput(
+                        label = stringResource(L10nR.string.feature_connect_pc_address_or_pairing_link_a3e680),
+                        value = address,
+                        onValueChange = onAddressChange,
+                        placeholder = "192.168.1.20:26789",
+                        url = true,
+                        onDone = onConnect,
+                        error = if (address.isNotBlank() && !canConnect) {
+                            stringResource(L10nR.string.feature_connect_check_the_pc_address_or_paste_a_complete_0f216a)
+                        } else null,
+                    )
                     Button(onClick = onConnect, enabled = canConnect, shape = ConnectControlShape, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(L10nR.string.feature_connect_connect_pc_724ba0))
                     }

@@ -25,22 +25,15 @@ object EchoManualConnectionInput {
         return endpoint.copy(supportsV2Events = saved?.supportsV2Events == true)
     }
 
-    fun validPort(value: String): Boolean = value.isBlank() ||
-        value.trim().toIntOrNull()?.let { it in 1..65535 } == true
-
     fun resolve(
         address: String,
-        port: String,
         savedPcs: List<EchoSavedPcEndpoint> = emptyList(),
         currentPc: EchoSavedPcEndpoint? = null,
     ): EchoManualConnection? {
         val raw = address.trim()
         // A pairing capability owns its destination, protocol and credentials.
         EchoPairingParser.parse(raw)?.let { return EchoManualConnection(raw, "") }
-        if (!validPort(port)) return null
-        val parsed = EchoPairingParser.parseManual(raw) ?: return null
-        val selectedPort = port.trim().toIntOrNull() ?: parsed.port
-        val target = parsed.copy(port = selectedPort)
+        val target = EchoPairingParser.parseManual(raw) ?: return null
         fun credentialFrom(saved: EchoSavedPcEndpoint): String? {
             val token = saved.token?.takeIf { it.isNotBlank() } ?: return null
             val known = EchoPairingParser.parseManual(saved.address, token) ?: return null

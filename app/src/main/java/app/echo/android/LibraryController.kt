@@ -159,9 +159,18 @@ internal class LibraryController(
             .stateIn(scope, listSharingStarted, emptySet())
 
     val favoriteAlbums: StateFlow<List<AlbumSummary>> =
-        repository.observeFavoriteAlbums()
+        repository.observeLikedAlbums()
             .holdDuringLibraryMutation()
             .stateIn(scope, listSharingStarted, emptyList())
+
+    val likedAlbums: Flow<PagingData<AlbumSummary>> =
+        debouncedLibraryQuery.flatMapLatest(repository::pagedLikedAlbums)
+
+    fun observeLikedAlbum(albumKey: String) = repository.observeLikedAlbum(albumKey)
+
+    suspend fun setLikedAlbum(albumKey: String, liked: Boolean) = repository.setLikedAlbum(albumKey, liked)
+
+    suspend fun restoreBuiltinPlaylists() = repository.restoreBuiltinPlaylists()
 
     val libraryStats: StateFlow<LibraryStats> =
         repository.observeLibraryStats()

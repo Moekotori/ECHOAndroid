@@ -70,7 +70,7 @@ internal fun LibrarySourcePicker(
     onSelectPodcasts: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val sourceLabel = if (radioSelected) stringResource(R.string.radio_title) else selectedSource.label()
+    val sourceLabel = selectedSource.label()
     val libraryLabel = stringResource(R.string.feature_library_source_4aff16)
     Box {
         TextButton(

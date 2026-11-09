@@ -158,7 +158,8 @@ fun EchoIconPlate(
 }
 
 /**
- * One tappable sheet row: icon plate, label, optional supporting line and trailing slot.
+ * One tappable sheet row with a label, optional supporting line and trailing slot.
+ * Compact rows use a plain icon and retain a 48 dp minimum touch target.
  * Without [trailing] a chevron is shown, so rows read as destinations.
  */
 @Composable
@@ -171,6 +172,7 @@ fun EchoSheetRow(
     enabled: Boolean = true,
     danger: Boolean = false,
     chevron: Boolean = true,
+    compact: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val alpha = if (enabled) 1f else 0.42f
@@ -181,12 +183,21 @@ fun EchoSheetRow(
             .padding(horizontal = 14.dp)
             .clip(RoundedCornerShape(18.dp))
             .echoClickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .heightIn(min = 56.dp)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .heightIn(min = if (compact) 48.dp else 56.dp)
+            .padding(horizontal = if (compact) 6.dp else 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        EchoIconPlate(icon, danger = danger, enabled = enabled)
+        if (compact) {
+            EchoIcon(
+                icon,
+                contentDescription = null,
+                tint = (if (danger) labelColor else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = alpha),
+                modifier = Modifier.size(22.dp),
+            )
+        } else {
+            EchoIconPlate(icon, danger = danger, enabled = enabled)
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 label, maxLines = 1, overflow = TextOverflow.Ellipsis,

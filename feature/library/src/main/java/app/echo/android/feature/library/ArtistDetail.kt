@@ -1,20 +1,8 @@
 package app.echo.android.feature.library
 
-import app.echo.android.design.EchoIcon
-import app.echo.android.design.EchoDropdownMenu
-import app.echo.android.design.EchoDropdownMenuItem
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material3.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.automirrored.rounded.Sort
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.background
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -71,8 +59,7 @@ internal fun ArtistDetailPage(
             contentPadding = PaddingValues(bottom = AlbumDetailBottomPadding),
         ) {
             item(key = "hero") {
-                ArtistHero(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist, palette.vibrant)
-                ArtistArtworkControls(artist)
+                ArtistHero(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist)
             }
             if (albums != null) {
                 artistAlbumsSection(albums, artist.albumCount, palette, albumsExpanded, { albumsExpanded = !albumsExpanded }, onOpenAlbum)
@@ -154,7 +141,6 @@ internal fun ArtistDetailListPage(
     modifier: Modifier = Modifier,
 ) {
     val rangeSource = rememberLibraryRangeSource(tracks)
-    val palette = rememberArtworkPalette(app.echo.android.design.artistArtwork(artist.name, artist.artworkUri), seedKey = artist.artistKey)
     val onlineQuery = remember(artist.artistKey, artist.name, tracks) {
         ArtistOnlineQuery(artist.name, tracks.take(24).mapNotNull { it.album }.distinct().take(3))
     }
@@ -169,8 +155,7 @@ internal fun ArtistDetailListPage(
             contentPadding = PaddingValues(bottom = AlbumDetailBottomPadding),
         ) {
             item(key = "hero") {
-                ArtistHero(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist, palette.vibrant)
-                ArtistArtworkControls(artist)
+                ArtistHero(if (serverArtwork != null) artist.copy(artworkUri = serverArtwork) else artist)
             }
             item(key = "sections") {
                 Column(

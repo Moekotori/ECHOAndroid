@@ -2,6 +2,7 @@ package app.echo.android.design
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import org.junit.Test
@@ -38,5 +39,22 @@ class EchoMotionTest {
         assertNull(motion.tabSwitch(false).sizeTransform)
         assertEquals(1f, motion.pagePush().targetContentZIndex)
         assertEquals(0f, motion.pagePop().targetContentZIndex)
+    }
+
+    @Test
+    fun consecutiveReturnsKeepTheExitingPageOnTop() {
+        val layers = mutableMapOf<String, Float>()
+        val settings = layers.targetPageLayer("settings", "settings", behind = false)
+        val appearance = layers.targetPageLayer("settings", "appearance", behind = false)
+        val theme = layers.targetPageLayer("appearance", "theme", behind = false)
+        assertTrue(appearance > settings)
+        assertTrue(theme > appearance)
+
+        layers.keys.retainAll { it == "theme" }
+        val returningAppearance = layers.targetPageLayer("theme", "appearance", behind = true)
+        assertTrue(returningAppearance < theme)
+        layers.keys.retainAll { it == "appearance" }
+        assertEquals(returningAppearance, layers.targetPageLayer("appearance", "appearance", behind = false), 0f)
+        assertTrue(layers.targetPageLayer("appearance", "settings", behind = true) < returningAppearance)
     }
 }

@@ -32,17 +32,25 @@ internal fun LibraryBrowserFrame(
     sourcePicker: @Composable () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
     navigationActions: @Composable RowScope.() -> Unit = {},
+    searchEnabled: Boolean = true,
     searchPlaceholder: String = stringResource(R.string.feature_library_search_songs_artists_albums_14dc2c),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
-    val searching = searchExpanded || query.isNotEmpty()
+    val searching = searchEnabled && (searchExpanded || query.isNotEmpty())
     val searchFocus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
 
-    LaunchedEffect(searchExpanded) {
-        if (searchExpanded) searchFocus.requestFocus()
+    LaunchedEffect(searchExpanded, searchEnabled) {
+        if (!searchEnabled) {
+            if (searchExpanded) {
+                keyboard?.hide()
+                searchExpanded = false
+            }
+        } else if (searchExpanded) {
+            searchFocus.requestFocus()
+        }
     }
 
     Surface(Modifier.fillMaxSize(), color = echoPageBackgroundColor()) {
@@ -70,9 +78,11 @@ internal fun LibraryBrowserFrame(
                             sourcePicker()
                         }
                         navigationActions()
-                        IconButton(onClick = { searchExpanded = true }) {
-                            EchoIcon(Icons.Rounded.Search, stringResource(R.string.feature_library_search_library_80ef90),
-                                Modifier.size(22.dp))
+                        if (searchEnabled) {
+                            IconButton(onClick = { searchExpanded = true }) {
+                                EchoIcon(Icons.Rounded.Search, stringResource(R.string.feature_library_search_library_80ef90),
+                                    Modifier.size(22.dp))
+                            }
                         }
                         actions()
                     }

@@ -6,24 +6,49 @@ fun List<AlbumSummary>.sortedForLibrary(mode: AlbumSortMode): List<AlbumSummary>
             compareBy<AlbumSummary, String>(String.CASE_INSENSITIVE_ORDER) { it.title }
                 .thenBy(String.CASE_INSENSITIVE_ORDER) { it.albumArtist.orEmpty() },
         )
+        AlbumSortMode.TitleDescending -> sortedWith(
+            compareByDescending<AlbumSummary, String>(String.CASE_INSENSITIVE_ORDER) { it.title }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.albumArtist.orEmpty() },
+        )
         AlbumSortMode.Artist -> sortedWith(
             compareBy<AlbumSummary, String>(String.CASE_INSENSITIVE_ORDER) { it.albumArtist ?: it.artist.orEmpty() }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
+        )
+        AlbumSortMode.ArtistDescending -> sortedWith(
+            compareByDescending<AlbumSummary, String>(String.CASE_INSENSITIVE_ORDER) { it.albumArtist ?: it.artist.orEmpty() }
                 .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
         )
         AlbumSortMode.Year -> sortedWith(
             compareByDescending<AlbumSummary> { it.year ?: Int.MIN_VALUE }
                 .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
         )
+        AlbumSortMode.YearAscending -> sortedWith(
+            compareBy<AlbumSummary> { it.year == null }
+                .thenBy { it.year }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
+        )
         AlbumSortMode.TrackCount -> sortedWith(
             compareByDescending<AlbumSummary> { it.trackCount }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
+        )
+        AlbumSortMode.TrackCountAscending -> sortedWith(
+            compareBy<AlbumSummary> { it.trackCount }
                 .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
         )
         AlbumSortMode.Duration -> sortedWith(
             compareByDescending<AlbumSummary> { it.durationMs }
                 .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
         )
+        AlbumSortMode.DurationAscending -> sortedWith(
+            compareBy<AlbumSummary> { it.durationMs }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
+        )
         AlbumSortMode.RecentlyAdded -> sortedWith(
             compareByDescending<AlbumSummary> { it.addedAtSeconds }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
+        )
+        AlbumSortMode.OldestAdded -> sortedWith(
+            compareBy<AlbumSummary> { it.addedAtSeconds }
                 .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
         )
     }

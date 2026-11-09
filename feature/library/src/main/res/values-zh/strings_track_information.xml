@@ -3,4 +3,8 @@
     <string name="track_info_file_name">文件名</string>
     <string name="track_info_copy">复制全部信息</string>
     <string name="track_info_copied">已复制歌曲信息</string>
+    <string name="track_info_section_tags">歌曲标签</string>
+    <string name="track_info_section_audio">音频参数</string>
+    <string name="track_info_section_file">文件信息</string>
+    <string name="track_info_missing_fields">未提供的字段（%1$d 项）</string>
 </resources>

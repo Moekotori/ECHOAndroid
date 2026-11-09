@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">Saisissez une IP ou un domaine PC avec un port facultatif, ou collez une adresse HTTP(S) complète ou un lien de jumelage. La connexion LAN directe dépend des réglages du PC ; le premier accès distant frp/Tailscale nécessite un jumelage.</string>
+    <string name="echo_link_direct_address_hint">Saisissez l’adresse IP ou le domaine du PC et ajoutez :port si nécessaire. Vous pouvez aussi coller une adresse HTTP(S) complète ou un lien de jumelage. La connexion directe sur le réseau local dépend des réglages du PC. La première connexion via frp/Tailscale nécessite un jumelage.</string>
     <string name="echo_link_pairing_entry">Connexion par IP, domaine ou lien de jumelage</string>
     <string name="echo_link_steam_edition_requirement">Nécessite ECHO Pro</string>
-    <string name="echo_link_pc_port">Port (facultatif)</string>
-    <string name="echo_link_pc_port_invalid">Saisissez un entier de 1 à 65535.</string>
 </resources>

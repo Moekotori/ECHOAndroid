@@ -1,5 +1,6 @@
 package app.echo.android.data
 
+import app.echo.android.model.library.AlbumSortMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -23,5 +24,20 @@ class LibrarySummaryPagingQueryTest {
         assertFalse(query.sql.contains("CASE WHEN"))
         // Unknown sort strings fall back to the existing default, never become SQL.
         assertEquals(query.sql, LibrarySummaryPagingQuery.albums(null, "DROP TABLE x", true).sql)
+    }
+
+    @Test fun reverseAlbumOrdersUseTheirOwnSortKeysAndKeepStableTies() {
+        val orders = mapOf(
+            AlbumSortMode.TitleDescending to "title COLLATE NOCASE DESC, albumKey ASC",
+            AlbumSortMode.ArtistDescending to "albumArtist COLLATE NOCASE DESC, title COLLATE NOCASE ASC, albumKey ASC",
+            AlbumSortMode.YearAscending to "year IS NULL, year ASC, title COLLATE NOCASE ASC, albumKey ASC",
+            AlbumSortMode.TrackCountAscending to "trackCount ASC, title COLLATE NOCASE ASC, albumKey ASC",
+            AlbumSortMode.DurationAscending to "durationMs ASC, title COLLATE NOCASE ASC, albumKey ASC",
+            AlbumSortMode.OldestAdded to "addedAtSeconds ASC, title COLLATE NOCASE ASC, albumKey ASC",
+        )
+        orders.forEach { (mode, order) ->
+            val query = LibrarySummaryPagingQuery.albums(null, mode.name, remote = false)
+            assertEquals(mode.name, order, query.sql.substringAfter("ORDER BY "))
+        }
     }
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_enqueue">Добавить в очередь воспроизведения</string>
+    <string name="playlist_share">Поделиться плейлистом</string>
+    <string name="playlist_share_failed">Не удалось поделиться плейлистом.</string>
+    <string name="playlist_queue_empty">Нет треков для добавления в очередь.</string>
+    <string name="playlist_queue_truncated">В очередь добавлены первые %1$d треков.</string>
+    <plurals name="playlist_queue_added">
+        <item quantity="one">В очередь добавлен %1$d трек.</item>
+        <item quantity="few">В очередь добавлено %1$d трека.</item>
+        <item quantity="many">В очередь добавлено %1$d треков.</item>
+        <item quantity="other">В очередь добавлено треков: %1$d.</item>
+    </plurals>
+</resources>

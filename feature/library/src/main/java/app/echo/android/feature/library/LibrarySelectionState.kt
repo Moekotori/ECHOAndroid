@@ -11,5 +11,5 @@ internal fun restoredLibraryViewMode(
     if (cloudOnly) return LibraryViewMode.Albums
     val modes = libraryPagerModes(false, layout)
     val saved = LibraryViewMode.entries.getOrNull(savedIndex)
-    return if (saved == LibraryViewMode.Radio || saved in modes) saved!! else modes.first()
+    return saved?.takeIf { it in modes } ?: modes.first()
 }

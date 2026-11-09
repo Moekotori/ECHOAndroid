@@ -3,4 +3,8 @@
     <string name="track_info_file_name">파일 이름</string>
     <string name="track_info_copy">모든 정보 복사</string>
     <string name="track_info_copied">곡 정보를 복사했습니다</string>
+    <string name="track_info_section_tags">곡 태그</string>
+    <string name="track_info_section_audio">오디오 정보</string>
+    <string name="track_info_section_file">파일 정보</string>
+    <string name="track_info_missing_fields">정보가 없는 항목(%1$d개)</string>
 </resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_enqueue">재생 대기열에 추가</string>
+    <string name="playlist_share">재생목록 공유</string>
+    <string name="playlist_share_failed">재생목록을 공유할 수 없습니다.</string>
+    <string name="playlist_queue_empty">대기열에 추가할 곡이 없습니다.</string>
+    <string name="playlist_queue_truncated">처음 %1$d곡을 대기열에 추가했습니다.</string>
+    <plurals name="playlist_queue_added">
+        <item quantity="other">%1$d곡을 대기열에 추가했습니다.</item>
+    </plurals>
+</resources>

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="library_browse_options_title">Options de la liste des titres</string>
+    <string name="library_display_settings">Affichage</string>
     <string name="library_add_music">Ajouter de la musique</string>
     <string name="library_access_title">Votre musique commence ici</string>
     <string name="library_access_detail">Autorisez l\'accès audio pour parcourir la musique sur ce téléphone.</string>

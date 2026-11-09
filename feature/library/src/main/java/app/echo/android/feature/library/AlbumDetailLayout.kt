@@ -17,7 +17,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,10 +34,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoContentMaxWidth
+import app.echo.android.design.EchoIcon
 import app.echo.android.design.displayMetadataOrUnknown
 import app.echo.android.design.echoPageBackgroundColor
 import app.echo.android.model.library.AlbumSummary
@@ -55,6 +61,8 @@ internal fun AlbumDetailLayout(
     onBack: () -> Unit,
     onOpenArtist: (() -> Unit)? = null,
     onWriteNfc: (() -> Unit)? = null,
+    liked: Boolean? = null,
+    onLikedChange: (Boolean) -> Unit = {},
     /** Items after the album information, e.g. more albums by the artist. */
     footerContent: LazyListScope.() -> Unit = {},
     trackContent: LazyListScope.() -> Unit,
@@ -133,6 +141,14 @@ internal fun AlbumDetailLayout(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (liked != null) {
+                    IconToggleButton(checked = liked, onCheckedChange = onLikedChange) {
+                        EchoIcon(
+                            if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            stringResource(if (liked) R.string.album_unlike else R.string.album_like),
+                        )
+                    }
+                }
                 onWriteNfc?.let { AlbumNfcMenu(it) }
             }
         }

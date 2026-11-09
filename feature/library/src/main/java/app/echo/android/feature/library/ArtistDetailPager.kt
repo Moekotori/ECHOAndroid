@@ -50,6 +50,8 @@ internal fun ArtistDetailPager(
     val fling = rememberSilkPagerFlingBehavior(pager)
     val nestedScroll = rememberContentPagerNestedScroll(pager, fling)
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val artworkActions = LocalArtistArtworkActions.current?.takeIf { artist.name.length <= 512 }
+    if (artworkActions != null) DiscoverArtistArtwork(artist.name, artworkActions)
     var showActions by remember { mutableStateOf(false) }
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     Column(modifier.fillMaxSize().background(echoPageBackgroundColor()).statusBarsPadding()) {
@@ -66,8 +68,8 @@ internal fun ArtistDetailPager(
                 })
             }
             Box {
-                IconButton(onClick = { showActions = true }, enabled = playbackEnabled) {
-                    EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.artist_playback_actions))
+                IconButton(onClick = { showActions = true }, enabled = playbackEnabled || artworkActions != null) {
+                    EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.artist_more_actions))
                 }
                 EchoDropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
                     EchoDropdownMenuItem(
@@ -88,6 +90,9 @@ internal fun ArtistDetailPager(
                         selected = false,
                         enabled = playbackEnabled,
                     )
+                    if (artworkActions != null) {
+                        ArtistArtworkMenuItems(artist.name, artworkActions, onDismiss = { showActions = false })
+                    }
                     if (pager.currentPage == 0 && sort != null && onSortChange != null) {
                         HorizontalDivider(Modifier.padding(vertical = 4.dp))
                         Text(

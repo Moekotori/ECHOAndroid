@@ -2,4 +2,18 @@
 <resources>
     <string name="library_sort_title">Сортировка</string>
     <string name="library_sort_loaded_items">Сортировка загруженных элементов</string>
+    <string name="album_sort_heading">Сортировка альбомов</string>
+    <string name="album_sort_field">Сортировать по</string>
+    <string name="album_sort_direction">Порядок</string>
+    <string name="album_sort_track_count">Число треков</string>
+    <string name="album_sort_date_added">Дата добавления</string>
+    <string name="album_sort_a_to_z">А–Я / A–Z</string>
+    <string name="album_sort_z_to_a">Я–А / Z–A</string>
+    <string name="album_sort_oldest_first">Сначала старые</string>
+    <string name="album_sort_newest_first">Сначала новые</string>
+    <string name="album_sort_fewest_first">По возрастанию</string>
+    <string name="album_sort_most_first">По убыванию</string>
+    <string name="album_sort_shortest_first">Сначала короткие</string>
+    <string name="album_sort_longest_first">Сначала длинные</string>
+    <string name="album_sort_album_title">Название альбома</string>
 </resources>

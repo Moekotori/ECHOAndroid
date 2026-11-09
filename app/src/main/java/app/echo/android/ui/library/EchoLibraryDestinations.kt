@@ -26,11 +26,12 @@ import app.echo.android.feature.library.MusicRelationsScreen
 internal fun EchoLibraryDestinations(
     viewModel: EchoAndroidViewModel,
     interactive: Boolean,
-    onOpenPlayer: () -> Unit,
     bottomInset: Dp,
-    library: @Composable (openRelations: () -> Unit, openBroadcast: (String) -> Unit) -> Unit,
+    library: @Composable (openRelations: () -> Unit, openPodcasts: () -> Unit) -> Unit,
 ) {
     var destination by rememberSaveable { mutableStateOf("library") }
+    // Older saved state can still contain the former standalone radio route.
+    val visibleDestination = if (destination == "radio") "library" else destination
     val pages = rememberSaveableStateHolder()
     val relations = remember(viewModel) {
         val source = viewModel.musicRelations
@@ -42,7 +43,7 @@ internal fun EchoLibraryDestinations(
     }
     CompositionLocalProvider(LocalEchoPageInteractive provides (interactive && LocalEchoPageInteractive.current)) {
     EchoPageContent(
-        targetState = destination,
+        targetState = visibleDestination,
         contentKey = { it },
         isBackward = { _, target -> target == "library" },
         modifier = Modifier.fillMaxSize().background(echoPageBackgroundColor()),
@@ -50,13 +51,13 @@ internal fun EchoLibraryDestinations(
     ) { page ->
         pages.SaveableStateProvider(page) {
             when (page) {
-                "library" -> library({ destination = "relations" }, { destination = it })
+                "library" -> library({ destination = "relations" }, { destination = "podcasts" })
                 "relations" -> MusicRelationsScreen(relations,
                     onBack = { destination = "library" }, onPlay = viewModel::playMusicRelationTrack,
                     modifier = Modifier.padding(bottom = bottomInset), playback = relationPlayback)
-                else -> EchoBroadcastHost(viewModel, page,
+                "podcasts" -> EchoBroadcastHost(viewModel,
                     interactive = interactive && LocalEchoPageInteractive.current,
-                    onBack = { destination = "library" }, onOpenPlayer = onOpenPlayer, bottomInset = bottomInset)
+                    onBack = { destination = "library" }, bottomInset = bottomInset)
             }
         }
     }

@@ -121,10 +121,10 @@ internal fun NextUpQueueList(
         updateDropTarget()
     }
     LaunchedEffect(queue.currentItem?.queueContext?.entryId ?: queue.currentIndex) { state.scrollToItem(0) }
-    Box(Modifier.fillMaxSize().clipToBounds()) {
+    Box(Modifier.fillMaxWidth().clipToBounds()) {
     LazyColumn(
         state = state,
-        modifier = Modifier.fillMaxSize().pointerInput(state, queue, dragTargets, menuWidth) {
+        modifier = Modifier.fillMaxWidth().pointerInput(state, queue, dragTargets, menuWidth) {
             detectEchoTargetDrag(
                 longPress = true,
                 targetAt = { offset ->

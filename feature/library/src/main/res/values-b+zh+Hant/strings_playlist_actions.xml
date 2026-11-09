@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_enqueue">加入播放佇列</string>
+    <string name="playlist_share">分享歌單</string>
+    <string name="playlist_share_failed">無法分享這份歌單，請再試一次。</string>
+    <string name="playlist_queue_empty">歌單中沒有可加入佇列的歌曲。</string>
+    <string name="playlist_queue_truncated">已將前 %1$d 首歌曲加入佇列。</string>
+    <plurals name="playlist_queue_added">
+        <item quantity="other">已將 %1$d 首歌曲加入佇列。</item>
+    </plurals>
+</resources>

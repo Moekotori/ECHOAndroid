@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">PC IP 또는 도메인과 선택 포트를 입력하거나 전체 HTTP(S) 주소 또는 페어링 링크를 붙여 넣으세요. LAN 직접 연결은 PC 설정에 따르며 frp/Tailscale 첫 연결에는 페어링이 필요합니다.</string>
+    <string name="echo_link_direct_address_hint">PC의 IP 주소 또는 도메인을 입력하고, 필요하면 뒤에 :포트 번호를 붙이세요. 전체 HTTP(S) 주소나 페어링 링크를 붙여 넣을 수도 있습니다. LAN 직접 연결은 PC 설정에 따릅니다. frp/Tailscale로 처음 연결할 때는 페어링이 필요합니다.</string>
     <string name="echo_link_pairing_entry">IP, 도메인 또는 페어링 링크로 연결</string>
     <string name="echo_link_steam_edition_requirement">ECHO Pro가 필요합니다</string>
-    <string name="echo_link_pc_port">포트(선택)</string>
-    <string name="echo_link_pc_port_invalid">1~65535 사이의 정수를 입력하세요.</string>
 </resources>

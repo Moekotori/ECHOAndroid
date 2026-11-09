@@ -3,4 +3,8 @@
     <string name="track_info_file_name">File name</string>
     <string name="track_info_copy">Copy all information</string>
     <string name="track_info_copied">Song information copied</string>
+    <string name="track_info_section_tags">Song tags</string>
+    <string name="track_info_section_audio">Audio details</string>
+    <string name="track_info_section_file">File details</string>
+    <string name="track_info_missing_fields">Missing fields (%1$d)</string>
 </resources>

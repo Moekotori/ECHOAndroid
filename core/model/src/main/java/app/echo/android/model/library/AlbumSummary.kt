@@ -19,4 +19,10 @@ enum class AlbumSortMode {
     TrackCount,
     Duration,
     RecentlyAdded,
+    TitleDescending,
+    ArtistDescending,
+    YearAscending,
+    TrackCountAscending,
+    DurationAscending,
+    OldestAdded,
 }

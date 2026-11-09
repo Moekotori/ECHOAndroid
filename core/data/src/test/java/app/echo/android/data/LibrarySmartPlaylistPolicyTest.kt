@@ -43,6 +43,14 @@ class LibrarySmartPlaylistPolicyTest {
     }
 
     @Test
+    fun hiddenPresetIsOmittedWithoutChangingOtherPlaylists() {
+        val stats = LibrarySmartPlaylistStats(recentCount = 3, neverCount = 12)
+        val all = LibrarySmartPlaylistPolicy.pinned(stats)
+        val visible = LibrarySmartPlaylistPolicy.pinned(stats, setOf(LibrarySmartPlaylistKind.Never.id))
+        assertEquals(all.filterNot { it.smartKind == LibrarySmartPlaylistKind.Never }, visible)
+    }
+
+    @Test
     fun unknownIdsAreNotSmartPlaylists() {
         assertFalse(LibrarySmartPlaylistPolicy.isSmartPlaylistId("local:liked"))
         assertFalse(LibrarySmartPlaylistPolicy.isSmartPlaylistId("mediastore:abc"))

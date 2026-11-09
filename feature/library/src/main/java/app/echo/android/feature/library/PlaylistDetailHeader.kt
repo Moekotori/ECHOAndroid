@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -86,9 +87,12 @@ internal fun PlaylistDetailTopBar(
     canEdit: Boolean,
     onBack: () -> Unit,
     onRename: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (() -> Unit)?,
+    removalLabel: Int,
     onCopy: (() -> Unit)? = null,
     onExport: (() -> Unit)? = null,
+    onEnqueue: (() -> Unit)? = null,
+    onShare: (() -> Unit)? = null,
     onArtwork: (() -> Unit)? = null,
     onEditRules: (() -> Unit)? = null,
     onWriteNfc: (() -> Unit)? = null,
@@ -107,7 +111,8 @@ internal fun PlaylistDetailTopBar(
         Text(title, modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             color = colors.muted, style = MaterialTheme.typography.bodySmall,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (canEdit || onCopy != null || onExport != null || onEditRules != null || onWriteNfc != null) {
+        if (canEdit || onCopy != null || onExport != null || onEditRules != null || onWriteNfc != null ||
+            onDelete != null || onEnqueue != null || onShare != null) {
             Box {
                 IconButton(onClick = { menuOpen = true }) {
                     EchoIcon(Icons.Rounded.MoreVert,
@@ -116,6 +121,12 @@ internal fun PlaylistDetailTopBar(
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false },
                     containerColor = MaterialTheme.colorScheme.surface) {
+                    onEnqueue?.let { action -> DropdownMenuItem(text = { Text(stringResource(L10nR.string.playlist_enqueue)) },
+                        leadingIcon = { EchoIcon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
+                        onClick = { menuOpen = false; action() }) }
+                    onShare?.let { action -> DropdownMenuItem(text = { Text(stringResource(L10nR.string.playlist_share)) },
+                        leadingIcon = { EchoIcon(Icons.Rounded.Share, null) },
+                        onClick = { menuOpen = false; action() }) }
                     onWriteNfc?.let { action -> DropdownMenuItem(text = { Text(stringResource(L10nR.string.nfc_music_write)) },
                         onClick = { menuOpen = false; action() }) }
                     if (canEdit) DropdownMenuItem(
@@ -131,8 +142,8 @@ internal fun PlaylistDetailTopBar(
                         onClick = { menuOpen = false; action() }) }
                     onExport?.let { action -> DropdownMenuItem(text = { Text(stringResource(L10nR.string.feature_library_export_m3u_6f18a4)) },
                         onClick = { menuOpen = false; action() }) }
-                    if (canEdit) DropdownMenuItem(
-                        text = { Text(stringResource(L10nR.string.feature_library_delete_138ccf)) },
+                    if (onDelete != null) DropdownMenuItem(
+                        text = { Text(stringResource(removalLabel)) },
                         leadingIcon = { EchoIcon(Icons.Rounded.DeleteOutline, contentDescription = null) },
                         onClick = { menuOpen = false; onDelete() },
                     )

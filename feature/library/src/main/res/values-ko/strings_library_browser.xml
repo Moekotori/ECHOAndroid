@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="library_browse_options_title">곡 목록 옵션</string>
+    <string name="library_display_settings">표시 설정</string>
     <string name="library_add_music">음악 추가</string>
     <string name="library_access_title">여기서 음악이 시작됩니다</string>
     <string name="library_access_detail">오디오 접근을 허용하면 이 휴대전화의 음악을 볼 수 있습니다.</string>

@@ -9,14 +9,16 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.echo.android.design.EchoModalSheet
+import app.echo.android.design.EchoSheetHeader
 import app.echo.android.model.lyrics.EchoLyricsCandidate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LyricsManagerDialog(
+fun LyricsManagerSheet(
     trackTitle: String,
     candidates: List<EchoLyricsCandidate>,
     searching: Boolean,
@@ -54,13 +56,17 @@ fun LyricsManagerDialog(
             finally { saving = false }
         }
     }
-    val sizing = playerDialogWindowSizing()
-    AlertDialog(
+    EchoModalSheet(
         onDismissRequest = onDismiss,
-        modifier = Modifier.heightIn(max = sizing.heightDp.dp),
-        title = { Text(stringResource(R.string.lyrics_manager_title, trackTitle), maxLines = 2, overflow = TextOverflow.Ellipsis) },
-        text = {
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = minOf(480f, sizing.bodyHeightDp).dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        EchoSheetHeader(title = stringResource(R.string.lyrics_manager_title, trackTitle))
+        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 item {
                     Text(stringResource(R.string.lyrics_manager_hint))
                     TextButton(onClick = { searched = true; saveFailed = false; onSearch() }, enabled = !searching && !saving) {
@@ -116,7 +122,12 @@ fun LyricsManagerDialog(
                     HorizontalDivider()
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.lyrics_manager_done)) } },
-    )
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.lyrics_manager_done)) }
+        }
+    }
 }

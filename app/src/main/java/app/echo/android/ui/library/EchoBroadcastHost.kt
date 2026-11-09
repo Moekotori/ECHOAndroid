@@ -8,7 +8,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.echo.android.EchoAndroidViewModel
-import app.echo.android.EchoApplication
 import app.echo.android.feature.podcasts.*
 import app.echo.android.model.radio.EchoRadioStation
 import androidx.compose.foundation.layout.*
@@ -17,7 +16,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.material3.Surface
 
 @Composable
-internal fun EchoBroadcastHost(viewModel: EchoAndroidViewModel, page: String, interactive: Boolean, onBack: () -> Unit, onOpenPlayer: () -> Unit, bottomInset: Dp) {
+internal fun EchoBroadcastHost(viewModel: EchoAndroidViewModel, interactive: Boolean, onBack: () -> Unit, bottomInset: Dp) {
     val context = LocalContext.current
     val metadata by viewModel.playbackMetadata.collectAsStateWithLifecycle()
     val controls by viewModel.playbackControls.collectAsStateWithLifecycle()
@@ -26,7 +25,6 @@ internal fun EchoBroadcastHost(viewModel: EchoAndroidViewModel, page: String, in
     }
     Surface(Modifier.fillMaxSize().padding(bottom = bottomInset), color = app.echo.android.design.echoPageBackgroundColor()) {
     Box(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
-    if (page == "podcasts") {
         val controller = viewModel.podcasts
         val state by controller.state.collectAsStateWithLifecycle()
         LifecycleStartEffect(controller, interactive) {
@@ -46,9 +44,6 @@ internal fun EchoBroadcastHost(viewModel: EchoAndroidViewModel, page: String, in
         PodcastScreen(state, actions, onBack, metadata.mediaId, controls.isPlaying,
             playbackPending = interactive && controls.state in setOf(app.echo.android.model.playback.EchoPlaybackState.Loading, app.echo.android.model.playback.EchoPlaybackState.Buffering),
             playerStrip = { if (interactive) PodcastListeningStrip(viewModel) })
-    } else {
-        EchoRadioHost(viewModel, metadata.mediaId, metadata.title, controls, onBack, openUrl, onOpenPlayer, interactive)
-    }
     }
     }
 }

@@ -58,7 +58,8 @@ internal fun rememberDockSwipeModifier(
             state = state,
             orientation = Orientation.Horizontal,
             reverseDirection = rtl,
-            startDragImmediately = pager.isScrollInProgress,
+            // Keep taps available during a transition; wait for touch slop before taking over.
+            startDragImmediately = false,
             onDragStopped = { velocity ->
                 val pageSize = pager.layoutInfo.pageSize.toFloat().coerceAtLeast(1f)
                 val pageVelocity = -velocity * pageSize / tabWidth[0]

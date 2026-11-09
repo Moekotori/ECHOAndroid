@@ -3,7 +3,7 @@ package app.echo.android.ui.playback
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import app.echo.android.feature.player.LyricsManagerDialog
+import app.echo.android.feature.player.LyricsManagerSheet
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -101,7 +101,7 @@ internal fun EchoNowPlayingHost(
         val searching by viewModel.lyricsSearching.collectAsStateWithLifecycle()
         val error by viewModel.lyricsManagementError.collectAsStateWithLifecycle()
         DisposableEffect(Unit) { onDispose { viewModel.cancelLyricsSearch() } }
-        LyricsManagerDialog(
+        LyricsManagerSheet(
             trackTitle = playbackStatus.track?.title.orEmpty(), candidates = candidates,
             searching = searching, error = error,
             searchRequested = lyricsSearchRequested,

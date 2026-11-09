@@ -181,8 +181,6 @@ internal fun AlbumHeroAtmosphere(
     artworkUri: String,
     accent: Color,
     modifier: Modifier = Modifier,
-    /** Fraction of the height over which the glow fades in from the top edge; 0 starts fully opaque. */
-    fadeInFraction: Float = 0f,
 ) {
     if (LocalEchoEffectivePerformanceMode.current.isLightweight || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
     val dark = LocalEchoDarkTheme.current
@@ -193,22 +191,12 @@ internal fun AlbumHeroAtmosphere(
             .drawWithContent {
                 drawContent()
                 drawRect(
-                    brush = if (fadeInFraction > 0f) {
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            fadeInFraction to Color.Black,
-                            0.45f.coerceAtLeast(fadeInFraction + 0.05f) to Color.Black,
-                            0.9f to Color.Transparent,
-                            1f to Color.Transparent,
-                        )
-                    } else {
-                        Brush.verticalGradient(
-                            0f to Color.Black,
-                            0.3f to Color.Black,
-                            0.75f to Color.Transparent,
-                            1f to Color.Transparent,
-                        )
-                    },
+                    brush = Brush.verticalGradient(
+                        0f to Color.Black,
+                        0.3f to Color.Black,
+                        0.75f to Color.Transparent,
+                        1f to Color.Transparent,
+                    ),
                     blendMode = BlendMode.DstIn,
                 )
             },

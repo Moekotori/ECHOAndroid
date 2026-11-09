@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
@@ -124,8 +126,10 @@ import app.echo.android.ui.shell.EchoBottomDockHost
 import app.echo.android.ui.shell.EchoAdaptiveShell
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
+import app.echo.android.ui.shell.fadeToDockPage
 import app.echo.android.ui.shell.pagerPage
-import app.echo.android.design.rememberSilkPagerFlingBehavior
+import app.echo.android.ui.shell.rememberDockPageContentReady
+import app.echo.android.ui.shell.rememberDockPagerFlingBehavior
 import app.echo.android.ui.shell.outerPagerUserScrollEnabled
 import app.echo.android.ui.shell.rememberHomeSafePagerNestedScroll
 import app.echo.android.ui.shell.recoverStrandedPager
@@ -240,11 +244,11 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         hasBluetoothConnectPermission = granted
         if (granted) viewModel.refreshOutputRoute()
     }
-    var showPermissionDialog by remember {
+    var showPermissionOnboarding by remember {
         mutableStateOf(!prefs.getBoolean(ECHO_PERMISSION_DIALOG_SHOWN_KEY, false))
     }
-    fun dismissPermissionDialog() {
-        showPermissionDialog = false
+    fun finishPermissionOnboarding() {
+        showPermissionOnboarding = false
         prefs.edit { putBoolean(ECHO_PERMISSION_DIALOG_SHOWN_KEY, true) }
     }
     fun persistReadPermission(uri: AndroidUri, write: Boolean = false): Boolean {
@@ -915,7 +919,9 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val openLibraryRequest by EchoLaunchActions.openLibrary.collectAsStateWithLifecycle()
     val openCastRequest by EchoLaunchActions.openCast.collectAsStateWithLifecycle()
     var linkedLibraryPageOpen by remember { mutableStateOf(false) }
-    val libraryDetailOpen = selectedAlbum != null || selectedArtist != null || selectedGenre != null || selectedFolder != null || selectedPlaylist != null
+    fun hasLibraryDetail(): Boolean =
+        selectedAlbum != null || selectedArtist != null || selectedGenre != null ||
+            selectedFolder != null || selectedPlaylist != null
     LaunchedEffect(effectivePerformanceMode, appVisible, nowPlayingExpanded) {
         val visibility = when {
             !appVisible -> PlaybackProgressUiVisibility.Background
@@ -986,6 +992,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         initialPage = EchoPagerPage.Now.ordinal,
         pageCount = { EchoPagerPage.entries.size },
     )
+    var dockPageAlpha by remember { mutableFloatStateOf(1f) }
     val appScope = rememberCoroutineScope()
     val routeNavigationJob = remember { arrayOfNulls<Job>(1) }
     val localeSwitchProgress = remember { Animatable(1f) }
@@ -1010,14 +1017,17 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         tabPagerState.settledPage != targetPage ||
             tabPagerState.currentPage != targetPage ||
             tabPagerState.currentPageOffsetFraction.absoluteValue > 0.001f
-    fun navigateToPage(page: EchoPagerPage) {
+    fun navigateToPage(page: EchoPagerPage, fromTabTap: Boolean = false) {
         val targetPage = page.ordinal
         if (routeNavigationJob[0]?.isActive == true && tabPagerState.targetPage == targetPage) return
         page.dockTab?.let { selectedTab = it.ordinal }
         routeNavigationJob[0]?.cancel()
         routeNavigationJob[0] = appScope.launch {
-            if (needsPagerSettle(targetPage)) {
-                tabPagerState.animateScrollToPage(
+            if (!needsPagerSettle(targetPage)) return@launch
+            when {
+                fromTabTap && effectivePerformanceMode.isLightweight -> tabPagerState.scrollToPage(targetPage)
+                fromTabTap -> tabPagerState.fadeToDockPage(targetPage) { dockPageAlpha = it }
+                else -> tabPagerState.animateScrollToPage(
                     page = targetPage,
                     animationSpec = dockNavigationMotionSpec(tabPagerState.currentPage, targetPage, effectivePerformanceMode),
                 )
@@ -1025,6 +1035,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         }
     }
     fun selectDockTab(tab: EchoTab) = navigateToPage(tab.pagerPage)
+    fun tapNavigationTab(index: Int) = navigateToPage(EchoTab.entries[index].pagerPage, fromTabTap = true)
     fun selectEchoLinkMode(remote: Boolean) {
         if (remoteMode == remote) return
         viewModel.cancelPendingPlaybackSelection()
@@ -1094,13 +1105,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             key == selectedArtist?.let { "artist:${it.artistKey}" } ||
             key == selectedPlaylist?.let { "playlist:${it.id}" }
     }
-    LaunchedEffect(selectedAlbum, selectedArtist, selectedPlaylist, searchVisible) {
-        // The detail was left or replaced by other navigation; drop the search state kept for the return trip.
-        if (searchDetailKey != null && !searchVisible && !detailOpenedFromSearch()) {
-            viewModel.unifiedSearch.clearSession()
-            searchDetailKey = null; searchQuery = ""; searchStateHolder.removeState("search")
-        }
-    }
     fun closeLibraryDetail() {
         if (selectedAlbum != null && selectedArtist != null) {
             selectedAlbum = null
@@ -1143,11 +1147,12 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
             }
         }
     }
-    LaunchedEffect(tabPagerState.settledPage, tabPagerState.isScrollInProgress) {
-        if (!tabPagerState.isScrollInProgress) {
-            EchoPagerPage.entries[tabPagerState.settledPage].dockTab?.let { settledTab ->
-                if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
-            }
+    LaunchedEffect(tabPagerState) {
+        snapshotFlow {
+            if (tabPagerState.isScrollInProgress) null else tabPagerState.settledPage
+        }.collect { page ->
+            val settledTab = page?.let { EchoPagerPage.entries[it].dockTab } ?: return@collect
+            if (settledTab.ordinal != selectedTab) selectedTab = settledTab.ordinal
         }
     }
     // An interrupted drag/navigation can leave a partial page at rest. Finish at the nearest
@@ -1243,7 +1248,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     ) {
         addMusicVisible = false
     }
-    val shellOverlayOpen = searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible || libraryRepairVisible
+    val shellOverlayOpen = showPermissionOnboarding || searchVisible || listeningVisible || listeningStatsVisible || playbackHistoryVisible || errorLogVisible || queueSheetVisible || remotePlayerSheetVisible || remoteQueueSheetVisible || castSheetVisible || nowPlayingExpanded || pluginsVisible || addMusicVisible || libraryRepairVisible
     EchoDesktopShortcuts(
         navigationEnabled = appVisible && !shellOverlayOpen,
         onSelectTab = ::selectDockTab, onSettings = { navigateToPage(EchoPagerPage.Settings) },
@@ -1260,21 +1265,34 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         if (discoverCastDevices) viewModel.startEchoLinkDiscovery()
         onDispose { if (discoverCastDevices) viewModel.stopEchoLinkDiscovery() }
     }
-    EchoOverlayBackHandler(
-        enabled = !shellOverlayOpen && libraryDetailOpen,
-        onProgress = libraryDetailBack::update,
-        onCancel = { libraryDetailBack.restore() },
-    ) {
-        libraryDetailBack.reset()
-        closeLibraryDetail()
+    // Read detail selection in its own scope so opening a collection doesn't recompose the shell.
+    val libraryDetailEffects: @Composable () -> Unit = {
+        LaunchedEffect(selectedAlbum, selectedArtist, selectedPlaylist, searchVisible) {
+            // The detail was left or replaced by other navigation; drop the search state kept for the return trip.
+            if (searchDetailKey != null && !searchVisible && !detailOpenedFromSearch()) {
+                viewModel.unifiedSearch.clearSession()
+                searchDetailKey = null
+                searchQuery = ""
+                searchStateHolder.removeState("search")
+            }
+        }
+        val detailOpen = hasLibraryDetail()
+        EchoOverlayBackHandler(
+            enabled = !shellOverlayOpen && detailOpen,
+            onProgress = libraryDetailBack::update,
+            onCancel = { libraryDetailBack.restore() },
+        ) {
+            libraryDetailBack.reset()
+            closeLibraryDetail()
+        }
+        val settingsPageCurrent by remember(tabPagerState) {
+            derivedStateOf { tabPagerState.currentPage == EchoPagerPage.Settings.ordinal }
+        }
+        EchoOverlayBackHandler(enabled = !shellOverlayOpen && !detailOpen && settingsPageCurrent) {
+            selectDockTab(EchoTab.Now)
+        }
     }
-    EchoOverlayBackHandler(
-        enabled = !shellOverlayOpen &&
-            !libraryDetailOpen &&
-            tabPagerState.currentPage == EchoPagerPage.Settings.ordinal,
-    ) {
-        selectDockTab(EchoTab.Now)
-    }
+    libraryDetailEffects()
 
     val customBackgroundActive = appSettings.customBackgroundMode != EchoBackgroundMode.Default &&
         !appSettings.customBackgroundUri.isNullOrBlank() &&
@@ -1297,6 +1315,83 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         app.echo.android.nfc.NfcMusicHost(viewModel.nfcMusic) { mediaId ->
             viewModel.setLibrarySelectedSource("local")
             EchoLaunchActions.requestLibraryShortcut(app.echo.android.library.EchoLibraryShortcutRequest(mediaId, true))
+        }
+        if (showPermissionOnboarding) {
+            val audioPermissionLabel = stringResource(R.string.permission_audio_label)
+            val audioPermissionDescription = stringResource(R.string.permission_audio_description)
+            val notificationPermissionLabel = stringResource(R.string.permission_notification_label)
+            val notificationPermissionDescription = stringResource(R.string.permission_notification_description)
+            val permissionEntries = remember(
+                permissionActivity,
+                audioPermissionRequested,
+                hasAudioPermission,
+                hasNotifPermission,
+                notificationPermissionRequested,
+                audioPermissionLabel,
+                audioPermissionDescription,
+                notificationPermissionLabel,
+                notificationPermissionDescription,
+            ) {
+                buildList {
+                    add(
+                        PermissionEntry(
+                            permission = audioPermissionName(),
+                            label = audioPermissionLabel,
+                            description = audioPermissionDescription,
+                            icon = Icons.Rounded.AudioFile,
+                            granted = hasAudioPermission,
+                            canRequest = !audioPermissionRequested ||
+                                permissionActivity?.let {
+                                    ActivityCompat.shouldShowRequestPermissionRationale(it, audioPermissionName())
+                                } == true,
+                        ),
+                    )
+                    notifPermName?.let { perm ->
+                        add(
+                            PermissionEntry(
+                                permission = perm,
+                                label = notificationPermissionLabel,
+                                description = notificationPermissionDescription,
+                                icon = Icons.Rounded.Notifications,
+                                granted = hasNotifPermission,
+                                canRequest = !notificationPermissionRequested ||
+                                    permissionActivity?.let {
+                                        ActivityCompat.shouldShowRequestPermissionRationale(it, perm)
+                                    } == true,
+                            ),
+                        )
+                    }
+                }
+            }
+            EchoPermissionScreen(
+                permissionStatuses = permissionEntries,
+                onDismiss = ::finishPermissionOnboarding,
+                onRequestPermission = { perm ->
+                    when (perm) {
+                        audioPermissionName() -> {
+                            audioPermissionRequested = true
+                            prefs.edit { putBoolean(ECHO_AUDIO_PERMISSION_REQUESTED_KEY, true) }
+                            permissionLauncher.launch(perm)
+                        }
+
+                        notifPermName -> {
+                            notificationPermissionRequested = true
+                            prefs.edit { putBoolean(ECHO_NOTIFICATION_PERMISSION_REQUESTED_KEY, true) }
+                            notifPermissionLauncher?.launch(perm)
+                        }
+                    }
+                },
+                onOpenSettings = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = AndroidUri.fromParts("package", context.packageName, null)
+                            },
+                        )
+                    }
+                },
+            )
+            return@EchoMobileTheme
         }
         EchoPlayerTransitionRoot(
             expanded = nowPlayingExpanded,
@@ -1333,7 +1428,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     (tabPagerState.currentPage + tabPagerState.currentPageOffsetFraction - EchoPagerPage.Now.ordinal)
                         .coerceIn(0f, EchoTab.entries.lastIndex.toFloat())
                 },
-                onSelectTab = { selectDockTab(EchoTab.entries[it]) },
+                onSelectTab = ::tapNavigationTab,
                 modifier = Modifier.fillMaxSize()
                     .then(if (shellOverlayOpen) Modifier.clearAndSetSemantics { } else Modifier)
                     .echoPageUnderlay(
@@ -1345,7 +1440,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     )
                     .echoPlayerDepth(nowPlayingExpanded) { maxOf(nowPlayingBack.value, nowPlayingDragProgress) },
             ) { sideNavigation ->
-                val tabPagerFling = rememberSilkPagerFlingBehavior(tabPagerState)
+                val tabPagerFling = rememberDockPagerFlingBehavior(tabPagerState, effectivePerformanceMode)
+                val libraryDetailOpen = hasLibraryDetail()
                 val enteringInnerTabPage =
                     (selectedTab == EchoTab.Connect.ordinal || selectedTab == EchoTab.Diagnostics.ordinal) &&
                         tabPagerState.targetPage == EchoTab.entries[selectedTab].pagerPage.ordinal
@@ -1372,10 +1468,14 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     beyondViewportPageCount = if (effectivePerformanceMode.isLightweight) 0 else 1,
                     flingBehavior = tabPagerFling,
                     pageNestedScrollConnection = tabPagerNestedScroll,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = dockPageAlpha },
                 ) { page ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        when (EchoPagerPage.entries[page]) {
+                    val destination = EchoPagerPage.entries[page]
+                    Box(modifier = Modifier.fillMaxSize()) pageContent@{
+                        if (!effectivePerformanceMode.isLightweight &&
+                            !rememberDockPageContentReady(tabPagerState, destination)
+                        ) return@pageContent
+                        when (destination) {
                             EchoPagerPage.Library -> EchoLibraryPage(
                                 viewModel = viewModel,
                                 onOpenPlayer = { nowPlayingExpanded = true },
@@ -1969,6 +2069,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     showNavigation = !sideNavigation,
                     viewModel = viewModel,
                     pagerState = tabPagerState,
+                    pagerFlingBehavior = tabPagerFling,
                     playbackStatus = shellPlaybackStatus,
                     positionFlow = shellPositionFlow,
                     darkTheme = darkTheme,
@@ -1978,7 +2079,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     onPlayPause = ::routedPlayPause,
                     onHideDock = { bottomDockExpanded = false },
                     onShowDock = { bottomDockExpanded = true },
-                    onSelectTab = { selectDockTab(EchoTab.entries[it]) },
+                    onSelectTab = ::tapNavigationTab,
                     onExpand = { expandNowPlaying() },
                     onOpenQueue = { queueSheetVisible = true },
                     onNext = ::routedSkipNext,
@@ -2155,6 +2256,15 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     onToggleShuffle = viewModel::toggleShuffle,
                     onSetSleepTimerEndOfTrack = viewModel::setSleepTimerEndOfTrack,
                     onCancelSleepTimer = viewModel::cancelSleepTimer,
+                    transitionAction = { active ->
+                        app.echo.android.feature.settings.AudioTransitionQuickControl(
+                            active = active,
+                            options = appSettings.trackTransitions,
+                            usbExclusive = appSettings.usbExclusiveEnabled,
+                            bitPerfect = appSettings.usbBitPerfectEnabled,
+                            onChange = viewModel::setTrackTransitions,
+                        )
+                    },
                     modifier = Modifier.fillMaxSize(),
             )
             EchoPageOverlay(
@@ -2323,52 +2433,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 onVisibleChange = { pluginsVisible = it },
                 back = pluginsBack,
             )
-            val audioPermissionLabel = stringResource(R.string.permission_audio_label)
-            val audioPermissionDescription = stringResource(R.string.permission_audio_description)
-            val notificationPermissionLabel = stringResource(R.string.permission_notification_label)
-            val notificationPermissionDescription = stringResource(R.string.permission_notification_description)
-            val permissionEntries = remember(
-                permissionActivity,
-                audioPermissionRequested,
-                hasAudioPermission,
-                hasNotifPermission,
-                notificationPermissionRequested,
-                audioPermissionLabel,
-                audioPermissionDescription,
-                notificationPermissionLabel,
-                notificationPermissionDescription,
-            ) {
-                buildList {
-                    add(
-                        PermissionEntry(
-                            permission = audioPermissionName(),
-                            label = audioPermissionLabel,
-                            description = audioPermissionDescription,
-                            icon = Icons.Rounded.AudioFile,
-                            granted = hasAudioPermission,
-                            canRequest = !audioPermissionRequested ||
-                                permissionActivity?.let {
-                                    ActivityCompat.shouldShowRequestPermissionRationale(it, audioPermissionName())
-                                } == true,
-                        ),
-                    )
-                    notifPermName?.let { perm ->
-                        add(
-                            PermissionEntry(
-                                permission = perm,
-                                label = notificationPermissionLabel,
-                                description = notificationPermissionDescription,
-                                icon = Icons.Rounded.Notifications,
-                                granted = hasNotifPermission,
-                                canRequest = !notificationPermissionRequested ||
-                                    permissionActivity?.let {
-                                        ActivityCompat.shouldShowRequestPermissionRationale(it, perm)
-                                    } == true,
-                            ),
-                        )
-                    }
-                }
-            }
             val showLockLyrics = EchoLockLyricsPolicy.shouldShowOverLock(
                 enabled = appSettings.lockScreenLyricsEnabled,
                 isPlaying = playbackStatus.isPlaying,
@@ -2406,35 +2470,6 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            EchoPermissionDialog(
-                visible = showPermissionDialog,
-                permissionStatuses = permissionEntries,
-                onDismiss = ::dismissPermissionDialog,
-                onRequestPermission = { perm ->
-                    when (perm) {
-                        audioPermissionName() -> {
-                            audioPermissionRequested = true
-                            prefs.edit { putBoolean(ECHO_AUDIO_PERMISSION_REQUESTED_KEY, true) }
-                            permissionLauncher.launch(perm)
-                        }
-
-                        notifPermName -> {
-                            notificationPermissionRequested = true
-                            prefs.edit { putBoolean(ECHO_NOTIFICATION_PERMISSION_REQUESTED_KEY, true) }
-                            notifPermissionLauncher?.launch(perm)
-                        }
-                    }
-                },
-                onOpenSettings = {
-                    runCatching {
-                        context.startActivity(
-                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = AndroidUri.fromParts("package", context.packageName, null)
-                            },
-                        )
-                    }
-                },
-            )
         }
     }
     }
@@ -2492,7 +2527,7 @@ private fun LocalHomeSearchResults.toUiResults(resources: Context): List<SearchR
     }
 
 @Composable
-private fun rememberSystemPowerSaveMode(): Boolean {
+internal fun rememberSystemPowerSaveMode(): Boolean {
     val context = LocalContext.current
     val powerManager = remember(context) {
         context.getSystemService(Context.POWER_SERVICE) as? PowerManager

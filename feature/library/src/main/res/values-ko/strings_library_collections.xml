@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_liked_title">좋아요한 앨범</string>
+    <string name="album_like">앨범에 좋아요</string>
+    <string name="album_unlike">앨범 좋아요 취소</string>
+    <string name="album_liked_empty">아직 좋아요한 앨범이 없습니다</string>
+    <string name="album_liked_hint">앨범 상세 화면에서 하트를 누르면 여기에 저장됩니다.</string>
+    <string name="album_liked_search">좋아요한 앨범 검색</string>
+    <string name="album_liked_no_results">일치하는 앨범이 없습니다</string>
+    <string name="smart_hide_builtin">기본 재생목록 숨기기</string>
+    <string name="smart_hide_builtin_message">라이브러리에서 ‘%1$s’을 숨길까요? + 메뉴에서 복원할 수 있습니다.</string>
+    <string name="smart_hide_confirm">숨기기</string>
+    <string name="smart_restore_builtin">기본 재생목록 복원</string>
+</resources>

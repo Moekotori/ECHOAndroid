@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="library_browse_options_title">Sort and filter</string>
+    <string name="library_browse_options_title">Song list options</string>
+    <string name="library_display_settings">Display</string>
     <string name="library_filter_tags">Tags and folders</string>
     <string name="library_sort_title_asc">Title (A–Z)</string>
     <string name="library_sort_title_desc">Title (Z–A)</string>

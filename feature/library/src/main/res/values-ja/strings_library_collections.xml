@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_liked_title">お気に入りのアルバム</string>
+    <string name="album_like">アルバムをお気に入りに追加</string>
+    <string name="album_unlike">アルバムをお気に入りから削除</string>
+    <string name="album_liked_empty">お気に入りのアルバムはまだありません</string>
+    <string name="album_liked_hint">アルバムの詳細でハートをタップすると、ここに表示されます。</string>
+    <string name="album_liked_search">お気に入りのアルバムを検索</string>
+    <string name="album_liked_no_results">一致するお気に入りのアルバムがありません</string>
+    <string name="smart_hide_builtin">標準プレイリストを非表示</string>
+    <string name="smart_hide_builtin_message">「%1$s」をライブラリから非表示にしますか？「+」メニューから復元できます。</string>
+    <string name="smart_hide_confirm">非表示</string>
+    <string name="smart_restore_builtin">標準プレイリストを復元</string>
+</resources>

@@ -12,7 +12,6 @@ import app.echo.android.design.echoClickable
 import app.echo.android.design.echoCombinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,8 +57,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -90,6 +87,7 @@ import app.echo.android.design.EchoContentMaxWidth
 import app.echo.android.design.EchoPanel
 import app.echo.android.design.EmptyState
 import app.echo.android.design.LocalEchoDarkTheme
+import app.echo.android.design.LocalEchoPageInteractive
 import app.echo.android.design.PageChrome
 import app.echo.android.design.echoTheme
 import app.echo.android.model.connect.EchoRemoteAlbum
@@ -173,16 +171,6 @@ private fun LinkedLibraryMode.label(): String = when (this) {
 }
 
 @Composable
-internal fun AlbumSortMode.label(): String = when (this) {
-    AlbumSortMode.Title -> stringResource(L10nR.string.feature_library_title_af1111)
-    AlbumSortMode.Artist -> stringResource(L10nR.string.feature_library_artist_b6e7ad)
-    AlbumSortMode.Year -> stringResource(L10nR.string.feature_library_year_fe373f)
-    AlbumSortMode.TrackCount -> stringResource(L10nR.string.feature_library_tracks_2d80e8)
-    AlbumSortMode.Duration -> stringResource(L10nR.string.feature_library_duration_573e08)
-    AlbumSortMode.RecentlyAdded -> stringResource(L10nR.string.feature_library_recently_added_b4e8c1)
-}
-
-@Composable
 internal fun ArtistSortMode.label(): String = when (this) {
     ArtistSortMode.Name -> stringResource(L10nR.string.feature_library_name_57335e)
     ArtistSortMode.AlbumCount -> stringResource(L10nR.string.feature_library_albums_e68c2b)
@@ -246,6 +234,10 @@ fun LibraryScreen(
     genres: Flow<PagingData<app.echo.android.model.library.GenreSummary>> = kotlinx.coroutines.flow.emptyFlow(),
     folders: Flow<PagingData<FolderSummary>>,
     playlists: List<EchoPlaylist>,
+    likedAlbums: Flow<PagingData<AlbumSummary>>,
+    albumLiked: Boolean?,
+    onSetAlbumLiked: (String, Boolean) -> Unit,
+    onRestoreBuiltinPlaylists: () -> Unit,
     showTrackAudioInfoTags: Boolean,
     selectedAlbum: AlbumSummary?,
     selectedArtist: ArtistSummary?,
@@ -307,8 +299,6 @@ fun LibraryScreen(
     onPlayGenre: (app.echo.android.model.library.GenreSummary) -> Unit = {},
     onOpenComposer: (app.echo.android.model.library.GenreSummary) -> Unit = {},
     onPlayComposer: (app.echo.android.model.library.GenreSummary) -> Unit = {},
-    onPlayFolder: (FolderSummary) -> Unit,
-    onShuffleFolder: (FolderSummary) -> Unit,
     onPlayPlaylist: (EchoPlaylist) -> Unit,
     onShufflePlaylist: (EchoPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
@@ -338,16 +328,9 @@ fun LibraryScreen(
     cloudLibraryConfigured: Boolean = false,
     onImportM3uPlaylist: () -> Unit = {},
     onExportM3uPlaylist: (EchoPlaylist) -> Unit = {},
-    radioStations: List<app.echo.android.model.radio.EchoRadioStation> = emptyList(),
-    radioLoadFailed: Boolean = false,
-    onRetryRadio: () -> Unit = {},
-    onPlayRadio: (app.echo.android.model.radio.EchoRadioStation) -> Unit = {},
-    onSaveRadio: suspend (String?, String, String) -> Unit = { _, _, _ -> },
-    onDeleteRadio: suspend (String) -> Unit = {},
-    radioDirectorySearch: app.echo.android.model.radio.EchoRadioDirectorySearch =
-        app.echo.android.model.radio.EchoRadioDirectorySearch(),
-    onRadioDirectoryQuery: (String) -> Unit = {},
-    onOpenRadio: (() -> Unit)? = null,
+    onEnqueuePlaylist: ((EchoPlaylist) -> Unit)? = null,
+    onSharePlaylist: ((EchoPlaylist) -> Unit)? = null,
+    radioContent: @Composable (interactive: Boolean) -> Unit,
     onOpenPodcasts: () -> Unit = {},
     albumArtistAlbums: ((AlbumSummary) -> Flow<PagingData<AlbumSummary>>?)? = null,
     onPinPlaylistShortcut: ((EchoPlaylist, Boolean) -> Unit)? = null,
@@ -370,6 +353,7 @@ fun LibraryScreen(
     }
     val layout = remember(libraryLayout) { libraryLayout.normalized() }
     var editingLayout by rememberSaveable { mutableStateOf(false) }
+    var likedAlbumsOpen by rememberSaveable { mutableStateOf(false) }
     var navidromeVisible by rememberSaveable { mutableStateOf(false) }
     if (navidromeVisible && remotePlaylistManagement != null) NavidromeLibraryManager(remotePlaylistManagement) {
         navidromeVisible = false
@@ -381,6 +365,19 @@ fun LibraryScreen(
         layout = layout,
     )
     LaunchedEffect(selectedMode) { selectedModeIndex = selectedMode.ordinal }
+    val viewingLikedAlbums = likedAlbumsOpen && selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Playlists
+    fun closeLikedAlbums() {
+        likedAlbumsOpen = false
+        onLibraryQueryChange("")
+    }
+    LaunchedEffect(selectedMode, selectedSource) {
+        if (!viewingLikedAlbums) likedAlbumsOpen = false
+    }
+    app.echo.android.design.EchoOverlayBackHandler(
+        enabled = viewingLikedAlbums && linkedDetailBackEnabled && selectedAlbum == null && selectedArtist == null &&
+            selectedFolder == null && selectedGenre == null && selectedPlaylist == null,
+        onDismiss = ::closeLikedAlbums,
+    )
     if (editingLayout && onLibraryLayoutChange != null) LibraryLayoutEditor(
         layout = layout,
         onDismiss = { editingLayout = false },
@@ -455,7 +452,6 @@ fun LibraryScreen(
     fun selectSource(source: LibrarySourceMode) {
         if (selectedMode == LibraryViewMode.Radio) {
             selectedModeIndex = LibraryViewMode.Songs.ordinal
-            onLibraryQueryChange("")
         }
         if (selectedSource == source) return
         selectedSource = source
@@ -476,30 +472,33 @@ fun LibraryScreen(
     }
 
     fun selectRadio() {
-        if (onOpenRadio != null) onOpenRadio()
-        else if (selectedSource != LibrarySourceMode.Local || selectedMode != LibraryViewMode.Radio) {
+        if (selectedSource != LibrarySourceMode.Local) {
             selectSource(LibrarySourceMode.Local)
-            onLibraryQueryChange("")
-            selectedModeIndex = LibraryViewMode.Radio.ordinal
         }
+        selectedModeIndex = LibraryViewMode.Radio.ordinal
     }
 
     val prefersSplit = app.echo.android.design.LocalEchoLayout.current.supportsTwoPanes()
+    val localModes = remember(layout) { libraryPagerModes(cloudOnly = false, layout = layout) }
+    val cloudModes = remember { libraryPagerModes(cloudOnly = true) }
+    // The browser leaves composition while a detail is open. Keep its category position here.
+    val localPager = remember(localModes) {
+        PagerState(currentPage = localModes.indexOf(selectedMode).coerceAtLeast(0)) { localModes.size }
+    }
+    val cloudPager = remember { PagerState { cloudModes.size } }
 
     @Composable
     fun LocalLibraryBody(displayedSource: LibrarySourceMode) {
-        val modes = libraryPagerModes(displayedSource == LibrarySourceMode.Cloud, layout)
-        val pagerModes = if (selectedMode == LibraryViewMode.Radio) listOf(LibraryViewMode.Radio) else modes
-        val pager = key(pagerModes) {
-            rememberPagerState(
-                initialPage = pagerModes.indexOf(selectedMode).coerceAtLeast(0),
-            ) { pagerModes.size }
-        }
+        val cloud = displayedSource == LibrarySourceMode.Cloud
+        val modes = if (cloud) cloudModes else localModes
+        val pager = if (cloud) cloudPager else localPager
+        val selectMode: (LibraryViewMode) -> Unit = { mode -> selectedModeIndex = mode.ordinal }
         Column(Modifier.fillMaxSize()) {
                 Column(Modifier.padding(end = 24.dp)) {
                     if (scanState.isScanning) LibraryScanStatus(scanState, onCancelScan)
                     LibraryBrowserHeader(
-                        showAlbumArtists = layout.showAlbumArtists,
+                        layout = layout,
+                        onLayoutChange = onLibraryLayoutChange,
                         scanState = scanState,
                         showScanResultBanner = showScanResultBanner,
                         selectedSource = displayedSource,
@@ -507,7 +506,7 @@ fun LibraryScreen(
                         onSelectSource = ::selectSource,
                         selectedMode = selectedMode,
                         modes = modes,
-                        pager = pager.takeUnless { selectedMode == LibraryViewMode.Radio },
+                        pager = pager,
                         onCustomize = customizeLayout,
                         selectedSortMode = trackSortMode,
                         trackFilter = trackFilter,
@@ -518,16 +517,7 @@ fun LibraryScreen(
                         albumSortMode = albumSortMode,
                         artistSortMode = artistSortMode,
                         folderSortMode = folderSortMode,
-                        onSelectMode = { mode ->
-                            if (mode == LibraryViewMode.Radio) selectRadio()
-                            else {
-                                selectedModeIndex = mode.ordinal
-                                if (displayedSource == LibrarySourceMode.Cloud && mode != LibraryViewMode.Albums) {
-                                    selectedSource = LibrarySourceMode.Local
-                                    onLibrarySourceChange(LibrarySourceMode.Local.id)
-                                }
-                            }
-                        },
+                        onSelectMode = selectMode,
                         onSortModeChange = onTrackSortModeChange,
                         onAlbumSortModeChange = onAlbumSortModeChange,
                         onArtistSortModeChange = onArtistSortModeChange,
@@ -540,9 +530,9 @@ fun LibraryScreen(
                     Box(modifier = Modifier.weight(1f)) {
                         LibraryCategoryPager(
                             pager = pager,
-                            modes = pagerModes,
+                            modes = modes,
                             selectedMode = selectedMode,
-                            onSelectMode = { selectedModeIndex = it.ordinal },
+                            onSelectMode = selectMode,
                             modifier = Modifier.fillMaxSize(),
                         ) { mode ->
                         val showAlphabetIndex = libraryQuery.isBlank() && when (mode) {
@@ -553,20 +543,10 @@ fun LibraryScreen(
                         // Keep the index and its touch targets inside a container reaching the edge.
                         Box(Modifier.fillMaxSize().padding(end = if (showAlphabetIndex) 0.dp else 24.dp)) {
                         when (mode) {
-                            LibraryViewMode.Radio -> {
-                                LaunchedEffect(libraryQuery) { onRadioDirectoryQuery(libraryQuery) }
-                                DisposableEffect(Unit) { onDispose { onRadioDirectoryQuery("") } }
-                                RadioLibraryPanel(
-                                    stations = radioStations,
-                                    loadFailed = radioLoadFailed,
-                                    directory = radioDirectorySearch,
-                                    onRetry = onRetryRadio,
-                                    onRetryDirectory = { onRadioDirectoryQuery(radioDirectorySearch.query) },
-                                    onPlay = onPlayRadio,
-                                    onSave = onSaveRadio,
-                                    onDelete = onDeleteRadio,
-                                )
-                            }
+                            LibraryViewMode.Radio -> radioContent(
+                                displayedSource == selectedSource && selectedMode == LibraryViewMode.Radio &&
+                                    LocalEchoPageInteractive.current,
+                            )
                             LibraryViewMode.Songs -> {
                                 val trackItems = songTrackItems ?: tracks.collectAsLazyPagingItems()
                                 val showInitialTrackLoading =
@@ -697,9 +677,18 @@ fun LibraryScreen(
                                 modifier = Modifier.fillMaxSize(),
                             )
 
-                            LibraryViewMode.Playlists -> LocalPlaylistPanel(
+                            LibraryViewMode.Playlists -> if (viewingLikedAlbums) {
+                                LikedAlbumsPanel(
+                                    albums = likedAlbums.collectAsLazyPagingItems(),
+                                    query = libraryQuery,
+                                    onBack = ::closeLikedAlbums,
+                                    onOpenAlbum = onOpenAlbum,
+                                )
+                            } else LocalPlaylistPanel(
                                 playlists = playlists,
                                 query = libraryQuery,
+                                onOpenLikedAlbums = { likedAlbumsOpen = true },
+                                onRestoreBuiltinPlaylists = onRestoreBuiltinPlaylists,
                                 onOpenPlaylist = onOpenPlaylist,
                                 onPlayPlaylist = onPlayPlaylist,
                                 onShufflePlaylist = onShufflePlaylist,
@@ -711,6 +700,9 @@ fun LibraryScreen(
                                 onDeletePlaylist = onDeletePlaylist,
                                 onImportM3uPlaylist = onImportM3uPlaylist,
                                 onExportM3uPlaylist = onExportM3uPlaylist,
+                                onEnqueuePlaylist = onEnqueuePlaylist,
+                                onSharePlaylist = onSharePlaylist,
+                                onPinPlaylistShortcut = onPinPlaylistShortcut,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -722,12 +714,14 @@ fun LibraryScreen(
 
     @Composable
     fun SharedLibraryBrowser() {
+        val radioSelected = selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Radio
         LibraryBrowserFrame(
             query = libraryQuery,
             onQueryChange = onLibraryQueryChange,
+            searchEnabled = !radioSelected,
             searchPlaceholder = stringResource(
                 when {
-                    selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Radio -> L10nR.string.radio_search
+                    viewingLikedAlbums -> L10nR.string.album_liked_search
                     selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Playlists -> L10nR.string.playlist_search
                     else -> L10nR.string.feature_library_search_songs_artists_albums_14dc2c
                 },
@@ -736,7 +730,7 @@ fun LibraryScreen(
                 LibrarySourcePicker(
                     selectedSource = selectedSource,
                     onSelectSource = ::selectSource,
-                    radioSelected = selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Radio,
+                    radioSelected = radioSelected,
                     onSelectRadio = ::selectRadio,
                     onSelectPodcasts = onOpenPodcasts,
                 )
@@ -930,6 +924,8 @@ fun LibraryScreen(
         when (target) {
             is LibraryDetailTransitionTarget.AlbumDetail -> AlbumDetailPage(
                 album = target.album,
+                liked = albumLiked.takeIf { target.album.albumKey == selectedAlbum?.albumKey },
+                onLikedChange = { liked -> onSetAlbumLiked(target.album.albumKey, liked) },
                 onWriteNfc = onWriteAlbumNfc?.takeIf { selectedSource == LibrarySourceMode.Local }?.let { write -> { write(target.album) } },
                 tracks = target.tracks,
                 onBack = onCloseDetail,
@@ -1013,8 +1009,6 @@ fun LibraryScreen(
                 folder = target.folder,
                 tracks = target.tracks,
                 onBack = onCloseDetail,
-                onPlayAll = { onPlayFolder(target.folder) },
-                onShuffle = { onShuffleFolder(target.folder) },
                 onPlayTrack = { track ->
                     onPlayTrack(track, LibraryPlaybackOrigin.Folder(target.folder.folderKey))
                 },
@@ -1051,6 +1045,8 @@ fun LibraryScreen(
                 experienceActions = experienceActions,
                 onCopyCreated = onOpenPlaylist,
                 onExport = { name -> onExportM3uPlaylist(target.playlist.copy(name = name)) },
+                onEnqueuePlaylist = onEnqueuePlaylist?.let { enqueue -> { name -> enqueue(target.playlist.copy(name = name)) } },
+                onSharePlaylist = onSharePlaylist?.let { share -> { name -> share(target.playlist.copy(name = name)) } },
                 onUpdateTrackMetadata = onUpdateTrackMetadata,
                 onImportLyrics = onImportLyricsForTrack,
                 onPickArtwork = onPickTrackArtwork,
@@ -1963,24 +1959,6 @@ private fun LibraryTrackSortMenu(
 }
 
 @Composable
-private fun LibraryAlbumSortMenu(
-    selectedSortMode: AlbumSortMode,
-    onSortModeChange: (AlbumSortMode) -> Unit,
-    onCustomize: (() -> Unit)? = null,
-    linked: Boolean = false,
-) {
-    LibrarySortMenu(
-        selected = selectedSortMode,
-        options = if (linked) LinkedAlbumSortOptions else AlbumSortMode.entries,
-        label = { it.label() },
-        contentDescription = stringResource(L10nR.string.feature_library_set_album_sort_order_7c2d91),
-        onSelect = onSortModeChange,
-        onCustomize = onCustomize,
-        scopeNote = if (linked) stringResource(L10nR.string.library_sort_loaded_items) else null,
-    )
-}
-
-@Composable
 private fun LibraryArtistSortMenu(
     selectedSortMode: ArtistSortMode,
     onSortModeChange: (ArtistSortMode) -> Unit,
@@ -2018,7 +1996,8 @@ private fun LibraryFolderSortMenu(
 
 @Composable
 private fun LibraryBrowserHeader(
-    showAlbumArtists: Boolean,
+    layout: EchoLibraryLayout,
+    onLayoutChange: ((EchoLibraryLayout) -> Unit)?,
     scanState: LibraryScanProgress,
     showScanResultBanner: Boolean,
     selectedSource: LibrarySourceMode,
@@ -2026,7 +2005,7 @@ private fun LibraryBrowserHeader(
     onSelectSource: (LibrarySourceMode) -> Unit,
     selectedMode: LibraryViewMode,
     modes: List<LibraryViewMode>,
-    pager: PagerState?,
+    pager: PagerState,
     onCustomize: (() -> Unit)?,
     selectedSortMode: LibraryTrackSortMode,
     trackFilter: LibraryTrackFilter,
@@ -2048,14 +2027,12 @@ private fun LibraryBrowserHeader(
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
-            // Radio opens its existing destination; it does not add a category pager page.
-            val tabs = if (selectedSource == LibrarySourceMode.Local) modes + LibraryViewMode.Radio else modes
-            LibraryPagerTabs(selectedMode, onSelectMode, modes = tabs, pager = pager, showAlbumArtists = showAlbumArtists)
+            LibraryPagerTabs(selectedMode, onSelectMode, modes = modes, pager = pager, showAlbumArtists = layout.showAlbumArtists)
         }
         when (selectedMode) {
             LibraryViewMode.Songs -> if (selectedSource == LibrarySourceMode.Local) {
                 LibraryBrowseOptionsMenu(selectedSortMode, trackFilter, onSortModeChange, onTrackFilterChange,
-                    lyricsIndexState, onInspectLyrics, onCancelLyricsInspection, onCustomize)
+                    lyricsIndexState, onInspectLyrics, onCancelLyricsInspection, onCustomize, layout, onLayoutChange)
             }
             LibraryViewMode.Albums, LibraryViewMode.Cloud ->
                 LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange, onCustomize)

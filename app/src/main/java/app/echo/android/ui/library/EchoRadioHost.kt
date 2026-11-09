@@ -1,5 +1,7 @@
 package app.echo.android.ui.library
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
@@ -12,11 +14,22 @@ import app.echo.android.feature.radio.RadioActions
 import app.echo.android.feature.radio.RadioScreen
 import app.echo.android.model.playback.EchoPlaybackState
 import app.echo.android.model.playback.PlaybackControlsState
+import app.echo.android.model.radio.EchoRadioStation
 import kotlinx.coroutines.*
 
 @Composable
-internal fun EchoRadioHost(viewModel: EchoAndroidViewModel, currentId: String?, streamTitle: String?, controls: PlaybackControlsState, onBack: () -> Unit, openUrl: (String) -> Unit, onOpenPlayer: () -> Unit, interactive: Boolean) {
+internal fun EchoRadioHost(
+    viewModel: EchoAndroidViewModel,
+    currentId: String?,
+    streamTitle: String?,
+    controls: PlaybackControlsState,
+    onOpenPlayer: () -> Unit,
+    interactive: Boolean,
+) {
     val context = LocalContext.current
+    val openUrl: (String) -> Unit = { url ->
+        if (EchoRadioStation.validUrl(url)) runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    }
     val controller = viewModel.radioController
     val saved by controller.stations.collectAsStateWithLifecycle()
     val visible by controller.visibleStations.collectAsStateWithLifecycle()
@@ -90,6 +103,6 @@ internal fun EchoRadioHost(viewModel: EchoAndroidViewModel, currentId: String?, 
         "android.resource://app.echo.android/${app.echo.android.R.mipmap.ic_launcher}") {
     RadioScreen(saved, visible, recent, discovery, failed || fileFailed || radioFailed,
         radioPending || controls.state in listOf(EchoPlaybackState.Loading, EchoPlaybackState.Buffering), actions, currentId,
-        controls.isPlaying, onBack, streamTitle = streamTitle, videoSurface = { url -> if (interactive) RadioVideoStage(url) }, interactive = interactive)
+        controls.isPlaying, streamTitle = streamTitle, videoSurface = { url -> if (interactive) RadioVideoStage(url) }, interactive = interactive)
     }
 }

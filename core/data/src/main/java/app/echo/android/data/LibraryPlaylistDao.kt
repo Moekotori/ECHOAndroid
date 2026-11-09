@@ -2,8 +2,10 @@ package app.echo.android.data
 
 import androidx.paging.PagingSource
 import androidx.room.Dao
+import androidx.room.Entity
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
+import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.RawQuery
@@ -13,8 +15,23 @@ import app.echo.android.model.library.EchoPlaylist
 import app.echo.android.model.library.LibrarySource
 import kotlinx.coroutines.flow.Flow
 
+@Entity(tableName = "library_hidden_builtin_playlists")
+data class LibraryHiddenBuiltinPlaylistEntity(@PrimaryKey val id: String)
+
 @Dao
 interface LibraryPlaylistDao {
+    @Query("SELECT id FROM library_hidden_builtin_playlists")
+    fun observeHiddenBuiltinPlaylists(): Flow<List<String>>
+
+    @Query("SELECT id FROM library_hidden_builtin_playlists")
+    suspend fun hiddenBuiltinPlaylists(): List<String>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun hideBuiltinPlaylist(playlist: LibraryHiddenBuiltinPlaylistEntity)
+
+    @Query("DELETE FROM library_hidden_builtin_playlists")
+    suspend fun restoreBuiltinPlaylists()
+
     @Query("SELECT * FROM library_playlists WHERE id = :id")
     fun observePlaylist(id: String): Flow<LibraryPlaylistEntity?>
     @Query("SELECT playlistId FROM file_playlist_entries WHERE uriKey = :uriKey")

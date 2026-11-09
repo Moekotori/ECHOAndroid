@@ -25,6 +25,26 @@ class LibraryCollectionSortTest {
     }
 
     @Test
+    fun descendingAlbumArtistKeepsTitlesAscendingForTheSameArtist() {
+        val sorted = listOf(
+            album(title = "Zebra", artist = "Beta"),
+            album(title = "Alpha", artist = "Beta"),
+            album(title = "Moon", artist = "Alpha"),
+        ).sortedForLibrary(AlbumSortMode.ArtistDescending)
+        assertEquals(listOf("Alpha", "Zebra", "Moon"), sorted.map(AlbumSummary::title))
+    }
+
+    @Test
+    fun ascendingAlbumYearKeepsUnknownYearsLast() {
+        val sorted = listOf(
+            album(title = "Unknown").copy(year = null),
+            album(title = "New").copy(year = 2020),
+            album(title = "Old").copy(year = 1980),
+        ).sortedForLibrary(AlbumSortMode.YearAscending)
+        assertEquals(listOf("Old", "New", "Unknown"), sorted.map(AlbumSummary::title))
+    }
+
+    @Test
     fun artistsSortByAlbumCount() {
         val sorted = listOf(
             artist(name = "Few", albumCount = 1, trackCount = 8),

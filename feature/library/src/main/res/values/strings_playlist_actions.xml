@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_enqueue">Add to playback queue</string>
+    <string name="playlist_share">Share playlist</string>
+    <string name="playlist_share_failed">Couldn\'t share the playlist.</string>
+    <string name="playlist_queue_empty">No songs available to add.</string>
+    <string name="playlist_queue_truncated">Added the first %1$d songs to the queue.</string>
+    <plurals name="playlist_queue_added">
+        <item quantity="one">Added %1$d song to the queue.</item>
+        <item quantity="other">Added %1$d songs to the queue.</item>
+    </plurals>
+</resources>

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="library_browse_options_title">Параметры списка треков</string>
+    <string name="library_display_settings">Отображение</string>
     <string name="library_add_music">Добавить музыку</string>
     <string name="library_access_title">Ваша музыка начинается здесь</string>
     <string name="library_access_detail">Разрешите доступ к аудио, чтобы просматривать музыку на этом телефоне.</string>

@@ -10,6 +10,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -35,7 +36,6 @@ import app.echo.android.EchoTab
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoChromeColors
-import app.echo.android.design.rememberSilkPagerFlingBehavior
 import app.echo.android.feature.player.MiniPlayer
 import app.echo.android.model.playback.EchoPlaybackStatus
 import app.echo.android.model.playback.PlaybackPositionState
@@ -48,6 +48,7 @@ private val DockMotionEasing = EchoMotion.Silk
 internal fun EchoBottomDockHost(
     viewModel: EchoAndroidViewModel,
     pagerState: PagerState,
+    pagerFlingBehavior: TargetedFlingBehavior,
     playbackStatus: EchoPlaybackStatus,
     darkTheme: Boolean,
     selectedTab: Int,
@@ -154,10 +155,7 @@ internal fun EchoBottomDockHost(
         ) {
             BottomDock(
                 selectedTab = selectedTab,
-                gestureModifier = rememberDockSwipeModifier(
-                    pagerState,
-                    rememberSilkPagerFlingBehavior(pagerState),
-                ),
+                gestureModifier = rememberDockSwipeModifier(pagerState, pagerFlingBehavior),
                 selectedTabProgress = dockTabProgress,
                 onSelectTab = onSelectTab,
                 modifier = Modifier

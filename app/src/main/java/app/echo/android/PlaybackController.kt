@@ -364,6 +364,24 @@ internal class PlaybackController(
         insertTrack(track, queueIds.size)
     }
 
+    suspend fun preparePlaylistQueue(queue: List<EchoTrack>, source: String): List<MediaItem> =
+        withContext(Dispatchers.Default) { queue.map { it.toMediaItem().asQueueEntry(source = source) } }
+
+    fun enqueuePlaylist(queue: List<EchoTrack>, items: List<MediaItem>, onApplied: () -> Unit) {
+        resetStickyPlaybackError()
+        withController {
+            if (mediaItemCount == 0) {
+                usbAudioMonitor.prepareForTrack(queue.first().sampleRateHz)
+                startQueue(queue, items, 0, 0L, PlaybackQueueReplaceIntent.PlayAll)
+            } else {
+                queue.forEach(enginePolicy::mergeQueueLookups)
+                addMediaItems(items)
+                updatePlaybackCore(this)
+            }
+            onApplied()
+        }
+    }
+
     private fun currentQueueIds(): List<String> {
         val mediaController = controller
         if (mediaController != null) {
@@ -425,14 +443,24 @@ internal class PlaybackController(
         }
         usbAudioMonitor.prepareForTrack(queue[safeStartIndex].sampleRateHz)
         withController(replacesQueue = true) {
-            replaceQueueLookups(queue)
-            enginePolicy.replaceQueueLookups(queue)
-            shuffleModeEnabled = PlaybackSessionPolicy.shuffleEnabledForQueueReplace(intent)
-            repeatMode = PlaybackSessionPolicy.repeatModeForQueueReplace(intent).toPlayerRepeatMode()
-            setMediaItems(mediaItems, safeStartIndex, startPositionMs.coerceAtLeast(0L))
-            prepare()
-            play()
+            startQueue(queue, mediaItems, safeStartIndex, startPositionMs, intent)
         }
+    }
+
+    private fun MediaController.startQueue(
+        queue: List<EchoTrack>,
+        items: List<MediaItem>,
+        startIndex: Int,
+        startPositionMs: Long,
+        intent: PlaybackQueueReplaceIntent,
+    ) {
+        replaceQueueLookups(queue)
+        enginePolicy.replaceQueueLookups(queue)
+        shuffleModeEnabled = PlaybackSessionPolicy.shuffleEnabledForQueueReplace(intent)
+        repeatMode = PlaybackSessionPolicy.repeatModeForQueueReplace(intent).toPlayerRepeatMode()
+        setMediaItems(items, startIndex, startPositionMs.coerceAtLeast(0L))
+        prepare()
+        play()
     }
 
     fun pause() {

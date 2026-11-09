@@ -45,7 +45,7 @@ internal class PreferredPlaybackSelection(
         return resolved
     }
 
-    fun append(load: suspend () -> List<EchoTrack>, apply: (List<EchoTrack>) -> Unit) {
+    fun append(load: suspend () -> List<EchoTrack>, apply: suspend (List<EchoTrack>) -> Unit) {
         val requestedGeneration = generation
         scope.launch {
             additions.withLock {

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="library_browse_options_title">Opciones de la lista de canciones</string>
+    <string name="library_display_settings">Vista</string>
     <string name="library_add_music">Agregar música</string>
     <string name="library_access_title">Tu música empieza aquí</string>
     <string name="library_access_detail">Permite el acceso al audio para explorar la música de este teléfono.</string>

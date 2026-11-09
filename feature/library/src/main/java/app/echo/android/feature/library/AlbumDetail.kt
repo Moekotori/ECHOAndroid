@@ -136,6 +136,8 @@ internal fun AlbumDetailPage(
     playingTrackId: String? = null,
     isPlaying: Boolean = false,
     modifier: Modifier = Modifier,
+    liked: Boolean? = null,
+    onLikedChange: (Boolean) -> Unit = {},
 ) {
     val rangeSource = rememberLibraryRangeSource(tracks)
     val palette = rememberArtworkPalette(album.artworkUri, seedKey = album.albumKey)
@@ -160,6 +162,8 @@ internal fun AlbumDetailPage(
             AlbumDetailLayout(
                 album = album,
                 onWriteNfc = onWriteNfc,
+                liked = liked,
+                onLikedChange = onLikedChange,
                 tracks = loadedTracks,
                 accent = palette.vibrant,
                 onBack = onBack,
@@ -1111,6 +1115,7 @@ internal fun AlbumTrackRow(
     onEnqueue: ((EchoTrack) -> Unit)? = null,
     onOpenArtist: ((EchoTrack) -> Unit)? = null,
     onOpenAlbum: ((EchoTrack) -> Unit)? = null,
+    showCard: Boolean = true,
 ) {
     val colors = rememberDetailGlassColors()
     TrackContextMenu(
@@ -1131,28 +1136,31 @@ internal fun AlbumTrackRow(
         onOpenAlbum = onOpenAlbum?.let { open -> { open(track) } },
         modifier = Modifier.fillMaxWidth(),
     ) { pressModifier ->
-        val dark = LocalEchoDarkTheme.current
-        val refined = LocalAlbumDetail.current
-        // 每行的渐变按 (主题, 表面色, 强调色) 记忆,滚动/重组时不再重复分配 Brush
-        val rowBrush = remember(dark, colors.surface, accent) {
-            Brush.linearGradient(
-                listOf(
-                    if (dark) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.76f),
-                    colors.surface,
-                    accent.copy(alpha = if (dark) 0.10f else 0.05f),
-                ),
-            )
+        val flat = !showCard || LocalAlbumDetail.current
+        val rowShape = RoundedCornerShape(16.dp)
+        val cardModifier = if (flat) {
+            Modifier
+        } else {
+            val dark = LocalEchoDarkTheme.current
+            val rowBrush = remember(dark, colors.surface, accent) {
+                Brush.linearGradient(
+                    listOf(
+                        if (dark) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.76f),
+                        colors.surface,
+                        accent.copy(alpha = if (dark) 0.10f else 0.05f),
+                    ),
+                )
+            }
+            Modifier.background(rowBrush).border(BorderStroke(1.dp, colors.border), rowShape)
         }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .then(if (refined) Modifier else Modifier
-                    .background(rowBrush)
-                    .border(BorderStroke(1.dp, colors.border), RoundedCornerShape(16.dp)))
+                .clip(rowShape)
+                .then(cardModifier)
                 .then(pressModifier)
-                .padding(horizontal = if (refined) 8.dp else 14.dp, vertical = 12.dp),
+                .padding(horizontal = if (flat) 8.dp else 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -1163,8 +1171,8 @@ internal fun AlbumTrackRow(
             } else {
                 Text(
                     text = (track.trackNumber ?: (index + 1)).toString().padStart(2, '0'),
-                    color = if (refined) colors.muted else accent,
-                    style = if (refined) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,
+                    color = if (flat) colors.muted else accent,
+                    style = if (flat) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.width(26.dp),
                     textAlign = TextAlign.Center,

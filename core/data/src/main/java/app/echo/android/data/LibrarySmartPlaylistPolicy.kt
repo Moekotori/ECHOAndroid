@@ -32,11 +32,11 @@ object LibrarySmartPlaylistPolicy {
             source = LibrarySource.MediaStore.id,
         )
 
-    fun pinned(stats: LibrarySmartPlaylistStats): List<EchoPlaylist> =
+    fun pinned(stats: LibrarySmartPlaylistStats, hiddenIds: Collection<String> = emptySet()): List<EchoPlaylist> =
         listOf(
             playlist(LibrarySmartPlaylistKind.Recent, stats.recentCount, stats.recentArtworkUri),
             playlist(LibrarySmartPlaylistKind.Frequent, stats.frequentCount, stats.frequentArtworkUri),
             playlist(LibrarySmartPlaylistKind.Never, stats.neverCount, stats.neverArtworkUri),
             playlist(LibrarySmartPlaylistKind.Added, stats.addedCount, stats.addedArtworkUri),
-        )
+        ).filterNot { it.id in hiddenIds }
 }

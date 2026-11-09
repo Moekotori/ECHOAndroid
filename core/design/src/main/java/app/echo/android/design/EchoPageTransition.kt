@@ -75,6 +75,7 @@ fun <T> EchoPageContent(
     val pageKey = contentKey(targetState)
     val anchors = remember { HashMap<String, T>() }
     val latest = remember { mutableStateMapOf<String, T>() }
+    val pageLayers = remember { HashMap<String, Float>() }
     val anchor = anchors.getOrPut(pageKey) { targetState }
     if (Snapshot.withoutReadObservation { latest[pageKey] } != targetState) latest[pageKey] = targetState
     val seekable = remember { SeekableTransitionState(anchor) }
@@ -84,6 +85,7 @@ fun <T> EchoPageContent(
         // Settled: only the visible page needs its snapshot kept.
         anchors.keys.retainAll { it == pageKey }
         latest.keys.retainAll { it == pageKey }
+        pageLayers.keys.retainAll { it == pageKey }
     }
     val backKey = back?.let { contentKey(it.target) }
     val latestBack = rememberUpdatedState(back)
@@ -113,12 +115,23 @@ fun <T> EchoPageContent(
     navigation.AnimatedContent(
         contentKey = contentKey,
         modifier = pagesModifier,
-        transitionSpec = transitionSpec ?: {
-            when {
+        transitionSpec = {
+            val backward = isBackward(initialState, this.targetState)
+            val transform = transitionSpec?.invoke(this) ?: when {
                 fadeOnly -> motion.pageFade()
-                isBackward(initialState, this.targetState) -> motion.pagePop()
+                backward -> motion.pagePop()
                 else -> motion.pagePush()
             }
+            ContentTransform(
+                transform.targetContentEnter,
+                transform.initialContentExit,
+                targetContentZIndex = pageLayers.targetPageLayer(
+                    initialKey = contentKey(initialState),
+                    targetKey = contentKey(this.targetState),
+                    behind = backward && !lightweight && !fadeOnly,
+                ),
+                sizeTransform = transform.sizeTransform,
+            )
         },
     ) { page ->
         val corners = transition.animateFloat(
@@ -169,6 +182,19 @@ fun <T> EchoPageContent(
     } else {
         pages(modifier)
     }
+}
+
+/** AnimatedContent keeps each page's layer from when it entered, even after it settles. */
+internal fun MutableMap<String, Float>.targetPageLayer(
+    initialKey: String,
+    targetKey: String,
+    behind: Boolean,
+): Float {
+    val initialLayer = getOrPut(initialKey) { 0f }
+    if (targetKey == initialKey) return initialLayer
+    val targetLayer = if (behind) initialLayer - 1f else initialLayer + 1f
+    this[targetKey] = targetLayer
+    return targetLayer
 }
 
 /** Keep the outgoing page mounted until exit completes, then let Compose dispose it. */

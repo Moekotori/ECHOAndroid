@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_enqueue">Zur Wiedergabewarteschlange hinzufügen</string>
+    <string name="playlist_share">Playlist teilen</string>
+    <string name="playlist_share_failed">Die Playlist konnte nicht geteilt werden.</string>
+    <string name="playlist_queue_empty">Keine Titel zum Hinzufügen verfügbar.</string>
+    <string name="playlist_queue_truncated">Die ersten %1$d Titel wurden zur Warteschlange hinzugefügt.</string>
+    <plurals name="playlist_queue_added">
+        <item quantity="one">%1$d Titel wurde zur Warteschlange hinzugefügt.</item>
+        <item quantity="other">%1$d Titel wurden zur Warteschlange hinzugefügt.</item>
+    </plurals>
+</resources>

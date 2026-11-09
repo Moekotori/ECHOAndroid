@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_enqueue">再生キューに追加</string>
+    <string name="playlist_share">プレイリストを共有</string>
+    <string name="playlist_share_failed">プレイリストを共有できませんでした。</string>
+    <string name="playlist_queue_empty">キューに追加できる曲がありません。</string>
+    <string name="playlist_queue_truncated">先頭の %1$d 曲をキューに追加しました。</string>
+    <plurals name="playlist_queue_added">
+        <item quantity="other">%1$d 曲をキューに追加しました。</item>
+    </plurals>
+</resources>

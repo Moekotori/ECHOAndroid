@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="echo_link_direct_address_hint">输入电脑 IP 或域名，端口可单独填写；也可粘贴完整 HTTP(S) 地址或配对链接。局域网可在电脑允许时直连，首次 frp/Tailscale 跨网连接需配对授权。</string>
+    <string name="echo_link_direct_address_hint">输入电脑 IP 或域名，需要指定端口时在后面加 :端口。也可粘贴完整的 HTTP(S) 地址或配对链接。局域网直连需电脑允许，首次通过 frp/Tailscale 连接需配对。</string>
     <string name="echo_link_pairing_entry">通过 IP、域名或配对链接连接</string>
     <string name="echo_link_steam_edition_requirement">需要 ECHO Pro</string>
-    <string name="echo_link_pc_port">端口（可选）</string>
-    <string name="echo_link_pc_port_invalid">请输入 1–65535 之间的整数。</string>
 </resources>

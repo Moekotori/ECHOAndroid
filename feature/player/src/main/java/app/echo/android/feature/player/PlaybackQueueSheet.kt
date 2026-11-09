@@ -17,18 +17,19 @@ import androidx.compose.foundation.gestures.Orientation
 import app.echo.android.design.echoDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -90,6 +91,7 @@ fun PlaybackQueueSheet(
     onHidden: () -> Unit = {},
     onSetSleepTimerEndOfTrack: (() -> Unit)? = null,
     onCancelSleepTimer: (() -> Unit)? = null,
+    transitionAction: @Composable (active: Boolean) -> Unit = {},
 ) {
     val presentation = remember { MutableTransitionState(false) }
     presentation.targetState = visible
@@ -202,6 +204,7 @@ fun PlaybackQueueSheet(
                     ),
             )
             QueueSheetSurface(
+                visible = visible,
                 status = status,
                 queueState = queueState,
                 motionProgress = { contentProgress.value },
@@ -213,6 +216,7 @@ fun PlaybackQueueSheet(
                 onClearNextUp = onClearNextUp,
                 onSetRepeatMode = onSetRepeatMode,
                 onToggleShuffle = onToggleShuffle,
+                transitionAction = { transitionAction(visible) },
                 onSetSleepTimerEndOfTrack = onSetSleepTimerEndOfTrack,
                 onCancelSleepTimer = onCancelSleepTimer,
                 onHandleDrag = { delta ->
@@ -231,6 +235,8 @@ fun PlaybackQueueSheet(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    // Keep the full-screen scrim's minimum size out of the panel's measurement.
+                    .wrapContentSize(Alignment.BottomCenter)
                     .graphicsLayer {
                         val progress = sheetProgress.value.coerceIn(0f, 1f)
                         val hiddenProgress = 1f - progress
@@ -247,6 +253,7 @@ fun PlaybackQueueSheet(
 
 @Composable
 private fun QueueSheetSurface(
+    visible: Boolean,
     status: EchoPlaybackStatus,
     queueState: PlaybackQueueState,
     onDismiss: () -> Unit,
@@ -257,6 +264,7 @@ private fun QueueSheetSurface(
     onClearNextUp: () -> Unit,
     onSetRepeatMode: (EchoRepeatMode) -> Unit,
     onToggleShuffle: () -> Unit,
+    transitionAction: @Composable () -> Unit,
     motionProgress: () -> Float,
     onSetSleepTimerEndOfTrack: (() -> Unit)?,
     onCancelSleepTimer: (() -> Unit)?,
@@ -271,29 +279,30 @@ private fun QueueSheetSurface(
     val sections = remember(queueState) { queueSections(queueState) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     var showPrevious by rememberSaveable { mutableStateOf(false) }
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    val shortWindow = app.echo.android.design.LocalEchoLayout.current.heightDp < 600f
-    val compact = searchQuery.isBlank() && sections.nextUp.isEmpty() && sections.continuation.isEmpty() && !showPrevious
+    var searchVisible by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(visible, empty) {
+        if (!visible || empty) searchVisible = false
+    }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .widthIn(max = 480.dp)
             .fillMaxWidth()
-            .statusBarsPadding()
-            .then(if (lightweight) Modifier else Modifier.animateContentSize(
-                animationSpec = EchoMotion.silkSize(360), alignment = Alignment.BottomCenter,
-            ))
-            .then(if (empty) Modifier.wrapContentHeight() else Modifier.fillMaxHeight(if (shortWindow) 0.86f else if (compact) 0.38f else 0.62f))
-            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-            .background(queueSurfaceColor())
-            .navigationBarsPadding(),
+            .statusBarsPadding(),
     ) {
+        // Leave room for the list in short windows and cap the panel on tall screens.
+        val sheetMaxHeight = minOf(maxHeight * 0.86f, (maxHeight * 0.62f).coerceIn(320.dp, 520.dp))
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (empty) Modifier else Modifier.fillMaxSize())
+                .then(if (lightweight) Modifier else Modifier.animateContentSize(
+                    animationSpec = EchoMotion.silkSize(360), alignment = Alignment.BottomCenter,
+                ))
+                .heightIn(max = sheetMaxHeight)
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(queueSurfaceColor())
+                .navigationBarsPadding()
                 .graphicsLayer {
                     val progress = motionProgress()
                     alpha = 0.6f + 0.4f * progress
@@ -320,12 +329,11 @@ private fun QueueSheetSurface(
                 status = status,
                 onDismiss = onDismiss,
                 onClearQueue = onClearQueue,
+                onOpenSearch = { searchVisible = true },
                 sections = sections,
                 showPrevious = showPrevious,
                 onTogglePrevious = { showPrevious = !showPrevious },
                 onLocateCurrent = {
-                    searchQuery = ""
-                    focusManager.clearFocus()
                     scope.launch {
                         if (lightweight) listState.scrollToItem(0) else listState.animateScrollToItem(0)
                     }
@@ -335,13 +343,11 @@ private fun QueueSheetSurface(
                 onCancelSleepTimer = onCancelSleepTimer,
                 onSetRepeatMode = onSetRepeatMode,
                 onToggleShuffle = onToggleShuffle,
+                transitionAction = transitionAction,
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f))
-            if (!empty) QueueSearchField(searchQuery) { searchQuery = it }
-            if (queueState.items.isEmpty()) {
+            if (empty) {
                 QueueEmptyState()
-            } else if (searchQuery.isNotBlank()) {
-                QueueSearchResults(queueState, searchQuery, onPlayItem)
             } else {
                 NextUpQueueList(
                     queueState, status.isPlaying, onPlayItem, onRemoveItem, onMoveItem,
@@ -349,6 +355,13 @@ private fun QueueSheetSurface(
                 )
             }
         }
+    }
+    if (visible && searchVisible && !empty) {
+        QueueSearchDialog(
+            queue = queueState,
+            onDismiss = { searchVisible = false },
+            onPlayItem = onPlayItem,
+        )
     }
 }
 

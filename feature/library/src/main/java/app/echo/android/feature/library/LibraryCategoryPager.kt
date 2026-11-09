@@ -15,19 +15,21 @@ import app.echo.android.model.settings.EchoLibraryCategory
 import app.echo.android.model.settings.EchoLibraryLayout
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
+import app.echo.android.design.LocalEchoPageInteractive
 import app.echo.android.design.rememberContentPagerNestedScroll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlin.math.abs
 
 internal fun libraryPagerModes(
     cloudOnly: Boolean,
     layout: EchoLibraryLayout = EchoLibraryLayout(),
-): List<LibraryViewMode> = if (cloudOnly) listOf(LibraryViewMode.Albums)
-    else layout.visibleCategories().map { it.viewMode() }
+): List<LibraryViewMode> = if (cloudOnly) {
+    listOf(LibraryViewMode.Albums)
+} else {
+    layout.visibleCategories().map { it.viewMode() } + LibraryViewMode.Radio
+}
 
 internal fun EchoLibraryCategory.viewMode(): LibraryViewMode = when (this) {
     EchoLibraryCategory.Songs -> LibraryViewMode.Songs
@@ -48,6 +50,7 @@ internal fun LibraryCategoryPager(
     content: @Composable (LibraryViewMode) -> Unit,
 ) = key(modes) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
+    val interactive = LocalEchoPageInteractive.current
     val settleSpec = tween<Float>(if (lightweight) 100 else 180, easing = EchoMotion.Silk)
     val fling = PagerDefaults.flingBehavior(
         state = pager,
@@ -60,7 +63,8 @@ internal fun LibraryCategoryPager(
 
     // A tab click redirects the pager. Observe touch navigation only after that
     // request, so an old settled page cannot overwrite a newly clicked tab.
-    LaunchedEffect(pager, selectedMode) {
+    LaunchedEffect(pager, selectedMode, interactive) {
+        if (!interactive) return@LaunchedEffect
         val requestedPage = modes.indexOf(selectedMode).coerceAtLeast(0)
         if (pager.currentPage != requestedPage || pager.currentPageOffsetFraction != 0f) {
             try {
@@ -75,13 +79,22 @@ internal fun LibraryCategoryPager(
                 currentCoroutineContext().ensureActive()
             }
         }
-        snapshotFlow {
-            if (!pager.isScrollInProgress && abs(pager.currentPageOffsetFraction) < 0.001f) {
-                pager.settledPage
-            } else null
-        }.filterNotNull().distinctUntilChanged().collect { page ->
-            val mode = modes[page]
-            if (mode != selection) onSelect(mode)
+        var scrolled = false
+        snapshotFlow { if (pager.isScrollInProgress) null else pager.settledPage }.collect { page ->
+            if (page == null) {
+                scrolled = true
+            } else {
+                val mode = modes[page]
+                if (mode != selection) {
+                    if (scrolled && abs(pager.currentPageOffsetFraction) < 0.001f) {
+                        onSelect(mode)
+                    } else {
+                        // A layout pass during a detail transition can move the idle pager.
+                        pager.requestScrollToPage(modes.indexOf(selection).coerceAtLeast(0))
+                    }
+                }
+                scrolled = false
+            }
         }
     }
 
@@ -90,7 +103,7 @@ internal fun LibraryCategoryPager(
         modifier = modifier,
         key = { modes[it].name },
         beyondViewportPageCount = 0,
-        userScrollEnabled = modes.size > 1,
+        userScrollEnabled = interactive && modes.size > 1,
         flingBehavior = fling,
         pageNestedScrollConnection = nestedScroll,
     ) { page -> content(modes[page]) }

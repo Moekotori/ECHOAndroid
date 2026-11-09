@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,8 +49,6 @@ internal fun FolderDetailPage(
     folder: FolderSummary,
     tracks: LazyPagingItems<EchoTrack>,
     onBack: () -> Unit,
-    onPlayAll: () -> Unit,
-    onShuffle: () -> Unit,
     onPlayTrack: (EchoTrack) -> Unit,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
     onImportLyrics: ((EchoTrack) -> Unit)? = null,
@@ -106,8 +103,6 @@ internal fun FolderDetailPage(
                         folder = folder,
                         artworkUri = heroArtworkUri,
                     )
-                    Spacer(Modifier.height(18.dp))
-                    AlbumActionBar(onPlayAll = onPlayAll, onShuffle = onShuffle)
                     Spacer(Modifier.height(22.dp))
                     AlbumTracksHeader(count = folder.trackCount)
                     Spacer(Modifier.height(10.dp))
@@ -146,6 +141,7 @@ internal fun FolderDetailPage(
                                 index = index,
                                 track = track,
                                 accent = palette.vibrant,
+                                showCard = false,
                                 onClick = { onPlayTrack(track) },
                                 onUpdateTrackMetadata = onUpdateTrackMetadata,
                                 onImportLyrics = onImportLyrics,

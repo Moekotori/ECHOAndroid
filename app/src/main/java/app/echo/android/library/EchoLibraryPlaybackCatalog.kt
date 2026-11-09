@@ -379,7 +379,7 @@ class EchoLibraryPlaybackCatalog(
         return pinnedSlice + user
     }
 
-    private suspend fun pinnedPlaylistItems(): List<EchoPlaybackBrowseItem> {
+    private suspend fun pinnedPlaylistItems(includeHidden: Boolean = false): List<EchoPlaybackBrowseItem> {
         val favoriteCount = database.playlistDao().getFavoriteTrackIds().size
         val favoriteArt = database.playlistDao().observeFavoriteAlbums(1).first().firstOrNull()?.artworkUri
         val liked = EchoPlaybackBrowseItem(
@@ -392,7 +392,8 @@ class EchoLibraryPlaybackCatalog(
             kind = EchoPlaybackBrowseKind.Playlist,
         )
         val stats = database.trackDao().observeSmartPlaylistStats().first()
-        val smart = LibrarySmartPlaylistPolicy.pinned(stats).map { playlist ->
+        val hiddenIds = if (includeHidden) emptyList() else database.playlistDao().hiddenBuiltinPlaylists()
+        val smart = LibrarySmartPlaylistPolicy.pinned(stats, hiddenIds).map { playlist ->
             EchoPlaybackBrowseItem(
                 mediaId = EchoPlaybackLibraryIds.playlist(playlist.id),
                 title = smartPlaylistTitle(playlist.smartKind),
@@ -419,7 +420,7 @@ class EchoLibraryPlaybackCatalog(
             }
         }
         if (!LibrarySmartPlaylistPolicy.isSmartPlaylistId(id)) return null
-        return pinnedPlaylistItems().firstOrNull {
+        return pinnedPlaylistItems(includeHidden = true).firstOrNull {
             EchoPlaybackLibraryIds.playlistId(it.mediaId) == id
         }
     }

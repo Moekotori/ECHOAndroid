@@ -2,4 +2,18 @@
 <resources>
     <string name="library_sort_title">Sort</string>
     <string name="library_sort_loaded_items">Sort loaded items</string>
+    <string name="album_sort_heading">Sort albums</string>
+    <string name="album_sort_field">Sort by</string>
+    <string name="album_sort_direction">Order</string>
+    <string name="album_sort_track_count">Track count</string>
+    <string name="album_sort_date_added">Date added</string>
+    <string name="album_sort_a_to_z">A–Z</string>
+    <string name="album_sort_z_to_a">Z–A</string>
+    <string name="album_sort_oldest_first">Oldest first</string>
+    <string name="album_sort_newest_first">Newest first</string>
+    <string name="album_sort_fewest_first">Fewest first</string>
+    <string name="album_sort_most_first">Most first</string>
+    <string name="album_sort_shortest_first">Shortest first</string>
+    <string name="album_sort_longest_first">Longest first</string>
+    <string name="album_sort_album_title">Album title</string>
 </resources>

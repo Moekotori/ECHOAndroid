@@ -321,18 +321,18 @@ class EchoLibraryRepository(
             database.playlistDao().observeAllPlaylists(),
             database.playlistDao().observeFavoriteTrackIds(),
             database.playlistDao().observeFavoriteAlbums(1),
-            database.trackDao().observeSmartPlaylistStats(),
+            combine(database.trackDao().observeSmartPlaylistStats(), database.playlistDao().observeHiddenBuiltinPlaylists(),
+                LibrarySmartPlaylistPolicy::pinned),
             combine(database.experienceDao().observeSmartPlaylists(), database.experienceDao().observeHomePins()) { rows, ids ->
                 val pins = ids.toSet()
                 rows.map { it.toEchoPlaylist().copy(pinnedToHome = it.id in pins) }
             },
-        ) { playlists, favoriteIds, favoriteAlbums, smartStats, customSmart ->
+        ) { playlists, favoriteIds, favoriteAlbums, builtinSmart, customSmart ->
             val liked = LibraryFavoritePolicy.likedSongsPlaylist(
                 trackCount = favoriteIds.size,
                 artworkUri = favoriteAlbums.firstOrNull()?.artworkUri,
             )
-            val pinned = LibrarySmartPlaylistPolicy.pinned(smartStats)
-            listOf(liked) + pinned + customSmart + playlists.map { it.toEchoPlaylist() }
+            listOf(liked) + builtinSmart + customSmart + playlists.map { it.toEchoPlaylist() }
                 .filterNot { it.isLikedSongs || it.isSmartPlaylist }
         }.flowOn(Dispatchers.IO)
 
@@ -341,9 +341,24 @@ class EchoLibraryRepository(
             .map { ids -> ids.toSet() }
             .flowOn(Dispatchers.IO)
 
-    fun observeFavoriteAlbums(limit: Int = LibraryFavoritePolicy.FavoriteAlbumLimit): Flow<List<AlbumSummary>> =
-        database.playlistDao().observeFavoriteAlbums(limit.coerceAtLeast(1))
-            .flowOn(Dispatchers.IO)
+    fun observeLikedAlbums(limit: Int = LibraryFavoritePolicy.FavoriteAlbumLimit): Flow<List<AlbumSummary>> =
+        database.likedAlbumDao().observeLikedAlbums(limit.coerceAtLeast(1)).distinctUntilChanged()
+
+    fun pagedLikedAlbums(query: String): Flow<PagingData<AlbumSummary>> =
+        Pager(config = defaultPagingConfig(), pagingSourceFactory = {
+            database.likedAlbumDao().pageLikedAlbums(query.trim().takeIf(String::isNotEmpty))
+        }).flow
+
+    fun observeLikedAlbum(albumKey: String): Flow<Boolean?> =
+        database.likedAlbumDao().observeLiked(albumKey).distinctUntilChanged()
+
+    suspend fun setLikedAlbum(albumKey: String, liked: Boolean) {
+        val dao = database.likedAlbumDao()
+        if (liked) dao.like(LibraryLikedAlbumEntity(albumKey, System.currentTimeMillis()))
+        else dao.unlike(albumKey)
+    }
+
+    suspend fun restoreBuiltinPlaylists() = database.playlistDao().restoreBuiltinPlaylists()
 
     fun pagedPlaylistTracks(playlistId: String): Flow<PagingData<LibraryTrackEntity>> = orderedPlaylistPaging(playlistId)
 
@@ -513,6 +528,10 @@ class EchoLibraryRepository(
     }
 
     suspend fun deleteLocalPlaylist(playlistId: String): Boolean {
+        LibrarySmartPlaylistKind.fromId(playlistId)?.let { kind ->
+            database.playlistDao().hideBuiltinPlaylist(LibraryHiddenBuiltinPlaylistEntity(kind.id))
+            return true
+        }
         if (FilePlaylistStore.owns(playlistId)) return filePlaylists.delete(playlistId)
         if (playlistId.startsWith(app.echo.android.model.library.EchoSmartPlaylistRule.IdPrefix)) {
             database.withTransaction {

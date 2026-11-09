@@ -3,4 +3,8 @@
     <string name="track_info_file_name">Nom du fichier</string>
     <string name="track_info_copy">Copier toutes les informations</string>
     <string name="track_info_copied">Informations du morceau copiées</string>
+    <string name="track_info_section_tags">Tags du morceau</string>
+    <string name="track_info_section_audio">Détails audio</string>
+    <string name="track_info_section_file">Détails du fichier</string>
+    <string name="track_info_missing_fields">Champs non renseignés (%1$d)</string>
 </resources>

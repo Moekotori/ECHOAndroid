@@ -15,13 +15,19 @@ class LibrarySelectionStateTest {
         assertEquals(LibraryViewMode.Radio, restoredLibraryViewMode(LibraryViewMode.Radio.ordinal, false, layout))
     }
 
-    @Test fun pagerUsesTheCustomizedOrderAndCloudKeepsItsSupportedCategory() {
+    @Test fun localPagerEndsWithRadioAndCloudKeepsItsSupportedCategory() {
+        assertEquals(
+            listOf(LibraryViewMode.Playlists, LibraryViewMode.Radio),
+            libraryPagerModes(cloudOnly = false).takeLast(2),
+        )
         val layout = app.echo.android.model.settings.EchoLibraryLayout(
             order = app.echo.android.model.settings.EchoLibraryCategory.entries.reversed(),
             hidden = setOf(app.echo.android.model.settings.EchoLibraryCategory.Songs),
         )
-        assertEquals(listOf(LibraryViewMode.Playlists, LibraryViewMode.Folders, LibraryViewMode.Artists, LibraryViewMode.Albums),
-            libraryPagerModes(false, layout))
+        assertEquals(
+            listOf(LibraryViewMode.Playlists, LibraryViewMode.Folders, LibraryViewMode.Artists, LibraryViewMode.Albums, LibraryViewMode.Radio),
+            libraryPagerModes(false, layout),
+        )
         assertEquals(listOf(LibraryViewMode.Albums), libraryPagerModes(true, layout))
     }
 

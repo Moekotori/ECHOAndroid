@@ -143,17 +143,19 @@ internal class PlaylistManagementController(
         return repository.importM3uPlaylist(name, text)
     }
 
+    suspend fun textExport(id: String, format: PlaylistExportFormat): String = withContext(Dispatchers.IO) {
+        val tracks = repository.playlistTracksForPlayback(id, 10_001)
+        require(tracks.size <= 10_000) { "Playlist exceeds 10,000 tracks" }
+        exportPlaylistText(tracks.map { it.toEchoTrack() }, format)
+    }
+
     fun export(id: String, uri: Uri, format: PlaylistExportFormat = PlaylistExportFormat.M3u) {
         importSession++
         documentJob?.cancel()
         documentJob = scope.launch {
             try {
                 val text = if (format == PlaylistExportFormat.M3u) repository.exportM3uPlaylist(id) ?: throw IllegalStateException("Empty playlist")
-                    else withContext(Dispatchers.IO) {
-                        val tracks = repository.playlistTracksForPlayback(id, 10_001)
-                        require(tracks.size <= 10_000) { "Playlist exceeds 10,000 tracks" }
-                        exportPlaylistText(tracks.map { it.toEchoTrack() }, format)
-                    }
+                    else textExport(id, format)
                 documentIo.withLock { withContext(Dispatchers.IO) {
                     val output = resolver.openOutputStream(uri, "wt") ?: throw IllegalStateException("No output stream")
                     output.use { it.write(text.toByteArray(StandardCharsets.UTF_8)) }

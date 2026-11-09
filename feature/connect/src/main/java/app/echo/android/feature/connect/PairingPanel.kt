@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import app.echo.android.connect.EchoLinkDiscoveryPolicy
-import app.echo.android.connect.EchoPairingParser
 import app.echo.android.connect.EchoManualConnectionInput
 import app.echo.android.model.connect.EchoLinkLanDevice
 import app.echo.android.model.connect.EchoRemoteConnectionState
@@ -106,7 +105,6 @@ internal fun PcLinkPanel(
     val connected = remoteState == EchoRemoteConnectionState.Connected
     val busy = remoteState in listOf(EchoRemoteConnectionState.Pairing, EchoRemoteConnectionState.Connecting, EchoRemoteConnectionState.Reconnecting)
     var address by rememberSaveable(savedPcAddress) { mutableStateOf(savedPcAddress.orEmpty()) }
-    var port by rememberSaveable { mutableStateOf("") }
     var manual by rememberSaveable { mutableStateOf(true) }
     val connectionEntry = remember { BringIntoViewRequester() }
     LaunchedEffect(openConnectionNonce) {
@@ -159,18 +157,13 @@ internal fun PcLinkPanel(
     val currentPc = remember(savedPcAddress, savedPcToken, pcTitle) {
         savedPcAddress?.takeIf { it.isNotBlank() }?.let { EchoSavedPcEndpoint(it, pcTitle, token = savedPcToken) }
     }
-    val endpoint = remember(address, port, savedPcs, currentPc) {
-        EchoManualConnectionInput.resolve(address, port, savedPcs, currentPc)
+    val endpoint = remember(address, savedPcs, currentPc) {
+        EchoManualConnectionInput.resolve(address, savedPcs, currentPc)
     }
-    val pairingLink = remember(address) { EchoPairingParser.parse(address) != null }
-    val validPort = pairingLink || EchoManualConnectionInput.validPort(port)
-    val portPlaceholder = remember(address) { (EchoPairingParser.parseManual(address)?.port ?: EchoPairingParser.DefaultPort).toString() }
-    val validAddress = remember(address) { EchoPairingParser.parseManual(address, "validation-token") != null }
     val keyboard = LocalSoftwareKeyboardController.current
     val connect = { if (endpoint != null && !busy) { keyboard?.hide(); onConnectPc(endpoint.address, endpoint.token) } }
     val selectPc: (String, String, Boolean) -> Unit = { selectedAddress, selectedToken, requiresPairing ->
         address = selectedAddress
-        port = ""
         manual = requiresPairing && selectedToken.isBlank()
         if (!manual && !busy) onConnectPc(selectedAddress, selectedToken)
     }
@@ -293,12 +286,6 @@ internal fun PcLinkPanel(
                     onToggle = { keyboard?.hide(); manual = !manual },
                     address = address,
                     onAddressChange = { address = it },
-                    port = port,
-                    onPortChange = { if (it.length <= 5) port = it },
-                    portPlaceholder = portPlaceholder,
-                    pairingLink = pairingLink,
-                    validPort = validPort,
-                    validAddress = validAddress,
                     canConnect = endpoint != null,
                     onConnect = connect,
                     modifier = Modifier.bringIntoViewRequester(connectionEntry),
@@ -339,6 +326,6 @@ internal fun PcLinkPanel(
     if (confirmForget) ForgetConnectionDialog(
         stringResource(L10nR.string.feature_connect_forget_saved_pc_80b440),
         onDismiss = { confirmForget = false },
-        onConfirm = { confirmForget = false; address = ""; port = ""; onForgetPc() },
+        onConfirm = { confirmForget = false; address = ""; onForgetPc() },
     )
 }

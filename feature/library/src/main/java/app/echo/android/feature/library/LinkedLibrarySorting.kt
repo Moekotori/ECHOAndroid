@@ -9,7 +9,10 @@ internal val LinkedTrackSortOptions = listOf(
     LibraryTrackSortMode.Random,
 )
 internal val LinkedAlbumSortOptions = listOf(
-    AlbumSortMode.Title, AlbumSortMode.Artist, AlbumSortMode.TrackCount, AlbumSortMode.Duration,
+    AlbumSortMode.Title, AlbumSortMode.TitleDescending,
+    AlbumSortMode.Artist, AlbumSortMode.ArtistDescending,
+    AlbumSortMode.TrackCount, AlbumSortMode.TrackCountAscending,
+    AlbumSortMode.Duration, AlbumSortMode.DurationAscending,
 )
 internal fun linkedTrackSort(mode: LibraryTrackSortMode): LibraryTrackSortMode =
     mode.takeIf { it in LinkedTrackSortOptions } ?: LibraryTrackSortMode.Title

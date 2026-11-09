@@ -285,6 +285,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     val localPlaylists: StateFlow<List<EchoPlaylist>> = libraryController.localPlaylists
     val favoriteTrackIds: StateFlow<Set<String>> = libraryController.favoriteTrackIds
     val favoriteAlbums: StateFlow<List<AlbumSummary>> = libraryController.favoriteAlbums
+    val likedAlbums: Flow<PagingData<AlbumSummary>> = libraryController.likedAlbums
     val libraryStats: StateFlow<LibraryStats> = libraryController.libraryStats
     internal suspend fun libraryHealthStats() = repository.libraryHealthStats()
     internal suspend fun libraryAudioProfile() = repository.libraryAudioProfile()
@@ -1097,6 +1098,34 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun enqueuePlaylist(playlistId: String, displayName: String) {
+        val limit = 500
+        val token = preferredPlayback.generationToken()
+        var truncated = false
+        preferredPlayback.append(load = {
+            val tracks = withContext(Dispatchers.IO) {
+                repository.playlistTracksForPlayback(playlistId, limit + 1).map { it.toEchoTrack() }
+            }
+            truncated = tracks.size > limit
+            tracks.take(limit)
+        }) { tracks ->
+            val context = getApplication<Application>()
+            if (tracks.isEmpty()) {
+                android.widget.Toast.makeText(context, app.echo.android.feature.library.R.string.playlist_queue_empty,
+                    android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                val items = playbackController.preparePlaylistQueue(tracks, displayName)
+                if (!preferredPlayback.isCurrent(token)) return@append
+                playbackController.enqueuePlaylist(tracks, items) {
+                    val resources = context.resources
+                    val message = if (truncated) resources.getString(app.echo.android.feature.library.R.string.playlist_queue_truncated, tracks.size)
+                    else resources.getQuantityString(app.echo.android.feature.library.R.plurals.playlist_queue_added, tracks.size, tracks.size)
+                    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     fun toggleFavorite(trackId: String? = playbackController.currentTrackId) {
         val id = trackId?.takeIf { it.isNotBlank() } ?: return
         viewModelScope.launch {
@@ -1126,8 +1155,29 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun deleteLocalPlaylist(playlistId: String) {
+        updateLibraryCollection { check(libraryController.deleteLocalPlaylist(playlistId)) }
+    }
+
+    fun observeLikedAlbum(albumKey: String) = libraryController.observeLikedAlbum(albumKey)
+
+    fun setLikedAlbum(albumKey: String, liked: Boolean) = updateLibraryCollection {
+        libraryController.setLikedAlbum(albumKey, liked)
+    }
+
+    fun restoreBuiltinPlaylists() = updateLibraryCollection {
+        libraryController.restoreBuiltinPlaylists()
+    }
+
+    private fun updateLibraryCollection(action: suspend () -> Unit) {
         viewModelScope.launch {
-            libraryController.deleteLocalPlaylist(playlistId)
+            try {
+                action()
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                android.widget.Toast.makeText(getApplication(), app.echo.android.feature.library.R.string.playlist_action_error,
+                    android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

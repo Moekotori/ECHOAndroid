@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.LibraryMusic
@@ -47,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,11 +60,14 @@ import app.echo.android.design.EchoTextButton
 import app.echo.android.design.EmptyState
 import app.echo.android.design.echoTheme
 import app.echo.android.model.library.EchoPlaylist
+import app.echo.android.model.library.LibrarySmartPlaylistKind
 
 @Composable
 internal fun LocalPlaylistPanel(
     playlists: List<EchoPlaylist>,
     query: String,
+    onOpenLikedAlbums: () -> Unit,
+    onRestoreBuiltinPlaylists: () -> Unit,
     onOpenPlaylist: (EchoPlaylist) -> Unit,
     onPlayPlaylist: (EchoPlaylist) -> Unit,
     onShufflePlaylist: (EchoPlaylist) -> Unit,
@@ -73,6 +79,9 @@ internal fun LocalPlaylistPanel(
     onDeletePlaylist: (EchoPlaylist) -> Unit,
     onImportM3uPlaylist: () -> Unit = {},
     onExportM3uPlaylist: (EchoPlaylist) -> Unit = {},
+    onEnqueuePlaylist: ((EchoPlaylist) -> Unit)? = null,
+    onSharePlaylist: ((EchoPlaylist) -> Unit)? = null,
+    onPinPlaylistShortcut: ((EchoPlaylist, Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var remoteVisible by remember { mutableStateOf(false) }
@@ -96,6 +105,9 @@ internal fun LocalPlaylistPanel(
     var sortName by rememberSaveable { mutableStateOf(PlaylistCatalogSort.Updated.name) }
     val sort = PlaylistCatalogSort.entries.firstOrNull { it.name == sortName } ?: PlaylistCatalogSort.Updated
     val sections by rememberPlaylistCatalog(playlists, query, sort)
+    val hasHiddenBuiltinPlaylists = remember(playlists) {
+        playlists.any { it.isLikedSongs } && playlists.count { it.smartKind != null } < LibrarySmartPlaylistKind.entries.size
+    }
 
     if (fileCreateVisible) FilePlaylistCreateDialog(onCreate = { name, folder ->
         fileCreateVisible = false; management?.createFilePlaylist?.invoke(name, folder)
@@ -114,18 +126,17 @@ internal fun LocalPlaylistPanel(
                     onCreatePlaylist = { createVisible = true },
                     onImportM3uPlaylist = onImportM3uPlaylist,
                     onCreateSmartPlaylist = experienceActions?.let { { editingSmart = null; smartEditorVisible = true } },
+                    onCreateFilePlaylist = management?.createFilePlaylist?.let { { fileCreateVisible = true } },
+                    onManageRemote = remoteManagement?.let { { remoteVisible = true } },
+                    onRestoreBuiltinPlaylists = onRestoreBuiltinPlaylists.takeIf { hasHiddenBuiltinPlaylists },
                 )
-                if (remoteManagement != null) TextButton(onClick = { remoteVisible = true }) {
-                    Text(stringResource(L10nR.string.nav_manage))
-                }
-                if (management?.createFilePlaylist != null) TextButton(onClick = { fileCreateVisible = true }) { Text(stringResource(L10nR.string.file_playlist_create)) }
             }
             if (sections.isEmpty() && query.isNotBlank()) {
                 item { EmptyState(stringResource(L10nR.string.playlist_no_search_results)) }
             } else {
                 sections.forEach { section ->
                     section.label?.let { label -> item(key = "section-${section.key}", contentType = "section") {
-                        Text(stringResource(label), modifier = Modifier.padding(top = 16.dp, bottom = 6.dp),
+                        Text(stringResource(label), modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } }
                     if (section.playlists.isEmpty()) item(key = "empty-${section.key}") {
@@ -139,6 +150,9 @@ internal fun LocalPlaylistPanel(
                             onMore = { menuPlaylistId = playlist.id },
                         )
                     }
+                    if (section.key == "liked" && query.isBlank()) {
+                        item(key = "liked-albums") { LikedAlbumsEntry(onOpenLikedAlbums) }
+                    }
                 }
             }
         }
@@ -146,7 +160,7 @@ internal fun LocalPlaylistPanel(
     }
 
     menuPlaylist?.let { playlist ->
-        val exportName = playlistDisplayName(playlist)
+        val namedPlaylist = playlist.copy(name = playlistDisplayName(playlist))
         fun dismissThen(action: () -> Unit): () -> Unit = { menuPlaylistId = null; action() }
         PlaylistActionsSheet(
             playlist = playlist,
@@ -154,7 +168,10 @@ internal fun LocalPlaylistPanel(
             onOpen = dismissThen { onOpenPlaylist(playlist) },
             onPlay = dismissThen { onPlayPlaylist(playlist) },
             onShuffle = dismissThen { onShufflePlaylist(playlist) },
-            onExport = dismissThen { onExportM3uPlaylist(playlist.copy(name = exportName)) },
+            onExport = dismissThen { onExportM3uPlaylist(namedPlaylist) },
+            onEnqueue = onEnqueuePlaylist?.let { enqueue -> dismissThen { enqueue(namedPlaylist) } },
+            onShare = onSharePlaylist?.let { share -> dismissThen { share(namedPlaylist) } },
+            onPinShortcut = onPinPlaylistShortcut?.let { pin -> dismissThen { pin(namedPlaylist, false) } },
             onAdd = management?.takeIf { playlist.canEdit }?.let { dismissThen { adding = playlist } },
             onCopy = management?.let { dismissThen { copyFailed = false; copying = playlist } },
             onArtwork = management?.takeIf { playlist.canEdit }?.let { actions -> dismissThen { actions.pickArtwork(playlist.id) } },
@@ -169,7 +186,7 @@ internal fun LocalPlaylistPanel(
                     catch (_: Exception) { snackbar.showSnackbar(pinError) }
                 }
             } },
-            onDelete = if (playlist.canEdit || playlist.isCustomSmartPlaylist) dismissThen { deleting = playlist } else null,
+            onDelete = if (playlist.canRemoveFromCatalog) dismissThen { deleting = playlist } else null,
         )
     }
     adding?.let { playlist ->
@@ -229,30 +246,10 @@ internal fun LocalPlaylistPanel(
         )
     }
     deleting?.let { playlist ->
-        AlertDialog(
-            onDismissRequest = { deleting = null },
-            title = { Text(stringResource(L10nR.string.feature_library_delete_playlist_4d9753)) },
-            text = {
-                Text(
-                    stringResource(L10nR.string.feature_library_delete_playlist_name_songs_in_the_library_will_3541db, (playlist.name).toString()),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeletePlaylist(playlist)
-                        deleting = null
-                    },
-                ) {
-                    Text(stringResource(L10nR.string.feature_library_delete_138ccf))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleting = null }) {
-                    Text(stringResource(L10nR.string.feature_library_cancel_4c5fa5))
-                }
-            },
-        )
+        PlaylistRemovalDialog(playlist, onDismiss = { deleting = null }, onConfirm = {
+            deleting = null
+            onDeletePlaylist(playlist)
+        })
     }
 }
 
@@ -311,9 +308,12 @@ private fun LocalPlaylistHeader(
     onCreatePlaylist: () -> Unit,
     onImportM3uPlaylist: () -> Unit,
     onCreateSmartPlaylist: (() -> Unit)?,
+    onCreateFilePlaylist: (() -> Unit)?,
+    onManageRemote: (() -> Unit)?,
+    onRestoreBuiltinPlaylists: (() -> Unit)?,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(L10nR.string.feature_library_playlistcount_playlists_220ceb, playlistCount.toString()),
             Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         PlaylistCatalogSortControl(sort, onSort)
@@ -332,10 +332,28 @@ private fun LocalPlaylistHeader(
                         onClick = { menuOpen = false; createSmart() },
                     )
                 }
+                onCreateFilePlaylist?.let { createFile ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(stringResource(L10nR.string.file_playlist_create)) },
+                        onClick = { menuOpen = false; createFile() },
+                    )
+                }
                 androidx.compose.material3.DropdownMenuItem(
                     text = { Text(stringResource(L10nR.string.playlist_import)) },
                     onClick = { menuOpen = false; onImportM3uPlaylist() },
                 )
+                onManageRemote?.let { manage ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(stringResource(L10nR.string.nav_manage)) },
+                        onClick = { menuOpen = false; manage() },
+                    )
+                }
+                onRestoreBuiltinPlaylists?.let { restore ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(stringResource(L10nR.string.smart_restore_builtin)) },
+                        onClick = { menuOpen = false; restore() },
+                    )
+                }
             }
         }
     }
@@ -348,10 +366,10 @@ private fun LocalPlaylistRow(
     onPlay: () -> Unit,
     onMore: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().echoClickable(onClick = onOpen).padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        ArtworkTile(playlist.artworkUri, Modifier.echoSharedCover("playlist", playlist.id).size(56.dp), accent = rememberLibraryArtworkAccent(), cornerRadius = 4.dp)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(Modifier.fillMaxWidth().echoClickable(onClick = onOpen).padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        ArtworkTile(playlist.artworkUri, Modifier.echoSharedCover("playlist", playlist.id).size(48.dp), accent = rememberLibraryArtworkAccent(), cornerRadius = 4.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(playlistDisplayName(playlist), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(playlistCaption(playlist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal,
@@ -362,6 +380,23 @@ private fun LocalPlaylistRow(
         }
         androidx.compose.material3.IconButton(onClick = onMore) {
             EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_playlist_actions))
+        }
+    }
+}
+
+@Composable
+private fun LikedAlbumsEntry(onOpen: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().echoClickable(role = Role.Button, onClick = onOpen).heightIn(min = 48.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            EchoIcon(Icons.Rounded.Album, contentDescription = null)
+        }
+        Text(stringResource(L10nR.string.album_liked_title), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null)
         }
     }
 }

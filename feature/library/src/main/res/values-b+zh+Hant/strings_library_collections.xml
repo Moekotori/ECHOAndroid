@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_liked_title">喜歡的專輯</string>
+    <string name="album_like">喜歡這張專輯</string>
+    <string name="album_unlike">取消喜歡這張專輯</string>
+    <string name="album_liked_empty">還沒有喜歡的專輯</string>
+    <string name="album_liked_hint">在專輯詳細資料中點選愛心，即可收藏到這裡。</string>
+    <string name="album_liked_search">搜尋喜歡的專輯</string>
+    <string name="album_liked_no_results">沒有符合條件的收藏專輯</string>
+    <string name="smart_hide_builtin">移除預設歌單</string>
+    <string name="smart_hide_builtin_message">要從曲庫移除「%1$s」嗎？可以在「+」選單中還原。</string>
+    <string name="smart_hide_confirm">移除</string>
+    <string name="smart_restore_builtin">還原預設智慧歌單</string>
+</resources>

@@ -1,17 +1,12 @@
 package app.echo.android.feature.library
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
@@ -27,21 +22,19 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Queue
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoSheetRow
 import app.echo.android.model.settings.EchoTrackMenuAction
@@ -91,19 +84,28 @@ internal fun TrackActionSheet(
     // Short windows need more room for actions while retaining the handle and safe insets.
     val hiddenActions = LocalHiddenTrackActions.current
     fun shown(action: app.echo.android.model.settings.EchoTrackMenuAction) = action !in hiddenActions
+    val setRating = LocalLibraryMediaTools.current?.setRating?.takeIf { track.supportsLocalRating() }
+    var showRating by rememberSaveable(track.id) { mutableStateOf(false) }
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val maxHeight = minOf(500.dp, screenHeight * if (screenHeight < 600.dp) 0.82f else 0.58f)
     Column(Modifier.fillMaxWidth().heightIn(max = maxHeight)) {
-        TrackSheetHeader(track, artworkSize = 52.dp, modifier = Modifier.padding(horizontal = 24.dp))
-        Spacer(Modifier.height(12.dp))
+        TrackSheetHeader(track, artworkSize = 40.dp, modifier = Modifier.padding(horizontal = 20.dp))
+        Spacer(Modifier.height(6.dp))
         // Only the actions scroll. At the top, downward scroll passes to the sheet.
         Column(
             modifier = Modifier
                 .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState(), overscrollEffect = null)
-                .padding(bottom = 16.dp),
+                .padding(bottom = 10.dp),
         ) {
-            LocalLibraryMediaTools.current?.setRating?.let { TrackRatingControl(track, it) }
+            if (setRating != null) {
+                EchoSheetRow(
+                    label = stringResource(L10nR.string.track_rating),
+                    icon = Icons.Rounded.StarBorder,
+                    onClick = { showRating = true },
+                    compact = true,
+                )
+            }
             if (onSelectForBatch != null) {
                 TrackActionRow(stringResource(L10nR.string.library_multiselect), Icons.Rounded.Checklist, enabled = true, onClick = onSelectForBatch)
             }
@@ -190,15 +192,18 @@ internal fun TrackActionSheet(
                 enabled = true, onClick = onShare)
         }
     }
+    if (showRating && setRating != null) {
+        TrackRatingControl(track, setRating, onDismiss = { showRating = false })
+    }
 }
 
 @Composable
 private fun TrackActionRow(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     enabled: Boolean,
     onClick: () -> Unit,
     danger: Boolean = false,
 ) {
-    EchoSheetRow(label = label, icon = icon, onClick = onClick, enabled = enabled, danger = danger, chevron = false)
+    EchoSheetRow(label = label, icon = icon, onClick = onClick, enabled = enabled, danger = danger, chevron = false, compact = true)
 }

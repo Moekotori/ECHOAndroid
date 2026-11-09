@@ -1,11 +1,13 @@
 package app.echo.android.ui.library
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 
 import app.echo.android.model.library.LibraryScanOptions
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.delay
@@ -67,7 +69,7 @@ internal fun EchoLibraryPage(
     onOpenPlayer: () -> Unit = {},
     bottomInset: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp(0f),
 ) {
-    EchoLibraryDestinations(viewModel, pageInteractive, onOpenPlayer, bottomInset) { _, openBroadcast ->
+    EchoLibraryDestinations(viewModel, pageInteractive, bottomInset) { _, openPodcasts ->
     val experienceActions = rememberLibraryExperienceActions(viewModel) { onScanFolder(appSettings.libraryScanOptions) }
     val shortcutContext = androidx.compose.ui.platform.LocalContext.current
     val libraryQuery by viewModel.libraryQuery.collectAsStateWithLifecycle()
@@ -113,6 +115,7 @@ internal fun EchoLibraryPage(
         viewModel.remoteLibraryTools.actions(endpoint, endpoint?.let { viewModel.navidromeTools.actions(it) })
     }
     val exportPlaylist = rememberPlaylistExport(viewModel)
+    val sharePlaylist = rememberPlaylistShare(viewModel.playlistTools)
     val playlistImportState by viewModel.playlistTools.importState.collectAsStateWithLifecycle()
     app.echo.android.feature.library.PlaylistImportDialog(playlistImportState,
         onConfirm = viewModel.playlistTools::confirm, onDismiss = viewModel.playlistTools::dismiss,
@@ -151,6 +154,12 @@ internal fun EchoLibraryPage(
     val selectedPlaylistId = selectedPlaylist?.id
     val albumDetailTracks = selectedAlbumKey?.let { albumKey ->
         remember(albumKey) { viewModel.albumTrackPaging(albumKey) }.collectAsLazyPagingItems()
+    }
+    val albumLiked = selectedAlbumKey?.let { albumKey ->
+        androidx.compose.runtime.key(albumKey) {
+            remember(viewModel) { viewModel.observeLikedAlbum(albumKey) }
+                .collectAsStateWithLifecycle(initialValue = null).value
+        }
     }
     var artistQuery by rememberSaveable(selectedArtistKey) { mutableStateOf("") }
     var artistSortName by rememberSaveable(selectedArtistKey) { mutableStateOf(LibraryTrackSortMode.Album.name) }
@@ -192,14 +201,6 @@ internal fun EchoLibraryPage(
         uri?.let(viewModel::importM3uPlaylist)
     }
 
-    val savedRadioStations by viewModel.radioController.stations.collectAsStateWithLifecycle()
-    val radioLoadFailed by viewModel.radioController.loadFailed.collectAsStateWithLifecycle()
-    val radioDirectorySearch by viewModel.radioController.directorySearch.collectAsStateWithLifecycle()
-    val radioStations by produceState(savedRadioStations, savedRadioStations, libraryQuery) {
-        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            savedRadioStations.filter { it.name.contains(libraryQuery.trim(), ignoreCase = true) }
-        }
-    }
     val detailScope = rememberCoroutineScope()
     val openAlbumArtist = remember(selectedAlbum, onOpenArtist) {
         val album = selectedAlbum
@@ -254,16 +255,15 @@ internal fun EchoLibraryPage(
         LibraryScreen(
             libraryLayout = appSettings.libraryLayout,
             onLibraryLayoutChange = viewModel::setLibraryLayout,
-            radioStations = radioStations,
-            radioLoadFailed = radioLoadFailed,
-            onRetryRadio = viewModel.radioController::reload,
-            onOpenRadio = { openBroadcast("radio") },
-            onOpenPodcasts = { openBroadcast("podcasts") },
-            onPlayRadio = { viewModel.play(it.toTrack()) },
-            onSaveRadio = viewModel.radioController::save,
-            onDeleteRadio = viewModel.radioController::delete,
-            radioDirectorySearch = radioDirectorySearch,
-            onRadioDirectoryQuery = viewModel.radioController::searchDirectory,
+            radioContent = { interactive ->
+                Box(Modifier.fillMaxSize().padding(bottom = bottomInset)) {
+                    EchoRadioHost(
+                        viewModel, playbackMetadata.mediaId, playbackMetadata.title, playbackControls,
+                        onOpenPlayer = onOpenPlayer, interactive = interactive,
+                    )
+                }
+            },
+            onOpenPodcasts = openPodcasts,
             hasPermission = hasAudioPermission,
             scanState = scanState,
             libraryQuery = libraryQuery,
@@ -290,6 +290,10 @@ internal fun EchoLibraryPage(
             composers = viewModel.composers,
             folders = viewModel.folders,
             playlists = localPlaylists,
+            likedAlbums = viewModel.likedAlbums,
+            albumLiked = albumLiked,
+            onSetAlbumLiked = viewModel::setLikedAlbum,
+            onRestoreBuiltinPlaylists = viewModel::restoreBuiltinPlaylists,
             showTrackAudioInfoTags = appSettings.trackAudioInfoTagsVisible,
             selectedAlbum = selectedAlbum,
             selectedArtist = liveArtist ?: selectedArtist?.copy(albumCount = 0, trackCount = 0, durationMs = 0),
@@ -386,8 +390,6 @@ internal fun EchoLibraryPage(
                 onOpenGenre(composer)
             },
             onPlayComposer = { composer -> viewModel.playComposer(composer.genreKey) },
-            onPlayFolder = { folder -> viewModel.playFolder(folder.folderKey) },
-            onShuffleFolder = { folder -> viewModel.shuffleFolder(folder.folderKey) },
             onPlayPlaylist = { playlist -> viewModel.playPlaylist(playlist.id) },
             onShufflePlaylist = { playlist -> viewModel.shufflePlaylist(playlist.id) },
             onCreatePlaylist = { name -> viewModel.createLocalPlaylist(name) },
@@ -397,9 +399,6 @@ internal fun EchoLibraryPage(
             onRenamePlaylist = { playlist, name -> viewModel.renameLocalPlaylist(playlist.id, name) },
             onDeletePlaylist = { playlist ->
                 viewModel.deleteLocalPlaylist(playlist.id)
-                if (selectedPlaylist?.id == playlist.id) {
-                    onCloseDetail()
-                }
             },
             onAddTrackToPlaylist = { playlist, track ->
                 viewModel.addTrackToLocalPlaylist(playlist.id, track.id)
@@ -446,6 +445,8 @@ internal fun EchoLibraryPage(
                 )
             },
             onExportM3uPlaylist = exportPlaylist,
+            onSharePlaylist = sharePlaylist,
+            onEnqueuePlaylist = { playlist -> viewModel.enqueuePlaylist(playlist.id, playlist.name) },
         )
     }
     }

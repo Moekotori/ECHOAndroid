@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_liked_title">Lieblingsalben</string>
+    <string name="album_like">Album zu Favoriten hinzufügen</string>
+    <string name="album_unlike">Album aus Favoriten entfernen</string>
+    <string name="album_liked_empty">Noch keine Lieblingsalben</string>
+    <string name="album_liked_hint">Tippe in den Albumdetails auf das Herz, um das Album hier zu speichern.</string>
+    <string name="album_liked_search">Lieblingsalben durchsuchen</string>
+    <string name="album_liked_no_results">Keine passenden Lieblingsalben</string>
+    <string name="smart_hide_builtin">Vorgegebene Playlist ausblenden</string>
+    <string name="smart_hide_builtin_message">„%1$s“ in der Mediathek ausblenden? Über das Plus-Menü kannst du die Playlist wiederherstellen.</string>
+    <string name="smart_hide_confirm">Ausblenden</string>
+    <string name="smart_restore_builtin">Vorgegebene Playlists wiederherstellen</string>
+</resources>

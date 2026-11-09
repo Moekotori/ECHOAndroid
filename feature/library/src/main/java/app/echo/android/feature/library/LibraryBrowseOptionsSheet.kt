@@ -32,7 +32,14 @@ import app.echo.android.design.EchoModalSheet
 import app.echo.android.design.EchoSwitch
 import app.echo.android.design.rememberEchoHapticPerformer
 import app.echo.android.model.library.*
+import app.echo.android.model.settings.EchoLibraryLayout
 import kotlinx.coroutines.flow.StateFlow
+
+private enum class LibraryBrowseTab(val title: Int) {
+    Sort(R.string.library_sort_title),
+    Filter(R.string.library_filter_title),
+    Display(R.string.library_display_settings),
+}
 
 @Composable
 internal fun LibraryBrowseOptionsMenu(
@@ -44,17 +51,19 @@ internal fun LibraryBrowseOptionsMenu(
     onInspectLyrics: () -> Unit,
     onCancelLyrics: () -> Unit,
     onCustomize: (() -> Unit)?,
+    layout: EchoLibraryLayout,
+    onLayoutChange: ((EchoLibraryLayout) -> Unit)?,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     IconButton(onClick = { open = true }) {
         BadgedBox(badge = { if (filter.isActive) Badge { Text(filter.activeCount.toString()) } }) {
             EchoIcon(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.library_browse_options_title),
                 Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-    if (open) LibraryBrowseOptionsSheet(selectedSort, filter, tab, onTabChange = { tab = it },
-        lyricsIndexState, onInspectLyrics, onCancelLyrics, onCustomize,
+    if (open) LibraryBrowseOptionsSheet(selectedSort, filter, tabIndex, onTabChange = { tabIndex = it },
+        lyricsIndexState, onInspectLyrics, onCancelLyrics, onCustomize, layout, onLayoutChange,
         onDismiss = { open = false }, onApply = { sort, next ->
             open = false
             if (sort != selectedSort) onSortChange(sort)
@@ -67,12 +76,14 @@ internal fun LibraryBrowseOptionsMenu(
 private fun LibraryBrowseOptionsSheet(
     selectedSort: LibraryTrackSortMode,
     filter: LibraryTrackFilter,
-    tab: Int,
+    tabIndex: Int,
     onTabChange: (Int) -> Unit,
     lyricsIndexState: StateFlow<LibraryLyricsIndexState>?,
     onInspectLyrics: () -> Unit,
     onCancelLyrics: () -> Unit,
     onCustomize: (() -> Unit)?,
+    layout: EchoLibraryLayout,
+    onLayoutChange: ((EchoLibraryLayout) -> Unit)?,
     onDismiss: () -> Unit,
     onApply: (LibraryTrackSortMode, LibraryTrackFilter) -> Unit,
 ) {
@@ -80,6 +91,12 @@ private fun LibraryBrowseOptionsSheet(
     var draft by draftState
     var sortName by rememberSaveable { mutableStateOf(selectedSort.name) }
     val sort = LibraryTrackSortMode.valueOf(sortName)
+    var fileNamesDraft by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var playNextDraft by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val showFileNames = fileNamesDraft ?: layout.showFileNames
+    val showPlayNext = playNextDraft ?: layout.showPlayNext
+    val tabs = if (onLayoutChange != null) LibraryBrowseTab.entries else listOf(LibraryBrowseTab.Sort, LibraryBrowseTab.Filter)
+    val tab = tabs.getOrElse(tabIndex) { LibraryBrowseTab.Sort }
     val focus = LocalFocusManager.current
     val applied = remember(draft) { draft.applied() }
     val filterCount = draft.conditionCount + draft.tagCount + draft.rangeCount + if (draft.filter.formats.isEmpty()) 0 else 1
@@ -91,32 +108,48 @@ private fun LibraryBrowseOptionsSheet(
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
                     LibraryTextTabs(
-                        labels = listOf(stringResource(R.string.library_sort_title),
-                            stringResource(R.string.library_filter_title) + if (filterCount > 0) " · $filterCount" else ""),
-                        selectedIndex = tab, compact = true,
+                        labels = tabs.map { option ->
+                            val title = stringResource(option.title)
+                            if (option == LibraryBrowseTab.Filter && filterCount > 0) "$title · $filterCount" else title
+                        },
+                        selectedIndex = tabs.indexOf(tab), compact = true,
                         onSelect = { focus.clearFocus(); onTabChange(it) },
                     )
                 }
+                val displayTab = tab == LibraryBrowseTab.Display
                 TextButton(onClick = {
-                    draft = LibraryTrackFilterDraft(LibraryTrackFilter())
-                    sortName = LibraryTrackSortMode.Title.name
-                }, enabled = filterCount > 0 || sort != LibraryTrackSortMode.Title) {
+                    if (displayTab) {
+                        fileNamesDraft = false
+                        playNextDraft = false
+                    } else {
+                        draft = LibraryTrackFilterDraft(LibraryTrackFilter())
+                        sortName = LibraryTrackSortMode.Title.name
+                    }
+                }, enabled = if (displayTab) showFileNames || showPlayNext else filterCount > 0 || sort != LibraryTrackSortMode.Title) {
                     Text(stringResource(R.string.library_filter_reset))
                 }
             }
             // A single bounded scroll area; tabs retain their drafts, expansion and scroll state.
-            tabStates.SaveableStateProvider(tab) {
+            tabStates.SaveableStateProvider(tab.ordinal) {
                 Column(Modifier.fillMaxWidth().weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (tab == 0) {
-                        LibrarySortChoices(sort, LocalTrackSortOptions, { it.label() },
-                            onSelect = { sortName = it.name }, section = ::trackSortSection)
-                        if (onCustomize != null) TextButton(
-                            onClick = { onDismiss(); onCustomize() }, modifier = Modifier.fillMaxWidth(),
-                        ) { Text(stringResource(R.string.library_layout_title)) }
-                    } else {
-                        LibraryTrackFilterFields(draftState, lyricsIndexState, onInspectLyrics, onCancelLyrics)
+                    when (tab) {
+                        LibraryBrowseTab.Sort -> {
+                            LibrarySortChoices(sort, LocalTrackSortOptions, { it.label() },
+                                onSelect = { sortName = it.name }, section = ::trackSortSection)
+                            if (onCustomize != null) TextButton(
+                                onClick = { onDismiss(); onCustomize() }, modifier = Modifier.fillMaxWidth(),
+                            ) { Text(stringResource(R.string.library_layout_title)) }
+                        }
+                        LibraryBrowseTab.Filter ->
+                            LibraryTrackFilterFields(draftState, lyricsIndexState, onInspectLyrics, onCancelLyrics)
+                        LibraryBrowseTab.Display -> LibrarySongDisplayOptions(
+                            showFileNames = showFileNames,
+                            showPlayNext = showPlayNext,
+                            onShowFileNamesChange = { fileNamesDraft = it },
+                            onShowPlayNextChange = { playNextDraft = it },
+                        )
                     }
                     Spacer(Modifier.height(4.dp))
                 }
@@ -127,7 +160,15 @@ private fun LibraryBrowseOptionsSheet(
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_filter_cancel)) }
-                Button(onClick = { focus.clearFocus(); applied?.let { onApply(sort, it) } }, enabled = applied != null) {
+                Button(onClick = {
+                    focus.clearFocus()
+                    applied?.let {
+                        if (showFileNames != layout.showFileNames || showPlayNext != layout.showPlayNext) {
+                            onLayoutChange?.invoke(layout.copy(showFileNames = showFileNames, showPlayNext = showPlayNext))
+                        }
+                        onApply(sort, it)
+                    }
+                }, enabled = applied != null) {
                     Text(stringResource(R.string.library_filter_apply))
                 }
             }

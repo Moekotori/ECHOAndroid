@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_liked_title">Liked albums</string>
+    <string name="album_like">Like album</string>
+    <string name="album_unlike">Unlike album</string>
+    <string name="album_liked_empty">No liked albums yet</string>
+    <string name="album_liked_hint">Tap the heart on an album to save it here.</string>
+    <string name="album_liked_search">Search liked albums</string>
+    <string name="album_liked_no_results">No matching liked albums</string>
+    <string name="smart_hide_builtin">Remove built-in playlist</string>
+    <string name="smart_hide_builtin_message">Remove “%1$s” from the library? You can bring it back from the + menu.</string>
+    <string name="smart_hide_confirm">Remove</string>
+    <string name="smart_restore_builtin">Restore built-in playlists</string>
+</resources>

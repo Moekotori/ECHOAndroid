@@ -3,4 +3,8 @@
     <string name="track_info_file_name">Имя файла</string>
     <string name="track_info_copy">Копировать всю информацию</string>
     <string name="track_info_copied">Информация о песне скопирована</string>
+    <string name="track_info_section_tags">Теги трека</string>
+    <string name="track_info_section_audio">Параметры аудио</string>
+    <string name="track_info_section_file">Сведения о файле</string>
+    <string name="track_info_missing_fields">Незаполненные поля (%1$d)</string>
 </resources>

@@ -17,36 +17,73 @@ import app.echo.android.model.library.LibrarySource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
+internal fun EchoTrack.supportsLocalRating(): Boolean =
+    source == LibrarySource.MediaStore || source == LibrarySource.Saf
+
 @Composable
-internal fun TrackRatingControl(track: EchoTrack, set: suspend (EchoTrack, Int?) -> Int) {
-    if (track.source != LibrarySource.MediaStore && track.source != LibrarySource.Saf) return
+internal fun TrackRatingControl(
+    track: EchoTrack,
+    set: suspend (EchoTrack, Int?) -> Int,
+    onDismiss: (() -> Unit)? = null,
+) {
+    if (!track.supportsLocalRating()) return
     var value by remember(track.id, track.rating) { mutableIntStateOf(track.rating) }
     var busy by remember(track.id) { mutableStateOf(false) }
     var failed by remember(track.id) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     fun choose(rating: Int?) {
         if (busy) return
-        busy = true; failed = false
+        busy = true
+        failed = false
         scope.launch {
-            try { value = set(track, rating) }
-            catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { failed = true }
-            finally { busy = false }
+            try {
+                value = set(track, rating)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                failed = true
+            } finally {
+                busy = false
+            }
         }
     }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(stringResource(R.string.track_rating), style = MaterialTheme.typography.labelLarge)
-        Row(Modifier.horizontalScroll(rememberScrollState())) {
-            (1..5).forEach { star -> IconButton(onClick = { choose(star) }, enabled = !busy) {
-                EchoIcon(if (star <= value) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                    stringResource(R.string.track_rating_stars, star), tint = MaterialTheme.colorScheme.onSurface)
-            } }
+    val options: @Composable () -> Unit = {
+        Column(Modifier.fillMaxWidth()) {
+            Row(Modifier.horizontalScroll(rememberScrollState())) {
+                (1..5).forEach { star ->
+                    IconButton(onClick = { choose(star) }, enabled = !busy) {
+                        EchoIcon(
+                            if (star <= value) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                            stringResource(R.string.track_rating_stars, star),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
+            FlowRow {
+                TextButton(onClick = { choose(0) }, enabled = !busy) { Text(stringResource(R.string.track_rating_unrated)) }
+                TextButton(onClick = { choose(null) }, enabled = !busy) { Text(stringResource(R.string.track_rating_file)) }
+            }
+            if (failed) Text(stringResource(R.string.playlist_action_error), color = MaterialTheme.colorScheme.error)
         }
-        Row {
-            TextButton(onClick = { choose(0) }, enabled = !busy) { Text(stringResource(R.string.track_rating_unrated)) }
-            TextButton(onClick = { choose(null) }, enabled = !busy) { Text(stringResource(R.string.track_rating_file)) }
+    }
+    val title = stringResource(R.string.track_rating)
+    if (onDismiss == null) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(title, style = MaterialTheme.typography.labelLarge)
+            options()
         }
-        if (failed) Text(stringResource(R.string.playlist_action_error), color = MaterialTheme.colorScheme.error)
+    } else {
+        AlertDialog(
+            onDismissRequest = { if (!busy) onDismiss() },
+            title = { Text(title) },
+            text = options,
+            confirmButton = {
+                TextButton(onClick = onDismiss, enabled = !busy) {
+                    Text(stringResource(R.string.feature_library_close_473a69))
+                }
+            },
+        )
     }
 }
 

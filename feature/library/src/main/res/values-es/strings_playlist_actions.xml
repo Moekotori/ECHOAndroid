@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlist_enqueue">Añadir a la cola de reproducción</string>
+    <string name="playlist_share">Compartir lista</string>
+    <string name="playlist_share_failed">No se pudo compartir la lista.</string>
+    <string name="playlist_queue_empty">No hay canciones para añadir a la cola.</string>
+    <string name="playlist_queue_truncated">Se añadieron las primeras %1$d canciones a la cola.</string>
+    <plurals name="playlist_queue_added">
+        <item quantity="one">Se añadió %1$d canción a la cola.</item>
+        <item quantity="other">Se añadieron %1$d canciones a la cola.</item>
+    </plurals>
+</resources>
