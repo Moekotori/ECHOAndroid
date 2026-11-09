@@ -280,9 +280,10 @@ private fun resolveEchoLinkDataSpec(dataSpec: DataSpec): DataSpec {
     // DataSource.open runs on the Media3 loader thread, never the UI thread.
     val raw = dataSpec.uri.toString()
     val trackId = EchoLinkPlaybackUri.trackIdFromPersistUri(raw) ?: return dataSpec
+    val mediaId = EchoLinkPlaybackUri.mediaId(trackId, EchoLinkPlaybackUri.sourceKey("", raw))
     val uri = kotlinx.coroutines.runBlocking {
         withTimeoutOrNull(EchoLinkStreamRefreshPolicy.ResolveTimeoutMs) {
-            EchoPlaybackProcessRuntime.resolvePlayUri(EchoLinkPlaybackUri.mediaId(trackId), raw)
+            EchoPlaybackProcessRuntime.resolvePlayUri(mediaId, raw)
         } ?: throw IOException("PC ECHO stream timed out")
     }
     if (EchoLinkPlaybackUri.trackIdFromPersistUri(uri) != null) {
@@ -290,7 +291,7 @@ private fun resolveEchoLinkDataSpec(dataSpec: DataSpec): DataSpec {
     }
     return dataSpec.buildUpon()
         .setUri(Uri.parse(uri))
-        .setKey(dataSpec.key ?: EchoLinkPlaybackUri.mediaId(trackId))
+        .setKey(dataSpec.key ?: mediaId)
         .build()
 }
 
@@ -709,7 +710,11 @@ internal object EchoRemotePlaybackCachePolicy {
         val trackId = EchoLinkPlaybackUri.trackIdFromPersistUri(uri)
             ?: explicitKey?.let(EchoLinkPlaybackUri::trackIdFromMediaId)
             ?: EchoLinkPlaybackUri.trackIdFromMediaId(uri)
-        if (trackId != null) return "echo-link-track:$trackId"
+        if (trackId != null) {
+            val sourceKey = EchoLinkPlaybackUri.sourceKey(explicitKey.orEmpty(), uri)
+            val resource = if (sourceKey == null) trackId else EchoLinkPlaybackUri.mediaId(trackId, sourceKey)
+            return "echo-link-track:$resource"
+        }
         return explicitKey?.takeIf { it.isNotBlank() } ?: uri
     }
 }

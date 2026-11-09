@@ -9,20 +9,35 @@ object EchoLinkPlaybackUri {
     const val MediaIdPrefix = "echo-link:"
     const val PersistUriPrefix = "echo-link://track/"
     const val OneShotStreamPath = "/echo-link/media/"
+    private const val ScopedMediaIdPrefix = "echo-link-pc:"
+    private const val SourceParameter = "?pc="
 
-    fun mediaId(trackId: String): String = MediaIdPrefix + trackId
+    fun mediaId(trackId: String, sourceKey: String? = null): String =
+        if (sourceKey == null) MediaIdPrefix + trackId
+        else "$ScopedMediaIdPrefix${encodeSegment(sourceKey)}/${encodeSegment(trackId)}"
 
-    fun persistUri(trackId: String): String =
-        PersistUriPrefix + encodeSegment(trackId)
+    fun persistUri(trackId: String, sourceKey: String? = null): String =
+        PersistUriPrefix + encodeSegment(trackId) + sourceKey?.let { SourceParameter + encodeSegment(it) }.orEmpty()
 
     fun trackIdFromMediaId(mediaId: String): String? {
+        if (mediaId.startsWith(ScopedMediaIdPrefix)) {
+            return decodeSegment(mediaId.substringAfter('/', "")).takeIf { it.isNotBlank() }
+        }
         if (!mediaId.startsWith(MediaIdPrefix)) return null
         return mediaId.removePrefix(MediaIdPrefix).takeIf { it.isNotBlank() }
     }
 
     fun trackIdFromPersistUri(uri: String): String? {
         if (!uri.startsWith(PersistUriPrefix)) return null
-        return decodeSegment(uri.removePrefix(PersistUriPrefix)).takeIf { it.isNotBlank() }
+        return decodeSegment(uri.removePrefix(PersistUriPrefix).substringBefore(SourceParameter)).takeIf { it.isNotBlank() }
+    }
+
+    fun sourceKey(mediaId: String, uri: String): String? = when {
+        mediaId.startsWith(ScopedMediaIdPrefix) ->
+            decodeSegment(mediaId.removePrefix(ScopedMediaIdPrefix).substringBefore('/')).takeIf { it.isNotBlank() }
+        uri.startsWith(PersistUriPrefix) ->
+            decodeSegment(uri.substringAfter(SourceParameter, "")).takeIf { it.isNotBlank() }
+        else -> null
     }
 
     fun trackId(mediaId: String, uri: String): String? =
@@ -36,7 +51,7 @@ object EchoLinkPlaybackUri {
 
     fun persistableUri(mediaId: String, playUri: String): String {
         val trackId = trackId(mediaId, playUri)
-        if (trackId != null) return persistUri(trackId)
+        if (trackId != null) return persistUri(trackId, sourceKey(mediaId, playUri))
         return playUri
     }
 

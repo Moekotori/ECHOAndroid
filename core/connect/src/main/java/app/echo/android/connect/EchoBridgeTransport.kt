@@ -42,13 +42,8 @@ internal class EchoBridgeTransport(private val execute: suspend (Request) -> JSO
     suspend fun playlists(endpoint: EchoRemoteEndpoint, query: String, page: Int): EchoLinkPlaylistPage {
         val catalog = catalog(endpoint, "playlists", query, page)
         val rows = catalog.getJSONArray("entries")
-        // Older Bridge catalogs omit playlist provenance on every row.
-        if (page == 1 && rows.length() > 0 &&
-            (0 until rows.length()).none { rows.optJSONObject(it)?.playlistProvider() != null }
-        ) {
-            return EchoLinkPlaylistPage(emptyList())
-        }
-        return rows.localPlaylistPage(page, 50, catalog.optInt("total", rows.length())) {
+        // The Bridge catalog predates per-row provenance. Keep its unlabelled playlists.
+        return rows.localPlaylistPage(page, 50, catalog.optInt("total", rows.length()), includeUnlabelled = true) {
             EchoRemotePlaylist(id = it.getString("id"), name = it.optText("title").orEmpty(),
                 trackCount = it.optInt("count").coerceAtLeast(0), sourceLabel = "local",
                 artworkUrl = EchoBridgeArtwork.url(endpoint, it.optText("coverId")))

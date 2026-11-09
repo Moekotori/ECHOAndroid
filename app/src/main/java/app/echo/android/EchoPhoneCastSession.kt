@@ -38,7 +38,7 @@ internal class EchoPhoneCastSession(private val session: EchoLinkSession) : Echo
                 is EchoLinkCastPlan.LocalHttp -> session.client.castRemoteQueueToPc(checkNotNull(prepared).items,
                     plan.startIndex, positionMs, onSuccess = success, onFailure = failure)
                 is EchoLinkCastPlan.HandoffPcLibrary -> session.client.handoffPhoneQueueToPc(plan.tracks,
-                    plan.startIndex, positionMs, onSuccess = success, onFailure = failure)
+                    plan.startIndex, positionMs, onSuccess = success, onFailure = failure, sourceKey = plan.sourceKey)
                 is EchoLinkCastPlan.Blocked -> error("Cannot send a blocked cast")
             }
         }

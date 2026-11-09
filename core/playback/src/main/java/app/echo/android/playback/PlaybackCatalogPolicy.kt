@@ -14,16 +14,16 @@ object PlaybackCatalogPolicy {
         requestedIds: List<String>,
         resolvedIds: List<String>,
         startIndex: Int,
+        resolvedCounts: IntArray,
     ): Int {
-        if (resolvedIds.isEmpty()) return 0
-        if (requestedIds.size == 1) {
-            return PlaybackSessionPolicy.queueStartIndex(resolvedIds, requestedIds.first())
+        if (resolvedIds.isEmpty() || requestedIds.isEmpty()) return 0
+        val selected = startIndex.coerceIn(requestedIds.indices)
+        var offset = 0
+        for (index in 0 until selected) offset += resolvedCounts[index]
+        // Search only the items expanded from the selected entry. IDs can repeat across entries.
+        for (index in offset until offset + resolvedCounts[selected]) {
+            if (resolvedIds[index] == requestedIds[selected]) return index
         }
-        val requestedId = requestedIds.getOrNull(startIndex)
-        if (!requestedId.isNullOrBlank()) {
-            val mapped = PlaybackSessionPolicy.queueStartIndex(resolvedIds, requestedId)
-            if (resolvedIds.getOrNull(mapped) == requestedId) return mapped
-        }
-        return startIndex.coerceIn(0, resolvedIds.lastIndex)
+        return offset.coerceAtMost(resolvedIds.lastIndex)
     }
 }

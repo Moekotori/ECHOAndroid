@@ -80,14 +80,28 @@ class UsbFeatureVolumeTest {
     @Test fun pcmRampIsBoundedMonotonicAndReachesTarget() {
         val ramp = UsbPcmGainRamp(1f, 48000)
         ramp.target = 0f
+        ramp.beginWrite()
         var previous = 1f
-        repeat(1600) { val gain = ramp.next(); assertTrue(gain in 0f..previous); previous = gain }
+        for (frame in 1..1600) {
+            val gain = ramp.gainForWrite(frame)
+            assertTrue(gain in 0f..previous)
+            previous = gain
+        }
         assertEquals(0f, previous, 0f)
+        ramp.commitWrittenFrames(1600)
         ramp.target = 1f
-        repeat(1600) { val gain = ramp.next(); assertTrue(gain in previous..1f); previous = gain }
-        assertTrue(ramp.unity())
+        ramp.beginWrite()
+        for (frame in 1..1600) {
+            val gain = ramp.gainForWrite(frame)
+            assertTrue(gain in previous..1f)
+            previous = gain
+        }
+        ramp.commitWrittenFrames(1600)
+        ramp.beginWrite()
+        assertTrue(ramp.writeIsUnity())
         ramp.resetWhileMuted()
         ramp.target = .5f
-        assertTrue(ramp.next() < .01f)
+        ramp.beginWrite()
+        assertTrue(ramp.gainForWrite(1) < .01f)
     }
 }

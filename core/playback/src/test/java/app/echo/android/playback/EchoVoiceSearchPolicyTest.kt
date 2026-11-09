@@ -31,7 +31,7 @@ class EchoVoiceSearchPolicyTest {
     }
 
     @Test fun queueAnchorPreservesRequestedSongPosition() {
-        assertEquals(2, PlaybackCatalogPolicy.resolvedStartIndex(listOf("third"), listOf("first", "second", "third"), 0))
+        assertEquals(2, PlaybackCatalogPolicy.resolvedStartIndex(listOf("third"), listOf("first", "second", "third"), 0, intArrayOf(3)))
         assertTrue(EchoMediaSearchRequest("   ").term.isEmpty())
     }
 }

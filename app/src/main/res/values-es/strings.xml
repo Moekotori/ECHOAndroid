@@ -17,8 +17,8 @@
     <string name="permission_notification_description">Mostrar controles de reproducción</string>
     <string name="tag_write_saved_to_file">Etiquetas guardadas en el archivo de audio</string>
     <string name="tag_write_saved_index_only">Guardado en el índice de la biblioteca. El archivo de audio no se modificó</string>
-    <string name="tag_write_unsupported_format">Este formato de archivo aún no admite etiquetas. Se guardó en el índice de la biblioteca</string>
-    <string name="tag_write_failed">No se pudo escribir el archivo de audio. Se guardó en el índice de la biblioteca</string>
+    <string name="tag_write_unsupported_format">Este formato de archivo aún no admite etiquetas.</string>
+    <string name="tag_write_failed">No se pudo escribir el archivo de audio.</string>
     <string name="lastfm_disconnected">Last.fm no está conectado</string>
     <string name="lastfm_connecting">Last.fm se está conectando</string>
     <string name="lastfm_connected">Last.fm conectado: %1$s</string>

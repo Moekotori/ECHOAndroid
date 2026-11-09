@@ -102,7 +102,10 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
         }
         EchoPlaybackProcessRuntime.setStreamResolver { mediaId, uri ->
             val id = app.echo.android.model.playback.EchoLinkPlaybackUri.trackId(mediaId, uri)
-            if (id == null) uri else echoLinkSession.client.resolvePhoneStreamUrl(id, previousStreamUrl = uri)
+            if (id == null) uri else echoLinkSession.client.resolvePhoneStreamUrl(
+                id, previousStreamUrl = uri,
+                sourceKey = app.echo.android.model.playback.EchoLinkPlaybackUri.sourceKey(mediaId, uri),
+            )
         }
         echoLinkSession
         EchoArtworkUrlRewriteRegistry.replace { url ->

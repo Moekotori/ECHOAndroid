@@ -18,12 +18,14 @@ internal fun JSONArray.localPlaylistPage(
     page: Int,
     pageSize: Int,
     totalCount: Int,
+    includeUnlabelled: Boolean = false,
     toPlaylist: (JSONObject) -> EchoRemotePlaylist?,
 ): EchoLinkPlaylistPage {
     val playlists = buildList {
         for (index in 0 until length()) {
             val row = optJSONObject(index) ?: continue
-            if (row.playlistProvider().equals("local", ignoreCase = true)) {
+            val provider = row.playlistProvider()
+            if (provider.equals("local", ignoreCase = true) || (provider == null && includeUnlabelled)) {
                 toPlaylist(row)?.let(::add)
             }
         }

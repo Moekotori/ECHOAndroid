@@ -226,11 +226,13 @@ internal class EchoPlaybackLibrarySessionCallback(
                     result.items.map { it.toMediaItem().asQueueEntry() }, result.startIndex, 0L)
             }
             val requestedIds = mediaItems.map { it.mediaId }
-            val resolved = resolvePlayableMediaItems(mediaItems)
+            val resolvedCounts = IntArray(mediaItems.size)
+            val resolved = resolvePlayableMediaItems(mediaItems, resolvedCounts)
             val resolvedStart = PlaybackCatalogPolicy.resolvedStartIndex(
                 requestedIds = requestedIds,
                 resolvedIds = resolved.map { it.mediaId },
                 startIndex = startIndex,
+                resolvedCounts = resolvedCounts,
             )
             MediaSession.MediaItemsWithStartPosition(
                 resolved.map { if (it.queueContext() == null) it.asQueueEntry(source = it.mediaMetadata.albumTitle?.toString()) else it },
@@ -239,27 +241,32 @@ internal class EchoPlaybackLibrarySessionCallback(
             )
         }
 
-    private suspend fun resolvePlayableMediaItems(mediaItems: List<MediaItem>): List<MediaItem> =
-        mediaItems.flatMap { item ->
-            item.voiceSearchRequest()?.let { request ->
-                return@flatMap catalog().voiceQueue(request).items.map { it.toMediaItem() }
-            }
-            val playUri = item.localConfiguration?.uri?.toString()
-            if (
-                !PlaybackCatalogPolicy.shouldExpandCatalogQueue(
-                    mediaId = item.mediaId,
-                    hasPlayUri = PlaybackCatalogPolicy.hasPlayableUri(playUri),
-                )
-            ) {
-                return@flatMap if (PlaybackCatalogPolicy.hasPlayableUri(playUri)) listOf(item) else emptyList()
-            }
-            val queued = catalog().playableQueue(item.mediaId)
-            when {
-                queued.isNotEmpty() -> queued.map { it.toMediaItem() }
-                PlaybackCatalogPolicy.hasPlayableUri(playUri) -> listOf(item)
-                else -> emptyList()
-            }
+    private suspend fun resolvePlayableMediaItems(
+        mediaItems: List<MediaItem>,
+        resolvedCounts: IntArray? = null,
+    ): List<MediaItem> = buildList {
+        mediaItems.forEachIndexed { index, item ->
+            val entries = resolvePlayableMediaItem(item)
+            resolvedCounts?.set(index, entries.size)
+            addAll(entries)
         }
+    }
+
+    private suspend fun resolvePlayableMediaItem(item: MediaItem): List<MediaItem> {
+        item.voiceSearchRequest()?.let { request ->
+            return catalog().voiceQueue(request).items.map { it.toMediaItem() }
+        }
+        val hasPlayUri = PlaybackCatalogPolicy.hasPlayableUri(item.localConfiguration?.uri?.toString())
+        if (!PlaybackCatalogPolicy.shouldExpandCatalogQueue(item.mediaId, hasPlayUri)) {
+            return if (hasPlayUri) listOf(item) else emptyList()
+        }
+        val queued = catalog().playableQueue(item.mediaId)
+        return when {
+            queued.isNotEmpty() -> queued.map { it.toMediaItem() }
+            hasPlayUri -> listOf(item)
+            else -> emptyList()
+        }
+    }
 
     override fun onPlaybackResumption(
         mediaSession: MediaSession,

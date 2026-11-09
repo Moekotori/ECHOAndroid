@@ -7,16 +7,23 @@ class UsbPcmGainRamp(initial: Float, sampleRate: Int) {
     private val reset = java.util.concurrent.atomic.AtomicInteger()
     private var appliedReset = 0
     private val step = 1f / (sampleRate.coerceAtLeast(1) * .03f)
+    private var writeStart = current
+    private var writeTarget = target
     /** Only after hardware mute has been verified, so idle/prebuffered playback also starts quietly. */
     fun resetWhileMuted() { target = 0f; reset.incrementAndGet() }
-    fun next(): Float {
+    fun beginWrite() {
         val revision = reset.get()
         if (revision != appliedReset) { current = 0f; appliedReset = revision }
-        val wanted = target
-        current = when { wanted > current -> minOf(wanted, current + step)
-            wanted < current -> maxOf(wanted, current - step)
-            else -> current }
-        return current
+        writeStart = current
+        writeTarget = target
     }
-    fun unity() = target == 1f && current == 1f && reset.get() == appliedReset
+
+    fun gainForWrite(frames: Int): Float =
+        writeStart + (writeTarget - writeStart).coerceIn(-step * frames, step * frames)
+
+    fun commitWrittenFrames(frames: Int) {
+        current = gainForWrite(frames)
+    }
+
+    fun writeIsUnity(): Boolean = writeStart == 1f && writeTarget == 1f
 }

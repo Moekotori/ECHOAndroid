@@ -974,6 +974,7 @@ class EchoRemoteClient internal constructor(
         positionMs: Long,
         onFailure: (Throwable?) -> Unit = {},
         onSuccess: () -> Unit = {},
+        sourceKey: String? = null,
     ): Job? {
         val startTrack = tracks.getOrNull(startIndex) ?: tracks.firstOrNull()
         val trackId = startTrack?.id?.takeIf { it.isNotBlank() } ?: run {
@@ -992,6 +993,10 @@ class EchoRemoteClient internal constructor(
                     error = text(R.string.connect_not_connected),
                 )
             }
+            onFailure(null)
+            return null
+        }
+        if (!EchoLinkRequestPolicy.matchesPlaybackSource(target, sourceKey)) {
             onFailure(null)
             return null
         }
@@ -1137,13 +1142,14 @@ class EchoRemoteClient internal constructor(
         phonePlaybackJob = scope.launch {
             val resolved = runSuspendCatching {
                 val stream = resolveCachedStream(target, requestedId)
+                val sourceKey = EchoLinkRequestPolicy.playbackSourceKey(target)
                 withContext(Dispatchers.Default) {
                     val before = EchoLinkLibraryQueryPolicy.playableLinkedPhoneTracks(tracks.subList(0, startIndex))
                     val after = EchoLinkLibraryQueryPolicy.playableLinkedPhoneTracks(tracks.subList(startIndex + 1, tracks.size))
                     val queue = buildList(before.size + 1 + after.size) {
-                        before.forEach { add(it.toPhonePlaybackTrack()) }
-                        add(requested.toPhonePlaybackTrack(stream.streamUrl, stream.sourceRange))
-                        after.forEach { add(it.toPhonePlaybackTrack()) }
+                        before.forEach { add(it.toPhonePlaybackTrack(sourceKey = sourceKey)) }
+                        add(requested.toPhonePlaybackTrack(stream.streamUrl, stream.sourceRange, sourceKey))
+                        after.forEach { add(it.toPhonePlaybackTrack(sourceKey = sourceKey)) }
                     }
                     queue to before.size
                 }
@@ -1448,13 +1454,19 @@ class EchoRemoteClient internal constructor(
     suspend fun resolvePhonePlaybackTrack(ref: app.echo.android.model.playback.EchoTrackRef): app.echo.android.model.playback.EchoTrackRef {
         val id = EchoLinkPlaybackUri.trackId(ref.id, ref.uri) ?: return ref
         val target = endpoint ?: return ref
+        if (!EchoLinkRequestPolicy.matchesPlaybackSource(target, EchoLinkPlaybackUri.sourceKey(ref.id, ref.uri))) return ref
         val source = resolveCachedStream(target, id)
         return ref.copy(uri = source.streamUrl, clipStartMs = source.sourceRange?.startMs ?: 0L,
             clipEndMs = source.sourceRange?.endMs ?: 0L)
     }
 
-    suspend fun resolvePhoneStreamUrl(trackId: String, previousStreamUrl: String? = null): String? {
+    suspend fun resolvePhoneStreamUrl(
+        trackId: String,
+        previousStreamUrl: String? = null,
+        sourceKey: String? = EchoLinkPlaybackUri.sourceKey("", previousStreamUrl.orEmpty()),
+    ): String? {
         val target = endpoint ?: return null
+        if (!EchoLinkRequestPolicy.matchesPlaybackSource(target, sourceKey)) return null
         val connection = connectGeneration
         if (trackId.isBlank()) return null
         return runSuspendCatching { resolveCachedStream(target, trackId, previousStreamUrl) }
@@ -1471,7 +1483,8 @@ class EchoRemoteClient internal constructor(
         val stream = resolveCachedStream(target, checkNotNull(track.id).also { check(it.isNotBlank()) })
         check(connection == connectGeneration && EchoLinkRequestPolicy.isSameEndpoint(endpoint, target) &&
             status.value.connectionState == EchoRemoteConnectionState.Connected)
-        return track.toPhonePlaybackTrack(checkNotNull(stream.streamUrl).also { check(it.isNotBlank()) }, stream.sourceRange)
+        return track.toPhonePlaybackTrack(checkNotNull(stream.streamUrl).also { check(it.isNotBlank()) },
+            stream.sourceRange, EchoLinkRequestPolicy.playbackSourceKey(target))
     }
 
     private suspend fun resolveCachedStream(
@@ -1524,8 +1537,9 @@ class EchoRemoteClient internal constructor(
         synchronized(streamCacheLock) { streamCache.clear() }
     }
 
-    suspend fun fetchLyrics(trackId: String): EchoRemoteLyrics? {
+    suspend fun fetchLyrics(trackId: String, sourceKey: String? = null): EchoRemoteLyrics? {
         val target = endpoint ?: return null
+        if (!EchoLinkRequestPolicy.matchesPlaybackSource(target, sourceKey)) return null
         val connection = connectGeneration
         if (trackId.isBlank()) return null
         return runSuspendCatching { transport.fetchLyrics(target, trackId) }.getOrNull()
@@ -1562,13 +1576,14 @@ private data class CachedEchoLinkStream(
 )
 
 internal fun EchoRemoteTrack.toPhonePlaybackTrack(
-    streamUrl: String = EchoLinkPlaybackUri.persistUri(requireNotNull(id)),
+    streamUrl: String? = null,
     range: app.echo.android.model.connect.EchoRemoteSourceRange? = sourceRange,
+    sourceKey: String? = null,
 ): EchoTrack {
-    val trackId = id?.takeIf { it.isNotBlank() } ?: streamUrl.hashCode().toString()
+    val trackId = id?.takeIf { it.isNotBlank() } ?: requireNotNull(streamUrl).hashCode().toString()
     return EchoTrack(
-        id = EchoLinkPlaybackUri.mediaId(trackId),
-        uri = streamUrl,
+        id = EchoLinkPlaybackUri.mediaId(trackId, sourceKey),
+        uri = streamUrl ?: EchoLinkPlaybackUri.persistUri(trackId, sourceKey),
         title = title,
         artist = artist,
         album = album,

@@ -17,8 +17,8 @@
     <string name="permission_notification_description">Wiedergabesteuerung anzeigen</string>
     <string name="tag_write_saved_to_file">Tags in die Audiodatei gespeichert</string>
     <string name="tag_write_saved_index_only">Im Bibliotheksindex gespeichert. Die Audiodatei wurde nicht geändert</string>
-    <string name="tag_write_unsupported_format">Dieses Dateiformat kann noch nicht getaggt werden. Im Bibliotheksindex gespeichert</string>
-    <string name="tag_write_failed">Die Audiodatei konnte nicht geschrieben werden. Im Bibliotheksindex gespeichert</string>
+    <string name="tag_write_unsupported_format">Dieses Dateiformat kann noch nicht getaggt werden.</string>
+    <string name="tag_write_failed">Die Audiodatei konnte nicht geschrieben werden.</string>
     <string name="lastfm_disconnected">Last.fm ist nicht verbunden</string>
     <string name="lastfm_connecting">Last.fm wird verbunden</string>
     <string name="lastfm_connected">Last.fm verbunden: %1$s</string>

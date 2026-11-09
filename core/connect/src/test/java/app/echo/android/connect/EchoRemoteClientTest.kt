@@ -22,6 +22,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -256,7 +257,7 @@ class EchoRemoteClientTest {
         assertEquals(1, transport.cancelledStreams)
         blocker.complete(Unit)
         delay(20)
-        assertEquals("echo-link:new", played)
+        assertEquals("new", EchoLinkPlaybackUri.trackIdFromMediaId(played.orEmpty()))
         client.disconnect()
     }
 
@@ -500,7 +501,7 @@ class EchoRemoteClientTest {
         )
         delay(50)
         assertEquals(1, transport.streamCalls)
-        assertEquals(listOf("echo-link:a", "echo-link:b", "echo-link:c"), received)
+        assertEquals(listOf("a", "b", "c"), received.map(EchoLinkPlaybackUri::trackIdFromMediaId))
         assertEquals(1, start)
         client.disconnect()
     }
@@ -520,11 +521,41 @@ class EchoRemoteClientTest {
             )
 
             val (queue, index) = withTimeout(2_000) { ready.await() }
-            assertEquals(listOf("echo-link:a", "echo-link:b", "echo-link:a"), queue.map { it.id })
+            val source = EchoLinkRequestPolicy.playbackSourceKey(endpoint)
+            assertEquals(listOf("a", "b", "a").map { EchoLinkPlaybackUri.mediaId(it, source) }, queue.map { it.id })
             assertEquals(2, index)
-            assertEquals(EchoLinkPlaybackUri.persistUri("a"), queue.first().uri)
+            assertEquals(EchoLinkPlaybackUri.persistUri("a", source), queue.first().uri)
             assertTrue(EchoLinkPlaybackUri.isOneShotStreamUri(queue[index].uri))
             assertEquals(1, transport.streamCalls)
+        } finally { client.disconnect() }
+    }
+
+    @Test
+    fun queuedAndRestoredTracksOnlyResolveAgainstTheirSourcePc() = runBlocking {
+        val transport = FakeEchoLinkTransport()
+        val client = EchoRemoteClient(this, transport)
+        try {
+            client.connect(endpoint, refreshLibraryOnConnect = false)
+            val ready = CompletableDeferred<List<EchoTrack>>()
+            client.playTracksOnPhone(listOf(remoteTrack("a"), remoteTrack("b")), 0,
+                onQueueReady = { queue, _ -> ready.complete(queue) })
+            val (selected, next) = withTimeout(2_000) { ready.await() }
+            val restored = EchoLinkPlaybackUri.persistableUri(selected.id, selected.uri)
+            val source = EchoLinkRequestPolicy.playbackSourceKey(endpoint)
+            assertEquals(source, EchoLinkPlaybackUri.sourceKey("", restored))
+            assertEquals("a", EchoLinkPlaybackUri.trackIdFromPersistUri(restored))
+            assertEquals(source, EchoLinkPlaybackUri.sourceKey("", next.uri))
+            assertFalse(restored.contains(endpoint.token) && endpoint.token.isNotBlank())
+
+            client.connect(endpoint.copy(host = "192.168.1.21"), refreshLibraryOnConnect = false)
+            assertNull(client.resolvePhoneStreamUrl("a", restored))
+            assertNull(client.resolvePhoneStreamUrl("b", next.uri))
+            assertNull(client.handoffPhoneQueueToPc(listOf(remoteTrack("a")), 0, 0L, sourceKey = source))
+            assertEquals(1, transport.streamCalls)
+
+            client.connect(endpoint, refreshLibraryOnConnect = false)
+            assertNotNull(client.resolvePhoneStreamUrl("b", next.uri))
+            assertEquals(2, transport.streamCalls)
         } finally { client.disconnect() }
     }
 

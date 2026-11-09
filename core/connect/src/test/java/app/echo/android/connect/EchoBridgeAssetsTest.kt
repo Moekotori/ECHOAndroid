@@ -33,9 +33,11 @@ class EchoBridgeAssetsTest {
             JSONObject().put("catalog", JSONObject().put("page", 1).put("pageSize", 50)
                 .put("total", entries.length()).put("entries", entries))
         }
+        val playlists = transport.playlists(endpoint, "", 1).playlists
+        assertEquals(listOf("song", "unknown"), playlists.map { it.id })
         val urls = listOf(transport.tracks(endpoint, "", 1).tracks.single().artworkUrl,
             transport.albums(endpoint, "", 1).albums.single().artworkUrl,
-            transport.playlists(endpoint, "", 1).playlists.single().artworkUrl)
+            playlists.first().artworkUrl)
         assertEquals(3, requests)
         for (url in urls) {
             assertTrue(EchoBridgeArtwork.handles(url!!))
@@ -44,14 +46,22 @@ class EchoBridgeAssetsTest {
         }
     }
 
-    @Test fun legacyCatalogWithoutPlaylistProvenanceIsNotPaged() = runBlocking {
-        val transport = EchoBridgeTransport { JSONObject("""
-            {"catalog":{"page":1,"pageSize":50,"total":200,
-                "entries":[{"id":"unknown","title":"Unknown"}]}}
-        """.trimIndent()) }
-        val playlists = transport.playlists(endpoint, "", 1)
-        assertTrue(playlists.playlists.isEmpty())
-        assertEquals(0, playlists.nextPage)
+    @Test fun bridgeCatalogWithoutPlaylistProvenanceRemainsBrowsable() = runBlocking {
+        val transport = EchoBridgeTransport { request ->
+            val page = request.url.queryParameter("page")!!.toInt()
+            val entries = JSONArray()
+            val ids = if (page == 1) 1..50 else 51..51
+            for (id in ids) entries.put(JSONObject().put("kind", "playlist").put("id", "p$id")
+                .put("title", "Playlist $id").put("count", 2))
+            JSONObject().put("catalog", JSONObject().put("page", page).put("pageSize", 50)
+                .put("total", 51).put("entries", entries))
+        }
+        val first = transport.playlists(endpoint, "", 1)
+        assertEquals(50, first.playlists.size)
+        assertEquals(2, first.nextPage)
+        val last = transport.playlists(endpoint, "", first.nextPage)
+        assertEquals("p51", last.playlists.single().id)
+        assertEquals(0, last.nextPage)
     }
 
     @Test fun structuredOnlyLyricsKeepSourceTimingAndRemovedLyricsStayEmpty() = runBlocking {

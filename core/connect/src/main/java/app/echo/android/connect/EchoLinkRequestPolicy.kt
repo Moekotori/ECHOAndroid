@@ -1,6 +1,7 @@
 package app.echo.android.connect
 
 import app.echo.android.model.connect.EchoRemoteEndpoint
+import okhttp3.HttpUrl
 
 object EchoLinkRequestPolicy {
     fun shouldApplyResolvedPlay(requestGeneration: Long, latestGeneration: Long): Boolean =
@@ -8,6 +9,13 @@ object EchoLinkRequestPolicy {
 
     fun endpointIdentity(endpoint: EchoRemoteEndpoint): String =
         "${endpoint.scheme}://${endpoint.host}:${endpoint.port}|${endpoint.token}"
+
+    // A playback queue survives reconnect and re-pairing. Its origin contains no credentials.
+    internal fun playbackSourceKey(endpoint: EchoRemoteEndpoint): String =
+        HttpUrl.Builder().scheme(endpoint.scheme).host(endpoint.host).port(endpoint.port).build().toString()
+
+    internal fun matchesPlaybackSource(endpoint: EchoRemoteEndpoint, sourceKey: String?): Boolean =
+        sourceKey == null || sourceKey == playbackSourceKey(endpoint)
 
     fun isSameEndpoint(current: EchoRemoteEndpoint?, target: EchoRemoteEndpoint): Boolean =
         current != null && endpointIdentity(current) == endpointIdentity(target)

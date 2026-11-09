@@ -431,7 +431,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         }
         viewModel.setEchoLinkLyricsFetcher { mediaId ->
             val trackId = EchoLinkPlaybackUri.trackIdFromMediaId(mediaId) ?: return@setEchoLinkLyricsFetcher null
-            remoteClient.fetchLyrics(trackId)
+            remoteClient.fetchLyrics(trackId, EchoLinkPlaybackUri.sourceKey(mediaId, ""))
         }
     }
     val remoteStatus by remoteClient.status.collectAsStateWithLifecycle()

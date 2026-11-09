@@ -17,8 +17,8 @@
     <string name="permission_notification_description">Показывать элементы управления воспроизведением</string>
     <string name="tag_write_saved_to_file">Теги записаны в аудиофайл</string>
     <string name="tag_write_saved_index_only">Сохранено в индексе библиотеки. Аудиофайл не изменён</string>
-    <string name="tag_write_unsupported_format">Этот формат файла пока нельзя тегировать. Сохранено в индексе библиотеки</string>
-    <string name="tag_write_failed">Не удалось записать аудиофайл. Сохранено в индексе библиотеки</string>
+    <string name="tag_write_unsupported_format">Этот формат файла пока нельзя тегировать.</string>
+    <string name="tag_write_failed">Не удалось записать аудиофайл.</string>
     <string name="lastfm_disconnected">Last.fm не подключён</string>
     <string name="lastfm_connecting">Last.fm подключается</string>
     <string name="lastfm_connected">Last.fm подключён: %1$s</string>

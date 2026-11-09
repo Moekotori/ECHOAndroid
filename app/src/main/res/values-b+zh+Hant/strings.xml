@@ -17,8 +17,8 @@
     <string name="permission_notification_description">顯示媒體播放控制通知</string>
     <string name="tag_write_saved_to_file">已寫入音訊檔案的標籤</string>
     <string name="tag_write_saved_index_only">已儲存到音樂庫索引，音訊檔案未改動</string>
-    <string name="tag_write_unsupported_format">這個格式目前還不能寫入標籤，已儲存到音樂庫索引</string>
-    <string name="tag_write_failed">無法寫入音訊檔案，已儲存到音樂庫索引</string>
+    <string name="tag_write_unsupported_format">這個格式目前還不能寫入標籤</string>
+    <string name="tag_write_failed">無法寫入音訊檔案</string>
     <string name="lastfm_disconnected">Last.fm 未連線</string>
     <string name="lastfm_connecting">Last.fm 正在連線</string>
     <string name="lastfm_connected">Last.fm 已連線：%1$s</string>

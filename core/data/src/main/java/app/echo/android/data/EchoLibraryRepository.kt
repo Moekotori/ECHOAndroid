@@ -885,11 +885,8 @@ class EchoLibraryRepository(
         val dao = database.trackDao()
         val current = dao.getTrackById(update.trackId)
             ?: return TrackMetadataUpdateResult(false, EmbeddedTagWriteResult.Failed)
-        val updated = current.withUserMetadata(
-            update = update,
-            editedAtEpochMs = System.currentTimeMillis(),
-        )
-        // Prepare a requested cover before changing the index, so an invalid image saves nothing.
+        val editedAt = System.currentTimeMillis()
+        val updated = current.withUserMetadata(update, editedAt)
         val fields = try {
             fieldsForWrite(updated, lyricsText = update.lyrics, artworkUri = update.artworkUri).copy(
                 genreModified = update.genre != null,
@@ -898,26 +895,30 @@ class EchoLibraryRepository(
         } catch (_: EmbeddedArtworkEncodingException) {
             return TrackMetadataUpdateResult(false, EmbeddedTagWriteResult.Failed)
         }
-        val indexChanged = !current.hasSameUserMetadata(updated)
-        if (indexChanged) {
-            dao.upsertBatchWithFts(listOf(updated))
-            var summaryKeys = current.toSummaryKeySet() + updated.toSummaryKeySet()
-            val regrouped = if (updated.albumKey != current.albumKey && LibraryScanPolicy.isLocalLibrarySource(updated.source)) {
-                albumGroupingMaintenance.reconcileAlbums(
-                    listOfNotNull(
-                        LibraryAlbumGrouping.albumNameForKey(current.normalizedAlbum),
-                        LibraryAlbumGrouping.albumNameForKey(updated.normalizedAlbum),
-                    ).toSet(),
-                    LibraryAlbumGrouping.groupingFolders(listOf(current.relativePath, updated.relativePath)),
-                )
-            } else emptyList()
-            summaryKeys += regrouped.toSummaryKeySet()
-            rebuildSummariesIfNeeded(dao, summaryKeys)
+        return writeTagsThenUpdateIndex(writeFile = { writeEmbeddedTags(current, fields) }) { fileWrite ->
+            database.withTransaction {
+                val latest = dao.getTrackById(update.trackId)?.takeIf { it.contentUri == current.contentUri }
+                    ?: return@withTransaction false
+                val next = latest.withUserMetadata(update, editedAt)
+                if (!latest.hasSameUserMetadata(next)) {
+                    dao.upsertBatchWithFts(listOf(next))
+                    var summaryKeys = latest.toSummaryKeySet() + next.toSummaryKeySet()
+                    if (next.albumKey != latest.albumKey && LibraryScanPolicy.isLocalLibrarySource(next.source)) {
+                        val regrouped = albumGroupingMaintenance.reconcileAlbums(
+                            listOfNotNull(
+                                LibraryAlbumGrouping.albumNameForKey(latest.normalizedAlbum),
+                                LibraryAlbumGrouping.albumNameForKey(next.normalizedAlbum),
+                            ).toSet(),
+                            LibraryAlbumGrouping.groupingFolders(listOf(latest.relativePath, next.relativePath)),
+                        )
+                        summaryKeys += regrouped.toSummaryKeySet()
+                    }
+                    rebuildSummariesIfNeeded(dao, summaryKeys)
+                }
+                persistWrittenFileStats(dao, latest, fileWrite)
+                true
+            }
         }
-        val target = if (indexChanged) dao.getTrackById(updated.id) ?: updated else current
-        val fileWrite = writeEmbeddedTags(target, fields)
-        persistWrittenFileStats(dao, target, fileWrite)
-        return TrackMetadataUpdateResult(indexUpdated = true, fileWrite = fileWrite)
     }
 
     suspend fun writeReplayGainTrackGain(trackId: String, gainDb: Float): EmbeddedTagWriteResult {

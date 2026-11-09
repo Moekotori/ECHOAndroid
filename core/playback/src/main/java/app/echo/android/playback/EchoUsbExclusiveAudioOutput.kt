@@ -109,6 +109,7 @@ internal class EchoUsbExclusiveAudioOutput(
             return !buffer.hasRemaining()
         }
         if (!drainPending()) { buffer.order(originalOrder); return false }
+        val ramp = session.volumeRamp
         val packedBytes = UsbPcmPacker.pack(
             source = buffer,
             sourceEncoding = sourceEncoding,
@@ -117,21 +118,11 @@ internal class EchoUsbExclusiveAudioOutput(
             destBytesPerSample = destBytesPerSample,
             destination = packed,
             volume = mixedVolume(),
-            gainRamp = session.volumeRamp,
+            gainRamp = ramp,
         )
         buffer.order(originalOrder)
-        val result = session.writePcm(packed, 0, packedBytes)
-        if (
-            result.state == UsbExclusiveOutputState.OpenFailed ||
-            result.state == UsbExclusiveOutputState.Closed ||
-            result.state == UsbExclusiveOutputState.UnsupportedTransport
-        ) {
-            throw AudioOutput.WriteException(
-                -1,
-                result.state == UsbExclusiveOutputState.OpenFailed,
-            )
-        }
-        val framesWritten = result.bytesWritten / destFrameBytes
+        val framesWritten = writePacked(packedBytes) / destFrameBytes
+        ramp?.commitWrittenFrames(framesWritten)
         if (framesWritten > 0) {
             maybeReportPositionAdvancing()
         }
@@ -212,17 +203,25 @@ internal class EchoUsbExclusiveAudioOutput(
 
     private fun drainPending(): Boolean {
         if (pending.empty) return true
-        val packedBytes = pending.pack(packed, mixedVolume(), session.volumeRamp)
-        val result = session.writePcm(packed, 0, packedBytes)
-        if (result.state == UsbExclusiveOutputState.OpenFailed || result.state == UsbExclusiveOutputState.Closed ||
-            result.state == UsbExclusiveOutputState.UnsupportedTransport) {
-            throw AudioOutput.WriteException(-1, result.state == UsbExclusiveOutputState.OpenFailed)
-        }
-        if (result.bytesWritten > 0) {
-            pending.consume(result.bytesWritten)
+        val ramp = session.volumeRamp
+        val packedBytes = pending.pack(packed, mixedVolume(), ramp)
+        val written = writePacked(packedBytes)
+        ramp?.commitWrittenFrames(written / destFrameBytes)
+        if (written > 0) {
+            pending.consume(written)
             maybeReportPositionAdvancing()
         }
         return pending.empty
+    }
+
+    private fun writePacked(packedBytes: Int): Int {
+        val result = session.writePcm(packed, 0, packedBytes)
+        if (result.state == UsbExclusiveOutputState.OpenFailed || result.state == UsbExclusiveOutputState.Closed ||
+            result.state == UsbExclusiveOutputState.UnsupportedTransport ||
+            result.bytesWritten !in 0..packedBytes || result.bytesWritten % destFrameBytes != 0) {
+            throw AudioOutput.WriteException(-1, result.state == UsbExclusiveOutputState.OpenFailed)
+        }
+        return result.bytesWritten
     }
 
     private fun maybeReportPositionAdvancing() {

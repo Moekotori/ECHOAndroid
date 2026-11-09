@@ -695,8 +695,8 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             EchoErrorLog.record(EchoErrorSource.Library, "Unable to save audio tag draft.", detail = "${update.trackId}: ${error.message}")
             return false
         }
-        if (version != null && !lyricsController.isCurrentSelection(update.trackId, version)) return false
-        val applied = handleEmbeddedTagWriteResult(
+        if (version != null && !lyricsController.isCurrentSelection(update.trackId, version)) return written.indexUpdated
+        handleEmbeddedTagWriteResult(
             trackId = update.trackId,
             result = written.fileWrite,
             lyricsText = update.lyrics,
@@ -707,7 +707,7 @@ class EchoAndroidViewModel(application: Application) : AndroidViewModel(applicat
             genreModified = update.genre != null,
             allowAuthorization = false,
         )
-        return written.indexUpdated && applied
+        return written.indexUpdated
     }
 
     internal suspend fun batchTags(ids: List<String>, patch: app.echo.android.model.library.EchoBatchTagPatch, progress: (Int) -> Unit) =

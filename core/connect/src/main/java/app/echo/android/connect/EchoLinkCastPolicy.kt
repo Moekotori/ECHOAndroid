@@ -27,6 +27,7 @@ sealed interface EchoLinkCastPlan {
     data class HandoffPcLibrary(
         val tracks: List<EchoRemoteTrack>,
         val startIndex: Int,
+        val sourceKey: String? = null,
     ) : EchoLinkCastPlan
 
     data class LocalHttp(
@@ -88,8 +89,10 @@ object EchoLinkCastPolicy {
             return EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.UnsupportedSource)
         }
         val limit = if (startKind == EchoLinkCastKind.PcLibrary) minOf(maxTracks, pcLibraryTrackLimit) else maxTracks
+        val sourceKey = EchoLinkPlaybackUri.sourceKey(tracks[start].id, tracks[start].uri)
         val run = tracks.asSequence().drop(start).takeWhile { track ->
-            kind(track.id, track.uri, track.sourceId) == startKind
+            kind(track.id, track.uri, track.sourceId) == startKind &&
+                (startKind != EchoLinkCastKind.PcLibrary || EchoLinkPlaybackUri.sourceKey(track.id, track.uri) == sourceKey)
         }.take(limit).toList()
         if (run.isEmpty()) return EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.EmptyQueue)
         if (!sourceRanges && run.any { it.clipStartMs > 0L || it.clipEndMs > 0L }) {
@@ -108,6 +111,7 @@ object EchoLinkCastPolicy {
                     )
                 },
                 startIndex = 0,
+                sourceKey = sourceKey,
             )
             EchoLinkCastKind.PhoneServed -> EchoLinkCastPlan.LocalHttp(tracks = run, startIndex = 0)
             EchoLinkCastKind.Unsupported -> EchoLinkCastPlan.Blocked(EchoLinkCastBlockReason.UnsupportedSource)

@@ -17,8 +17,8 @@
     <string name="permission_notification_description">미디어 재생 컨트롤을 표시합니다</string>
     <string name="tag_write_saved_to_file">태그를 오디오 파일에 저장했습니다</string>
     <string name="tag_write_saved_index_only">라이브러리 색인에 저장했습니다. 오디오 파일은 변경되지 않았습니다</string>
-    <string name="tag_write_unsupported_format">이 파일 형식은 아직 태그를 쓸 수 없습니다. 라이브러리 색인에 저장했습니다</string>
-    <string name="tag_write_failed">오디오 파일에 쓰지 못했습니다. 라이브러리 색인에 저장했습니다</string>
+    <string name="tag_write_unsupported_format">이 파일 형식은 아직 태그를 쓸 수 없습니다.</string>
+    <string name="tag_write_failed">오디오 파일에 쓰지 못했습니다.</string>
     <string name="lastfm_disconnected">Last.fm에 연결되어 있지 않습니다</string>
     <string name="lastfm_connecting">Last.fm에 연결 중</string>
     <string name="lastfm_connected">Last.fm 연결됨: %1$s</string>

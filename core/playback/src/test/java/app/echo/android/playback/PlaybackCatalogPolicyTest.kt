@@ -76,6 +76,7 @@ class PlaybackCatalogPolicyTest {
                 requestedIds = listOf("a", "b", "c"),
                 resolvedIds = listOf("a", "b", "c"),
                 startIndex = 1,
+                resolvedCounts = intArrayOf(1, 1, 1),
             ),
         )
         assertEquals(
@@ -84,6 +85,7 @@ class PlaybackCatalogPolicyTest {
                 requestedIds = listOf("a", "b", "c"),
                 resolvedIds = listOf("x", "a", "b", "c"),
                 startIndex = 1,
+                resolvedCounts = intArrayOf(2, 1, 1),
             ),
         )
         assertEquals(
@@ -92,7 +94,18 @@ class PlaybackCatalogPolicyTest {
                 requestedIds = listOf("album-only"),
                 resolvedIds = listOf("t1", "t2", "t3", "album-only"),
                 startIndex = 0,
+                resolvedCounts = intArrayOf(4),
             ),
         )
+    }
+
+    @Test
+    fun repeatedTrackStartsAtTheSelectedEntryAfterUnavailableItemsAreDropped() {
+        assertEquals(2, PlaybackCatalogPolicy.resolvedStartIndex(
+            requestedIds = listOf("a", "missing", "b", "a"),
+            resolvedIds = listOf("a", "b", "a"),
+            startIndex = 3,
+            resolvedCounts = intArrayOf(1, 0, 1, 1),
+        ))
     }
 }
