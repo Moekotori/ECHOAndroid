@@ -2,9 +2,8 @@
 <resources>
     <string name="usb_dop_title">DSD 直出（DoP）</string>
     <string name="usb_dop_enable">为此 DAC 开启 DoP</string>
-    <string name="usb_dop_connect">连接 USB DAC 后可配置 DoP。</string>
     <string name="usb_dop_note">仅为支持 DoP 的 DAC 开启，按设备保存。</string>
     <string name="usb_dop_max">最高 DSD 档位</string>
     <string name="usb_dop_strict_note">需开启 USB 直通并通过时钟检查，不支持时停止播放。</string>
-    <string name="usb_dop_blocked">请为此 DAC 开启 DoP，并将最高 DSD 档位设为当前曲目所需档位，再重新播放。</string>
+    <string name="usb_dop_blocked">请在「DAC 高级兼容设置」中为此设备开启 DoP，选择设备支持且覆盖当前曲目的 DSD 档位，再重新播放。</string>
 </resources>

@@ -31,7 +31,7 @@ import app.echo.android.design.EchoIcon
 import app.echo.android.design.LocalEchoContentMaxWidth
 import app.echo.android.design.echoPageBackgroundColor
 
-private val LibraryToolbarHeight = 48.dp
+internal val LibraryToolbarActionSize = 48.dp
 
 @Composable
 internal fun LibraryBrowserFrame(
@@ -66,7 +66,7 @@ internal fun LibraryBrowserFrame(
         Box(Modifier.statusBarsPadding().imePadding(), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()) {
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = LibraryToolbarHeight).padding(horizontal = 24.dp),
+                    Modifier.fillMaxWidth().heightIn(min = LibraryToolbarActionSize).padding(horizontal = 24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (searching) {
@@ -114,9 +114,9 @@ internal val LibraryCategoryBarHeight = 42.dp
 
 @Composable
 internal fun LibraryCategoryBar(tabs: @Composable () -> Unit, actions: @Composable () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(Modifier.weight(1f, fill = false)) { tabs() }
-        Box(Modifier.offset(y = (-4).dp)) { actions() }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.weight(1f)) { tabs() }
+        Box(Modifier.width(LibraryToolbarActionSize), contentAlignment = Alignment.Center) { actions() }
     }
 }
 
@@ -141,7 +141,7 @@ private fun LibraryInlineSearch(
         keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
         decorationBox = { innerTextField ->
             Row(
-                Modifier.heightIn(min = LibraryToolbarHeight)
+                Modifier.heightIn(min = LibraryToolbarActionSize)
                     .background(scheme.surfaceContainerHigh, RoundedCornerShape(12.dp))
                     .padding(start = 12.dp, end = if (query.isEmpty()) 12.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically,

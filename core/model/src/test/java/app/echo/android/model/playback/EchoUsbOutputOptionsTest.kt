@@ -20,7 +20,16 @@ class EchoUsbOutputOptionsTest {
         val state = EchoUsbOutputOptions(sampleRateHz = -1, bitDepth = 8, channelCount = 8, volumePercent = 400).normalized
         assertEquals(EchoUsbOutputOptions(), state)
         assertEquals(EchoUsbBufferMode.Balanced, EchoUsbBufferMode.fromId("unknown"))
-        assertEquals(listOf(8, 16, 32), EchoUsbBufferMode.entries.map { it.transferCount })
+        assertEquals(listOf(16, 32), EchoUsbBufferMode.entries.map { it.transferCount })
+    }
+
+    @Test fun keepAliveProfilesAreBoundedAndTriggerAUsbRebuild() {
+        val previous = EchoUsbOutputOptions()
+        val profiles = (0..EchoUsbOutputOptions.MAX_KEEP_ALIVE_DEVICES).associate { "1:$it" to false }
+        val configured = previous.copy(keepAliveByDevice = profiles + ("bad" to true)).normalized
+        assertEquals(profiles - "1:0", configured.keepAliveByDevice)
+        assertTrue(configured.needsRebuild(previous, strict = false))
+        assertTrue(configured.needsRebuild(previous, strict = true))
     }
     @Test fun strictModeKeepsFormatPreferencesWithoutRebuildingItsAudioPath() {
         val previous = EchoUsbOutputOptions()

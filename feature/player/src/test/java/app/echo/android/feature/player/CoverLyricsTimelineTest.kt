@@ -19,17 +19,22 @@ class CoverLyricsTimelineTest {
         )
 
         assertEquals(-1, timeline.activeAt(0))
-        assertEquals(listOf(null, "First", "Second"), timeline.rowsAround(timeline.contextAt(0)))
+        assertEquals(listOf(null, "First", "Second"), timeline.previewRows(timeline.contextAt(0)))
         assertEquals(-1, timeline.activeAt(2_000))
-        assertEquals(listOf(null, "First", "Second"), timeline.rowsAround(timeline.contextAt(2_000)))
-        assertEquals(listOf("First", "Second", "Third"), timeline.rowsAround(timeline.activeAt(3_000)))
+        assertEquals(listOf(null, "First", "Second"), timeline.previewRows(timeline.contextAt(2_000)))
+        assertEquals(listOf("First", "Second", "Third"), timeline.previewRows(timeline.activeAt(3_000)))
         assertEquals(-1, timeline.activeAt(3_500))
-        assertEquals(listOf("Second", "Third", null), timeline.rowsAround(timeline.activeAt(5_000)))
-        assertEquals(listOf(null, "First", "Second"), timeline.rowsAround(timeline.activeAt(1_000)))
+        assertEquals(listOf("Second", "Third", null), timeline.previewRows(timeline.activeAt(5_000)))
+        assertEquals(listOf(null, "First", "Second"), timeline.previewRows(timeline.activeAt(1_000)))
     }
 
     @Test
     fun hidesDocumentsWithNoTimedText() {
         assertTrue(CoverLyricsTimeline(listOf(EchoLyricLine(-1, text = "Untimed"), EchoLyricLine(0, text = ""))).isEmpty)
+    }
+
+    private fun CoverLyricsTimeline.previewRows(index: Int): List<String?> {
+        val slot = slotOf(index)
+        return (slot - 1..slot + 1).map(::textAt)
     }
 }

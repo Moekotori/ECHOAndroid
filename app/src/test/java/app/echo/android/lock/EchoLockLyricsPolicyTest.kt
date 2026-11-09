@@ -6,41 +6,49 @@ import org.junit.Test
 
 class EchoLockLyricsPolicyTest {
     @Test
-    fun overlayRequiresEnabledPlayingLyricsAndLockedScreen() {
+    fun windowRequiresEnabledPlayingLyrics() {
         assertTrue(
-            EchoLockLyricsPolicy.shouldShowOverLock(
+            EchoLockLyricsPolicy.shouldKeepShowWhenLocked(
                 enabled = true,
                 isPlaying = true,
                 hasCurrentLine = true,
-                screenInteractive = true,
-                keyguardLocked = true,
+                dismissed = false,
             ),
         )
         assertFalse(
-            EchoLockLyricsPolicy.shouldShowOverLock(
-                enabled = true,
-                isPlaying = true,
-                hasCurrentLine = true,
-                screenInteractive = false,
-                keyguardLocked = true,
-            ),
-        )
-        assertFalse(
-            EchoLockLyricsPolicy.shouldShowOverLock(
-                enabled = true,
-                isPlaying = true,
-                hasCurrentLine = true,
-                screenInteractive = true,
-                keyguardLocked = false,
-            ),
-        )
-        assertFalse(
-            EchoLockLyricsPolicy.shouldShowOverLock(
+            EchoLockLyricsPolicy.shouldKeepShowWhenLocked(
                 enabled = false,
                 isPlaying = true,
                 hasCurrentLine = true,
-                screenInteractive = true,
-                keyguardLocked = true,
+                dismissed = false,
+            ),
+        )
+        assertFalse(
+            EchoLockLyricsPolicy.shouldKeepShowWhenLocked(
+                enabled = true,
+                isPlaying = false,
+                hasCurrentLine = true,
+                dismissed = false,
+            ),
+        )
+        assertFalse(
+            EchoLockLyricsPolicy.shouldKeepShowWhenLocked(
+                enabled = true,
+                isPlaying = true,
+                hasCurrentLine = false,
+                dismissed = false,
+            ),
+        )
+    }
+
+    @Test
+    fun dismissReleasesWindowWhileLyricsAreStillPlaying() {
+        assertFalse(
+            EchoLockLyricsPolicy.shouldKeepShowWhenLocked(
+                enabled = true,
+                isPlaying = true,
+                hasCurrentLine = true,
+                dismissed = true,
             ),
         )
     }

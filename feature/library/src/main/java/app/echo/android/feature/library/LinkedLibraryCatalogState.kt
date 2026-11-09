@@ -41,7 +41,7 @@ internal fun rememberLinkedLibraryCatalog(
             LinkedLibraryCatalog.Empty,
             tracks, albums, playlists, remoteQuery, trackSort, albumSort, artistSort,
         ) {
-            if (query.isNotEmpty()) delay(200)
+            if (query.isNotEmpty() && query != remoteQuery) delay(150)
             value = withContext(Dispatchers.Default) {
                 LinkedLibraryCatalog.build(
                     searchText = searchText,

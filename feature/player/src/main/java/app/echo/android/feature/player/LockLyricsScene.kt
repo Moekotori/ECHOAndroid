@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -44,6 +46,7 @@ fun LockLyricsScene(
     wordHighlightEnabled: Boolean,
     modifier: Modifier = Modifier,
     estimatedWordHighlightEnabled: Boolean = false,
+    onDismiss: (() -> Unit)? = null,
 ) {
     val lightweight = LocalEchoEffectivePerformanceMode.current.isLightweight
     val current = snapshot.current
@@ -118,13 +121,22 @@ fun LockLyricsScene(
                 LockLyricSideLine(snapshot.next)
             }
         }, hint = {
-            Text(
-                text = stringResource(R.string.lock_lyrics_hint),
-                color = Color.White.copy(alpha = 0.38f),
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (onDismiss == null) {
+                Text(
+                    text = stringResource(R.string.lock_lyrics_hint),
+                    color = Color.White.copy(alpha = 0.38f),
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else {
+                TextButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+                ) {
+                    Text(stringResource(R.string.lock_lyrics_exit))
+                }
+            }
         })
     }
 }

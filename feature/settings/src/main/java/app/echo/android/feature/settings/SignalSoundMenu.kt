@@ -5,6 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.SurroundSound
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Waves
@@ -27,22 +28,20 @@ import app.echo.android.design.echoClickable
 
 /** Sound tools share a compact index; each processor keeps its existing editor. */
 @Composable
-internal fun SignalSoundMenu(labels: List<String>, states: List<SignalSoundMenuState>, onSelect: (Int) -> Unit) {
-    val descriptions = listOf(
-        stringResource(R.string.signal_sound_eq_summary),
-        stringResource(R.string.signal_sound_headphones_summary),
-        stringResource(R.string.signal_sound_channels_summary),
-        stringResource(R.string.signal_sound_dsp_summary),
-        stringResource(R.string.signal_sound_mseb_summary),
-        stringResource(R.string.volume_summary),
-    )
-    val icons = listOf(Icons.Rounded.Equalizer, Icons.Rounded.Headphones, Icons.Rounded.SwapHoriz, Icons.Rounded.Tune, Icons.Rounded.Waves, Icons.AutoMirrored.Rounded.VolumeUp)
+internal fun SignalSoundMenu(states: Map<SignalSoundTool, SignalSoundMenuState>, onSelect: (SignalSoundTool) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth()) {
-        val order = listOf(labels.lastIndex) + (0 until labels.lastIndex)
-        order.forEach { index ->
-            val label = labels[index]
-            val state = states[index]
+        SignalSoundTool.entries.forEach { tool ->
+            val state = states.getValue(tool)
+            val icon = when (tool) {
+                SignalSoundTool.Volume -> Icons.AutoMirrored.Rounded.VolumeUp
+                SignalSoundTool.Equalizer -> Icons.Rounded.Equalizer
+                SignalSoundTool.Effects -> Icons.Rounded.Tune
+                SignalSoundTool.HeadphoneCorrection -> Icons.Rounded.Headphones
+                SignalSoundTool.HeadphoneSoundstage -> Icons.Rounded.SurroundSound
+                SignalSoundTool.Channels -> Icons.Rounded.SwapHoriz
+                SignalSoundTool.Mseb -> Icons.Rounded.Waves
+            }
             val badge = when (state) {
                 SignalSoundMenuState.Off -> null
                 SignalSoundMenuState.Enabled -> stringResource(R.string.settings_on)
@@ -53,16 +52,16 @@ internal fun SignalSoundMenu(labels: List<String>, states: List<SignalSoundMenuS
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 76.dp)
                     .semantics { stateDescription = stateLabel }
-                    .echoClickable(role = Role.Button, onClick = { onSelect(index) })
+                    .echoClickable(role = Role.Button, onClick = { onSelect(tool) })
                     .padding(vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                EchoIcon(icons[index], null, Modifier.size(24.dp), tint = scheme.onSurfaceVariant)
+                EchoIcon(icon, null, Modifier.size(24.dp), tint = scheme.onSurfaceVariant)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                        Text(stringResource(tool.title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                         if (badge != null) Surface(
                             shape = RoundedCornerShape(50),
                             color = if (state == SignalSoundMenuState.Bypassed) scheme.surfaceContainerHigh else scheme.secondaryContainer,
@@ -72,11 +71,11 @@ internal fun SignalSoundMenu(labels: List<String>, states: List<SignalSoundMenuS
                                 style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                    Text(descriptions[index], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                    Text(stringResource(tool.summary), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
                 }
                 EchoIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp))
             }
-            if (index != order.last()) HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.55f))
+            if (tool != SignalSoundTool.entries.last()) HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.55f))
         }
     }
 }

@@ -5,32 +5,27 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import app.echo.android.model.playback.EchoDsdRates
-import app.echo.android.model.playback.EchoPlaybackDiagnostics
 import app.echo.android.model.playback.EchoUsbOutputOptions
 
 @Composable
-internal fun UsbDopControls(options: EchoUsbOutputOptions, diagnostics: EchoPlaybackDiagnostics,
+internal fun UsbDopControls(options: EchoUsbOutputOptions, deviceKey: String,
     onChange: (EchoUsbOutputOptions) -> Unit) {
-    val vendor = diagnostics.usbVendorId
-    val product = diagnostics.usbProductId
-    val key = if (diagnostics.usbConnected && vendor != null && product != null)
-        EchoUsbOutputOptions.dopDeviceKey(vendor, product) else null
-    val limit = key?.let { options.dopDeviceLimits[it] }
+    val limit = options.dopDeviceLimits[deviceKey]
     UsbSettingsSection(stringResource(R.string.usb_dop_title)) {
         SettingsSwitchRow(stringResource(R.string.usb_dop_enable),
-            stringResource(if (key == null) R.string.usb_dop_connect else R.string.usb_dop_note),
-            limit != null, enabled = key != null,
+            stringResource(R.string.usb_dop_note),
+            limit != null,
             onCheckedChange = { enabled ->
-                if (key != null) onChange(options.copy(dopDeviceLimits = if (enabled)
-                    options.dopDeviceLimits + (key to EchoDsdRates.Dsd64Hz) else options.dopDeviceLimits - key))
+                onChange(options.copy(dopDeviceLimits = if (enabled)
+                    options.dopDeviceLimits + (deviceKey to EchoDsdRates.Dsd64Hz) else options.dopDeviceLimits - deviceKey))
             })
-        if (key != null && limit != null) {
+        if (limit != null) {
             val choices = EchoUsbOutputOptions.DOP_DSD_RATES.map { rate ->
                 UsbParameterChoice(rate.toString(), EchoDsdRates.familyLabel(rate)!!)
             }
             UsbOutputParameterPicker(stringResource(R.string.usb_dop_max),
                 EchoDsdRates.familyLabel(limit) ?: "DSD64", limit.toString(), choices) { selected ->
-                onChange(options.copy(dopDeviceLimits = options.dopDeviceLimits + (key to selected.toInt())))
+                onChange(options.copy(dopDeviceLimits = options.dopDeviceLimits + (deviceKey to selected.toInt())))
             }
         }
         Text(stringResource(R.string.usb_dop_strict_note), style = MaterialTheme.typography.bodySmall,

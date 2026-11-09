@@ -3,4 +3,5 @@
     <string name="lock_lyrics_idle_title">ECHO</string>
     <string name="lock_lyrics_waiting">Warte auf Text</string>
     <string name="lock_lyrics_hint">Sperrbildschirm-Text</string>
+    <string name="lock_lyrics_exit">Songtext schließen</string>
 </resources>

@@ -68,6 +68,7 @@ class EchoApplication : Application(), ImageLoaderFactory, app.echo.android.play
     val echoLinkSession by lazy { EchoLinkSession(this) }
     val listening by lazy { app.echo.android.listening.EchoListeningRuntime(this) }
     internal val lyricsSession: EchoNowPlayingLyricsSession by lazy { EchoNowPlayingLyricsSession(this) }
+    internal val lockLyricsSession by lazy { app.echo.android.lock.EchoLockLyricsSession(this) }
     internal val scrobbleSession by lazy {
         EchoScrobbleSession(this, EchoPlaybackProcessRuntime.scope, EchoPlaybackProcessRuntime.surface)
     }

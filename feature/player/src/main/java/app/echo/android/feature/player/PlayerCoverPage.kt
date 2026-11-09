@@ -56,7 +56,7 @@ internal fun PlayerCoverPage(
     val density = LocalDensity.current
     val trackId = status.track?.id
     val preview: (@Composable () -> Unit)? = if (trackId != null && previewLyrics != null) {
-        { CoverLyricsPreview(trackId, previewLyrics, lyricsPositionMsState, onOpenLyrics) }
+        { CoverLyricsPreview(trackId, previewLyrics, lyricsPositionMsState, presentationExpanded, onOpenLyrics) }
     } else null
     val actions = ExpressivePlayerActions(onPlayPause, onNext, onPrevious, onSeek, onOpenQueue,
         onCast, onToggleShuffle, onCycleRepeatMode, onToggleFavorite, onOpenLyrics, onOpenArtist, onMore)

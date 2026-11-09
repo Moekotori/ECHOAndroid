@@ -14,7 +14,8 @@ class UsbExclusivePcmOutput(context: Context) {
     private val probe = UsbAudioProbe(appContext)
 
     fun open(spec: UsbPcmFormatSpec, bitPerfect: Boolean = false, transferCount: Int = 16,
-        keepAliveOnPause: Boolean = true, dopDeviceLimits: Map<String, Int>? = null): UsbExclusivePcmSession {
+        keepAliveOnPause: Boolean = true, dopDeviceLimits: Map<String, Int>? = null,
+        keepAliveByDevice: Map<String, Boolean> = emptyMap()): UsbExclusivePcmSession {
         val device = probe.findBestDevice()
             ?: return UsbExclusivePcmSession.closed(
                 UsbExclusiveOpenResult(
@@ -112,7 +113,9 @@ class UsbExclusivePcmOutput(context: Context) {
                 selectedFormat = selectedFormat,
                 usbVersion = snapshot.descriptor.usbVersion,
                 transferCount = transferCount.coerceIn(8, 32),
-                keepAliveOnPause = keepAliveOnPause,
+                // PCM silence carries no DoP markers and would switch the DAC out of DSD.
+                keepAliveOnPause = dopDeviceLimits == null &&
+                    (keepAliveByDevice["${device.vendorId}:${device.productId}"] ?: keepAliveOnPause),
                 dop = dopDeviceLimits != null,
                 quirks = quirks,
                 vendorId = device.vendorId,

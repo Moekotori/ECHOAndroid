@@ -3,4 +3,12 @@
     <string name="eq_mode_parametric">Parametric EQ</string>
     <string name="eq_mode_graphic">Graphic EQ</string>
     <string name="eq_filter_count">%1$d / 32 filters</string>
+    <string name="eq_simple_mode">Simple</string>
+    <string name="eq_advanced_mode">Advanced</string>
+    <string name="eq_simple_bass">Bass</string>
+    <string name="eq_simple_treble">Treble</string>
+    <string name="eq_simple_current_curve">Current EQ: %1$s. Open Advanced to edit it.</string>
+    <string name="eq_simple_use_three_bands">Use three-band EQ</string>
+    <string name="eq_simple_replace_detail">This replaces the current EQ curve with three flat bands.</string>
+    <string name="eq_simple_replace">Replace curve</string>
 </resources>

@@ -289,7 +289,6 @@ internal fun AlbumDetailListPage(
     album: AlbumSummary,
     tracks: List<EchoTrack>,
     onBack: () -> Unit,
-    onPlayOnPc: (() -> Unit)? = null,
     onPlayTrack: (EchoTrack) -> Unit,
     onMoveTrack: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
     onUpdateTrackMetadata: (suspend (EchoTrackMetadataUpdate) -> Boolean)? = null,
@@ -329,10 +328,6 @@ internal fun AlbumDetailListPage(
                     ) {
                         Spacer(Modifier.height(4.dp))
                         AlbumHero(album = album, palette = palette, facts = facts, onOpenArtist = onOpenArtist)
-                        if (onPlayOnPc != null) {
-                            Spacer(Modifier.height(14.dp))
-                            AlbumPlayOnPcAction(onPlayOnPc)
-                        }
                         if (facts.hasCue) {
                             Spacer(Modifier.height(14.dp))
                             AlbumCueBanner()

@@ -6,7 +6,7 @@ import org.junit.Test
 class EchoUsbOutputResetTest {
     @Test fun formatResetKeepsVolumeAndDevicePermissions() {
         val options = EchoUsbOutputOptions(sampleRateHz = 96000, bitDepth = 24, channelCount = 1,
-            volumePercent = 31, volumeMode = EchoUsbVolumeMode.Hardware,
+            volumePercent = 31, volumeMode = EchoUsbVolumeMode.Auto,
             bufferMode = EchoUsbBufferMode.Stable, keepAliveOnPause = false,
             dopDeviceLimits = mapOf("1:2" to 2822400))
         val reset = options.resetFormatAndBuffer()

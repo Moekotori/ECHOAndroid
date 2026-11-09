@@ -2,6 +2,7 @@ package app.echo.android.connect
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.net.Uri
 import android.provider.Settings
@@ -100,6 +101,17 @@ class EchoSystemCastClient(context: Context) {
             }
         } catch (_: Exception) { executor.shutdown() }
     }
+
+    fun showXiaomiMiPlayPicker(): Boolean = runCatching {
+        // Xiaomi exposes the Control Center's Mi Play panel through its System UI plugin.
+        val intent = Intent("miui.intent.action.ACTIVITY_MIPLAY_DETAIL")
+            .setPackage("miui.systemui.plugin")
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val flags = PackageManager.MATCH_DEFAULT_ONLY or PackageManager.MATCH_SYSTEM_ONLY
+        if (context.packageManager.resolveActivity(intent, flags) == null) return false
+        context.startActivity(intent)
+        true
+    }.getOrDefault(false)
 
     fun showOutputSwitcher(): Boolean {
         if (!_available.value) return false

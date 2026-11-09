@@ -18,8 +18,7 @@
     <string name="eq_bundle_capacity">預設容量不足，請調整同名處理方式或先刪除部分已儲存預設。</string>
     <string name="eq_bundle_confirm">匯入</string>
     <string name="usb_volume_software">數位音量</string>
-    <string name="usb_volume_auto">自動（優先 DAC，失敗時使用數位音量）</string>
-    <string name="usb_volume_hardware">DAC 硬體音量（失敗時回復數位音量）</string>
+    <string name="usb_volume_auto">優先使用 DAC 音量（失敗時使用數位音量）</string>
     <string name="usb_volume_fixed">固定 PCM 輸出</string>
     <string name="usb_volume_pending">獨佔播放開始後生效</string>
     <string name="usb_volume_handoff">正在淡出並交接音量</string>

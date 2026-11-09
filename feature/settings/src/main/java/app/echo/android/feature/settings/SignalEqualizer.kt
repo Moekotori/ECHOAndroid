@@ -35,12 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.echo.android.design.EchoSwitch
 import app.echo.android.model.playback.EchoEqualizerPreset
 import app.echo.android.model.playback.EchoEqualizerState
 import app.echo.android.model.playback.EchoEqualizerUserPresets
@@ -83,6 +79,7 @@ fun SignalEqualizer(
     var responseScope by rememberSaveable { mutableIntStateOf(0) }
     val displayCurve = state.channelResponseCurves[app.echo.android.model.playback.EchoEqBandScope.entries[responseScope]] ?: state.responseCurve
     val edits = rememberSignalEditSession(onParametricPreview, onParametricChange)
+    var advanced by rememberSaveable { mutableStateOf(false) }
     var confirmGraphic by rememberSaveable { mutableStateOf(false) }
     var selectedBand by rememberSaveable { mutableIntStateOf(0) }
     val activeBand = selectedBand.coerceIn(0, (state.filters.size - 1).coerceAtLeast(0))
@@ -107,8 +104,25 @@ fun SignalEqualizer(
             live = live && playing && state.processingSampleRateHz != null,
             checked = state.enabled, enabled = canAdjust,
             onCheckedChange = onEnabledChange, warning = bypassed,
-            detail = if (state.parametric) stringResource(L10nR.string.eq_filter_count, state.filters.size) else null,
+            detail = if (advanced && state.parametric) stringResource(L10nR.string.eq_filter_count, state.filters.size) else null,
         )
+        if (bypassed) SignalNote(stringResource(L10nR.string.signal_bypass_detail))
+        state.warning?.let { SignalNote(it, error = true) }
+        DspChoices(
+            labels = listOf(stringResource(L10nR.string.eq_simple_mode), stringResource(L10nR.string.eq_advanced_mode)),
+            selected = if (advanced) 1 else 0,
+            enabled = true,
+        ) { mode ->
+            edits.finish()
+            optionDraft?.let(onOptionsChange)
+            optionDraft = null
+            advanced = mode == 1
+        }
+        if (!advanced) {
+            SignalSimpleEqualizer(state, canAdjust, onParametricPreview, onParametricChange, onReset)
+            if (fadersEnabled) SignalEqHeadroom(state, onPreampChange)
+            return@Column
+        }
         DspChoices(listOf(stringResource(L10nR.string.eq_mode_graphic), stringResource(L10nR.string.eq_mode_parametric)),
             if (state.parametric) 1 else 0, canAdjust) { mode ->
             if (mode == 1 && !state.parametric) {
@@ -132,14 +146,12 @@ fun SignalEqualizer(
                 } },
             )
         }
-        if (bypassed) SignalNote(stringResource(L10nR.string.signal_bypass_detail))
         if (state.parametric) SignalEditorActions(
             title = stringResource(L10nR.string.eq_mode_parametric),
             detail = stringResource(L10nR.string.peq_editor_detail) + "\n\n" + stringResource(L10nR.string.sound_live_edit_detail),
             canUndo = canAdjust && edits.canUndo(state.filters), onUndo = { edits.undo(state.filters) },
             hint = if (!bypassed && state.enabled) stringResource(L10nR.string.sound_live_edit_hint) else null,
         )
-        state.warning?.let { SignalNote(it, error = true) }
         SignalEqPresetPicker(state.presetId, onPresetSelected, enabled = canAdjust)
         SignalEqAdvancedOptions(state.options, canAdjust,
             { optionDraft = null; onOptionsChange(it) }, { optionDraft = it; onOptionsPreview(it) })
@@ -250,16 +262,7 @@ fun SignalEqualizer(
                 contentDescription = preampLabel,
                 onValueChange = onPreampChange,
             )
-            if (state.preampDb > state.suggestedPreampDb + 0.1f) {
-                SignalNote(stringResource(L10nR.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
-                TextButton(
-                    onClick = { onPreampChange(state.suggestedPreampDb) },
-                    enabled = canAdjust,
-                    contentPadding = PaddingValues(horizontal = 0.dp),
-                ) {
-                    Text(stringResource(L10nR.string.eq_apply_headroom))
-                }
-            }
+            SignalEqHeadroom(state, onPreampChange, canAdjust)
         }
 
         TextButton(onClick = onReset, enabled = canAdjust,
@@ -298,6 +301,24 @@ fun SignalEqualizer(
             onBindToOutput = onBindToOutput,
             onUnbindFromOutput = onUnbindFromOutput,
         )
+    }
+}
+
+@Composable
+private fun SignalEqHeadroom(
+    state: EchoEqualizerState,
+    onPreampChange: (Float) -> Unit,
+    enabled: Boolean = true,
+) {
+    if (state.preampDb > state.suggestedPreampDb + 0.1f) {
+        SignalNote(stringResource(L10nR.string.eq_headroom_warning, formatEqGain(state.suggestedPreampDb)), error = true)
+        TextButton(
+            onClick = { onPreampChange(state.suggestedPreampDb) },
+            enabled = enabled,
+            contentPadding = PaddingValues(horizontal = 0.dp),
+        ) {
+            Text(stringResource(L10nR.string.eq_apply_headroom))
+        }
     }
 }
 

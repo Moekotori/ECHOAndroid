@@ -18,7 +18,6 @@ internal fun UsbVolumeStatus(options: EchoUsbOutputOptions, diagnostics: EchoPla
                 Text(stringResource(when (mode) {
                     EchoUsbVolumeMode.Software -> R.string.usb_volume_software
                     EchoUsbVolumeMode.Auto -> R.string.usb_volume_auto
-                    EchoUsbVolumeMode.Hardware -> R.string.usb_volume_hardware
                 }), Modifier.padding(top = 12.dp))
             }
         }

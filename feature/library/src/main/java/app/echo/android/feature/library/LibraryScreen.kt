@@ -153,7 +153,9 @@ internal enum class LinkedLibraryMode(
     Albums(Icons.Rounded.LibraryMusic),
     Artists(Icons.Rounded.Person),
     Playlists(Icons.Rounded.LibraryMusic),
-    Folders(Icons.Rounded.FolderOpen),
+    Folders(Icons.Rounded.FolderOpen);
+
+    val category: EchoLibraryCategory get() = EchoLibraryCategory.valueOf(name)
 }
 
 @Composable
@@ -268,7 +270,8 @@ fun LibraryScreen(
     onFolderSortModeChange: (FolderSortMode) -> Unit,
     onAddMusic: () -> Unit,
     onCancelScan: () -> Unit,
-    onRefreshLinkedLibrary: (String) -> Unit,
+    onRefreshLinkedLibrary: (String, EchoLibraryCategory) -> Unit,
+    onPrioritizeLinkedLibrary: (EchoLibraryCategory) -> Unit,
     onOpenLinkedPlaylist: (EchoRemotePlaylist) -> Unit,
     onLoadLinkedPlaylistArtwork: suspend (EchoRemotePlaylist) -> String?,
     onOpenLinkedAlbum: (EchoRemoteAlbum) -> Unit = {},
@@ -474,7 +477,7 @@ fun LibraryScreen(
                 }
             }
             LibrarySourceMode.Cloud -> selectedModeIndex = LibraryViewMode.Albums.ordinal
-            LibrarySourceMode.PcEcho -> if (linkedLibraryAvailable) onRefreshLinkedLibrary(libraryQuery)
+            LibrarySourceMode.PcEcho -> if (linkedLibraryAvailable) onRefreshLinkedLibrary(libraryQuery, linkedMode.category)
         }
     }
 
@@ -766,7 +769,7 @@ fun LibraryScreen(
                     LibrarySourceMode.PcEcho -> if (linkedLibraryAvailable) {
                         LinkedLibraryRefreshAction(
                             state = linkedLibraryState,
-                            onRefresh = { onRefreshLinkedLibrary(libraryQuery.trim()) },
+                            onRefresh = { onRefreshLinkedLibrary(libraryQuery.trim(), linkedMode.category) },
                         )
                     }
                     LibrarySourceMode.Cloud -> if (remotePlaylistManagement != null) {
@@ -862,7 +865,8 @@ fun LibraryScreen(
                                 onOpenLinkedPlaylist(playlist)
                             },
                             onLoadPlaylistArtwork = onLoadLinkedPlaylistArtwork,
-                            onRefresh = onRefreshLinkedLibrary,
+                            onRefresh = { onRefreshLinkedLibrary(it, effectiveLinkedMode.category) },
+                            onPrioritize = onPrioritizeLinkedLibrary,
                             onRefreshFolders = onRefreshLinkedFolders,
                             onLoadMoreTracks = onLoadMoreLinkedTracks,
                             onLoadMoreAlbums = onLoadMoreLinkedAlbums,
@@ -1121,7 +1125,6 @@ fun LibraryScreen(
                     isLoading = remoteAlbumId != null && linkedState.loadingAlbumId == remoteAlbumId,
                     onBack = { selectedLinkedAlbum = null },
                     onPlayLinkedQueue = onPlayLinkedQueue,
-                    onPlayLinkedQueueOnPc = onPlayLinkedQueueOnPc,
                     onOpenArtist = {
                         val name = target.album.albumArtist ?: target.album.artist ?: return@LinkedAlbumTracksPage
                         selectedLinkedAlbum = null
@@ -1140,7 +1143,9 @@ fun LibraryScreen(
                     LinkedArtistPagingControls(
                         linkedState.tracks.size, linkedState.totalCount, linkedState.isLoadingMore,
                         onLoadMore = {
-                            if (linkedState.tracks.size >= linkedState.totalCount) onRefreshLinkedLibrary(linkedState.query)
+                            if (linkedState.tracks.size >= linkedState.totalCount) {
+                                onRefreshLinkedLibrary(linkedState.query, EchoLibraryCategory.Artists)
+                            }
                             else onLoadMoreLinkedTracks()
                         },
                         error = linkedState.error,
@@ -1262,7 +1267,11 @@ private fun LinkedLibraryRefreshAction(
     onRefresh: () -> Unit,
 ) {
     val linkedState by state.collectAsState()
-    IconButton(onClick = onRefresh, enabled = !linkedState.isLoading) {
+    IconButton(
+        onClick = onRefresh,
+        enabled = !linkedState.isLoading,
+        modifier = Modifier.size(LibraryToolbarActionSize),
+    ) {
         EchoIcon(
             Icons.Rounded.Refresh,
             contentDescription = stringResource(L10nR.string.feature_library_refresh_pc_echo_library_5b6275),
@@ -1294,6 +1303,7 @@ private fun LinkedEchoLibraryPage(
     onOpenPlaylist: (EchoRemotePlaylist) -> Unit,
     onLoadPlaylistArtwork: suspend (EchoRemotePlaylist) -> String?,
     onRefresh: (String) -> Unit,
+    onPrioritize: (EchoLibraryCategory) -> Unit,
     onRefreshFolders: (String) -> Unit,
     onLoadMoreTracks: () -> Unit,
     onLoadMoreAlbums: () -> Unit,
@@ -1314,33 +1324,24 @@ private fun LinkedEchoLibraryPage(
     val randomOrder = remember(selectedSource, normalizedQuery) { LinkedLibraryRandomOrder() }
     val interactive = LocalEchoPageInteractive.current
 
-    LaunchedEffect(normalizedQuery, remoteQuery) {
+    LaunchedEffect(interactive, selectedMode) {
+        if (interactive) onPrioritize(selectedMode.category)
+    }
+
+    LaunchedEffect(interactive, selectedMode, normalizedQuery, remoteQuery) {
+        if (!interactive) return@LaunchedEffect
         val queryToSend = EchoLinkLibraryQueryPolicy.remoteSearchQuery(normalizedQuery)
         if (queryToSend != remoteQuery) {
-            delay(300L)
+            if (queryToSend.isNotEmpty()) delay(150L)
             onRefresh(queryToSend)
         }
     }
 
-    var lastEmptyAutoRefreshQuery by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(
-        normalizedQuery,
-        remoteQuery,
-        state.isLoading,
-        state.error,
-        state.tracks.size,
-        state.totalCount,
-    ) {
-        val shouldRefreshEmptyLibrary =
-            normalizedQuery == remoteQuery &&
-                !state.isLoading &&
-                state.error.isNullOrBlank() &&
-                state.tracks.isEmpty() &&
-                state.totalCount == 0 &&
-                lastEmptyAutoRefreshQuery != normalizedQuery
-        if (shouldRefreshEmptyLibrary) {
-            lastEmptyAutoRefreshQuery = normalizedQuery
-            onRefresh(normalizedQuery)
+    LaunchedEffect(interactive) {
+        if (interactive && normalizedQuery.isEmpty() && remoteQuery.isEmpty() && !state.isLoading &&
+            state.error.isNullOrBlank() && tracks.isEmpty() && state.totalCount == 0
+        ) {
+            onRefresh("")
         }
     }
 
@@ -1819,7 +1820,6 @@ private fun LinkedAlbumTracksPage(
     isLoading: Boolean,
     onBack: () -> Unit,
     onPlayLinkedQueue: (List<EchoRemoteTrack>, Int) -> Unit,
-    onPlayLinkedQueueOnPc: ((List<EchoRemoteTrack>, Int) -> Unit)?,
     onOpenArtist: (() -> Unit)? = null,
     onOpenRemoteArtist: ((EchoRemoteTrack) -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -1849,7 +1849,6 @@ private fun LinkedAlbumTracksPage(
         album = album,
         tracks = albumTracks,
         onBack = onBack,
-        onPlayOnPc = onPlayLinkedQueueOnPc?.let { playOnPc -> { if (tracks.isNotEmpty()) playOnPc(tracks, 0) } },
         onPlayTrack = { track ->
             val remote = remoteTracksByUiId[track.id] ?: return@AlbumDetailListPage
             val index = tracks.indexOfFirst { it.id == remote.id }.coerceAtLeast(0)
@@ -1969,6 +1968,7 @@ private fun LibraryTrackSortMenu(
         onSelect = onSortModeChange,
         onCustomize = onCustomize,
         scopeNote = if (linked) stringResource(L10nR.string.library_sort_loaded_items) else null,
+        showButtonBackground = !linked,
     )
 }
 
@@ -1987,6 +1987,7 @@ private fun LibraryFolderSortMenu(
         onSelect = onSortModeChange,
         onCustomize = onCustomize,
         scopeNote = if (linked) stringResource(L10nR.string.library_sort_loaded_items) else null,
+        showButtonBackground = !linked,
     )
 }
 

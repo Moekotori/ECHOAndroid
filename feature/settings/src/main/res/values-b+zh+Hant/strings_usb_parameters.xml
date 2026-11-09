@@ -1,29 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="usb_param_auto">自動</string>
-    <string name="usb_param_mono">單聲道</string>
-    <string name="usb_param_stereo">立體聲</string>
-    <string name="usb_param_format">輸出格式</string>
-    <string name="usb_param_strict_locked">直通模式跟隨音源格式。</string>
-    <string name="usb_param_capabilities_note">依 DAC 能力選擇，提高參數不會增加音源細節。</string>
-    <string name="usb_param_saved_note">已儲存，DAC 連接並授權後生效。</string>
-    <string name="usb_param_volume">數位音量</string>
+    <string name="usb_param_volume">USB 音量</string>
     <string name="usb_param_volume_note">僅調整應用程式增益，不改變 DAC 硬體音量。</string>
     <string name="usb_param_volume_fixed">嚴格直通的數位音量固定為 100%。</string>
-    <string name="usb_param_transport">USB 傳輸</string>
     <string name="usb_param_buffer">緩衝策略</string>
-    <string name="usb_buffer_responsive">回應優先</string>
-    <string name="usb_buffer_balanced">均衡</string>
     <string name="usb_buffer_stable">穩定優先</string>
-    <string name="usb_param_buffer_note">斷聲時選「穩定優先」。</string>
+    <string name="usb_param_buffer_note">播放斷聲時可增大 USB 緩衝。關閉後恢復均衡緩衝。</string>
     <string name="usb_param_keep_alive">暫停時保持 DAC 喚醒</string>
-    <string name="usb_param_keep_alive_note">暫停時傳送靜音，保持 DAC 連接。</string>
-    <string name="usb_param_reset">恢復輸出參數</string>
-    <string name="usb_param_reset_note">重設格式、音量和緩衝，保留輸出模式。</string>
+    <string name="usb_param_keep_alive_note">PCM 暫停時傳送靜音，保持此 DAC 喚醒。依 DAC 型號儲存。</string>
     <string name="usb_mode_strict">整數直通</string>
     <string name="usb_mode_processing">相容輸出</string>
-    <string name="usb_mode_processing_note">可調格式、音量，支援等化器和校正。</string>
     <string name="usb_param_transfer_rate">USB 傳輸取樣率</string>
     <string name="usb_param_buffer_capacity">傳輸佇列容量約 %1$d ms</string>
+    <string name="usb_troubleshooting">斷聲疑難排解</string>
+    <string name="usb_troubleshooting_note">USB 緩衝與輸出重設</string>
+    <string name="usb_dac_compatibility">DAC 進階相容性設定</string>
+    <string name="usb_dac_compatibility_connect">連接 USB DAC 後可調整此裝置的設定。</string>
+    <string name="usb_dac_compatibility_note">此 DAC 的暫停保活與 DoP</string>
 </resources>
 

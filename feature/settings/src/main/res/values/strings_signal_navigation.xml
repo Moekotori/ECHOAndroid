@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="audio_settings_title">Audio settings</string>
-    <string name="signal_usb_settings_summary">Passthrough, format, buffer and driver checks</string>
+    <string name="signal_usb_settings_summary">Passthrough, volume and driver checks</string>
 </resources>

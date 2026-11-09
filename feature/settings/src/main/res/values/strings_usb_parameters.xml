@@ -1,29 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="usb_param_auto">Automatic</string>
-    <string name="usb_param_mono">Mono</string>
-    <string name="usb_param_stereo">Stereo</string>
-    <string name="usb_param_format">Output format</string>
-    <string name="usb_param_strict_locked">Bit-perfect follows the source format.</string>
-    <string name="usb_param_capabilities_note">Options follow DAC capabilities. Higher values cannot add source detail.</string>
-    <string name="usb_param_saved_note">Saved; applied when the DAC connects and is authorized.</string>
-    <string name="usb_param_volume">Digital volume</string>
+    <string name="usb_param_volume">USB volume</string>
     <string name="usb_param_volume_note">App attenuation only; the DAC hardware volume is unchanged.</string>
     <string name="usb_param_volume_fixed">Strict passthrough fixes digital volume at 100%.</string>
-    <string name="usb_param_transport">USB transport</string>
     <string name="usb_param_buffer">Buffer profile</string>
-    <string name="usb_buffer_responsive">Responsive</string>
-    <string name="usb_buffer_balanced">Balanced</string>
     <string name="usb_buffer_stable">Stable</string>
-    <string name="usb_param_buffer_note">Choose Stable if audio cuts out.</string>
+    <string name="usb_param_buffer_note">Use a larger USB buffer if playback cuts out. Turn this off to restore balanced buffering.</string>
     <string name="usb_param_keep_alive">Keep DAC awake while paused</string>
-    <string name="usb_param_keep_alive_note">Send silence while paused to keep the DAC connected.</string>
-    <string name="usb_param_reset">Reset output parameters</string>
-    <string name="usb_param_reset_note">Reset format, volume and buffer; keep the output mode.</string>
+    <string name="usb_param_keep_alive_note">Send silence during PCM pauses to keep this DAC awake. Saved for this DAC model.</string>
     <string name="usb_mode_strict">Integer passthrough</string>
     <string name="usb_mode_processing">Processing</string>
-    <string name="usb_mode_processing_note">Adjust format and volume; EQ and correction are available.</string>
     <string name="usb_param_transfer_rate">USB transfer rate</string>
     <string name="usb_param_buffer_capacity">Transfer queue capacity: about %1$d ms</string>
+    <string name="usb_troubleshooting">Audio dropout troubleshooting</string>
+    <string name="usb_troubleshooting_note">USB buffer and output reset</string>
+    <string name="usb_dac_compatibility">DAC compatibility</string>
+    <string name="usb_dac_compatibility_connect">Connect a USB DAC to adjust device settings.</string>
+    <string name="usb_dac_compatibility_note">Pause keep-awake and DoP for this DAC</string>
 </resources>
 

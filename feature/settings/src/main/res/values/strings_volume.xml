@@ -1,6 +1,6 @@
 <resources>
     <string name="volume_title">Volume</string>
-    <string name="volume_summary">App volume, gain and adjustment step</string>
+    <string name="volume_summary">App volume, loudness normalization and dynamics</string>
     <string name="volume_scope">Applies to phone playback. System and DAC volume are independent; cast volume belongs to the receiving device.</string>
     <string name="volume_advanced">Advanced options</string>
     <string name="volume_device_saved">Volume and gain saved automatically</string>
@@ -15,7 +15,7 @@
     <string name="volume_gain">Gain</string>
     <string name="volume_limit">Combined gain ceiling</string>
     <string name="volume_limit_detail">Caps the sum of volume, gain and ReplayGain.</string>
-    <string name="volume_gain_hint">At higher gain, use the limiter in Advanced options to reduce clipping.</string>
+    <string name="volume_gain_hint">At higher gain, enable the limiter under Loudness and dynamics to reduce clipping.</string>
     <string name="volume_step">App volume adjustment step</string>
     <string name="volume_step_value">%1$s dB per tap</string>
     <string name="volume_decrease">Decrease app volume</string>
@@ -28,4 +28,11 @@
     <string name="volume_device_memory_detail">When device memory is enabled, each output saves its own app volume and gain. Volume keys control system media volume during normal playback, including while paused. The selected step applies to the app volume buttons here and foreground keys during processed USB-exclusive output; volume up also unmutes for that USB output. USB bit-perfect output requires DAC hardware volume. Cast keys control the receiving device. Devices without a unique ID share records by type and name; identical USB DAC models share a record.</string>
     <string name="volume_key_value">App volume: %1$.1f dB</string>
     <string name="volume_save_failed">Volume could not be saved. Adjust it again to retry.</string>
+    <string name="volume_gain_section">Gain and ceiling</string>
+    <string name="volume_processing_section">Loudness and dynamics</string>
+    <string name="volume_device_section">Output settings</string>
+    <string name="volume_mute_action">Mute</string>
+    <string name="volume_unmute_action">Unmute</string>
+    <string name="volume_gain_zero">Set gain to 0 dB</string>
+    <string name="volume_reset_confirm_detail">This restores app volume and gain to 0 dB, resets the ceiling and step size, and clears mute. Playback may get louder.</string>
 </resources>

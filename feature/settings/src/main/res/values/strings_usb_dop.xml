@@ -2,9 +2,8 @@
 <resources>
     <string name="usb_dop_title">DSD over PCM (DoP)</string>
     <string name="usb_dop_enable">Enable DoP for this DAC</string>
-    <string name="usb_dop_connect">Connect a USB DAC to configure DoP.</string>
     <string name="usb_dop_note">Enable only for a DoP-capable DAC. Saved per device.</string>
     <string name="usb_dop_max">Maximum DSD rate</string>
     <string name="usb_dop_strict_note">Requires USB bit-perfect and a supported DAC clock. Unsupported formats stop playback.</string>
-    <string name="usb_dop_blocked">Enable DoP for this DAC and select a maximum DSD rate covering this track, then restart playback.</string>
+    <string name="usb_dop_blocked">Open DAC compatibility, enable DoP for this DAC and select a DSD rate it supports that covers this track. Then restart playback.</string>
 </resources>

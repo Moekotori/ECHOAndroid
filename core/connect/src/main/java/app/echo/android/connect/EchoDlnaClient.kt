@@ -1,9 +1,11 @@
 package app.echo.android.connect
 
+import android.net.Network
 import app.echo.android.model.connect.EchoDlnaService
 import app.echo.android.model.connect.EchoLanRenderer
 import app.echo.android.model.connect.EchoRemoteStreamItem
 import java.net.HttpURLConnection
+import java.net.Proxy
 import java.net.URL
 import java.nio.charset.StandardCharsets
 
@@ -152,10 +154,14 @@ data class EchoDlnaPositionInfo(
     val trackUri: String?,
 )
 
-class EchoDlnaHttpTransport(
-    private val connectTimeoutMs: Int = 6_000,
-    private val readTimeoutMs: Int = 6_000,
+class EchoDlnaHttpTransport internal constructor(
+    private val connectTimeoutMs: Int,
+    private val readTimeoutMs: Int,
+    private val network: Network?,
 ) : EchoDlnaTransport {
+    constructor(connectTimeoutMs: Int = 6_000, readTimeoutMs: Int = 6_000) :
+        this(connectTimeoutMs, readTimeoutMs, null)
+
     override fun post(
         controlUrl: String,
         serviceType: String,
@@ -167,7 +173,9 @@ class EchoDlnaHttpTransport(
         }
         val body = EchoDlnaSoap.envelope(serviceType, action, args)
         val bytes = body.toByteArray(StandardCharsets.UTF_8)
-        val connection = (URL(controlUrl).openConnection() as HttpURLConnection).apply {
+        val url = URL(controlUrl)
+        val connection = (network?.openConnection(url, Proxy.NO_PROXY) ?: url.openConnection()) as HttpURLConnection
+        connection.apply {
             connectTimeout = connectTimeoutMs
             readTimeout = readTimeoutMs
             instanceFollowRedirects = false

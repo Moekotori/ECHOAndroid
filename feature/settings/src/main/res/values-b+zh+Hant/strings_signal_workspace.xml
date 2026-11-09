@@ -5,7 +5,9 @@
     <string name="signal_sound_eq_summary">頻段增益與參數均衡</string>
     <string name="signal_sound_headphones_summary">耳機頻響補償</string>
     <string name="signal_sound_channels_summary">左右平衡、路由與校準</string>
-    <string name="signal_sound_dsp_summary">響度、交叉饋送與限幅</string>
+    <string name="signal_sound_effects_summary">人聲、低音、空間等 22 種音效</string>
+    <string name="signal_sound_soundstage_title">耳機聲場</string>
+    <string name="signal_sound_soundstage_summary">立體聲交叉饋送與 HRTF 虛擬音箱</string>
     <string name="signal_sound_mseb_summary">冷暖、低頻與人聲聽感</string>
     <string name="signal_value_range">範圍：%1$s–%2$s %3$s</string>
     <string name="signal_about_control">關於%1$s</string>
@@ -26,8 +28,6 @@
     <string name="signal_linear_pan">線性衰減</string>
     <string name="signal_preset_while_off">已關閉 · 開啟後套用參數</string>
     <string name="signal_reset_section">重設此項</string>
-    <string name="signal_dsp_enabled_count">%1$d / 3 項已開啟</string>
-    <string name="signal_reset_dsp">重設 DSP</string>
     <string name="signal_crossfeed_summary">混合 %1$s%% · 立體聲耳機</string>
     <string name="signal_loudness_tag">響度標籤</string>
     <string name="signal_no_loudness_tag">暫無資料</string>

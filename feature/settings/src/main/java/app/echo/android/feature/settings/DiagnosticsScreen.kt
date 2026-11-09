@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 
 private const val DiagnosticsPanel = 6
 private const val UsbOutputPanel = 7
+private val soundToolsByPanel = SignalSoundTool.entries.associateBy { it.panel }
 
 @Composable
 fun DiagnosticsScreen(
@@ -127,14 +128,6 @@ fun DiagnosticsScreen(
         stringResource(L10nR.string.audio_settings_title),
     )
     val scheme = MaterialTheme.colorScheme
-    val soundLabels = listOf(
-        stringResource(L10nR.string.peq_workspace_title),
-        stringResource(L10nR.string.feature_settings_headphone_correction_491ce5),
-        stringResource(L10nR.string.channel_balance),
-        stringResource(L10nR.string.dsp_title),
-        stringResource(L10nR.string.mseb_title),
-        stringResource(L10nR.string.volume_title),
-    )
     val errorContent: @Composable () -> Unit = {
         val error = status.diagnostics.lastError?.message ?: status.diagnostics.usbLastRequestError?.message
         if (error != null) {
@@ -153,13 +146,18 @@ fun DiagnosticsScreen(
     CompositionLocalProvider(LocalContentColor provides scheme.onBackground) {
         SignalSoundNavigation(
             selectedPanel = soundPanel,
-            labels = soundLabels + listOf(stringResource(L10nR.string.feature_settings_diagnostics_b6e487),
-                stringResource(L10nR.string.settings_section_usb)),
+            title = { panel ->
+                stringResource(when (panel) {
+                    DiagnosticsPanel -> L10nR.string.feature_settings_diagnostics_b6e487
+                    UsbOutputPanel -> L10nR.string.settings_section_usb
+                    else -> soundToolsByPanel.getValue(panel).title
+                })
+            },
             isActive = isActive,
             onBack = { soundPanel = -1 },
-            scrollingTool = 1,
+            scrollingTool = SignalSoundTool.HeadphoneCorrection.panel,
             compactTool = UsbOutputPanel,
-            onNavigateUp = if (soundPanel == 1 && opraState.selectedBrandId != null) {
+            onNavigateUp = if (soundPanel == SignalSoundTool.HeadphoneCorrection.panel && opraState.selectedBrandId != null) {
                 { onOpraBrandSelected(null) }
             } else null,
             tool = { panel ->
@@ -174,60 +172,66 @@ fun DiagnosticsScreen(
                         onRequestBluetoothCodecPermission)
                 } else {
                     errorContent()
-                    if (panel == 0) SignalEqualizer(
-                        state = equalizerState,
-                        bypassed = status.diagnostics.usbBitPerfectEnabled,
-                        playing = status.isPlaying,
-                        userPresets = userPresets,
-                        activeUserPresetId = activeUserPresetId,
-                        onPreampChange = onEqualizerPreampChange,
-                        onEnabledChange = onEqualizerEnabledChange,
-                        onPresetSelected = onEqualizerPresetSelected,
-                        onBandGainChange = onEqualizerBandGainChange,
-                        onReset = onEqualizerReset,
-                        onParametricChange = onParametricChange,
-                        onParametricPreview = onParametricPreview,
-                        onOptionsChange = onEqualizerOptionsChange, onOptionsPreview = onEqualizerOptionsPreview, onAudition = onEqualizerAudition,
-                        onSaveUserPreset = onSaveUserPreset,
-                        onUpdateUserPreset = onUpdateUserPreset,
-                        onApplyUserPreset = onApplyUserPreset,
-                        onRenameUserPreset = onRenameUserPreset,
-                        onDeleteUserPreset = onDeleteUserPreset,
-                        onImportShareCode = onImportShareCode,
-                        onImportBundle = onImportBundle,
-                        outputDeviceLabel = outputDeviceLabel,
-                        outputBound = outputPresetBound,
-                        onBindToOutput = onBindPresetToOutput,
-                        onUnbindFromOutput = onUnbindPresetFromOutput,
-                    )
-                    else if (panel == 1) SignalHeadphoneCorrection(
-                        state = opraState,
-                        playing = status.isPlaying,
-                        equalizer = equalizerState,
-                        bypassed = status.diagnostics.usbBitPerfectEnabled,
-                        userPresets = userPresets,
-                        lastQuery = opraLastQuery,
-                        onBrandSelected = onOpraBrandSelected,
-                        onQueryChange = onOpraQueryChange,
-                        onSearch = onOpraSearch,
-                        onRefresh = onOpraRefresh,
-                        onPresetSelected = onOpraPresetSelected,
-                        onApplySelected = onOpraApplySelected,
-                        onEnabledChange = onHeadphoneCorrectionEnabledChange,
-                        onToggleFavorite = onToggleOpraFavorite,
-                        onApplyUserPreset = onApplyUserPreset,
-                    )
-                    else if (panel == 2) SignalChannelBalance(
-                        state = channelBalanceState,
-                        bypassed = status.diagnostics.usbBitPerfectEnabled,
-                        playing = status.isPlaying,
-                        onStateChange = onChannelBalanceChange,
-                        onReset = onChannelBalanceReset,
-                    )
-                    else if (panel == 3) SignalDspPanel(dspSettings, status, replayGainScan, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan)
-                    else if (panel == 4) SignalMsebPanel(equalizerState, status, onMsebChange, onMsebPreview, msebPersonal)
-                    else SignalVolumePanel(volumeSettings, status, dspSettings, replayGainScan,
-                        onVolumeSettings, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan, outputDeviceLabel)
+                    val bitPerfect = status.diagnostics.usbBitPerfectEnabled
+                    when (soundToolsByPanel.getValue(panel)) {
+                        SignalSoundTool.Equalizer -> SignalEqualizer(
+                            state = equalizerState,
+                            bypassed = bitPerfect,
+                            playing = status.isPlaying,
+                            userPresets = userPresets,
+                            activeUserPresetId = activeUserPresetId,
+                            onPreampChange = onEqualizerPreampChange,
+                            onEnabledChange = onEqualizerEnabledChange,
+                            onPresetSelected = onEqualizerPresetSelected,
+                            onBandGainChange = onEqualizerBandGainChange,
+                            onReset = onEqualizerReset,
+                            onParametricChange = onParametricChange,
+                            onParametricPreview = onParametricPreview,
+                            onOptionsChange = onEqualizerOptionsChange, onOptionsPreview = onEqualizerOptionsPreview, onAudition = onEqualizerAudition,
+                            onSaveUserPreset = onSaveUserPreset,
+                            onUpdateUserPreset = onUpdateUserPreset,
+                            onApplyUserPreset = onApplyUserPreset,
+                            onRenameUserPreset = onRenameUserPreset,
+                            onDeleteUserPreset = onDeleteUserPreset,
+                            onImportShareCode = onImportShareCode,
+                            onImportBundle = onImportBundle,
+                            outputDeviceLabel = outputDeviceLabel,
+                            outputBound = outputPresetBound,
+                            onBindToOutput = onBindPresetToOutput,
+                            onUnbindFromOutput = onUnbindPresetFromOutput,
+                        )
+                        SignalSoundTool.HeadphoneCorrection -> SignalHeadphoneCorrection(
+                            state = opraState,
+                            playing = status.isPlaying,
+                            equalizer = equalizerState,
+                            bypassed = bitPerfect,
+                            userPresets = userPresets,
+                            lastQuery = opraLastQuery,
+                            onBrandSelected = onOpraBrandSelected,
+                            onQueryChange = onOpraQueryChange,
+                            onSearch = onOpraSearch,
+                            onRefresh = onOpraRefresh,
+                            onPresetSelected = onOpraPresetSelected,
+                            onApplySelected = onOpraApplySelected,
+                            onEnabledChange = onHeadphoneCorrectionEnabledChange,
+                            onToggleFavorite = onToggleOpraFavorite,
+                            onApplyUserPreset = onApplyUserPreset,
+                        )
+                        SignalSoundTool.Channels -> SignalChannelBalance(
+                            state = channelBalanceState,
+                            bypassed = bitPerfect,
+                            playing = status.isPlaying,
+                            onStateChange = onChannelBalanceChange,
+                            onReset = onChannelBalanceReset,
+                        )
+                        SignalSoundTool.Effects -> SignalSoundEffects(
+                            dspSettings.soundEffect, status.diagnostics.soundEffect, !bitPerfect,
+                        ) { onDspSettings(dspSettings.copy(soundEffect = it)) }
+                        SignalSoundTool.HeadphoneSoundstage -> SignalHeadphoneSoundstage(dspSettings, !bitPerfect, onDspSettings)
+                        SignalSoundTool.Mseb -> SignalMsebPanel(equalizerState, status, onMsebChange, onMsebPreview, msebPersonal)
+                        SignalSoundTool.Volume -> SignalVolumePanel(volumeSettings, status, dspSettings, replayGainScan,
+                            onVolumeSettings, onDspSettings, onReplayGain, onReplayGainMode, onReplayGainScan, outputDeviceLabel)
+                    }
                 }
             },
         ) {
@@ -276,11 +280,11 @@ fun DiagnosticsScreen(
                                 0 -> SignalOverview(status, equalizerState, channelBalanceState, dspSettings, onAdjust = { selectTab(1) }, onDiagnostics = { soundPanel = DiagnosticsPanel }, volume = volumeSettings)
                                 1 -> {
                                     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                                        SignalSoundMenu(soundLabels, states = signalSoundMenuStates(
+                                        SignalSoundMenu(states = signalSoundMenuStates(
                                             equalizerState, channelBalanceState, dspSettings,
                                             status.replayGainEnabled, volumeSettings,
                                             status.diagnostics.usbBitPerfectEnabled,
-                                        ), onSelect = { soundPanel = it })
+                                        ), onSelect = { soundPanel = it.panel })
                                         OutputAudioProfileControl(outputDeviceLabel, outputAudioProfileBound,
                                             status.diagnostics.usbBitPerfectEnabled, onSaveOutputAudioProfile, onRemoveOutputAudioProfile)
                                     }

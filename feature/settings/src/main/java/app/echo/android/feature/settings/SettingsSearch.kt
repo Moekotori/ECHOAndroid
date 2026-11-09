@@ -68,9 +68,7 @@ private val audioSettingsSearchAnchors = setOf(
 
 internal val usbAudioSettingsSearchAnchors = setOf(
     R.string.settings_section_usb, R.string.settings_usb_exclusive, R.string.settings_usb_bitperfect,
-    R.string.settings_usb_auto_request, R.string.settings_test_usb, R.string.diag_sample_rate,
-    R.string.path_output_bits, R.string.diag_channels, R.string.usb_param_volume,
-    R.string.usb_param_buffer, R.string.usb_param_keep_alive,
+    R.string.settings_usb_auto_request, R.string.settings_test_usb, R.string.usb_param_volume,
 )
 
 private fun item(
@@ -271,12 +269,7 @@ private val indexedSettings = listOf(
     item(SettingsCategory.Playback, R.string.settings_notification_permission,
         requirement = SettingsSearchRequirement.NotificationPermission),
     item(SettingsCategory.Usb, R.string.settings_test_usb),
-    item(SettingsCategory.Usb, R.string.diag_sample_rate),
-    item(SettingsCategory.Usb, R.string.path_output_bits),
-    item(SettingsCategory.Usb, R.string.diag_channels),
     item(SettingsCategory.Usb, R.string.usb_param_volume),
-    item(SettingsCategory.Usb, R.string.usb_param_buffer),
-    item(SettingsCategory.Usb, R.string.usb_param_keep_alive),
 
     item(SettingsCategory.Services, R.string.settings_category_services,
         keywords = *intArrayOf(R.string.settings_category_services_detail)),

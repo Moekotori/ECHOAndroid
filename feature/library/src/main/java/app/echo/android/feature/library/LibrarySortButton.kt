@@ -26,15 +26,18 @@ internal fun LibrarySortButton(
     contentDescription: String,
     onClick: () -> Unit,
     filterCount: Int = 0,
+    showBackground: Boolean = true,
 ) {
     IconButton(onClick = onClick, modifier = Modifier.size(LibraryCategoryBarHeight)) {
         BadgedBox(
             badge = { if (filterCount > 0) Badge { Text(filterCount.toString()) } },
         ) {
-            Box(
-                Modifier.size(28.dp).background(MaterialTheme.colorScheme.surfaceContainer, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
+            val background = if (showBackground) {
+                Modifier.background(MaterialTheme.colorScheme.surfaceContainer, CircleShape)
+            } else {
+                Modifier
+            }
+            Box(Modifier.size(28.dp).then(background), contentAlignment = Alignment.Center) {
                 EchoIcon(
                     LibrarySortIcon,
                     contentDescription = contentDescription,

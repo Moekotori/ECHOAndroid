@@ -3,4 +3,5 @@
     <string name="lock_lyrics_idle_title">ECHO</string>
     <string name="lock_lyrics_waiting">Esperando la letra</string>
     <string name="lock_lyrics_hint">Letra en bloqueo</string>
+    <string name="lock_lyrics_exit">Cerrar la letra</string>
 </resources>

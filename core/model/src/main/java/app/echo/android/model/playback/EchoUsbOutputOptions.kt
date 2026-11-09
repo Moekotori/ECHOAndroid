@@ -1,15 +1,21 @@
 package app.echo.android.model.playback
 
 enum class EchoUsbBufferMode(val id: String, val transferCount: Int) {
-    Responsive("responsive", 8), Balanced("balanced", 16), Stable("stable", 32);
+    Balanced("balanced", 16), Stable("stable", 32);
     companion object {
         fun fromId(id: String?) = entries.firstOrNull { it.id == id } ?: Balanced
     }
 }
 
 enum class EchoUsbVolumeMode(val id: String) {
-    Software("software"), Auto("auto"), Hardware("hardware");
-    companion object { fun fromId(id: String?) = entries.firstOrNull { it.id == id } ?: Software }
+    Software("software"), Auto("auto");
+
+    companion object {
+        fun fromId(id: String?) = when (id) {
+            Auto.id, "hardware" -> Auto
+            else -> Software
+        }
+    }
 }
 
 data class EchoUsbVolumeDiagnostics(val requested: String, val effective: String, val checked: Boolean,
@@ -29,6 +35,8 @@ data class EchoUsbOutputOptions(
     val volumeStep: Int? = null,
     val volumeDeviceKey: String? = null,
     val deviceVolumeSteps: Map<String, Int> = emptyMap(),
+    /** Pause keep-alive overrides by USB VID:PID; missing devices use the saved default. */
+    val keepAliveByDevice: Map<String, Boolean> = emptyMap(),
 ) {
     val effectiveVolumeStep: Int get() = volumeStep?.coerceIn(0, 300) ?: EchoUsbFineVolume.fromPercent(volumePercent)
     val volumeGain: Float get() = volumeStep?.let(EchoUsbFineVolume::gain) ?: (volumePercent.coerceIn(0, 100) / 100f)
@@ -44,6 +52,8 @@ data class EchoUsbOutputOptions(
         bitDepth = bitDepth.takeIf { it in listOf(16, 24, 32) } ?: 0,
         channelCount = channelCount.takeIf { it in 1..2 } ?: 0,
         volumePercent = volumePercent.coerceIn(0, 100),
+        keepAliveByDevice = keepAliveByDevice.entries.filter { EchoUsbFineVolume.validKey(it.key) }
+            .takeLast(MAX_KEEP_ALIVE_DEVICES).associate { it.toPair() },
         dopDeviceLimits = dopDeviceLimits.entries.filter { (key, rate) ->
             val ids = key.split(':')
             ids.size == 2 && ids.all { it.toIntOrNull() in 0..65535 } && rate in DOP_DSD_RATES
@@ -52,11 +62,13 @@ data class EchoUsbOutputOptions(
 
     fun needsRebuild(previous: EchoUsbOutputOptions, strict: Boolean): Boolean =
         bufferMode != previous.bufferMode || keepAliveOnPause != previous.keepAliveOnPause ||
+            keepAliveByDevice != previous.keepAliveByDevice ||
             (strict && dopDeviceLimits != previous.dopDeviceLimits) ||
             (!strict && (sampleRateHz != previous.sampleRateHz || bitDepth != previous.bitDepth ||
                 channelCount != previous.channelCount))
 
     companion object {
+        const val MAX_KEEP_ALIVE_DEVICES = 32
         val DOP_DSD_RATES = listOf(2_822_400, 5_644_800, 11_289_600, 22_579_200)
         fun dopDeviceKey(vendorId: Int, productId: Int) = "$vendorId:$productId"
         val SAMPLE_RATES = listOf(44_100, 48_000, 88_200, 96_000, 176_400, 192_000, 352_800, 384_000)

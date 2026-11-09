@@ -1,16 +1,27 @@
 package app.echo.android
 
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent
-import android.widget.Toast
 import androidx.media3.common.util.UnstableApi
 import app.echo.android.playback.EchoPlaybackProcessRuntime
-import app.echo.android.feature.settings.R as SettingsR
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+internal sealed interface AppVolumeKeyFeedback {
+    data class Level(val db: Float, val muted: Boolean) : AppVolumeKeyFeedback
+    data object Locked : AppVolumeKeyFeedback
+}
 
 /** Foreground USB-exclusive keys only. Normal playback uses Android media volume. */
 @UnstableApi
 internal class AppVolumeKeys(private val application: EchoApplication) {
     private val pressed = HashSet<Int>(2)
-    private var toast: Toast? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private val currentFeedback = MutableStateFlow<AppVolumeKeyFeedback?>(null)
+    private val hideFeedback = Runnable { currentFeedback.value = null }
+    val feedback = currentFeedback.asStateFlow()
     private var lastNoticeMs = -1_000L
 
     fun down(keyCode: Int, repeat: Int): Boolean {
@@ -24,15 +35,14 @@ internal class AppVolumeKeys(private val application: EchoApplication) {
         val usb = EchoPlaybackProcessRuntime.usbAudioMonitor(application).status.value
         if (!usb.connected || !usb.exclusiveEnabled) return false
         if (EchoPlaybackProcessRuntime.usbVolumeLocked) {
-            if (repeat == 0) notice(application.getString(R.string.usb_key_volume_locked))
+            if (repeat == 0) showFeedback(AppVolumeKeyFeedback.Locked, durationMs = 2_600L)
         } else {
             if (!application.appVolumeController.adjust(direction)) return false
-            val volume = application.appVolumeController.state.value
-            val now = android.os.SystemClock.elapsedRealtime()
+            val now = SystemClock.elapsedRealtime()
             if (repeat == 0 || now - lastNoticeMs >= 150) {
                 lastNoticeMs = now
-                notice(if (volume.muted) application.getString(SettingsR.string.volume_muted) else
-                    application.getString(SettingsR.string.volume_key_value, volume.levelDb))
+                val volume = application.appVolumeController.state.value
+                showFeedback(AppVolumeKeyFeedback.Level(volume.levelDb, volume.muted), durationMs = 1_800L)
             }
         }
         pressed.add(keyCode)
@@ -40,10 +50,16 @@ internal class AppVolumeKeys(private val application: EchoApplication) {
     }
 
     fun up(keyCode: Int): Boolean = pressed.remove(keyCode)
-    fun clearPressed() { pressed.clear() }
 
-    private fun notice(text: String) {
-        toast?.cancel()
-        toast = Toast.makeText(application, text, Toast.LENGTH_SHORT).also { it.show() }
+    fun clear() {
+        pressed.clear()
+        handler.removeCallbacks(hideFeedback)
+        currentFeedback.value = null
+    }
+
+    private fun showFeedback(feedback: AppVolumeKeyFeedback, durationMs: Long) {
+        currentFeedback.value = feedback
+        handler.removeCallbacks(hideFeedback)
+        handler.postDelayed(hideFeedback, durationMs)
     }
 }

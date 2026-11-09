@@ -2,6 +2,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <queries>
         <package android:name="com.android.systemui" />
+        <package android:name="miui.systemui.plugin" />
         <intent>
             <action android:name="com.android.settings.panel.action.MEDIA_OUTPUT" />
         </intent>

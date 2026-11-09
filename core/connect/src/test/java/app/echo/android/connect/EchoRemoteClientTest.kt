@@ -12,12 +12,15 @@ import app.echo.android.model.connect.EchoRemoteStreamItem
 import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.playback.EchoLinkPlaybackUri
+import app.echo.android.model.settings.EchoLibraryCategory
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -330,6 +333,62 @@ class EchoRemoteClientTest {
     }
 
     @Test
+    fun visibleCollectionStartsBeforeOffscreenRequestsAndCanChangeWhileLoading() = runBlocking {
+        val songs = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(
+            libraryTotalCount = 1,
+            trackPageBlockers = mapOf(1 to songs),
+            albums = listOf(EchoRemoteAlbum(id = "album", title = "Album", artist = "Artist", trackCount = 1)),
+        )
+        val client = EchoRemoteClient(this, transport)
+        try {
+            withTimeout(2_000) {
+                client.connect(endpoint)
+                transport.firstLibraryTrackRequest.await()
+                assertEquals(1, transport.libraryTrackCalls)
+                assertEquals(0, transport.libraryAlbumCalls)
+                assertEquals(0, transport.libraryPlaylistCalls)
+
+                client.prioritizeLibraryCategory(EchoLibraryCategory.Albums)
+                val albumsFirst = client.library.first { it.albums.isNotEmpty() }
+                assertTrue(albumsFirst.tracks.isEmpty())
+                songs.complete(Unit)
+                client.library.first { it.tracks.isNotEmpty() }
+                transport.firstLibraryPlaylistRequest.await()
+                assertEquals(1, transport.libraryAlbumCalls)
+                assertEquals(1, transport.libraryPlaylistCalls)
+            }
+        } finally {
+            client.disconnect()
+        }
+    }
+
+    @Test
+    fun clearingSearchRestoresTheFirstBrowsePageBeforeTheRequestCompletes() = runBlocking {
+        val transport = FakeEchoLinkTransport(libraryTotalCount = 105, emptyRemoteQueries = setOf("测试"))
+        val client = EchoRemoteClient(this, transport)
+        try {
+            withTimeout(2_000) {
+                client.connect(endpoint)
+                val initial = client.library.first { it.tracks.isNotEmpty() }
+                client.refreshLibrary("测试")
+                client.library.first { it.query == "测试" && !it.isLoading }
+                assertTrue(client.library.value.tracks.isEmpty())
+
+                client.refreshLibrary("")
+                val cached = client.library.value
+                assertTrue(cached.isLoading)
+                assertEquals(initial.tracks, cached.tracks)
+                assertEquals(initial.totalCount, cached.totalCount)
+                client.library.first { !it.isLoading }
+                assertEquals(3, transport.libraryTrackCalls)
+            }
+        } finally {
+            client.disconnect()
+        }
+    }
+
+    @Test
     fun firstFailedConnectIsRetriedUntilStatusSucceeds() = runBlocking {
         val transport = FakeEchoLinkTransport(failStatusTimes = 1)
         val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
@@ -578,28 +637,37 @@ class EchoRemoteClientTest {
     }
 
     @Test
-    fun pagesBeyondTheFirstLibraryPage() = runBlocking {
-        val transport = FakeEchoLinkTransport(libraryPageSize = 2, libraryTotalCount = 5)
+    fun smallLibraryPagesDoNotSkipTracksAndDuplicateRefreshesShareTheFirstPage() = runBlocking {
+        val firstPageBlocker = CompletableDeferred<Unit>()
+        val transport = FakeEchoLinkTransport(
+            libraryTotalCount = 205,
+            trackPageBlockers = mapOf(1 to firstPageBlocker),
+        )
         val client = EchoRemoteClient(this, transport, connectRetryDelayMs = 0)
-        client.connect(endpoint, refreshLibraryOnConnect = true)
-        delay(80)
-        assertEquals(2, client.library.value.tracks.size)
-        assertEquals(5, client.library.value.totalCount)
-        assertEquals(1, transport.libraryTrackCalls)
-        assertFalse(client.library.value.isLoadingMore)
-        client.loadMoreTracks()
-        delay(30)
-        assertEquals(4, client.library.value.tracks.size)
-        assertEquals(2, transport.libraryTrackCalls)
-        client.loadMoreTracks()
-        delay(30)
-        assertEquals(5, client.library.value.tracks.size)
-        assertEquals(3, transport.libraryTrackCalls)
-        assertFalse(client.library.value.isLoadingMore)
-        client.loadMoreTracks()
-        delay(20)
-        assertEquals(3, transport.libraryTrackCalls)
-        client.disconnect()
+        try {
+            withTimeout(2_000) {
+                client.connect(endpoint)
+                transport.firstLibraryTrackRequest.await()
+                client.refreshLibrary()
+
+                firstPageBlocker.complete(Unit)
+                val first = client.library.first { !it.isLoading }
+                assertEquals(100, first.tracks.size)
+                assertEquals(205, first.totalCount)
+
+                client.loadMoreTracks()
+                client.library.first { it.tracks.size > first.tracks.size }
+                client.loadMoreTracks()
+                val last = client.library.first { it.tracks.size == it.totalCount }
+                assertEquals((0 until 205).map { "track-$it" }, last.tracks.map { it.id })
+                assertFalse(last.isLoadingMore)
+                client.loadMoreTracks()
+                yield()
+                assertEquals(3, transport.libraryTrackCalls)
+            }
+        } finally {
+            client.disconnect()
+        }
     }
 
     @Test
@@ -1253,6 +1321,10 @@ internal class FakeEchoLinkTransport(
     private var activeStatusCalls = 0
     var pairingCalls = 0
     var libraryTrackCalls = 0
+    var libraryAlbumCalls = 0
+    var libraryPlaylistCalls = 0
+    val firstLibraryTrackRequest = CompletableDeferred<Unit>()
+    val firstLibraryPlaylistRequest = CompletableDeferred<Unit>()
     var playlistTrackCalls = 0
     var streamCalls = 0
     var cancelledStreams = 0
@@ -1364,17 +1436,19 @@ internal class FakeEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkTrackPage {
+        libraryTrackCalls += 1
+        firstLibraryTrackRequest.complete(Unit)
         trackBlockers[query]?.await()
         trackPageBlockers[page]?.await()
-        libraryTrackCalls += 1
         if (query in emptyRemoteQueries) {
             return EchoLinkTrackPage(tracks = emptyList(), totalCount = 0)
         }
-        val start = (page - 1) * libraryPageSize
+        val effectivePageSize = pageSize.coerceAtMost(libraryPageSize)
+        val start = (page - 1) * effectivePageSize
         if (start >= libraryTotalCount) {
             return EchoLinkTrackPage(tracks = emptyList(), totalCount = libraryTotalCount)
         }
-        val end = minOf(libraryTotalCount, start + libraryPageSize)
+        val end = minOf(libraryTotalCount, start + effectivePageSize)
         val tracks = (start until end).map { index ->
             EchoRemoteTrack(
                 id = "track-$index",
@@ -1394,6 +1468,8 @@ internal class FakeEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkPlaylistPage {
+        libraryPlaylistCalls += 1
+        firstLibraryPlaylistRequest.complete(Unit)
         playlistListBlocker?.await()
         return EchoLinkPlaylistPage(playlists = emptyList())
     }
@@ -1404,6 +1480,7 @@ internal class FakeEchoLinkTransport(
         page: Int,
         pageSize: Int,
     ): EchoLinkAlbumPage {
+        libraryAlbumCalls += 1
         if (failAlbums) throw EchoLinkHttpException("PC ECHO request failed (404): albums_not_found", 404)
         return EchoLinkAlbumPage(albums = albums, totalCount = albums.size)
     }

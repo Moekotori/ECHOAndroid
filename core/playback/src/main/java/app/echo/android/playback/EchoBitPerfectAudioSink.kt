@@ -86,9 +86,9 @@ internal class EchoBitPerfectAudioSink(context: Context) : ForwardingAudioSink(D
             val options = EchoPlaybackProcessRuntime.usbOutputOptions
             val opened = output.open(UsbPcmFormatSpec(wanted.sampleRate, wanted.channelCount, nextSourceBits), bitPerfect = true,
                 transferCount = options.bufferMode.transferCount,
-                // PCM zero keepalive has no DoP markers and would switch the DAC out of DSD.
-                keepAliveOnPause = options.keepAliveOnPause && !nextDsdDop,
-                dopDeviceLimits = options.dopDeviceLimits.takeIf { nextDsdDop })
+                keepAliveOnPause = options.keepAliveOnPause,
+                dopDeviceLimits = options.dopDeviceLimits.takeIf { nextDsdDop },
+                keepAliveByDevice = options.keepAliveByDevice)
             if (!opened.openResult.isReady) {
                 val state = when {
                     opened.openResult.state == UsbExclusiveOutputState.DopConfigurationRequired -> EchoBitPerfectState.DopConfigurationRequired

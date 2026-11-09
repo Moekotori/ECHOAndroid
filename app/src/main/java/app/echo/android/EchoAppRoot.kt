@@ -20,7 +20,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
-import android.view.WindowManager
 import android.provider.MediaStore
 import androidx.activity.result.IntentSenderRequest
 import android.graphics.Color as AndroidColor
@@ -46,6 +45,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -99,11 +99,9 @@ import app.echo.android.design.echoLocaleSwitchLayer
 import app.echo.android.design.runEchoLocaleSwitch
 import app.echo.android.feature.connect.ConnectScreen
 import app.echo.android.feature.home.SearchScreen
-import app.echo.android.feature.player.LockLyricsScene
 import app.echo.android.feature.player.PlaybackQueueSheet
 import app.echo.android.ui.playback.EchoCastSheetHost
-import app.echo.android.lock.EchoLockLyricsPolicy
-import app.echo.android.lock.isEchoKeyguardLocked
+import app.echo.android.lock.EchoAutomaticLockLyrics
 import app.echo.android.feature.settings.DiagnosticsScreen
 import app.echo.android.feature.settings.ErrorLogScreen
 import app.echo.android.feature.settings.SettingsPaletteActions
@@ -128,6 +126,7 @@ import app.echo.android.design.EchoOverlayBackHandler
 import app.echo.android.design.rememberEchoOverlayBack
 import app.echo.android.ui.shell.EchoBottomDockHost
 import app.echo.android.ui.shell.EchoAdaptiveShell
+import app.echo.android.ui.shell.AppVolumeKeyFeedbackHost
 import app.echo.android.ui.shell.EchoPagerPage
 import app.echo.android.ui.shell.dockTab
 import app.echo.android.ui.shell.fadeToDockPage
@@ -574,32 +573,10 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val effectivePerformanceMode = remember(appSettings.performanceMode, systemPowerSaveMode) {
         EchoPerformanceMode.fromId(appSettings.performanceMode).resolve(systemPowerSaveMode)
     }
-    val lyricSnapshot by EchoPlaybackProcessRuntime.lyricDisplaySnapshot.collectAsStateWithLifecycle()
-    var screenInteractive by remember {
-        mutableStateOf(context.getSystemService(PowerManager::class.java)?.isInteractive != false)
-    }
-    var keyguardLocked by remember { mutableStateOf(context.isEchoKeyguardLocked()) }
-    DisposableEffect(context) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(receiverContext: Context?, intent: Intent?) {
-                when (intent?.action) {
-                    Intent.ACTION_SCREEN_OFF -> screenInteractive = false
-                    Intent.ACTION_SCREEN_ON -> {
-                        screenInteractive = true
-                        keyguardLocked = context.isEchoKeyguardLocked()
-                    }
-                    Intent.ACTION_USER_PRESENT -> keyguardLocked = false
-                }
-            }
-        }
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_SCREEN_OFF)
-            addAction(Intent.ACTION_SCREEN_ON)
-            addAction(Intent.ACTION_USER_PRESENT)
-        }
-        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        onDispose { runCatching { context.unregisterReceiver(receiver) } }
-    }
+    val lockLyricsSession = (context.applicationContext as EchoApplication).lockLyricsSession
+    // Observe screen events even when the keyguard stops the Activity.
+    val lockLyricsScreen by lockLyricsSession.screen.collectAsState()
+    val screenInteractive = lockLyricsScreen.interactive
     val lifecycleOwner = LocalLifecycleOwner.current
     var appVisible by remember {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
@@ -912,7 +889,8 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
     val openLyricsRequest by EchoLaunchActions.openLyrics.collectAsStateWithLifecycle()
     LaunchedEffect(openLyricsRequest) {
         if (openLyricsRequest) {
-            expandNowPlayingLyrics()
+            lyricsLaunchToken += 1
+            openLocalPlayer()
             viewModel.setShowLyricsControlDeck(true)
             EchoLaunchActions.consumeOpenLyrics()
         }
@@ -1111,7 +1089,7 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
         selectDockTab(EchoTab.Library)
     }
     fun onNowPlayingCast() {
-        castSheetVisible = !echoLinkSession.systemCast.tryShowOutputSwitcher()
+        castSheetVisible = !echoLinkSession.systemCast.tryShowNowPlayingCast()
     }
     LaunchedEffect(openCastRequest) {
         if (openCastRequest) {
@@ -2527,43 +2505,22 @@ fun EchoAppRoot(viewModel: EchoAndroidViewModel, openAddMusicInitially: Boolean 
                 onVisibleChange = { pluginsVisible = it },
                 back = pluginsBack,
             )
-            val showLockLyrics = EchoLockLyricsPolicy.shouldShowOverLock(
+            EchoAutomaticLockLyrics(
+                activity = activity,
+                session = lockLyricsSession,
+                screen = lockLyricsScreen,
                 enabled = appSettings.lockScreenLyricsEnabled,
                 isPlaying = playbackStatus.isPlaying,
-                hasCurrentLine = lyricSnapshot.current != null,
-                screenInteractive = screenInteractive,
-                keyguardLocked = keyguardLocked,
+                title = playbackStatus.track?.title.orEmpty(),
+                artist = playbackStatus.track?.artist.orEmpty(),
+                artworkUri = playbackStatus.track?.artworkUri,
+                wordHighlightEnabled = appSettings.lyricsWordHighlightEnabled,
+                estimatedWordHighlightEnabled = appSettings.lyricsEstimatedWordHighlightEnabled,
             )
-            LaunchedEffect(
-                appSettings.lockScreenLyricsEnabled,
-                playbackStatus.isPlaying,
-                lyricSnapshot.current?.text,
-            ) {
-                val showOverLock = EchoLockLyricsPolicy.shouldKeepShowWhenLocked(
-                    enabled = appSettings.lockScreenLyricsEnabled,
-                    isPlaying = playbackStatus.isPlaying,
-                    hasCurrentLine = lyricSnapshot.current != null,
-                )
-                if (Build.VERSION.SDK_INT >= 27) {
-                    activity?.setShowWhenLocked(showOverLock)
-                } else {
-                    val window = activity?.window ?: return@LaunchedEffect
-                    @Suppress("DEPRECATION")
-                    if (showOverLock) window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
-                    else window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
-                }
-            }
-            if (showLockLyrics) {
-                LockLyricsScene(
-                    title = playbackStatus.track?.title.orEmpty(),
-                    artist = playbackStatus.track?.artist.orEmpty(),
-                    artworkUri = playbackStatus.track?.artworkUri,
-                    snapshot = lyricSnapshot,
-                    wordHighlightEnabled = appSettings.lyricsWordHighlightEnabled,
-                    estimatedWordHighlightEnabled = appSettings.lyricsEstimatedWordHighlightEnabled,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+            AppVolumeKeyFeedbackHost(
+                feedback = (context.applicationContext as EchoApplication).appVolumeKeys.feedback,
+                modifier = Modifier.align(Alignment.TopEnd),
+            )
         }
     }
     }

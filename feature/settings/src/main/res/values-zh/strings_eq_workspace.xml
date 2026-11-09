@@ -3,4 +3,12 @@
     <string name="eq_mode_parametric">参数均衡器</string>
     <string name="eq_mode_graphic">图示均衡器</string>
     <string name="eq_filter_count">%1$d / 32 段</string>
+    <string name="eq_simple_mode">简易</string>
+    <string name="eq_advanced_mode">高级</string>
+    <string name="eq_simple_bass">低音</string>
+    <string name="eq_simple_treble">高音</string>
+    <string name="eq_simple_current_curve">当前使用 %1$s，打开「高级」可继续调整。</string>
+    <string name="eq_simple_use_three_bands">改用三段 EQ</string>
+    <string name="eq_simple_replace_detail">当前 EQ 曲线将替换为低音、人声和高音三段，初始增益均为 0 dB。</string>
+    <string name="eq_simple_replace">替换曲线</string>
 </resources>

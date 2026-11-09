@@ -14,8 +14,7 @@ internal class CoverLyricsTimeline(private val lines: List<EchoLyricLine>) {
     fun contextAt(positionMs: Long): Int =
         timeline.contextAt(positionMs).takeIf { it >= 0 } ?: visible.firstOrNull() ?: -1
 
-    fun rowsAround(index: Int): List<String?> {
-        val slot = visible.binarySearch(index)
-        return (-1..1).map { offset -> visible.getOrNull(slot + offset)?.let { lines[it].text.trim() } }
-    }
+    fun slotOf(index: Int): Int = visible.binarySearch(index)
+
+    fun textAt(slot: Int): String? = visible.getOrNull(slot)?.let { lines[it].text.trim() }
 }

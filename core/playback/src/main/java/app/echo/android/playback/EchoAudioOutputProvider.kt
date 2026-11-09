@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioFormat
 import androidx.media3.common.C
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.AudioOutput
 import androidx.media3.exoplayer.audio.AudioOutputProvider
@@ -26,6 +27,7 @@ internal class EchoAudioOutputProvider(
     context: Context,
 ) : ForwardingAudioOutputProvider(AudioTrackAudioOutputProvider.Builder(context).build()) {
     private val routes = EchoPlaybackProcessRuntime.outputRouteMonitor(context)
+    private val usbMonitor = EchoPlaybackProcessRuntime.usbAudioMonitor(context)
     private val probe = UsbAudioProbe(context)
     private val usbOutput = UsbExclusivePcmOutput(context)
 
@@ -39,7 +41,29 @@ internal class EchoAudioOutputProvider(
                 .setFormatSupportLevel(FORMAT_SUPPORTED_DIRECTLY)
                 .build()
         }
+        if (supportsUsbDownmix(formatConfig)) {
+            return AudioOutputProvider.FormatSupport.Builder()
+                .setFormatSupportLevel(FORMAT_SUPPORTED_WITH_TRANSCODING)
+                .build()
+        }
         return super.getFormatSupport(formatConfig)
+    }
+
+    private fun supportsUsbDownmix(config: AudioOutputProvider.FormatConfig): Boolean {
+        val format = config.format
+        if (!EchoPlaybackProcessRuntime.usbExclusiveEnabled || format.sampleMimeType != MimeTypes.AUDIO_RAW ||
+            format.channelCount !in 3..8 || format.sampleRate !in 8_000..384_000 ||
+            pcmBits(format.pcmEncoding) !in listOf(16, 24, 32)) return false
+        val snapshot = usbMonitor.playbackSnapshot
+        if (!snapshot.permissionGranted) return false
+        return try {
+            selectUsbCompatibleFormat(
+                AudioProcessor.AudioFormat(format), EchoPlaybackProcessRuntime.usbOutputOptions,
+                snapshot.descriptor, usbMonitor.status.value.supportedSampleRates,
+            ) != null && EchoUsbResamplerNative.available
+        } catch (_: AudioProcessor.UnhandledAudioFormatException) {
+            false
+        }
     }
 
     override fun getOutputConfig(
@@ -119,7 +143,8 @@ internal class EchoAudioOutputProvider(
         )
         app.echo.android.model.error.EchoDiagnosticEvents.record(app.echo.android.model.error.EchoDiagnosticEvents.Event.UsbOpen, spec.sampleRateHz.toLong(), spec.bitDepth.toLong())
         val session = usbOutput.open(spec, transferCount = options.bufferMode.transferCount,
-            keepAliveOnPause = options.keepAliveOnPause)
+            keepAliveOnPause = options.keepAliveOnPause,
+            keepAliveByDevice = options.keepAliveByDevice)
         if (!session.openResult.isReady) {
             recordUsbOpenFailure(session.openResult.state, session.openResult.message)
             if (EchoPlaybackProcessRuntime.usbBitPerfectEnabled) {

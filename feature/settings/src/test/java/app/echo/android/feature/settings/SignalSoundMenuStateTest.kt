@@ -15,37 +15,49 @@ class SignalSoundMenuStateTest {
     ) = signalSoundMenuStates(eq, channels, dsp, replayGain, volume, bypassed)
 
     @Test fun badgesFollowSwitchesEvenWhenSettingsAreNeutral() {
-        assertEquals(List(6) { SignalSoundMenuState.Off }, states())
-        assertEquals(listOf(
-            SignalSoundMenuState.Enabled, SignalSoundMenuState.Off,
-            SignalSoundMenuState.Enabled, SignalSoundMenuState.Off,
-            SignalSoundMenuState.Enabled, SignalSoundMenuState.Off,
+        assertEquals(SignalSoundTool.entries.associateWith { SignalSoundMenuState.Off }, states())
+        assertEquals(mapOf(
+            SignalSoundTool.Equalizer to SignalSoundMenuState.Enabled,
+            SignalSoundTool.Channels to SignalSoundMenuState.Enabled,
+            SignalSoundTool.Mseb to SignalSoundMenuState.Enabled,
         ), states(eq = EchoEqualizerState(enabled = true, mseb = EchoMsebState(enabled = true)),
-            channels = EchoChannelBalanceState(enabled = true)))
+            channels = EchoChannelBalanceState(enabled = true)).filterValues { it != SignalSoundMenuState.Off })
     }
 
-    @Test fun dspIncludesEveryProcessorAndVolumeIncludesItsAdvancedSwitches() {
+    @Test fun volumeBadgeIncludesLoudnessAndDynamics() {
         listOf(
             EchoDspSettings(limiterEnabled = true),
-            EchoDspSettings(crossfeedEnabled = true),
             EchoDspSettings(compressor = EchoCompressorMode.Night),
-        ).forEach { assertEquals(SignalSoundMenuState.Enabled, states(dsp = it)[3]) }
-        assertEquals(SignalSoundMenuState.Enabled, states(replayGain = true)[3])
-        assertEquals(SignalSoundMenuState.Adjusted, states(replayGain = true)[5])
-        assertEquals(SignalSoundMenuState.Adjusted, states(dsp = EchoDspSettings(limiterEnabled = true))[5])
-        assertEquals(SignalSoundMenuState.Adjusted, states(volume = EchoVolumeSettings(muted = true))[5])
+            EchoDspSettings(equalLoudnessEnabled = true),
+        ).forEach { assertEquals(SignalSoundMenuState.Adjusted, states(dsp = it)[SignalSoundTool.Volume]) }
+        assertEquals(SignalSoundMenuState.Adjusted, states(replayGain = true)[SignalSoundTool.Volume])
+        assertEquals(SignalSoundMenuState.Adjusted, states(volume = EchoVolumeSettings(muted = true))[SignalSoundTool.Volume])
+    }
+
+    @Test fun effectsAndHeadphoneSoundstageHaveIndependentBadges() {
+        val effects = EchoDspSettings(soundEffect = EchoSoundEffectSettings(enabled = true))
+        assertEquals(SignalSoundMenuState.Enabled, states(dsp = effects)[SignalSoundTool.Effects])
+        assertEquals(SignalSoundMenuState.Off, states(dsp = effects)[SignalSoundTool.HeadphoneSoundstage])
+        listOf(effects.copy(hrtfEnabled = true), effects.copy(crossfeedEnabled = true)).forEach {
+            assertEquals(SignalSoundMenuState.Enabled, states(dsp = it)[SignalSoundTool.HeadphoneSoundstage])
+            val bypassed = states(dsp = it, bypassed = true)
+            assertEquals(SignalSoundMenuState.Bypassed, bypassed[SignalSoundTool.Effects])
+            assertEquals(SignalSoundMenuState.Bypassed, bypassed[SignalSoundTool.HeadphoneSoundstage])
+            assertEquals(SignalSoundMenuState.Off, bypassed[SignalSoundTool.Volume])
+        }
     }
 
     @Test fun correctionRequiresAnEnabledNamedCurveAndBypassKeepsConfiguredBadges() {
         val eq = EchoEqualizerState(enabled = true, parametric = true, sourceLabel = "Headphones",
             filters = listOf(OpraEqBand("peak_dip", 100f, 2f, 1f, null)))
-        assertEquals(SignalSoundMenuState.Enabled, states(eq = eq)[1])
-        assertEquals(SignalSoundMenuState.Off, states(eq = eq.copy(enabled = false))[1])
-        assertEquals(SignalSoundMenuState.Off, states(eq = eq.copy(sourceLabel = null))[1])
-        assertEquals(listOf(
-            SignalSoundMenuState.Bypassed, SignalSoundMenuState.Bypassed,
-            SignalSoundMenuState.Off, SignalSoundMenuState.Off,
-            SignalSoundMenuState.Off, SignalSoundMenuState.Bypassed,
-        ), states(eq = eq, volume = EchoVolumeSettings(gainDb = -3f), bypassed = true))
+        assertEquals(SignalSoundMenuState.Enabled, states(eq = eq)[SignalSoundTool.HeadphoneCorrection])
+        assertEquals(SignalSoundMenuState.Off, states(eq = eq.copy(enabled = false))[SignalSoundTool.HeadphoneCorrection])
+        assertEquals(SignalSoundMenuState.Off, states(eq = eq.copy(sourceLabel = null))[SignalSoundTool.HeadphoneCorrection])
+        assertEquals(mapOf(
+            SignalSoundTool.Equalizer to SignalSoundMenuState.Bypassed,
+            SignalSoundTool.HeadphoneCorrection to SignalSoundMenuState.Bypassed,
+            SignalSoundTool.Volume to SignalSoundMenuState.Bypassed,
+        ), states(eq = eq, volume = EchoVolumeSettings(gainDb = -3f), bypassed = true)
+            .filterValues { it != SignalSoundMenuState.Off })
     }
 }

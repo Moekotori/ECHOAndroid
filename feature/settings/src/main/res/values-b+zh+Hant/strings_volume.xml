@@ -1,6 +1,6 @@
 <resources>
     <string name="volume_title">音量</string>
-    <string name="volume_summary">應用程式音量、增益與調整步長</string>
+    <string name="volume_summary">應用程式音量、響度統一與動態處理</string>
     <string name="volume_scope">僅調整手機播放。系統和 DAC 音量獨立，投放音量由接收裝置控制。</string>
     <string name="volume_advanced">進階選項</string>
     <string name="volume_device_saved">自動記憶音量和增益</string>
@@ -15,7 +15,7 @@
     <string name="volume_gain">增益</string>
     <string name="volume_limit">合成增益上限</string>
     <string name="volume_limit_detail">限制音量、增益和 ReplayGain 的疊加值。</string>
-    <string name="volume_gain_hint">增益較高時，可用進階選項中的限幅減少削波。</string>
+    <string name="volume_gain_hint">增益較高時，可在「響度與動態」中開啟限幅，減少削波。</string>
     <string name="volume_step">應用程式音量調整步長</string>
     <string name="volume_step_value">每次調整 %1$s dB</string>
     <string name="volume_decrease">降低應用程式音量</string>
@@ -28,4 +28,11 @@
     <string name="volume_device_memory_detail">開啟裝置記憶後，各裝置分別儲存應用程式音量和增益。一般播放時，音量鍵調整系統媒體音量，暫停時也一樣。這裡的步長用於頁面上的應用程式音量加減按鈕，以及 USB 獨佔處理模式下的前景音量鍵；該 USB 模式下加鍵也會解除靜音。USB 嚴格直通請使用 DAC 硬體音量，投放時音量鍵控制接收裝置。沒有唯一識別碼的裝置按類型和名稱共用記錄，同型號 USB DAC 共用一筆記錄。</string>
     <string name="volume_key_value">應用程式音量：%1$.1f dB</string>
     <string name="volume_save_failed">音量設定無法儲存，再次調整即可重試。</string>
+    <string name="volume_gain_section">增益與上限</string>
+    <string name="volume_processing_section">響度與動態</string>
+    <string name="volume_device_section">輸出裝置設定</string>
+    <string name="volume_mute_action">靜音</string>
+    <string name="volume_unmute_action">取消靜音</string>
+    <string name="volume_gain_zero">增益歸零</string>
+    <string name="volume_reset_confirm_detail">應用程式音量和增益將恢復至 0 dB，上限和步長將恢復預設，並解除靜音。播放音量可能升高。</string>
 </resources>

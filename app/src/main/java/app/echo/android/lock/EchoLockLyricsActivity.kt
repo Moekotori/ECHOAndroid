@@ -10,9 +10,11 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
+import app.echo.android.EchoApplication
 import app.echo.android.i18n.wrapEchoAppLocaleToMatchApplication
 import app.echo.android.playback.EchoPlaybackIntents
 
@@ -50,7 +52,17 @@ class EchoLockLyricsActivity : ComponentActivity() {
             },
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
-        setContent { EchoLockLyricsHost() }
+        setContent {
+            BackHandler(onBack = ::dismissLyrics)
+            EchoLockLyricsHost(onDismiss = ::dismissLyrics)
+        }
+    }
+
+    private fun dismissLyrics() {
+        if (getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true) {
+            (application as EchoApplication).lockLyricsSession.dismiss()
+        }
+        finish()
     }
 
     override fun onResume() {
@@ -73,9 +85,4 @@ class EchoLockLyricsActivity : ComponentActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             }
     }
-}
-
-fun Context.isEchoKeyguardLocked(): Boolean {
-    val keyguard = getSystemService(KeyguardManager::class.java) ?: return false
-    return keyguard.isDeviceLocked || keyguard.isKeyguardLocked
 }

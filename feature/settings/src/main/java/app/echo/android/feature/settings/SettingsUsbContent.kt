@@ -1,20 +1,16 @@
 package app.echo.android.feature.settings
 
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoExpand
 import app.echo.android.model.playback.EchoPlaybackStatus
-import app.echo.android.model.playback.EchoUsbBufferMode
 import app.echo.android.model.playback.EchoUsbOutputOptions
 
 @Composable
@@ -39,7 +35,6 @@ fun UsbAudioSettingsContent(
             var showDetails by rememberSaveable { mutableStateOf(false) }
             var showTestResult by rememberSaveable { mutableStateOf(false) }
             UsbOutputDevicePanel(output)
-            UsbFormatRecovery(status.diagnostics, usbBitPerfectEnabled, options, onOptionsChange)
             UsbSettingsSection(title = stringResource(R.string.usb_page_output_mode)) {
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_usb_exclusive),
@@ -49,26 +44,10 @@ fun UsbAudioSettingsContent(
                 )
                 UsbOutputModeControl(usbBitPerfectEnabled, onUsbBitPerfectEnabledChange)
             }
-            UsbDopControls(options, status.diagnostics, onOptionsChange)
-            UsbOutputFormatControls(options, status.diagnostics, usbBitPerfectEnabled, onOptionsChange)
-            UsbSettingsSection(stringResource(R.string.usb_param_transport)) {
-                val bufferLabel = stringResource(when (options.bufferMode) {
-                    EchoUsbBufferMode.Responsive -> R.string.usb_buffer_responsive
-                    EchoUsbBufferMode.Balanced -> R.string.usb_buffer_balanced
-                    EchoUsbBufferMode.Stable -> R.string.usb_buffer_stable
-                })
-                UsbOutputParameterPicker(stringResource(R.string.usb_param_buffer), bufferLabel, options.bufferMode.id,
-                    listOf(UsbParameterChoice("responsive", stringResource(R.string.usb_buffer_responsive)),
-                        UsbParameterChoice("balanced", stringResource(R.string.usb_buffer_balanced)),
-                        UsbParameterChoice("stable", stringResource(R.string.usb_buffer_stable)))) {
-                    onOptionsChange(options.copy(bufferMode = EchoUsbBufferMode.fromId(it)))
-                }
-                output.bufferDurationMs?.let { SignalNote(stringResource(R.string.usb_param_buffer_capacity, it)) }
-                Text(stringResource(R.string.usb_param_buffer_note), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
-                SettingsSwitchRow(stringResource(R.string.usb_param_keep_alive),
-                    stringResource(R.string.usb_param_keep_alive_note), options.keepAliveOnPause,
-                    onCheckedChange = { onOptionsChange(options.copy(keepAliveOnPause = it)) })
+            UsbSettingsSection(stringResource(R.string.usb_param_volume)) {
+                val volumeLocked = status.diagnostics.bitPerfectState.locksUsbVolume(usbBitPerfectEnabled)
+                UsbVolumeStatus(options, status.diagnostics, volumeLocked, onOptionsChange)
+                UsbFineVolumeControl(options, volumeLocked, onOptionsChange)
             }
             UsbSettingsSection(title = stringResource(R.string.usb_page_connection_preferences)) {
                 SettingsSwitchRow(
@@ -105,7 +84,7 @@ fun UsbAudioSettingsContent(
                         else R.string.usb_page_sound_note),
                     onClick = onOpenSound,
                 )
-                UsbOutputResetControls(options, onOptionsChange)
+                UsbAdvancedControls(options, status.diagnostics, output.bufferDurationMs, onOptionsChange)
                 SettingsDisclosureRow(
                     title = stringResource(if (showDetails) R.string.usb_page_hide_details else R.string.usb_page_show_details),
                     detail = stringResource(R.string.usb_page_details_note),

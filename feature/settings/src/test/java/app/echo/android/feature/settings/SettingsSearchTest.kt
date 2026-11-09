@@ -169,12 +169,16 @@ class SettingsSearchTest {
         val items = availableSettingsSearchItems(state)
         listOf(R.string.settings_usb_exclusive, R.string.settings_usb_bitperfect,
             R.string.settings_usb_auto_request, R.string.settings_test_usb,
-            R.string.diag_sample_rate, R.string.path_output_bits, R.string.diag_channels,
-            R.string.usb_param_volume, R.string.usb_param_buffer, R.string.usb_param_keep_alive).forEach { title ->
+            R.string.usb_param_volume).forEach { title ->
             val item = items.single { it.titleRes == title }
             assertTrue(item.opensAudioSettings)
             assertEquals(title, settingsSearchAnchorResource(item, state))
             assertTrue(settingsSearchAnchorResource(item, state) in usbAudioSettingsSearchAnchors)
         }
+        val removedTitles = setOf(
+            R.string.diag_sample_rate, R.string.path_output_bits, R.string.diag_channels,
+            R.string.usb_param_buffer, R.string.usb_param_keep_alive,
+        )
+        assertTrue(items.none { it.titleRes in removedTitles })
     }
 }

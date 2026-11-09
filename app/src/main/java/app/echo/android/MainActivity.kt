@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(UnstableApi::class)
     override fun onPause() {
-        (application as? EchoApplication)?.appVolumeKeys?.clearPressed()
+        (application as? EchoApplication)?.appVolumeKeys?.clear()
         clearRefreshRatePreference()
         super.onPause()
     }

@@ -23,7 +23,7 @@ import app.echo.android.design.rememberEchoBackProgress
 @Composable
 internal fun SignalSoundNavigation(
     selectedPanel: Int,
-    labels: List<String>,
+    title: @Composable (Int) -> String,
     isActive: Boolean,
     onBack: () -> Unit,
     tool: @Composable (Int) -> Unit,
@@ -67,7 +67,7 @@ internal fun SignalSoundNavigation(
                 ) {
                     Column(Modifier.widthIn(max = LocalEchoContentMaxWidth.current).fillMaxSize()) {
                         Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            SignalSoundToolHeader(labels[panel], onBack = {
+                            SignalSoundToolHeader(title(panel), onBack = {
                                 back.reset()
                                 close()
                             })

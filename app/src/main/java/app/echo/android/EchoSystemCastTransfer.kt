@@ -70,10 +70,10 @@ internal class EchoSystemCastTransfer(private val app: Application, private val 
     }
 
     fun showOutputSwitcher() {
-        if (!tryShowOutputSwitcher()) fail(stopSession = false)
+        if (!sdk.showOutputSwitcher()) fail(stopSession = false)
     }
 
-    fun tryShowOutputSwitcher(): Boolean = sdk.showOutputSwitcher()
+    fun tryShowNowPlayingCast(): Boolean = sdk.showXiaomiMiPlayPicker() || sdk.showOutputSwitcher()
 
     private fun prepare(target: EchoLanRenderer, resumed: Boolean) {
         if (resumed) {

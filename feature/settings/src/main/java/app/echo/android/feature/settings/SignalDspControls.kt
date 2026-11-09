@@ -55,6 +55,7 @@ internal fun DspValueSlider(
     format: (Float) -> String, onCommit: (Float) -> Unit,
     unit: String = "dB", scale: Float = 1f, decimals: Int = 1,
     onPreview: ((Float) -> Unit)? = null,
+    showBounds: Boolean = true,
 ) {
     var draft by remember { mutableFloatStateOf(value.coerceIn(valueRange)) }
     var dragging by remember { mutableStateOf(false) }
@@ -80,9 +81,11 @@ internal fun DspValueSlider(
         }, onValueChangeFinished = { dragging = false; if (enabled) commit.value(draft) }, valueRange = valueRange, enabled = enabled,
             neutralValue = 0f.takeIf { it in valueRange },
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = label; stateDescription = format(draft) })
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(format(valueRange.start), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
-            Text(format(valueRange.endInclusive), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+        if (showBounds) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(format(valueRange.start), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+                Text(format(valueRange.endInclusive), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+            }
         }
     }
 }

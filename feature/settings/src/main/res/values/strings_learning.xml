@@ -18,8 +18,7 @@
     <string name="eq_bundle_capacity">Not enough preset slots. Change the conflict policy or remove saved presets.</string>
     <string name="eq_bundle_confirm">Import</string>
     <string name="usb_volume_software">Digital volume</string>
-    <string name="usb_volume_auto">Automatic (try DAC, otherwise digital)</string>
-    <string name="usb_volume_hardware">DAC hardware volume (with digital fallback)</string>
+    <string name="usb_volume_auto">Prefer DAC volume (digital fallback)</string>
     <string name="usb_volume_fixed">Fixed PCM output</string>
     <string name="usb_volume_pending">Applies when exclusive playback starts</string>
     <string name="usb_volume_handoff">Fading for volume handoff</string>

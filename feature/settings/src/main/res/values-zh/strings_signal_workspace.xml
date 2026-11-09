@@ -5,7 +5,9 @@
     <string name="signal_sound_eq_summary">频段增益与参数均衡</string>
     <string name="signal_sound_headphones_summary">耳机频响补偿</string>
     <string name="signal_sound_channels_summary">左右平衡、路由与校准</string>
-    <string name="signal_sound_dsp_summary">响度、交叉馈送与限幅</string>
+    <string name="signal_sound_effects_summary">人声、低音、空间等 22 种音效</string>
+    <string name="signal_sound_soundstage_title">耳机声场</string>
+    <string name="signal_sound_soundstage_summary">立体声交叉馈送与 HRTF 虚拟音箱</string>
     <string name="signal_sound_mseb_summary">冷暖、低频与人声听感</string>
     <string name="signal_value_range">范围：%1$s–%2$s %3$s</string>
     <string name="signal_about_control">关于%1$s</string>
@@ -26,8 +28,6 @@
     <string name="signal_linear_pan">线性衰减</string>
     <string name="signal_preset_while_off">已关闭 · 开启后应用参数</string>
     <string name="signal_reset_section">复位此项</string>
-    <string name="signal_dsp_enabled_count">%1$d / 3 项已开启</string>
-    <string name="signal_reset_dsp">重置 DSP</string>
     <string name="signal_crossfeed_summary">混合 %1$s%% · 立体声耳机</string>
     <string name="signal_loudness_tag">响度标签</string>
     <string name="signal_no_loudness_tag">暂无数据</string>

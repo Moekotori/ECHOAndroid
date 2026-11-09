@@ -18,6 +18,10 @@ import app.echo.android.model.connect.EchoRemoteTrack
 import app.echo.android.model.library.EchoTrack
 import app.echo.android.model.library.LibrarySource
 import app.echo.android.model.playback.EchoLinkPlaybackUri
+import app.echo.android.model.settings.EchoLibraryCategory
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -239,6 +244,8 @@ class EchoRemoteClient internal constructor(
     private var eventSession: EchoLinkEventSession? = null
     private var pollingIntervalMs = statusPollIntervalMs
     private var libraryRefreshJob: Job? = null
+    private var libraryRefreshPriority: MutableStateFlow<EchoLibraryCategory?>? = null
+    private var browseTrackPage: CachedBrowseTrackPage? = null
     private var playlistRefreshJob: Job? = null
     private var albumRefreshJob: Job? = null
     private var trackLoadMoreJob: Job? = null
@@ -302,6 +309,7 @@ class EchoRemoteClient internal constructor(
         }
         authRejected = false
         bridgeFolders.reset()
+        browseTrackPage = null
         refreshOnForeground = refreshLibraryOnConnect
         pollFailures = 0
         if (!EchoLinkRequestPolicy.isSameEndpoint(endpoint, nextEndpoint)) {
@@ -323,6 +331,7 @@ class EchoRemoteClient internal constructor(
         foregroundRefreshJob?.cancel()
         libraryRefreshJob?.cancel()
         libraryRefreshJob = null
+        libraryRefreshPriority = null
         cancelCollectionLoads()
         playlistRefreshGeneration += 1
         playlistRefreshJob?.cancel()
@@ -412,6 +421,7 @@ class EchoRemoteClient internal constructor(
         controls.bind(null)
         noticeGate.clear()
         bridgeFolders.reset()
+        browseTrackPage = null
         queueBrowser.cancel(clear = true)
         lastCommandError = null
         refreshOnForeground = false
@@ -427,6 +437,7 @@ class EchoRemoteClient internal constructor(
         libraryRefreshGeneration += 1
         libraryRefreshJob?.cancel()
         libraryRefreshJob = null
+        libraryRefreshPriority = null
         cancelCollectionLoads()
         playlistRefreshGeneration += 1
         playlistRefreshJob?.cancel()
@@ -500,7 +511,19 @@ class EchoRemoteClient internal constructor(
         scope.launch { dispatchCommand(target, command, onSuccess, connection = connection) }
     }
 
-    fun refreshLibrary(query: String = _library.value.query) {
+    fun refreshLibrary(query: String = _library.value.query) = refreshLibrary(query, EchoLibraryCategory.Songs)
+
+    fun prioritizeLibraryCategory(category: EchoLibraryCategory) {
+        libraryRefreshPriority?.update { pending -> pending?.let { libraryPriority(category) } }
+    }
+
+    private fun libraryPriority(category: EchoLibraryCategory): EchoLibraryCategory = when (category) {
+        EchoLibraryCategory.Albums -> if (_library.value.albumsUnavailable) EchoLibraryCategory.Songs else category
+        EchoLibraryCategory.Playlists -> category
+        else -> EchoLibraryCategory.Songs
+    }
+
+    fun refreshLibrary(query: String, category: EchoLibraryCategory) {
         val target = endpoint ?: run {
             _library.update {
                 it.copy(
@@ -510,6 +533,8 @@ class EchoRemoteClient internal constructor(
             }
             return
         }
+        val snapshot = _library.value
+        if (libraryRefreshJob?.isActive == true && snapshot.isLoading && snapshot.query.trim() == query.trim()) return
         playlistRefreshGeneration += 1
         playlistRefreshJob?.cancel()
         playlistRefreshJob = null
@@ -518,15 +543,16 @@ class EchoRemoteClient internal constructor(
         albumRefreshJob = null
         val generation = ++libraryRefreshGeneration
         cancelCollectionLoads()
+        val cachedBrowse = browseTrackPage?.takeIf { query.isBlank() && it.fetchedAt.elapsedNow() < 30.seconds }?.page
         _library.update { current ->
             val sameQuery = current.query.trim() == query.trim()
             val keepTracks = sameQuery ||
                 EchoLinkLibraryQueryPolicy.shouldKeepLoadedTracksForQuery(query, current.tracks.size)
             current.copy(
-                isLoading = current.tracks.isEmpty(),
+                isLoading = true,
                 isLoadingMore = keepTracks && !sameQuery,
                 query = query,
-                tracks = if (keepTracks) current.tracks else emptyList(),
+                tracks = if (keepTracks) current.tracks else cachedBrowse?.tracks.orEmpty(),
                 albums = if (sameQuery) current.albums else emptyList(),
                 albumTotalCount = if (sameQuery) current.albumTotalCount else 0,
                 albumTracks = emptyMap(),
@@ -535,20 +561,32 @@ class EchoRemoteClient internal constructor(
                 playlistTotalCount = if (sameQuery) current.playlistTotalCount else 0,
                 playlistTracks = emptyMap(),
                 loadingPlaylistId = null,
-                totalCount = if (keepTracks) current.totalCount else 0,
+                totalCount = if (keepTracks) current.totalCount else cachedBrowse?.totalCount ?: 0,
                 error = null,
             )
         }
         libraryRefreshJob?.cancel()
         // 只发布第一页。后面的页等列表滚到末尾再取，避免整库进内存。
         if (target.libraryOnly) bridgeFolders.search(query)
+        val priority = MutableStateFlow<EchoLibraryCategory?>(libraryPriority(category))
+        libraryRefreshPriority = priority
         libraryRefreshJob = scope.launch {
             fun isCurrentRefresh(): Boolean =
                 endpoint?.id == target.id && generation == libraryRefreshGeneration
 
-            launch {
+            // PC library queries contend for the same service. Let the visible collection finish first.
+            fun launchCollection(category: EchoLibraryCategory, load: suspend () -> Unit) = launch {
+                priority.first { it == null || it == category }
+                try {
+                    load()
+                } finally {
+                    priority.value = null
+                }
+            }
+
+            launchCollection(EchoLibraryCategory.Playlists) {
                 runSuspendCatching {
-                    transport.fetchPlaylists(target, query, page = 1, pageSize = PcLibraryPageSize)
+                    transport.fetchPlaylists(target, query, page = 1, pageSize = PcPlaylistPageSize)
                 }.onSuccess { page ->
                     if (!isCurrentRefresh()) return@onSuccess
                     nextPlaylistPage = page.nextPage
@@ -563,7 +601,7 @@ class EchoRemoteClient internal constructor(
                 }
             }
             if (!_library.value.albumsUnavailable) {
-                launch {
+                launchCollection(EchoLibraryCategory.Albums) {
                     runSuspendCatching {
                         transport.fetchAlbums(target, query, page = 1, pageSize = PcLibraryPageSize)
                     }.onSuccess { page ->
@@ -592,36 +630,39 @@ class EchoRemoteClient internal constructor(
                     }
                 }
             }
-            val firstPage = runSuspendCatching {
-                transport.fetchTracks(target, query, page = 1, pageSize = PcLibraryPageSize)
-            }.getOrElse { error ->
-                if (isCurrentRefresh()) _library.update { it.copy(isLoading = false, isLoadingMore = false, error = error.userMessage()) }
-                return@launch
-            }
-            if (!isCurrentRefresh()) return@launch
+            launchCollection(EchoLibraryCategory.Songs) {
+                val firstPage = runSuspendCatching {
+                    transport.fetchTracks(target, query, page = 1, pageSize = PcLibraryPageSize)
+                }.getOrElse { error ->
+                    if (isCurrentRefresh()) _library.update { it.copy(isLoading = false, isLoadingMore = false, error = error.userMessage()) }
+                    return@launchCollection
+                }
+                if (!isCurrentRefresh()) return@launchCollection
+                if (query.isBlank()) browseTrackPage = CachedBrowseTrackPage(firstPage, TimeSource.Monotonic.markNow())
 
-            val previousTracks = _library.value.tracks
-            val keepPrevious = EchoLinkLibraryQueryPolicy.shouldKeepPreviousTracksOnEmptyRemotePage(
-                query = query,
-                remoteTrackCount = firstPage.tracks.size,
-                previousTrackCount = previousTracks.size,
-            )
-            val loadedTracks = if (keepPrevious) previousTracks else firstPage.tracks
-            val totalCount = if (keepPrevious) {
-                _library.value.totalCount.coerceAtLeast(loadedTracks.size)
-            } else {
-                firstPage.totalCount.coerceAtLeast(loadedTracks.size)
-            }
-            nextTrackPage = if (!keepPrevious && loadedTracks.size < totalCount) 2 else 0
-            // 保留并发打开的歌单曲目，不能把整个曲库状态覆盖掉。
-            _library.update { current ->
-                current.copy(
-                    isLoading = false,
-                    isLoadingMore = false,
+                val previousTracks = _library.value.tracks
+                val keepPrevious = EchoLinkLibraryQueryPolicy.shouldKeepPreviousTracksOnEmptyRemotePage(
                     query = query,
-                    tracks = loadedTracks,
-                    totalCount = totalCount,
+                    remoteTrackCount = firstPage.tracks.size,
+                    previousTrackCount = previousTracks.size,
                 )
+                val loadedTracks = if (keepPrevious) previousTracks else firstPage.tracks
+                val totalCount = if (keepPrevious) {
+                    _library.value.totalCount.coerceAtLeast(loadedTracks.size)
+                } else {
+                    firstPage.totalCount.coerceAtLeast(loadedTracks.size)
+                }
+                nextTrackPage = if (!keepPrevious && loadedTracks.size < totalCount) 2 else 0
+                // 保留并发打开的歌单曲目，不能把整个曲库状态覆盖掉。
+                _library.update { current ->
+                    current.copy(
+                        isLoading = false,
+                        isLoadingMore = false,
+                        query = query,
+                        tracks = loadedTracks,
+                        totalCount = totalCount,
+                    )
+                }
             }
         }
     }
@@ -676,13 +717,14 @@ class EchoRemoteClient internal constructor(
     fun loadMorePlaylists() {
         loadMoreCollection(
             nextPage = nextPlaylistPage,
+            maxPcPages = EchoLinkMaxLibraryPages,
             loaded = _library.value.playlists.size,
             total = _library.value.playlistTotalCount,
             active = playlistLoadMoreJob,
             onJob = { playlistLoadMoreJob = it },
             onAdvance = { nextPlaylistPage = it },
             fetch = { target, query, page ->
-                transport.fetchPlaylists(target, query, page, PcLibraryPageSize)
+                transport.fetchPlaylists(target, query, page, PcPlaylistPageSize)
             },
             append = { current, page ->
                 val playlists = current.playlists + page.playlists
@@ -708,6 +750,7 @@ class EchoRemoteClient internal constructor(
         append: (EchoRemoteLibraryState, T) -> EchoRemoteLibraryState,
         itemCount: (T) -> Int,
         isComplete: (EchoRemoteLibraryState) -> Boolean,
+        maxPcPages: Int = PcLibraryMaxBrowsePages,
         nextPageAfter: (T) -> Int? = { null },
     ) {
         if (nextPage < 2 || active?.isActive == true) return
@@ -716,7 +759,8 @@ class EchoRemoteClient internal constructor(
             return
         }
         val target = endpoint ?: return
-        if (nextPage > EchoLinkMaxLibraryPages) {
+        val maxPages = if (target.libraryOnly) EchoLinkMaxLibraryPages else maxPcPages
+        if (nextPage > maxPages) {
             onAdvance(0)
             _library.update {
                 it.copy(
@@ -1582,7 +1626,10 @@ class EchoRemoteClient internal constructor(
     private companion object {
         const val StatusPollIntervalMs = 5_000L
         const val SseHeartbeatPollIntervalMs = 30_000L
-        const val PcLibraryPageSize = 500
+        const val PcLibraryPageSize = 100
+        // Preserve the existing 20,000-row browse limit with smaller pages.
+        const val PcLibraryMaxBrowsePages = 20_000 / PcLibraryPageSize
+        const val PcPlaylistPageSize = 500
         const val PcPlaylistTrackPageSize = 500
     }
 }
@@ -1590,6 +1637,8 @@ class EchoRemoteClient internal constructor(
 // The unfiltered PC count cannot be displayed as a count of local playlists.
 private fun playlistBrowseCount(loaded: Int, nextPage: Int): Int =
     if (nextPage == 0) loaded else loaded + 1
+
+private data class CachedBrowseTrackPage(val page: EchoLinkTrackPage, val fetchedAt: TimeMark)
 
 private data class CachedEchoLinkStream(
     val sourceRange: app.echo.android.model.connect.EchoRemoteSourceRange? = null,

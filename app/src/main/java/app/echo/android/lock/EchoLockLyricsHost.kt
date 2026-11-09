@@ -18,7 +18,7 @@ import app.echo.android.playback.EchoPlaybackProcessRuntime
 
 @UnstableApi
 @Composable
-fun EchoLockLyricsHost() {
+fun EchoLockLyricsHost(onDismiss: (() -> Unit)? = null) {
     val context = LocalContext.current
     val settingsStore = remember(context) { EchoSettingsStore(context.applicationContext) }
     val settings by settingsStore.appSettings.collectAsState(
@@ -45,6 +45,7 @@ fun EchoLockLyricsHost() {
             snapshot = snapshot,
             wordHighlightEnabled = settings.lyricsWordHighlightEnabled,
             estimatedWordHighlightEnabled = settings.lyricsEstimatedWordHighlightEnabled,
+            onDismiss = onDismiss,
             modifier = Modifier.fillMaxSize(),
         )
     }

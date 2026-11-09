@@ -24,7 +24,8 @@ class EchoUsbExclusiveDriverTester(context: Context) {
             bitDepth = bitDepth,
         )
         val session = output.open(spec, transferCount = options.bufferMode.transferCount,
-            keepAliveOnPause = options.keepAliveOnPause)
+            keepAliveOnPause = options.keepAliveOnPause,
+            keepAliveByDevice = options.keepAliveByDevice)
         return try {
             val result = session.openResult
             val format = result.selectedFormat

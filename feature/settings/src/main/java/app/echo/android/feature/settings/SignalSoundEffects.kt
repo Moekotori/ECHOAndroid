@@ -8,7 +8,8 @@ import app.echo.android.model.playback.*
 @Composable
 internal fun SignalSoundEffects(settings: EchoSoundEffectSettings, runtime: EchoSoundEffectRuntimeStatus,
     enabled: Boolean, onSettings: (EchoSoundEffectSettings) -> Unit) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(enabled) }
+    if (!enabled) SignalNote(stringResource(R.string.signal_bypass_detail))
     val state = when {
         !enabled -> R.string.sound_effects_bypassed
         !settings.enabled -> R.string.sound_effects_off
