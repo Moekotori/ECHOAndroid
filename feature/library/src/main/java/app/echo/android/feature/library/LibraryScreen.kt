@@ -35,7 +35,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.Icons
@@ -325,7 +324,10 @@ fun LibraryScreen(
     onExportM3uPlaylist: (EchoPlaylist) -> Unit = {},
     onEnqueuePlaylist: ((EchoPlaylist) -> Unit)? = null,
     onSharePlaylist: ((EchoPlaylist) -> Unit)? = null,
-    radioContent: @Composable (interactive: Boolean) -> Unit,
+    radioContent: @Composable (
+        interactive: Boolean,
+        placeToolbarActions: @Composable (@Composable () -> Unit) -> Unit,
+    ) -> Unit,
     onOpenPodcasts: () -> Unit = {},
     albumArtistAlbums: ((AlbumSummary) -> Flow<PagingData<AlbumSummary>>?)? = null,
     onPinPlaylistShortcut: ((EchoPlaylist, Boolean) -> Unit)? = null,
@@ -493,39 +495,26 @@ fun LibraryScreen(
     val cloudPager = remember { PagerState { cloudModes.size } }
 
     @Composable
-    fun LocalLibraryBody(displayedSource: LibrarySourceMode) {
+    fun LocalLibraryBody(
+        displayedSource: LibrarySourceMode,
+        placeRadioToolbarActions: @Composable (@Composable () -> Unit) -> Unit,
+    ) {
         val cloud = displayedSource == LibrarySourceMode.Cloud
         val modes = if (cloud) cloudModes else localModes
         val pager = if (cloud) cloudPager else localPager
         val selectMode: (LibraryViewMode) -> Unit = { mode -> selectedModeIndex = mode.ordinal }
+        fun openAlbumFrom(mode: LibraryViewMode, album: AlbumSummary) {
+            // A tap can arrive before the pager publishes its newly settled category.
+            selectMode(mode)
+            onOpenAlbum(album)
+        }
         Column(Modifier.fillMaxSize()) {
                 Column(Modifier.padding(horizontal = 24.dp)) {
                     if (scanState.isScanning) LibraryScanStatus(scanState, onCancelScan)
                     if (showScanResultBanner) LibraryScanResultBanner(scanState)
-                    LibraryBrowserHeader(
-                        layout = layout,
-                        onLayoutChange = onLibraryLayoutChange,
-                        selectedSource = displayedSource,
-                        selectedMode = selectedMode,
-                        modes = modes,
-                        pager = pager,
-                        onSelectMode = selectMode,
-                        onCustomize = customizeLayout,
-                        selectedSortMode = trackSortMode,
-                        trackFilter = trackFilter,
-                        lyricsIndexState = lyricsIndexState,
-                        onInspectLyrics = onInspectLyrics,
-                        onCancelLyricsInspection = onCancelLyricsInspection,
-                        onTrackFilterChange = onTrackFilterChange,
-                        albumSortMode = albumSortMode,
-                        artistSortMode = artistSortMode,
-                        folderSortMode = folderSortMode,
-                        playlistSortMode = playlistSortMode.takeUnless { viewingLikedAlbums },
-                        onSortModeChange = onTrackSortModeChange,
-                        onAlbumSortModeChange = onAlbumSortModeChange,
-                        onArtistSortModeChange = onArtistSortModeChange,
-                        onFolderSortModeChange = onFolderSortModeChange,
-                        onPlaylistSortModeChange = { playlistSortMode = it },
+                    LibraryPagerTabs(
+                        selectedMode, selectMode, modes = modes, pager = pager,
+                        showAlbumArtists = layout.showAlbumArtists,
                     )
                 }
                 if (selectedMode == LibraryViewMode.Songs && displayedSource == LibrarySourceMode.Local) {
@@ -558,6 +547,7 @@ fun LibraryScreen(
                             LibraryViewMode.Radio -> radioContent(
                                 displayedSource == selectedSource && selectedMode == LibraryViewMode.Radio &&
                                     LocalEchoPageInteractive.current,
+                                placeRadioToolbarActions,
                             )
                             LibraryViewMode.Songs -> {
                                 val trackItems = songTrackItems ?: tracks.collectAsLazyPagingItems()
@@ -646,7 +636,7 @@ fun LibraryScreen(
                                         onFindAlbumLetterIndex!!.invoke(letter, displayedSource == LibrarySourceMode.Cloud)
                                     }) else null,
                                     albums = albumItems,
-                                    onOpenAlbum = onOpenAlbum,
+                                    onOpenAlbum = { openAlbumFrom(mode, it) },
                                     isCloud = displayedSource == LibrarySourceMode.Cloud,
                                     cloudConfigured = cloudLibraryConfigured,
                                     query = libraryQuery,
@@ -680,7 +670,7 @@ fun LibraryScreen(
 
                             LibraryViewMode.Cloud -> GuidedAlbumWall(
                                 albums = remoteAlbums.collectAsLazyPagingItems(),
-                                onOpenAlbum = onOpenAlbum,
+                                onOpenAlbum = { openAlbumFrom(mode, it) },
                                 isCloud = true,
                                 cloudConfigured = cloudLibraryConfigured,
                                 query = libraryQuery,
@@ -695,7 +685,7 @@ fun LibraryScreen(
                                     albums = likedAlbums.collectAsLazyPagingItems(),
                                     query = libraryQuery,
                                     onBack = ::closeLikedAlbums,
-                                    onOpenAlbum = onOpenAlbum,
+                                    onOpenAlbum = { openAlbumFrom(mode, it) },
                                 )
                             } else LocalPlaylistPanel(
                                 playlists = playlists,
@@ -729,6 +719,7 @@ fun LibraryScreen(
     @Composable
     fun SharedLibraryBrowser() {
         val radioSelected = selectedSource == LibrarySourceMode.Local && selectedMode == LibraryViewMode.Radio
+        var radioToolbarActions by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
         LibraryBrowserFrame(
             query = libraryQuery,
             onQueryChange = onLibraryQueryChange,
@@ -747,6 +738,10 @@ fun LibraryScreen(
                     radioSelected = radioSelected,
                     onSelectRadio = ::selectRadio,
                     onSelectPodcasts = onOpenPodcasts,
+                    onAddMusic = onAddMusic.takeIf {
+                        selectedSource == LibrarySourceMode.Local && !radioSelected &&
+                            selectedMode != LibraryViewMode.Playlists
+                    },
                 )
             },
             navigationActions = {
@@ -762,10 +757,11 @@ fun LibraryScreen(
                 }
             },
             actions = {
-                if (selectedSource == LibrarySourceMode.Local) LibraryHiddenTracksAccess()
                 when (selectedSource) {
-                    LibrarySourceMode.Local -> if (selectedMode != LibraryViewMode.Radio && selectedMode != LibraryViewMode.Playlists) {
-                        LibrarySourceScanButton(onAddMusic)
+                    LibrarySourceMode.Local -> if (radioSelected) {
+                        radioToolbarActions?.invoke()
+                    } else {
+                        LibraryHiddenTracksAccess()
                     }
                     LibrarySourceMode.PcEcho -> if (linkedLibraryAvailable) {
                         LinkedLibraryRefreshAction(
@@ -776,6 +772,32 @@ fun LibraryScreen(
                     LibrarySourceMode.Cloud -> if (remotePlaylistManagement != null) {
                         TextButton(onClick = { navidromeVisible = true }) { Text("Navidrome") }
                     }
+                }
+            },
+            sortAction = {
+                if (selectedSource != LibrarySourceMode.PcEcho) {
+                    LibraryBrowserSortAction(
+                        layout = layout,
+                        onLayoutChange = onLibraryLayoutChange,
+                        selectedSource = selectedSource,
+                        selectedMode = selectedMode,
+                        onCustomize = customizeLayout,
+                        selectedSortMode = trackSortMode,
+                        trackFilter = trackFilter,
+                        lyricsIndexState = lyricsIndexState,
+                        onInspectLyrics = onInspectLyrics,
+                        onCancelLyricsInspection = onCancelLyricsInspection,
+                        onTrackFilterChange = onTrackFilterChange,
+                        albumSortMode = albumSortMode,
+                        artistSortMode = artistSortMode,
+                        folderSortMode = folderSortMode,
+                        playlistSortMode = playlistSortMode.takeUnless { viewingLikedAlbums },
+                        onSortModeChange = onTrackSortModeChange,
+                        onAlbumSortModeChange = onAlbumSortModeChange,
+                        onArtistSortModeChange = onArtistSortModeChange,
+                        onFolderSortModeChange = onFolderSortModeChange,
+                        onPlaylistSortModeChange = { playlistSortMode = it },
+                    )
                 }
             },
         ) {
@@ -828,6 +850,7 @@ fun LibraryScreen(
                                 selectedLinkedPlaylist = null
                             },
                             onOpenAlbum = { album ->
+                                linkedMode = LinkedLibraryMode.Albums
                                 selectedLinkedAlbum = album
                                 linkedLibraryState.value.albums.firstOrNull {
                                     EchoLinkLibraryQueryPolicy.remoteAlbumKey(it.id) == album.albumKey
@@ -856,7 +879,17 @@ fun LibraryScreen(
                         actionLabel = stringResource(L10nR.string.library_open_connect),
                         onAction = onOpenConnect,
                     )
-                    else -> LocalLibraryBody(displayedSource)
+                    else -> LocalLibraryBody(displayedSource) { actions ->
+                        val latestActions = rememberUpdatedState(actions)
+                        val toolbar: @Composable () -> Unit = remember { { latestActions.value() } }
+                        // The pager owns the radio screen and its actions; the header only renders them.
+                        DisposableEffect(toolbar) {
+                            radioToolbarActions = toolbar
+                            onDispose {
+                                if (radioToolbarActions === toolbar) radioToolbarActions = null
+                            }
+                        }
+                    }
                 }
                 SnackbarHost(
                     librarySnackbar,
@@ -909,11 +942,14 @@ fun LibraryScreen(
             LibraryDetailTransitionTarget.LinkedPlaylist(linkedPlaylistDetail)
         selectedSource == LibrarySourceMode.PcEcho -> LibraryDetailTransitionTarget.Browser
         activeAlbumDetail != null && albumDetailTracks != null ->
-            LibraryDetailTransitionTarget.AlbumDetail(activeAlbumDetail, albumDetailTracks)
+            LibraryDetailTransitionTarget.AlbumDetail(activeAlbumDetail, albumDetailTracks, albumLiked, onOpenAlbumArtist)
         selectedGenre != null && genreDetailTracks != null ->
             LibraryDetailTransitionTarget.GenreDetail(selectedGenre, genreDetailTracks)
         activeArtistDetail != null && artistDetailTracks != null ->
-            LibraryDetailTransitionTarget.ArtistDetail(activeArtistDetail, artistDetailTracks, artistDetailAlbums)
+            LibraryDetailTransitionTarget.ArtistDetail(
+                activeArtistDetail, artistDetailTracks, artistDetailAlbums,
+                artistQuery, artistSort, artistListState, artistAlbumListState,
+            )
         activeFolderDetail != null && folderDetailTracks != null ->
             LibraryDetailTransitionTarget.FolderDetail(activeFolderDetail, folderDetailTracks)
         activePlaylistDetail != null && playlistDetailTracks != null -> {
@@ -942,7 +978,7 @@ fun LibraryScreen(
         when (target) {
             is LibraryDetailTransitionTarget.AlbumDetail -> AlbumDetailPage(
                 album = target.album,
-                liked = albumLiked.takeIf { target.album.albumKey == selectedAlbum?.albumKey },
+                liked = target.liked,
                 onLikedChange = { liked -> onSetAlbumLiked(target.album.albumKey, liked) },
                 onWriteNfc = onWriteAlbumNfc?.takeIf { selectedSource == LibrarySourceMode.Local }?.let { write -> { write(target.album) } },
                 tracks = target.tracks,
@@ -961,7 +997,7 @@ fun LibraryScreen(
                 onAddToPlaylist = { track -> addToPlaylistTrack = track },
                 onPlayNext = playNext,
                 onEnqueue = enqueueTrack,
-                onOpenArtist = onOpenAlbumArtist,
+                onOpenArtist = target.onOpenArtist,
                 onOpenTrackArtist = onOpenTrackArtist,
                 artistAlbums = albumArtistAlbums?.let { albums -> { albums(target.album) } },
                 onOpenAlbum = onOpenAlbum,
@@ -1000,13 +1036,13 @@ fun LibraryScreen(
                 onBack = onCloseDetail,
                 onPlayAll = { onPlayArtist(target.artist) },
                 albums = target.albums,
-                query = artistQuery,
-                sort = artistSort,
+                query = target.query,
+                sort = target.sort,
                 onQueryChange = onArtistQueryChange,
                 onSortChange = onArtistSortChange,
                 onOpenAlbum = onOpenAlbum,
-                listState = artistListState,
-                albumListState = artistAlbumListState,
+                listState = target.listState,
+                albumListState = target.albumListState,
                 onShuffle = { onShuffleArtist(target.artist) },
                 onPlayTrack = { track ->
                     onPlayTrack(track, LibraryPlaybackOrigin.Artist(target.artist.artistKey))
@@ -1208,19 +1244,6 @@ private fun LibrarySplitPlaceholder() {
     }
 }
 
-
-@Composable
-private fun LibrarySourceScanButton(
-    onAddMusic: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    IconButton(
-        onClick = onAddMusic, modifier = modifier,
-    ) {
-        EchoIcon(Icons.Rounded.Add, contentDescription = stringResource(L10nR.string.library_add_music),
-            modifier = Modifier.size(22.dp))
-    }
-}
 
 private fun librarySourceModeFromId(
     sourceId: String,
@@ -1968,14 +1991,11 @@ private fun LibraryFolderSortMenu(
 }
 
 @Composable
-private fun LibraryBrowserHeader(
+private fun LibraryBrowserSortAction(
     layout: EchoLibraryLayout,
     onLayoutChange: ((EchoLibraryLayout) -> Unit)?,
     selectedSource: LibrarySourceMode,
     selectedMode: LibraryViewMode,
-    modes: List<LibraryViewMode>,
-    pager: PagerState,
-    onSelectMode: (LibraryViewMode) -> Unit,
     onCustomize: (() -> Unit)?,
     selectedSortMode: LibraryTrackSortMode,
     trackFilter: LibraryTrackFilter,
@@ -1993,35 +2013,28 @@ private fun LibraryBrowserHeader(
     onFolderSortModeChange: (FolderSortMode) -> Unit,
     onPlaylistSortModeChange: (PlaylistCatalogSort) -> Unit,
 ) {
-    LibraryCategoryBar(tabs = {
-        LibraryPagerTabs(
-            selectedMode, onSelectMode, modes = modes, pager = pager,
-            showAlbumArtists = layout.showAlbumArtists,
-        )
-    }) {
-        when (selectedMode) {
-            LibraryViewMode.Songs -> if (selectedSource == LibrarySourceMode.Local) {
-                LibraryBrowseOptionsMenu(selectedSortMode, trackFilter, onSortModeChange, onTrackFilterChange,
-                    lyricsIndexState, onInspectLyrics, onCancelLyricsInspection, onCustomize, layout, onLayoutChange)
-            }
-            LibraryViewMode.Albums, LibraryViewMode.Cloud ->
-                LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange, onCustomize)
-            LibraryViewMode.Artists -> LibraryArtistSortMenu(
-                selectedSortMode = artistSortMode,
-                onSortModeChange = onArtistSortModeChange,
-                onCustomize = onCustomize,
-                showAlbumArtists = layout.showAlbumArtists,
-                onShowAlbumArtistsChange = onLayoutChange?.let { updateLayout ->
-                    { showAlbumArtists -> updateLayout(layout.copy(showAlbumArtists = showAlbumArtists)) }
-                },
-            )
-            LibraryViewMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange, onCustomize)
-            LibraryViewMode.Playlists -> if (playlistSortMode != null) {
-                PlaylistCatalogSortMenu(playlistSortMode, onPlaylistSortModeChange, onCustomize)
-            } else {
-                LibraryCustomizeButton(onCustomize)
-            }
-            LibraryViewMode.Genres, LibraryViewMode.Composers, LibraryViewMode.Radio -> Unit
+    when (selectedMode) {
+        LibraryViewMode.Songs -> if (selectedSource == LibrarySourceMode.Local) {
+            LibraryBrowseOptionsMenu(selectedSortMode, trackFilter, onSortModeChange, onTrackFilterChange,
+                lyricsIndexState, onInspectLyrics, onCancelLyricsInspection, onCustomize, layout, onLayoutChange)
         }
+        LibraryViewMode.Albums, LibraryViewMode.Cloud ->
+            LibraryAlbumSortMenu(albumSortMode, onAlbumSortModeChange, onCustomize)
+        LibraryViewMode.Artists -> LibraryArtistSortMenu(
+            selectedSortMode = artistSortMode,
+            onSortModeChange = onArtistSortModeChange,
+            onCustomize = onCustomize,
+            showAlbumArtists = layout.showAlbumArtists,
+            onShowAlbumArtistsChange = onLayoutChange?.let { updateLayout ->
+                { showAlbumArtists -> updateLayout(layout.copy(showAlbumArtists = showAlbumArtists)) }
+            },
+        )
+        LibraryViewMode.Folders -> LibraryFolderSortMenu(folderSortMode, onFolderSortModeChange, onCustomize)
+        LibraryViewMode.Playlists -> if (playlistSortMode != null) {
+            PlaylistCatalogSortMenu(playlistSortMode, onPlaylistSortModeChange, onCustomize)
+        } else {
+            LibraryCustomizeButton(onCustomize)
+        }
+        LibraryViewMode.Genres, LibraryViewMode.Composers, LibraryViewMode.Radio -> Unit
     }
 }

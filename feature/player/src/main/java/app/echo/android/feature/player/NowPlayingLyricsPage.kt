@@ -206,10 +206,7 @@ internal fun NowPlayingLyricsPage(
                     }
             }
             if (embedded) {
-                Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(1f)) { lyricsBody() }
-                    readyLyrics?.let { LyricsInfoRow(it, color = ChatStyle.Muted) }
-                }
+                lyricsBody()
             } else LyricsPageLayout(
                 supportingPane = !showTransportDock,
                 heading = { landscape ->
@@ -253,9 +250,6 @@ internal fun NowPlayingLyricsPage(
                     }
                     }
                     if (!landscape) controlDeck()
-                    if (!showLyricsControlDeck && readyLyrics != null) {
-                        LyricsInfoRow(readyLyrics, Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
-                    }
                     if (showTransportDock) {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(top = 4.dp, bottom = 4.dp)) {

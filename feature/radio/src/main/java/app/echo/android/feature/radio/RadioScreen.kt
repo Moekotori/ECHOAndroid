@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.EchoIcon
 import app.echo.android.model.radio.*
@@ -25,6 +24,7 @@ fun RadioScreen(
     currentId: String?, playing: Boolean,
     streamTitle: String? = null, videoSurface: @Composable (String) -> Unit = {},
     interactive: Boolean = true,
+    placeToolbarActions: @Composable (@Composable () -> Unit) -> Unit,
 ) {
     var global by rememberSaveable { mutableStateOf(false) }
     var group by rememberSaveable { mutableStateOf("home") }
@@ -34,7 +34,6 @@ fun RadioScreen(
     var filters by remember { mutableStateOf(false) }
     var info by remember { mutableStateOf(false) }
     var addOptions by remember { mutableStateOf(false) }
-    var tools by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<EchoRadioStation?>(null) }
     var editorOpen by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<EchoRadioStation?>(null) }
@@ -72,6 +71,27 @@ fun RadioScreen(
     LaunchedEffect(global, group, directory.query) { listState.scrollToItem(0) }
     val detail = selected?.let { snapshot -> saved.firstOrNull { it.id == snapshot.id || it.url == snapshot.url } ?: snapshot }
     val canNavigateUp = global && group != "home"
+    if (detail == null) {
+        placeToolbarActions {
+            IconButton(onClick = { searchOpen = !searchOpen }) { EchoIcon(Icons.Rounded.Search, stringResource(R.string.radio_search)) }
+            if (global) {
+                IconButton(onClick = { filters = true }) { EchoIcon(Icons.Rounded.Tune, stringResource(R.string.radio_filters)) }
+            } else {
+                IconButton(onClick = { addOptions = true }) { EchoIcon(Icons.Rounded.Add, stringResource(R.string.radio_add)) }
+                Box {
+                    var tools by remember { mutableStateOf(false) }
+                    IconButton(onClick = { tools = true }) { EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.radio_more)) }
+                    DropdownMenu(tools, onDismissRequest = { tools = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_import)) }, onClick = { tools = false; actions.importFile() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_export)) }, enabled = saved.isNotEmpty(), onClick = { tools = false; actions.exportFile() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_export_m3u)) }, enabled = saved.isNotEmpty(), onClick = { tools = false; actions.exportPlaylist() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_information)) }, onClick = { tools = false; info = true })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_clear)) }, enabled = saved.isNotEmpty(), onClick = { tools = false; clearAll = true })
+                    }
+                }
+            }
+        }
+    }
     app.echo.android.design.EchoPageBackHandler(enabled = interactive && (searchOpen || selected != null || canNavigateUp)) { goBack() }
     app.echo.android.design.EchoPageContent(
         targetState = detail,
@@ -85,33 +105,17 @@ fun RadioScreen(
             onFilter = { query -> selected = null; browse(query) }, streamTitle = streamTitle?.takeIf { currentId == "radio:${shownDetail.id}" })
     } else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(Modifier.widthIn(max = 720.dp).fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (canNavigateUp) {
+            if (canNavigateUp) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { goBack() }) {
                         EchoIcon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.radio_back))
                     }
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.radio_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                    if (global && (group == "music" || group == "spoken")) {
+                    if (group == "music" || group == "spoken") {
                         Text(
                             stringResource(if (group == "music") R.string.radio_category_music else R.string.radio_category_spoken),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                }
-                IconButton(onClick = { searchOpen = !searchOpen }) { EchoIcon(Icons.Rounded.Search, stringResource(R.string.radio_search)) }
-                if (!global) IconButton(onClick = { addOptions = true }) { EchoIcon(Icons.Rounded.Add, stringResource(R.string.radio_add)) }
-                if (global) IconButton(onClick = { filters = true }) { EchoIcon(Icons.Rounded.Tune, stringResource(R.string.radio_filters)) }
-                else Box {
-                    IconButton(onClick = { tools = true }) { EchoIcon(Icons.Rounded.MoreHoriz, stringResource(R.string.radio_more)) }
-                    DropdownMenu(tools, onDismissRequest = { tools = false }) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_import)) }, onClick = { tools = false; actions.importFile() })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_export)) }, enabled = saved.isNotEmpty(), onClick = { tools = false; actions.exportFile() })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_export_m3u)) }, enabled = saved.isNotEmpty(), onClick = { tools = false; actions.exportPlaylist() })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_information)) }, onClick = { tools = false; info = true })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.radio_clear)) }, enabled = saved.isNotEmpty(), onClick = { tools = false; clearAll = true })
                     }
                 }
             }

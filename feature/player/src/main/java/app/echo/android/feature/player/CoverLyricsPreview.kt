@@ -63,12 +63,18 @@ private fun CoverLyricsRows(timeline: CoverLyricsTimeline, position: State<Long>
     val anchor = if (active >= 0) active else context
     val rows = remember(timeline, anchor) { timeline.rowsAround(anchor) }
     val pageStyle = LocalPlayerPageStyle.current
+    val fullCover = pageStyle == EchoPlayerPageStyle.FullCover
     val ink = if (pageStyle == EchoPlayerPageStyle.Classic || pageStyle.lyricsPreset.isAfterglow) {
         OnArt
     } else {
         remember(pageStyle) { playerPageTokens(pageStyle).ink }
     }
-    val textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 19.sp)
+    val body = MaterialTheme.typography.bodyMedium
+    val textStyle = body.copy(
+        fontSize = 14.sp, lineHeight = 19.sp,
+        shadow = if (fullCover) FullCoverTextShadow else body.shadow,
+    )
+    val contextInk = ink.copy(alpha = if (fullCover) 0.80f else 0.64f)
     val rowHeight = with(LocalDensity.current) { 21.sp.toDp() }
     Column(
         Modifier.fillMaxWidth()
@@ -86,7 +92,7 @@ private fun CoverLyricsRows(timeline: CoverLyricsTimeline, position: State<Long>
                     val highlighted = index == 1 && active >= 0
                     Text(
                         line,
-                        color = if (highlighted) ink else ink.copy(alpha = 0.64f),
+                        color = if (highlighted) ink else contextInk,
                         style = textStyle,
                         fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 1,

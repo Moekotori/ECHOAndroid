@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material.icons.Icons
@@ -202,7 +201,7 @@ internal fun TrackContextMenu(
     onOpenAlbum: (() -> Unit)? = null,
     onPlayOnPc: (() -> Unit)? = null,
     showMoreAction: Boolean = false,
-    inlineSongActions: Boolean = false,
+    compactMoreIcon: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable (Modifier) -> Unit,
 ) {
@@ -267,15 +266,6 @@ internal fun TrackContextMenu(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                } else if (inlineSongActions && onEnqueue != null) {
-                    IconButton(onClick = { onEnqueue(track) }) {
-                        EchoIcon(
-                            Icons.Rounded.Add,
-                            contentDescription = stringResource(L10nR.string.feature_library_add_to_queue_1775d3),
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                        )
-                    }
                 }
             }
             AnimatedVisibility(
@@ -286,7 +276,7 @@ internal fun TrackContextMenu(
                 IconButton(onClick = { showActions = true }) {
                     EchoIcon(Icons.Rounded.MoreVert, contentDescription = stringResource(L10nR.string.library_track_actions),
                         modifier = Modifier.offset(x = 8.dp)
-                            .then(if (inlineSongActions) Modifier.size(20.dp) else Modifier),
+                            .then(if (compactMoreIcon) Modifier.size(20.dp) else Modifier),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

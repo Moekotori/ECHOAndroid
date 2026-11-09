@@ -256,11 +256,12 @@ internal fun EchoLibraryPage(
         LibraryScreen(
             libraryLayout = appSettings.libraryLayout,
             onLibraryLayoutChange = viewModel::setLibraryLayout,
-            radioContent = { interactive ->
+            radioContent = { interactive, placeToolbarActions ->
                 Box(Modifier.fillMaxSize().padding(bottom = bottomInset)) {
                     EchoRadioHost(
                         viewModel, playbackMetadata.mediaId, playbackMetadata.title, playbackControls,
                         onOpenPlayer = onOpenPlayer, interactive = interactive,
+                        placeToolbarActions = placeToolbarActions,
                     )
                 }
             },

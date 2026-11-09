@@ -2,7 +2,6 @@ package app.echo.android.feature.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Badge
@@ -30,7 +29,6 @@ internal fun LibrarySortButton(
 ) {
     IconButton(onClick = onClick, modifier = Modifier.size(LibraryCategoryBarHeight)) {
         BadgedBox(
-            modifier = Modifier.offset(y = (-4).dp),
             badge = { if (filterCount > 0) Badge { Text(filterCount.toString()) } },
         ) {
             Box(

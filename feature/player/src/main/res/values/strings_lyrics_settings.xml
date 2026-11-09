@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lyrics_info_title">Lyrics information</string>
     <string name="lyrics_setting_reset">Reset</string>
     <string name="lyrics_setting_typography">Type &amp; layout</string>
     <string name="lyrics_setting_replace_font">Replace imported font</string>

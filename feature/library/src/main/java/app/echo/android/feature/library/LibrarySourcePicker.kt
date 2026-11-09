@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.Devices
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Radio
@@ -68,6 +69,7 @@ internal fun LibrarySourcePicker(
     radioSelected: Boolean,
     onSelectRadio: () -> Unit,
     onSelectPodcasts: () -> Unit = {},
+    onAddMusic: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val sourceLabel = selectedSource.label()
@@ -128,6 +130,18 @@ internal fun LibrarySourcePicker(
                 onClick = { expanded = false; onSelectPodcasts() },
                 leadingIcon = { EchoIcon(Icons.Rounded.Podcasts, contentDescription = null, Modifier.size(20.dp)) },
             )
+            if (onAddMusic != null) {
+                EchoDropdownMenuDivider()
+                EchoDropdownMenuItem(
+                    text = { Text(stringResource(R.string.library_add_music)) },
+                    selected = false,
+                    onClick = {
+                        expanded = false
+                        onAddMusic()
+                    },
+                    leadingIcon = { EchoIcon(Icons.Rounded.FolderOpen, contentDescription = null, Modifier.size(20.dp)) },
+                )
+            }
         }
     }
 }

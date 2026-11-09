@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -60,16 +62,20 @@ internal fun <Mode : Enum<Mode>> LibraryCategoryPager(
     val nestedScroll = rememberContentPagerNestedScroll(pager, fling)
     val selection by rememberUpdatedState(selectedMode)
     val onSelect by rememberUpdatedState(onSelectMode)
+    val wasInteractive = remember(pager) { mutableStateOf(false) }
 
     // A tab click redirects the pager. Observe touch navigation only after that
     // request, so an old settled page cannot overwrite a newly clicked tab.
     LaunchedEffect(pager, selectedMode, interactive) {
+        val resuming = !wasInteractive.value
+        wasInteractive.value = interactive
         if (!interactive) return@LaunchedEffect
         val requestedPage = modes.indexOf(selectedMode).coerceAtLeast(0)
         if (pager.currentPage != requestedPage || pager.currentPageOffsetFraction != 0f) {
             try {
-                // Distant tab clicks should not sweep through unrelated categories.
-                if (lightweight || abs(requestedPage - pager.currentPage) > 1) {
+                // Restoring a covered browser must show the selected category immediately.
+                // Distant tab clicks also skip intermediate categories.
+                if (resuming || lightweight || abs(requestedPage - pager.currentPage) > 1) {
                     pager.scrollToPage(requestedPage)
                 } else {
                     pager.animateScrollToPage(requestedPage, animationSpec = settleSpec)

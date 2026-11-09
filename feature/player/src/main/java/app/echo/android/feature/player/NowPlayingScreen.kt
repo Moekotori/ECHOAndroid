@@ -41,7 +41,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.combinedClickable
@@ -74,7 +73,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import app.echo.android.design.animateSilkToPage
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -406,7 +404,6 @@ fun NowPlayingScreen(
             handledLyricsRequestId = openLyricsRequestId
         }
     }
-    val lyricAccent = lyricsColorForMode(lyricsColorMode)
     val density = LocalDensity.current
     val dismissScope = rememberCoroutineScope()
     val dismissHaptics = rememberEchoHapticPerformer()
@@ -816,6 +813,7 @@ fun NowPlayingScreen(
             )
             LyricsSettingsDrawer(
                 visible = lyricsSettingsVisible,
+                lyricsState = lyricsState,
                 onOpenAppearance = {
                     lyricsSettingsVisible = false
                     appearanceSettingsVisible = true
@@ -847,7 +845,6 @@ fun NowPlayingScreen(
                 lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
                 lyricsWordHighlightStyle = lyricsWordHighlightStyle,
                 lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-                lyricAccent = lyricAccent,
                 showTranslation = lyricsShowTranslation,
                 showRomanization = lyricsShowRomanization,
                 focusGlowEnabled = effectiveLyricsFocusGlowEnabled,
@@ -1083,6 +1080,7 @@ private fun NowPlayingTopBar(
 @Composable
 private fun LyricsSettingsDrawer(
     visible: Boolean,
+    lyricsState: EchoLyricsLoadState,
     onOpenAppearance: () -> Unit,
     lyricsFontFamily: FontFamily?,
     lyricsPageStyle: EchoLyricsPageStyle,
@@ -1102,7 +1100,6 @@ private fun LyricsSettingsDrawer(
     lyricsWordHighlightIntensity: Float,
     lyricsWordHighlightStyle: String,
     lyricsImmersiveModeEnabled: Boolean,
-    lyricAccent: Color,
     showTranslation: Boolean,
     showRomanization: Boolean,
     focusGlowEnabled: Boolean,
@@ -1139,6 +1136,7 @@ private fun LyricsSettingsDrawer(
     EchoSheetOverlay(visible = visible, onDismiss = onDismiss, modifier = modifier) {
         LyricsSettingsPanel(
             onOpenAppearance = onOpenAppearance,
+            lyricsState = lyricsState,
             lyricsFontFamily = lyricsFontFamily,
             lyricsPageStyle = lyricsPageStyle,
             playerPageStyle = playerPageStyle,
@@ -1157,7 +1155,6 @@ private fun LyricsSettingsDrawer(
             lyricsWordHighlightIntensity = lyricsWordHighlightIntensity,
             lyricsWordHighlightStyle = lyricsWordHighlightStyle,
             lyricsImmersiveModeEnabled = lyricsImmersiveModeEnabled,
-            lyricAccent = lyricAccent,
             showTranslation = showTranslation,
             showRomanization = showRomanization,
             focusGlowEnabled = focusGlowEnabled,
@@ -1276,46 +1273,6 @@ internal fun LyricsControlDeck(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                FormatChip(text = "Lyrics", highlight = true)
-                FormatChip(text = lyrics.format.label(), highlight = false)
-                lyrics.metadata["text_encoding"]?.takeIf { it.length <= 40 }?.let { encoding ->
-                    FormatChip(text = stringResource(L10nR.string.lyrics_decoding_encoding, encoding), highlight = false)
-                    if (lyrics.metadata["text_decoding_lossy"] == "true")
-                        FormatChip(text = stringResource(L10nR.string.lyrics_decoding_lossy), highlight = false)
-                }
-                lyrics.sourceLabel?.takeIf { it.isNotBlank() }?.let { source ->
-                    Text(
-                        text = source,
-                        color = OnArtMuted,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            GlyphButton(
-                icon = Icons.Rounded.UploadFile,
-                description = stringResource(L10nR.string.feature_player_change_lyrics_170696),
-                touchSize = 34.dp,
-                iconSize = 20.dp,
-                tint = OnArtMuted,
-                background = Color.Transparent,
-                onClick = onImportLyrics,
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1357,6 +1314,15 @@ internal fun LyricsControlDeck(
                     tint = OnArtMuted,
                     background = Color.Transparent,
                     onClick = { onAdjustLyricsOffset(250L) },
+                )
+                GlyphButton(
+                    icon = Icons.Rounded.UploadFile,
+                    description = stringResource(L10nR.string.feature_player_change_lyrics_170696),
+                    touchSize = 34.dp,
+                    iconSize = 20.dp,
+                    tint = OnArtMuted,
+                    background = Color.Transparent,
+                    onClick = onImportLyrics,
                 )
             }
         }

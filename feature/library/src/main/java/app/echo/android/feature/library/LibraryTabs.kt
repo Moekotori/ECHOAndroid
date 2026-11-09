@@ -695,7 +695,7 @@ private fun scanPhaseLabel(phase: LibraryScanPhase): String =
 
 @Composable
 internal fun libraryScanCompletionMessage(scanState: LibraryScanProgress): String? {
-    if (scanState.phase != LibraryScanPhase.Completed) return null
+    if (scanState.phase != LibraryScanPhase.Completed || scanState.isAutomatic) return null
     return buildString {
         append(stringResource(L10nR.string.feature_library_scan_complete_fbdf16))
         if (scanState.unmatchedCueCount > 0) {

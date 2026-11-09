@@ -441,18 +441,21 @@ internal class LibraryController(
                     skipSampleRateRead = skipSampleRateRead(),
                     options = effectiveOptions,
                     removeExcludedFromLibrary = !auto,
-                )
-                    .collect { progress -> publishScanProgress(_scanState, progress, "Library scan failed") }
+                ).collect { progress ->
+                    val localProgress = if (auto) progress.copy(isAutomatic = true) else progress
+                    publishScanProgress(_scanState, localProgress, "Library scan failed")
+                }
             } catch (error: CancellationException) {
                 _scanState.value = _scanState.value.copy(
                     phase = LibraryScanPhase.Cancelled,
                     currentTitle = null,
                     error = null,
                     isCompleted = true,
+                    isAutomatic = auto,
                 )
                 throw error
             } catch (error: Throwable) {
-                publishScanFailure(_scanState, error.message ?: "Library scan failed", error)
+                publishScanFailure(_scanState, error.message ?: "Library scan failed", error, isAutomatic = auto)
             }
         }
     }
@@ -590,7 +593,7 @@ internal class LibraryController(
                         deleted = progress.deletedCount,
                     )
                 ) {
-                    publishScanProgress(_scanState, progress, "Document tree scan failed")
+                    publishScanProgress(_scanState, progress.copy(isAutomatic = true), "Document tree scan failed")
                 } else if (progress.phase == LibraryScanPhase.Error) {
                     EchoErrorLog.record(
                         EchoErrorSource.Library,
@@ -605,6 +608,7 @@ internal class LibraryController(
                     currentTitle = null,
                     error = null,
                     isCompleted = true,
+                    isAutomatic = false,
                 )
             }
             throw error
@@ -628,12 +632,14 @@ internal class LibraryController(
         pendingManualScan = null
         val job = scanJob
         if (job?.isActive == true) {
+            val isAutomatic = autoWatchRunning
             job.cancel()
             _scanState.value = _scanState.value.copy(
                 phase = LibraryScanPhase.Cancelled,
                 currentTitle = null,
                 error = null,
                 isCompleted = true,
+                isAutomatic = isAutomatic,
             )
         }
     }
@@ -999,12 +1005,14 @@ internal class LibraryController(
         target: MutableStateFlow<LibraryScanProgress>,
         message: String,
         error: Throwable,
+        isAutomatic: Boolean = false,
     ) {
         target.value = target.value.copy(
             phase = LibraryScanPhase.Error,
             currentTitle = null,
             error = message,
             isCompleted = true,
+            isAutomatic = isAutomatic,
         )
         EchoErrorLog.record(EchoErrorSource.Library, message, throwable = error)
     }

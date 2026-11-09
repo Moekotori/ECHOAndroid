@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lyrics_info_title">Información de la letra</string>
     <string name="lyrics_setting_reset">Restablecer</string>
     <string name="lyrics_setting_typography">Tipo y diseño</string>
     <string name="lyrics_setting_replace_font">Reemplazar fuente importada</string>

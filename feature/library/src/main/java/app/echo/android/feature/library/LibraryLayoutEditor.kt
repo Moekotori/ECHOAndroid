@@ -151,6 +151,6 @@ internal fun LibraryCustomizeButton(onCustomize: (() -> Unit)?) {
     if (onCustomize == null) return
     IconButton(onClick = onCustomize, modifier = Modifier.size(LibraryCategoryBarHeight)) {
         EchoIcon(Icons.Rounded.Tune,
-            stringResource(R.string.library_layout_title), Modifier.offset(y = (-4).dp).size(20.dp))
+            stringResource(R.string.library_layout_title), Modifier.size(20.dp))
     }
 }

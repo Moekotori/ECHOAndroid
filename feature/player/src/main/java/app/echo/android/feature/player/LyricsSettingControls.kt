@@ -131,5 +131,5 @@ internal fun LyricsSettingToggle(
 @Composable
 internal fun LyricsSettingsHandle(onDismiss: () -> Unit) {
     val description = stringResource(R.string.feature_player_close_lyrics_settings_752454)
-    PlayerSettingsDragHandle(description, onDismiss)
+    PlayerSettingsDragHandle(description, onDismiss, compact = true)
 }

@@ -78,7 +78,7 @@ internal fun TrackRow(
         onOpenAlbum = onOpenAlbum?.let { open -> { open(track) } },
         onPlayOnPc = onPlayOnPc,
         showMoreAction = true,
-        inlineSongActions = true,
+        compactMoreIcon = true,
         modifier = modifier.fillMaxWidth(),
     ) { pressModifier ->
         Row(

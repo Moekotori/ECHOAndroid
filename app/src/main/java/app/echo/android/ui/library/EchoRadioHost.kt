@@ -25,6 +25,7 @@ internal fun EchoRadioHost(
     controls: PlaybackControlsState,
     onOpenPlayer: () -> Unit,
     interactive: Boolean,
+    placeToolbarActions: @Composable (@Composable () -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
     val openUrl: (String) -> Unit = { url ->
@@ -103,6 +104,7 @@ internal fun EchoRadioHost(
         "android.resource://app.echo.android/${app.echo.android.R.mipmap.ic_launcher}") {
     RadioScreen(saved, visible, recent, discovery, failed || fileFailed || radioFailed,
         radioPending || controls.state in listOf(EchoPlaybackState.Loading, EchoPlaybackState.Buffering), actions, currentId,
-        controls.isPlaying, streamTitle = streamTitle, videoSurface = { url -> if (interactive) RadioVideoStage(url) }, interactive = interactive)
+        controls.isPlaying, streamTitle = streamTitle, videoSurface = { url -> if (interactive) RadioVideoStage(url) },
+        interactive = interactive, placeToolbarActions = placeToolbarActions)
     }
 }

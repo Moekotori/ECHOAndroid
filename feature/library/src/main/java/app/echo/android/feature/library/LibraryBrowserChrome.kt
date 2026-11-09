@@ -32,6 +32,7 @@ internal fun LibraryBrowserFrame(
     sourcePicker: @Composable () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
     navigationActions: @Composable RowScope.() -> Unit = {},
+    sortAction: @Composable () -> Unit = {},
     searchEnabled: Boolean = true,
     searchPlaceholder: String = stringResource(R.string.feature_library_search_songs_artists_albums_14dc2c),
     content: @Composable ColumnScope.() -> Unit,
@@ -89,6 +90,7 @@ internal fun LibraryBrowserFrame(
                         }
                         actions()
                     }
+                    sortAction()
                 }
                 content()
             }
@@ -102,7 +104,7 @@ internal val LibraryCategoryBarHeight = 42.dp
 internal fun LibraryCategoryBar(tabs: @Composable () -> Unit, actions: @Composable () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.weight(1f, fill = false)) { tabs() }
-        actions()
+        Box(Modifier.offset(y = (-4).dp)) { actions() }
     }
 }
 

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lyrics_info_title">歌词信息</string>
     <string name="lyrics_setting_reset">重置</string>
     <string name="lyrics_setting_typography">字体与排版</string>
     <string name="lyrics_setting_replace_font">更换导入字体</string>

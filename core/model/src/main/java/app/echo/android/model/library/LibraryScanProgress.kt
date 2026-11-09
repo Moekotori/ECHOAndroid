@@ -14,6 +14,7 @@ data class LibraryScanProgress(
     val isCompleted: Boolean = false,
     val skipReasons: Map<LibraryScanSkipReason, Int> = emptyMap(),
     val skippedSamples: List<LibraryScanSkippedItem> = emptyList(),
+    val isAutomatic: Boolean = false,
 ) {
     val isScanning: Boolean
         get() = when (phase) {

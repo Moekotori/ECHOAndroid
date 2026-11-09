@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lyrics_info_title">Informations sur les paroles</string>
     <string name="lyrics_setting_reset">Réinitialiser</string>
     <string name="lyrics_setting_typography">Typo &amp; mise en page</string>
     <string name="lyrics_setting_replace_font">Remplacer la police importée</string>

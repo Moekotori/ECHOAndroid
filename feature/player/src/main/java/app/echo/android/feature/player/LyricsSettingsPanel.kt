@@ -37,9 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.echo.android.design.EchoExpand
 import app.echo.android.design.LocalEchoDarkTheme
-import app.echo.android.design.echoAccentColor
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 import app.echo.android.design.echoTheme
+import app.echo.android.model.lyrics.EchoLyricsLoadState
 import app.echo.android.model.settings.EchoLyricsBackdrop
 import app.echo.android.model.settings.EchoLyricsPageStyle
 import app.echo.android.model.settings.EchoLyricsWordHighlightStyle
@@ -49,6 +49,7 @@ import app.echo.android.feature.player.R as L10nR
 @Composable
 internal fun LyricsSettingsPanel(
     onOpenAppearance: () -> Unit,
+    lyricsState: EchoLyricsLoadState,
     lyricsFontFamily: FontFamily?,
     lyricsPageStyle: EchoLyricsPageStyle,
     playerPageStyle: String,
@@ -67,7 +68,6 @@ internal fun LyricsSettingsPanel(
     lyricsWordHighlightIntensity: Float,
     lyricsWordHighlightStyle: String,
     lyricsImmersiveModeEnabled: Boolean,
-    lyricAccent: Color,
     showTranslation: Boolean,
     showRomanization: Boolean,
     focusGlowEnabled: Boolean,
@@ -105,7 +105,6 @@ internal fun LyricsSettingsPanel(
     val dark = LocalEchoDarkTheme.current
     val titleColor = if (dark) Color.White else echoTheme().heading
     val mutedColor = if (dark) Color.White.copy(alpha = 0.65f) else echoTheme().muted
-    val accent = echoAccentColor()
     var category by remember { mutableStateOf<LyricsSettingsCategory?>(null) }
     BackHandler(enabled = category != null) { category = null }
     val heading = stringResource(L10nR.string.feature_player_lyrics_settings_843bc9)
@@ -126,7 +125,7 @@ internal fun LyricsSettingsPanel(
                 .settingsSheetSurface()
                 .navigationBarsPadding(),
         ) {
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(Modifier.padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 LyricsSettingsHandle(onDismiss)
                 SettingsSheetHeader(
                     deeper = category != null,
@@ -136,11 +135,12 @@ internal fun LyricsSettingsPanel(
                     closeDescription = stringResource(L10nR.string.feature_player_close_lyrics_settings_752454),
                     onBack = { category = null },
                     onClose = onDismiss,
+                    compact = true,
                 ) {
                     Box(
-                        Modifier.size(52.dp).clip(CircleShape).background(accent.copy(alpha = if (dark) 0.26f else 0.18f)),
+                        Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(settingsPlateColor()),
                         contentAlignment = Alignment.Center,
-                    ) { EchoIcon(Icons.Rounded.Lyrics, null, tint = titleColor, modifier = Modifier.size(24.dp)) }
+                    ) { EchoIcon(Icons.Rounded.Lyrics, null, tint = titleColor, modifier = Modifier.size(22.dp)) }
                 }
             }
             EchoExpand(showPreview) {
@@ -162,22 +162,25 @@ internal fun LyricsSettingsPanel(
             CompositionLocalProvider(LocalContentColor provides titleColor) {
                 Column(
                     Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(scrollState)
-                        .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 18.dp),
+                        .padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
                 ) {
                     SettingsPageSwitcher(state = category, isDeeper = { it != null }) { page ->
                         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            if (page == null) LyricsSettingsMenu(
-                                appearanceSummary = stringResource(playerPageStyleLabel(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle))),
-                                backdropSummary = stringResource(lyricsBackdropLabel(EchoLyricsBackdrop.fromId(lyricsBackdrop))),
-                                typographySummary = "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",
-                                colorSummary = lyricsColorLabel(lyricsColorMode),
-                                motionSummary = "${stringResource(L10nR.string.lyrics_setting_word_highlight)} · ${stringResource(L10nR.string.feature_player_immersive_d86793)}",
-                                wordStyleSummary = stringResource(lyricsWordStyleLabel(EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle))),
-                                onSelect = {
-                                    if (it == LyricsSettingsCategory.Appearance) onOpenAppearance()
-                                    else category = it
-                                },
-                            )
+                            if (page == null) {
+                                LyricsInfoSection(lyricsState)
+                                LyricsSettingsMenu(
+                                    appearanceSummary = stringResource(playerPageStyleLabel(app.echo.android.model.settings.EchoPlayerPageStyle.fromId(playerPageStyle))),
+                                    backdropSummary = stringResource(lyricsBackdropLabel(EchoLyricsBackdrop.fromId(lyricsBackdrop))),
+                                    typographySummary = "${lyricsFontDetail(lyricsFontMode, importedFontUri)} · ${(lyricsFontScale * 100).roundToInt()}%",
+                                    colorSummary = lyricsColorLabel(lyricsColorMode),
+                                    motionSummary = "${stringResource(L10nR.string.lyrics_setting_word_highlight)} · ${stringResource(L10nR.string.feature_player_immersive_d86793)}",
+                                    wordStyleSummary = stringResource(lyricsWordStyleLabel(EchoLyricsWordHighlightStyle.fromId(lyricsWordHighlightStyle))),
+                                    onSelect = {
+                                        if (it == LyricsSettingsCategory.Appearance) onOpenAppearance()
+                                        else category = it
+                                    },
+                                )
+                            }
                             if (page == LyricsSettingsCategory.Backdrop) {
                                 PlayerBackdropChoices(
                                     selected = EchoLyricsBackdrop.fromId(lyricsBackdrop),
@@ -247,9 +250,9 @@ internal fun LyricsSettingsPanel(
                                 LyricsSettingToggle(stringResource(L10nR.string.feature_player_sync_tools_ef1217), showLyricsControlDeck, onShowLyricsControlDeckChange)
                                 LyricsSettingToggle(stringResource(L10nR.string.feature_player_online_lyrics_21c928), onlineLyricsEnabled, onOnlineLyricsEnabledChange)
                                 PlaybackActionRow(Icons.Rounded.UploadFile, stringResource(L10nR.string.feature_player_import_lyrics_e7494e),
-                                    framed = false, onClick = { onDismiss(); onImportLyrics() })
+                                    framed = false, compact = true, onClick = { onDismiss(); onImportLyrics() })
                                 PlaybackActionRow(Icons.Rounded.Album, stringResource(L10nR.string.feature_player_back_to_cover_815543),
-                                    framed = false, onClick = { onDismiss(); onCloseLyrics() })
+                                    framed = false, compact = true, onClick = { onDismiss(); onCloseLyrics() })
                             }
                         }
                     }

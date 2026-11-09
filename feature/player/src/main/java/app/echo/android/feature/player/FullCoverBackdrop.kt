@@ -12,10 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import app.echo.android.design.ArtworkColorGrid
@@ -25,7 +27,7 @@ import app.echo.android.design.EchoArtworkSize
 import app.echo.android.design.EchoMotion
 import app.echo.android.design.LocalEchoEffectivePerformanceMode
 
-/** Frame the artwork on tall screens and extend its edge colors behind the player chrome. */
+/** Let the artwork fill the portrait player and extend its edge colors behind the controls. */
 @Composable
 internal fun FullCoverBackdrop(
     artworkUri: String?,
@@ -42,11 +44,14 @@ internal fun FullCoverBackdrop(
     val lowerEdge = remember(colorGrid, fallback) { colorGrid?.edgeColor(top = false) ?: fallback.deep }
     val controls = remember(lowerEdge) { lowerEdge.withLuminanceAtMost(0.12f) }
     val footer = remember(controls) { controls.withLuminanceAtMost(controls.luminance() * 0.72f) }
+    val reflectedColor = remember(colorGrid, controls) {
+        colorGrid?.let { lerp(controls, Color(it.sample(0.78f, 0.68f)), 0.52f).withLuminanceAtMost(0.12f) }
+    }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val framed = !spreadControls && maxWidth <= maxHeight * 0.72f
-        val artworkTop = if (framed) maxHeight * 0.125f else 0.dp
-        val artworkHeight = if (framed) minOf(maxWidth, maxHeight * 0.49f) else maxHeight
+        val artworkTop = if (framed) maxHeight * 0.04f else 0.dp
+        val artworkHeight = if (framed) minOf(maxWidth * 1.45f, maxHeight * 0.64f) else maxHeight
 
         Crossfade(
             targetState = artworkUri,
@@ -59,8 +64,12 @@ internal fun FullCoverBackdrop(
                     Brush.verticalGradient(
                         0f to header,
                         start / viewportHeight to header,
-                        (start + height * 0.19f) / viewportHeight to header.copy(alpha = 0f),
-                        (start + height * 0.77f) / viewportHeight to controls.copy(alpha = 0f),
+                        (start + height * 0.08f) / viewportHeight to header.copy(alpha = 0.82f),
+                        (start + height * 0.15f) / viewportHeight to header.copy(alpha = 0.29f),
+                        (start + height * 0.23f) / viewportHeight to header.copy(alpha = 0f),
+                        (start + height * 0.72f) / viewportHeight to controls.copy(alpha = 0f),
+                        (start + height * 0.82f) / viewportHeight to controls.copy(alpha = 0.18f),
+                        (start + height * 0.91f) / viewportHeight to controls.copy(alpha = 0.70f),
                         (start + height) / viewportHeight to controls,
                         1f to footer,
                     )
@@ -68,10 +77,21 @@ internal fun FullCoverBackdrop(
                     // Wide layouts can put controls beside the cover, anywhere along the vertical axis.
                     Brush.verticalGradient(0f to header, 0.42f to controls.copy(alpha = 0.94f), 1f to footer)
                 }
+                // A second cover tone in the lower wash keeps the controls from sitting on a flat band.
+                val reflection = reflectedColor?.takeIf { framed && size.height > 0f }?.let { color ->
+                    Brush.radialGradient(
+                        0f to color.copy(alpha = 0.85f),
+                        0.55f to color.copy(alpha = 0.35f),
+                        1f to color.copy(alpha = 0f),
+                        center = Offset(size.width * 0.78f, size.height * 0.85f),
+                        radius = size.height * 0.29f,
+                    )
+                }
                 onDrawWithContent {
                     drawRect(surface)
                     drawContent()
                     drawRect(veil)
+                    if (reflection != null) drawRect(reflection)
                     val lyrics = reveal().coerceIn(0f, 1f)
                     if (lyrics > 0f) drawRect(Color.Black.copy(alpha = LyricsDim * lyrics))
                 }

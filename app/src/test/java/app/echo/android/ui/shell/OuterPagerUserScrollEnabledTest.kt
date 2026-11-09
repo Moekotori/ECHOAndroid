@@ -1,10 +1,26 @@
 package app.echo.android.ui.shell
 
+import androidx.compose.foundation.pager.PagerState
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OuterPagerUserScrollEnabledTest {
+    @Test
+    fun connectIsNotSnappedWhenNestedDragHasOnlyCrossedTheMidpoint() {
+        val connect = EchoPagerPage.Connect.ordinal
+        val inBetween = PagerState(currentPage = connect, currentPageOffsetFraction = -0.4f) {
+            EchoPagerPage.entries.size
+        }
+        val snapped = PagerState(currentPage = connect) { EchoPagerPage.entries.size }
+
+        assertEquals(connect, inBetween.settledPage)
+        assertNull(inBetween.snappedDockPage())
+        assertEquals(EchoPagerPage.Connect, snapped.snappedDockPage())
+    }
+
     @Test
     fun pcBrowserAndDetailsLockOuterSwipeIncludingWideScreens() {
         for (split in listOf(false, true)) {
